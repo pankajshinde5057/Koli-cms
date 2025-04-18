@@ -1,0 +1,326 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+
+<section class="content">
+	<div class="container-fluid">
+		<div class="row">
+			<!-- Present Days -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-success">
+					<div class="inner">
+						<h3>{{ attendance_stats.present_days }}</h3>
+						<p>Present Days</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-user-check"></i>
+					</div>
+				</div>
+			</div>
+
+			<!-- Late Days -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-warning">
+					<div class="inner">
+						<h3>{{ attendance_stats.late_days }}</h3>
+						<p>Late Days</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-clock"></i>
+					</div>
+				</div>
+			</div>
+
+			<!-- Half Days -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-secondary">
+					<div class="inner">
+						<h3>{{ attendance_stats.half_days }}</h3>
+						<p>Half Days</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-user-clock"></i>
+					</div>
+				</div>
+			</div>
+			
+			<!-- Absent Days -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-danger">
+					<div class="inner">
+						<h3>{{ attendance_stats.absent_days }}</h3>
+						<p>Absent Days</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-user-times"></i>
+					</div>
+				</div>
+			</div>
+
+			<!-- Attendance Percentage -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-primary">
+					<div class="inner">
+						<h3>{{ attendance_stats.attendance_percentage }}<sup style="font-size: 20px">%</sup></h3>
+						<p>Attendance Percentage</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-percentage"></i>
+					</div>
+				</div>
+			</div>
+
+			<!-- Percentage Present -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-success">
+					<div class="inner">
+						<h3>{{ attendance_stats.total_breaks_today }}</h3>
+						<p>Today's Total Breaks</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-user-minus"></i>
+					</div>
+				</div>
+			</div>
+
+			<!-- Total Days -->
+			<div class="col-lg-3 col-6">
+				<div class="small-box bg-info">
+					<div class="inner">
+						<h3>{{ attendance_stats.total_days }}</h3>
+						<p>Total Working Days</p>
+					</div>
+					<div class="icon">
+						<i class="fas fa-calendar-alt"></i>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		<div class="col">
+			<div class="card">
+				<div class="card-header bg-primary text-white">
+					<div class="d-flex justify-content-between align-items-center">
+						<h5 class="card-title mb-0">Timesheets</h5>
+						<div>
+							<div class="btn-group">
+								<button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+									{% if request.GET.date == 'today' %}Today
+									{% elif request.GET.date == 'week' %}This Week
+									{% elif request.GET.date == 'month' %}This Month
+									{% else %}All Time
+									{% endif %}
+								</button>
+								<ul class="dropdown-menu">
+									<li><a class="dropdown-item" href="?date=today">Today</a></li>
+									<li><a class="dropdown-item" href="?date=week">This Week</a></li>
+									<li><a class="dropdown-item" href="?date=month">This Month</a></li>
+									<li><a class="dropdown-item" href="?">All Time</a></li>
+								</ul>
+							</div>
+							
+							{% if request.user.is_staff %}
+							<div class="btn-group ms-2">
+								<button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+									{% if request.GET.user %}User: {{ request.GET.user }}{% else %}All Users{% endif %}
+								</button>
+								<ul class="dropdown-menu">
+									<li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}">All Users</a></li>
+									{% for user in users %}
+									<li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}user={{ user.id }}">{{ user.get_full_name }}</a></li>
+									{% endfor %}
+								</ul>
+							</div>
+							
+							<div class="btn-group ms-2">
+								<button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+									{% if request.GET.department %}Dept: {{ request.GET.department }}{% else %}All Departments{% endif %}
+								</button>
+								<ul class="dropdown-menu">
+									<li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}">All Departments</a></li>
+									{% for dept in departments %}
+									<li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}department={{ dept.id }}">{{ dept.name }}</a></li>
+									{% endfor %}
+								</ul>
+							</div>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+				<div class="card-body">
+					<ul class="nav nav-tabs mb-4" id="timesheetTabs" role="tablist">
+						<li class="nav-item" role="presentation">
+							<button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button">Daily</button>
+						</li>
+						<li class="nav-item" role="presentation">
+							<button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button">Weekly</button>
+						</li>
+						<li class="nav-item" role="presentation">
+							<button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button">Monthly</button>
+						</li>
+					</ul>
+					
+					<div class="tab-content" id="timesheetTabsContent">
+						<div class="tab-pane fade show active" id="daily" role="tabpanel">
+							<div class="table-responsive">
+								<table class="table table-striped">
+									<thead>
+										<tr>
+											<th>Date</th>
+											<th>Clock In</th>
+											<th>Clock Out</th>
+											<th>Total</th>
+											<th>Breaks</th>
+											<th>Status</th>
+										</tr>
+									</thead>
+									<tbody>
+										{% for day in daily_view %}
+										<tr>
+											<td>{{ day.clock_in|date:"M d, Y" }}</td>
+											<td>{{ day.clock_in|time:"h:i:s A" }}</td>
+											<td>{{ day.clock_out|time:"h:i:s A"|default:"-" }}</td>
+											<td>{{ day.total_worked|duration_to_hours_minutes}}</td>
+											<td>{{ day.total_break|duration_to_hours_minutes }}</td>
+											<td>
+												{% if not day.clock_out%}
+													<span class="badge bg-success">Clocked In</span>
+												{% else %}
+													<span class="badge bg-secondary">Clocked Out</span>
+												{% endif %}
+											</td>
+										</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+							</div>
+						</div>
+						
+						<div class="tab-pane fade" id="weekly" role="tabpanel">
+							<div class="table-responsive">
+								<table class="table table-striped">
+									<thead>
+										<tr>
+											<th>Week</th>
+											<th>Total Hours</th>
+										</tr>
+									</thead>
+									<tbody>
+										{% for week in weekly_view %}
+										<tr>
+											<td>Week of {{ week.week|date:"M d, Y" }}</td>
+											<td>{{ week.total_hours|duration_to_hours_minutes }}</td>
+											
+										</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+							</div>
+						</div>
+						
+						<div class="tab-pane fade" id="monthly" role="tabpanel">
+							<div class="table-responsive">
+								<table class="table table-striped">
+									<thead>
+										<tr>
+											<th>Month</th>
+											<th>Total Hours</th>											
+										</tr>
+									</thead>
+									<tbody>
+										{% for month in monthly_view %}
+										<tr>
+											<td>{{ month.month|date:"F Y" }}</td>
+											<td>{{ month.total_hours|duration_to_hours_minutes }}</td>
+											
+										</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+
+
+
+<!-- Firebase Integration -->
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
+
+<script>
+	var firebaseConfig = {
+		apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
+		authDomain: "sms-with-django.firebaseapp.com",
+		databaseURL: "https://sms-with-django.firebaseio.com",
+		projectId: "sms-with-django",
+		storageBucket: "sms-with-django.appspot.com",
+		messagingSenderId: "945324593139",
+		appId: "1:945324593139:web:03fa99a8854bbd38420c86",
+		measurementId: "G-2F2RXTL9GT"
+	};
+
+	firebase.initializeApp(firebaseConfig);
+	const messaging = firebase.messaging();
+
+	function initializeFirebaseMessaging() {
+		messaging.requestPermission()
+			.then(() => messaging.getToken())
+			.then(token => {
+				sendToServer(token);
+			})
+			.catch(err => console.error("Permission denied", err));
+	}
+
+	messaging.onMessage(payload => {
+		const notificationOptions = {
+			body: payload.notification.body,
+			icon: payload.notification.icon
+		};
+
+		if (Notification.permission === "granted") {
+			const notification = new Notification(payload.notification.title, notificationOptions);
+			notification.onclick = event => {
+				event.preventDefault();
+				window.open(payload.notification.click_action, "_blank");
+				notification.close();
+			};
+		}
+	});
+
+	messaging.onTokenRefresh(() => {
+		messaging.getToken().then(newToken => {
+			console.log("New Token: ", newToken);
+			sendToServer(newToken);
+		}).catch(console.error);
+	});
+
+	function sendToServer(token) {
+		$.ajax({
+			url: "{% url 'employee_fcmtoken' %}",
+			method: "POST",
+			data: { token: token },
+			headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+		}).done(() => {
+			console.log("Token sent to server");
+		}).fail(err => {
+			console.error("Failed to send token", err);
+		});
+	}
+
+	initializeFirebaseMessaging();
+</script>
+{% endblock custom_js %}

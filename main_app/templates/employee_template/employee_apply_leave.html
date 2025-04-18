@@ -1,0 +1,62 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+
+{% block content %}
+<div class="ml-2">
+    <div class="col">
+        {% include "main_app/form_template.html" with messages=messages form=form button_text="Apply For Leave" %}
+    </div>
+</div>
+
+        <!-- Leave History Table -->
+        <div class="row m-2">
+            <div class="col-md-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-history"></i> Leave History
+                        </h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Date</th>
+                                        <th>Message</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for leave in leave_history %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ leave.date }}</td>
+                                        <td>{{ leave.message }}</td>
+                                        <td>
+                                            {% if leave.status == 0 %}
+                                                <span class="badge badge-warning">Pending</span>
+                                            {% elif leave.status == 1 %}
+                                                <span class="badge badge-success">Accepted</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Rejected</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No leave records found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+{% endblock content %}

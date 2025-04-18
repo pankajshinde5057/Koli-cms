@@ -1,0 +1,184 @@
+<!-- Clock Timers Display -->
+<li class="nav-item" id="working_timer_li" style="display: none;">
+    <span class="nav-link text-info d-flex align-items-center">
+        <i class="fas fa-hourglass-start me-2"></i>
+        <span class="d-none d-sm-inline">Working Time:</span>
+        <span id="working_duration" class="ms-1">0h 0m 0s</span>
+    </span>
+</li>
+<li class="nav-item" id="break_timer_li" style="display: none;">
+    <span class="nav-link text-warning d-flex align-items-center">
+        <i class="fas fa-coffee me-2"></i>
+        <span class="d-none d-sm-inline">Break Time:</span>
+        <span id="break_duration" class="ms-1">0h 0m 0s</span>
+    </span>
+</li>
+
+
+{% if current_record and latest_entry.breaks.last and not latest_entry.breaks.last.break_end %}
+    <input type="hidden" id="breakStartTime" value="{{ latest_entry.breaks.last.break_start|date:'c' }}">
+{% else %}
+    {% if current_record %}
+        <input type="hidden" id="clockInTime" value="{{ latest_entry.clock_in|date:'c' }}">
+    {% endif %}
+{% endif %}
+
+<!-- Clock Action Buttons -->
+{% if current_record %}
+    <li class="nav-item">
+        <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 1.2px;">
+            <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger rounded-pill px-3">
+                    <span class="d-none d-sm-inline">Clock Out</span>
+                    <i class="fas fa-sign-out-alt ms-sm-1"></i>
+                </button>
+            </form>
+            {% if current_break %}
+                <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3">
+                    <span class="d-none d-sm-inline">End Break</span>
+                    <i class="fas fa-pause-circle ms-sm-1"></i>
+                </button>
+            {% else %}
+                <button id="startBreakBtn" class="btn btn-secondary rounded-pill px-3">
+                    <span class="d-none d-sm-inline">Start Break</span>
+                    <i class="fas fa-coffee ms-sm-1"></i>
+                </button>
+            {% endif %}
+        </div>
+    </li>
+{% else %}  
+    <li class="nav-item">
+        <div class="form-group text-center">
+            <form id="clockInForm" method="post" action="{% url 'clock_in_out' %}">
+                {% csrf_token %}                        
+                <button type="submit" class="btn btn-success rounded-pill px-4">
+                    <span class="d-none d-sm-inline">Clock In</span>
+                    <i class="fas fa-sign-in-alt ms-sm-1"></i>
+                </button>
+            </form>
+        </div>    
+    </li>
+{% endif %}
+
+<script>
+    // (Your existing JavaScript remains the same)
+    document.addEventListener('DOMContentLoaded', function () {
+        const clockInInput = document.getElementById("clockInTime");
+        const breakStartInput = document.getElementById("breakStartTime");
+
+        const workingTimer = document.getElementById("working_timer_li");
+        const breakTimer = document.getElementById("break_timer_li");
+        const workingDurationEl = document.getElementById("working_duration");
+        const breakDurationEl = document.getElementById("break_duration");
+
+        let breakTimerInterval;
+        let workingTimerInterval;
+
+        if (clockInInput) {
+            const clockInTime = new Date(clockInInput.value);
+            workingTimer.style.display = 'block';
+
+            workingTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = Math.floor((now - clockInTime) / 1000); // seconds
+
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+
+                workingDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+
+        if (breakStartInput) {
+            const breakStartTime = new Date(breakStartInput.value);
+            breakTimer.style.display = 'block';
+
+            breakTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = Math.floor((now - breakStartTime) / 1000); // seconds
+
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+
+                breakDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle form submissions via AJAX
+        const clockInForm = document.getElementById('clockInForm');
+        const clockOutForm = document.getElementById('clockOutForm');
+        const breakTimer = document.getElementById("break_timer_li");
+
+        if (clockInForm) {
+            clockInForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitClockAction(this);
+            });
+        }
+        
+        if (clockOutForm) {
+            clockOutForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitClockAction(this);
+                
+            });
+        }
+        
+        // Break buttons
+        const startBreakBtn = document.getElementById('startBreakBtn');
+        const endBreakBtn = document.getElementById('endBreakBtn');
+        
+        if (startBreakBtn) {
+            startBreakBtn.addEventListener('click', function() {
+                submitBreakAction();
+            });
+        }
+        
+        if (endBreakBtn) {
+            endBreakBtn.addEventListener('click', function() {
+                submitBreakAction();
+            });
+        }
+        
+        function submitClockAction(form) {
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+        
+        function submitBreakAction() {
+            fetch("{% url 'break_action' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.reload();
+                }
+            });
+        }
+    });
+</script>

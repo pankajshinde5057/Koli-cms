@@ -1,0 +1,151 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Leave Requests -->
+        <div class="card card-dark mb-4">
+            <div class="card-header"><strong>Leave Requests</strong></div>
+            <div class="card-body table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>Employee</th><th>Date</th><th>Message</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in pending_leave_requests %}
+                            <tr>
+                                <td>{{ leave.employee }}</td>
+                                <td>{{ leave.date }}</td>
+                                <td>{{ leave.message }}</td>
+                                <td>
+                                    <form method="post" action="{% url 'approve_leave_request' leave.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                    </form>
+                                    <form method="post" action="{% url 'reject_leave_request' leave.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted">No pending leave requests.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Asset Requests -->
+        <div class="card card-dark">
+            <div class="card-header">
+                <strong>Asset Claim Requests</strong>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr><th>Employee</th><th>Asset</th><th>Serial No</th><th>Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for asset in asset_notifications %}
+                            <tr>
+                                <td>{{ asset.employee }}</td>
+                                <td>{{ asset.asset.asset_name }}</td>
+                                <td>{{ asset.asset.asset_serial_No }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal-{{ asset.asset.id }}">
+                                        <i class="fas fa-paper-plane mr-1"></i> Action
+                                    </button>
+                                    
+                                    <!-- Modal -->
+                                    <div class="modal fade" id="modal-{{ asset.asset.id }}" tabindex="-1" role="dialog" aria-labelledby="modalLabel-{{ asset.asset.id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg" role="document">
+                                            <div class="modal-content shadow-lg">
+                                                <div class="modal-header bg-gradient-primary text-white">
+                                                    <h5 class="modal-title" id="modalLabel-{{ asset.asset.id }}">
+                                                        <i class="fas fa-hand-holding mr-2"></i>Request Asset
+                                                    </h5>
+                                                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                    
+                                                <!-- Form inside modal -->
+                                                <form method="post" action="{% url 'asset_app:asset-claim' %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="asset_id" value="{{ asset.asset.id }}">
+                                                    
+                                                    <div class="modal-body">
+                                                        <div class="row">
+                                                            <!-- Left Column - Asset Details -->
+                                                            <div class="col-md-6 border-right">
+                                                                <div class="asset-details-card p-3 mb-4 bg-light rounded">
+                                                                    <h6 class="text-primary mb-3"><i class="fas fa-info-circle mr-2"></i>Asset Details</h6>
+                                                                    {% if asset.asset.asset_image and asset.asset.asset_image.url %}
+                                                                    <div class="asset-image-container text-center mb-3">
+                                                                        <img src="{{ asset.asset.asset_image.url }}" class="img-fluid rounded border" alt="Asset Image" style="max-height: 160px;">
+                                                                    </div>
+                                                                    {% else %}
+                                                                    <div class="asset-image-container text-center mb-3">
+                                                                        <div class="no-image-placeholder bg-light rounded border p-4 text-muted">
+                                                                            <i class="fas fa-image fa-3x mb-2"></i>
+                                                                            <p class="small">No image available</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    {% endif %}
+                                                                    <div class="asset-info">
+                                                                        <p class="mb-2"><strong><i class="fas fa-tag mr-2"></i>Name:</strong> {{ asset.asset.asset_name }}</p>
+                                                                        <p class="mb-2"><strong><i class="fas fa-barcode mr-2"></i>Serial No:</strong> {{ asset.asset.asset_serial_No }}</p>
+                                                                        <p class="mb-2"><strong><i class="fas fa-industry mr-2"></i>Manufacturer:</strong> {{ asset.asset.asset_manufacturer }}</p>
+                                                                        <p class="mb-3"><strong><i class="far fa-calendar-alt mr-2"></i>Date Purchased:</strong> {{ asset.asset.date_purchased|date:"Y-m-d H:i" }}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <!-- Right Column - Request Form -->
+                                                            <div class="col-md-6">
+                                                                <div class="form-group">
+                                                                    {% if asset.asset.qr_code and asset.asset.qr_code.url %}
+                                                                    <div class="qr-code-container text-center">
+                                                                        <img src="{{ asset.asset.qr_code.url }}" class="img-thumbnail" alt="QR Code" style="max-width: auto;">
+                                                                        <p class="small text-muted mt-1">Scan to verify asset</p>
+                                                                    </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                                
+                                                               
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="modal-footer bg-light">
+                                                        <form method="post" action="{% url 'approve_assest_request' asset.id %}" style="display:inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                                        </form>
+                                                        <form method="post" action="{% url 'reject_assest_request' asset.id %}" style="display:inline;">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                                        </form>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" class="text-center text-muted">No pending asset claims.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    
+    </div>
+</section>
+{% endblock content %}
