@@ -1,52 +1,32 @@
-<!-- Button to trigger modal -->
-<button type="button" class="btn btn-success" data-toggle="modal" data-target="#modal-">
-    Apply For Leave
-</button>
+<!DOCTYPE html>
+<form role="form" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="card-body">
 
-<!-- Modal -->
-<div class="modal fade" id="modal-" tabindex="-1" role="dialog" aria-labelledby="modalLabel-" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
 
-            <!-- Start of Modal Header -->
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalLabel-">Leave Application Form</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-
-            <!-- Start of Form Inside Modal -->
-            <form method="POST" action="" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="modal-body">
-
-                    <!-- Django Form Fields -->
-                    <div class="card-body p-0">
-                        {% for field in form %}
-                        <div class="form-group">
-                            {{ field.errors }}
-                            {{ field.label_tag }}
-                            {{ field }}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-success">
-                        {% if button_text %}
-                            {{ button_text }}
-                        {% else %}
-                            Submit
-                        {% endif %}
-                    </button>
-                </div>
-            </form>
-            <!-- End of Form -->
+        {% for field in form %}
+        <div class="form-group">
+            {{field.errors}}
+            {{field.label_tag}}
+            {{field}}
 
         </div>
+        {% endfor %}
+
+
+
+
     </div>
-</div>
+    <!-- /.card-body -->
+
+    <div class="card-footer">
+        <button type="submit" class="btn btn-primary btn-block">
+            {% if button_text %}
+            {{button_text}}
+            {% else %}
+            Submit
+            {% endif %}
+
+        </button>
+    </div>
+</form>
