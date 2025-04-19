@@ -5,69 +5,100 @@
 {% block content %}
 
 <section class="content">
-    <!-- Leave Reports -->
-    <div class="card card-dark">
-        <div class="card-header"><strong>Leave Requests</strong></div>
-        <div class="card-body table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr><th>Date</th><th>Message</th><th>Status</th><th>Submitted At</th></tr>
-                </thead>
-                <tbody>
-                    {% for report in leave_requests %}
+    <!-- Leave Reports Card -->
+    <div class="card card-primary">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0"><i class="fas fa-calendar-alt mr-2"></i>Leave Requests</h3>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
                         <tr>
-                            <td>{{ report.date }}</td>
-                            <td>{{ report.message }}</td>
-                            <td>
-                                {% if report.status == 0 %}
-                                    <span class="badge badge-warning">Pending</span>
-                                {% elif report.status == 1 %}
-                                    <span class="badge badge-success">Approved</span>
-                                {% else %}
-                                    <span class="badge badge-danger">Rejected</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ report.created_at|date:"Y-m-d H:i" }}</td>
+                            <th>Date</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Submitted</th>
                         </tr>
-                    {% empty %}
-                        <tr><td colspan="4">No leave reports found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for report in leave_requests %}
+                            <tr>
+                                <td>{{ report.created_at|date:"M d, Y" }}</td>
+                                <td>{{ report.message|truncatechars:30 }}</td>
+                                <td>
+                                    {% if report.status == 0 %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif report.status == 1 %}
+                                        <span class="badge bg-success">Approved</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ report.created_at|timesince }} ago</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                    No leave requests found
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- Asset Claims -->
-    <div class="card card-dark mt-4">
-        <div class="card-header"><strong>Asset Claim Requests</strong></div>
-        <div class="card-body table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr><th>Asset</th><th>Serial No</th><th>Status</th><th>Requested At</th></tr>
-                </thead>
-                <tbody>
-                    {% for claim in asset_claims %}
+    <!-- Asset Claims Card -->
+    <div class="card card-primary mt-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0"><i class="fas fa-laptop mr-2"></i>Asset Claims</h3>
+            <small class="float-right">Manager Review</small>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
                         <tr>
-                            <td>{{ claim.asset.asset_name }}</td>
-                            <td>{{ claim.asset.asset_serial_No }}</td>
-                            <td>
-                                {% if claim.approved == None %}
-                                    <span class="badge badge-warning">Pending</span>
-                                {% elif claim.approved %}
-                                    <span class="badge badge-success">Approved</span>
-                                {% else %}
-                                    <span class="badge badge-danger">Rejected</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ claim.timestamp|date:"F j, Y, H:i" }}</td>
+                            <th>Asset</th>
+                            <th>Serial No</th>
+                            <th>Manager</th>
+                            <th>Status</th>
+                            <th>Requested</th>
                         </tr>
-                    {% empty %}
-                        <tr><td colspan="4">No asset claim requests found.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for claim in asset_claims %}
+                            <tr>
+                                <td>{{ claim.asset.asset_name }}</td>
+                                <td><code>{{ claim.asset.asset_serial_No }}</code></td>
+                                <td>{{ claim.manager.get_full_name|default:claim.manager.username }}</td>
+                                <td>
+                                    {% if claim.status == "Pending" %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif claim.status == "Approved" %}
+                                        <span class="badge bg-success">Approved</span>
+                                    {% elif claim.status == "Rejected" %}
+                                        <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ claim.timestamp|date:"M j, Y" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <i class="fas fa-box-open fa-2x mb-2"></i><br>
+                                    No asset claims found
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-
 </section>
+
 {% endblock content %}

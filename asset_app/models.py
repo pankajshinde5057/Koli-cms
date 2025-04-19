@@ -7,33 +7,47 @@ from django.core.files import File
 import qrcode
 from .utils import generate_qr_code
 
-ASSET_CHOICES = (
-    ("Desk", "Desk"),
-    ("Laptop", "Laptop"),
-    ("IP Phone", "IP Phone"),
-    ("Project", "Project"),
-)
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
     ("Meeting Room", "Meeting Room"),
+    ("Main Office", "Main Office"),
 )
 
-class Assets(models.Model):
-    asset_name = models.CharField(max_length=100, choices=ASSET_CHOICES)
-    asset_serial_No = models.CharField(max_length=100, unique=True)
-    asset_manufacturer = models.CharField(max_length=100)
-    date_purchased = models.DateTimeField(null=True, blank=True,default=timezone.now())
-    asset_issued = models.BooleanField(default=False)
-    asset_image = models.ImageField(upload_to='images/', blank=True, null=True)
-    asset_assignee = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.SET_NULL,null=True,blank=True,related_name='claimed_assets')
-    manager = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='managed_assets')
+ASSET_CONDITION_CHOICES = [
+    ('new', 'New'),
+    ('used', 'Used'),
+]
 
+DEPARTMENT_CHOICE = [
+    ('hr', 'HR'),
+    ('python', 'Python'),
+    ('admin', 'Admin'),
+    ('javascript','JavaScript')
+]
+
+class Assets(models.Model):
+    asset_name = models.CharField(max_length=100,unique=True)
+    asset_serial_No = models.CharField(max_length=100, unique=True)
+    asset_brand = models.CharField(max_length=100)
+    asset_image = models.ImageField(upload_to='images/', blank=True, null=True)
+    manager = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='managed_assets')
+    
+    is_asset_issued = models.BooleanField(default=False)
+    asset_added_date = models.DateTimeField(null=True, blank=True,default=timezone.now)
+    updated_date = models.DateTimeField(auto_now=True)
+    return_date = models.DateTimeField(null=True, blank=True)
+
+    asset_condition = models.CharField(max_length=100, choices=ASSET_CONDITION_CHOICES, blank=True, null=True)
+    os_version = models.CharField(max_length=100, blank=True, null=True,default=None)
+    ip_address = models.CharField(blank=True, null=True,default=None)
+    
     qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        qr_data = f"http://192.168.1.56:8000/asset-app/api/asset/{self.id}/detail/" 
+        qr_data = f"http://192.168.1.56:8000/asset-app/asset/{self.id}/detail/" 
         qr_file = generate_qr_code(qr_data, f"{self.asset_serial_No}_qr.png")
 
         if not self.qr_code:
@@ -42,7 +56,7 @@ class Assets(models.Model):
 
     @property
     def status(self):
-        return "Active" if self.asset_issued else "Not Active"
+        return "Active" if self.is_asset_issued else "Not Active"
     
 
     def __str__(self):
@@ -73,13 +87,12 @@ class AssetsIssuance(models.Model):
     def get_absolute_url(self):
         return reverse('assets-detail', kwargs={'pk': self.pk})
 
-
 class Notify_Manager(models.Model):
     manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='manager_notifications')
     employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='asset_requests',null=True)
     asset = models.ForeignKey(Assets, on_delete=models.CASCADE, related_name='manager_notifications',null=True)  # <-- ADD THIS
     message = models.TextField()
-    approved = models.BooleanField(default=False,null=True)  # <-- optional, if you are using 'note.approved' in template
+    approved = models.BooleanField(null=True,default=None)
     timestamp = models.DateTimeField(default=timezone.now)
     is_read = models.BooleanField(default=False)
 
@@ -93,7 +106,6 @@ class Notify_Manager(models.Model):
         elif self.approved is False:
             return "Rejected"
         return "Pending"
-
 
 class Notify_Employee(models.Model):
     employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='employee_notifications')

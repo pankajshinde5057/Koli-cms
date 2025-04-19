@@ -20,7 +20,9 @@
                                     <th>No</th>
                                     <th>Asset</th>
                                     <th>Serial No</th>
+                                    <th>Brand</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -30,6 +32,12 @@
                                         <td>{{ forloop.counter }}</td>
                                         <td>{{ asset.asset_name }}</td>
                                         <td>{{ asset.asset_serial_No }}</td>
+                                        <td>{{ asset.asset_brand }}</td>
+                                        <td>
+                                            <span class="badge {% if asset.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">
+                                                {{ asset.status }}
+                                            </span>
+                                        </td>
                                         <td>
                                             {% if asset.id in pending_requests %}
                                                 <button type="button" class="btn btn-success btn-sm" disabled>
@@ -79,8 +87,13 @@
                                                                             <div class="asset-info">
                                                                                 <p class="mb-2"><strong><i class="fas fa-tag mr-2"></i>Name:</strong> {{ asset.asset_name }}</p>
                                                                                 <p class="mb-2"><strong><i class="fas fa-barcode mr-2"></i>Serial No:</strong> {{ asset.asset_serial_No }}</p>
-                                                                                <p class="mb-2"><strong><i class="fas fa-industry mr-2"></i>Manufacturer:</strong> {{ asset.asset_manufacturer }}</p>
-                                                                                <p class="mb-3"><strong><i class="far fa-calendar-alt mr-2"></i>Date Purchased:</strong> {{ asset.date_purchased|date:"Y-m-d H:i" }}</p>
+                                                                                <p class="mb-2"><strong><i class="fas fa-industry mr-2"></i>Brand:</strong> {{ asset.asset_brand }}</p>
+                                                                                {% if asset.os_version %}
+                                                                                <p class="mb-2"><strong><i class="fas fa-code-branch mr-2"></i>OS Version:</strong> {{ asset.os_version }}</p>
+                                                                                {% endif %}
+                                                                                {% if asset.ip_address %}
+                                                                                <p class="mb-3"><strong><i class="fas fa-network-wired mr-2"></i>IP Address:</strong> {{ asset.ip_address }}</p>
+                                                                                {% endif %}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -100,10 +113,8 @@
                                                                             <textarea class="form-control" id="custom-message-{{ asset.id }}" 
                                                                                       name="message" placeholder="Please explain why you need this asset..." 
                                                                                       rows="5" style="resize: none;" required></textarea>
-                                                                            <small class="form-text text-muted">This message will be sent to the asset manager.</small>
+                                                                            <small class="form-text text-muted">This message will be sent to the asset manager ({{ asset.manager.get_full_name|default:asset.manager.username }}).</small>
                                                                         </div>
-                                                                        
-                                                                       
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -125,7 +136,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="4" class="text-center">No unclaimed assets available.</td>
+                                        <td colspan="7" class="text-center">No unclaimed assets available.</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>

@@ -406,15 +406,7 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    {% url 'admin_notify_employee' as admin_notify_employee %}
-                    <a href="{{admin_notify_employee}}" class="nav-link {% if admin_notify_employee == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Notify Employee
-                        </p>
-                    </a>
-                </li>
+                
 
                 <li class="nav-item">
                     {% url 'manager_apply_leave' as manager_apply_leave %}
@@ -437,15 +429,7 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    {% url 'asset_app:assets-list' as assets_home %}
-                    <a href="{{assets_home}}" class="nav-link {% if assets_home == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            All Assets List
-                        </p>
-                    </a>
-                </li>
+                
                 <li class="nav-item">
                     {% url 'asset_app:assets-create' as assets_create %}
                     <a href="{{assets_create}}" class="nav-link {% if assets_create == request.path %} active {% endif %}">
@@ -455,15 +439,7 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    {% url 'asset_app:asset-assign' as asset_assign %}
-                    <a href="{{asset_assign}}" class="nav-link {% if asset_assign == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            My Assigned Assets
-                        </p>
-                    </a>
-                </li>
+               
                 <li class="nav-item">
                     {% url 'asset_app:asset-claim' as assets_claim %}
                     <a href="{{assets_claim}}" class="nav-link {% if assets_claim == request.path %} active {% endif %}">
@@ -484,15 +460,7 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'asset_app:assets-create' as assets_create %}
-                    <a href="{{assets_create}}" class="nav-link {% if assets_create == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Create Assets
-                        </p>
-                    </a>
-                </li>
+               
 
                 <li class="nav-item">
                     {% url 'asset_app:asset-assign' as asset_assign %}
@@ -504,15 +472,7 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'asset_app:asset-claim' as assets_claim %}
-                    <a href="{{assets_claim}}" class="nav-link {% if assets_claim == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Unclaim Devices
-                        </p>
-                    </a>
-                </li> 
+               
 
           
 {% else %}

@@ -6,8 +6,17 @@ from django_filters import FilterSet
 class AssetForm(forms.ModelForm):
     class Meta:
         model = Assets
-        fields = ['asset_name', 'asset_serial_No', 'asset_manufacturer', 'date_purchased', 'asset_image', 'asset_assignee']
-
+        fields = [
+            'asset_name',
+            'asset_serial_No',
+            'asset_brand',        
+            'asset_image',
+            'is_asset_issued',
+            'asset_condition',
+            'os_version',
+            'ip_address',
+            'return_date',
+        ]
 
 class AssetsFilter(FilterSet):
     class Meta:
