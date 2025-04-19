@@ -15,7 +15,9 @@ def clock_times(request):
     try:
         custom_user = CustomUser.objects.get(id=user.id)
         latest_entry = AttendanceRecord.objects.filter(user=custom_user).order_by("-clock_in").first()
+        current_record = AttendanceRecord.objects.filter(user=request.user,clock_out__isnull=True,date=timezone.now().date()).first()
         context["latest_entry"] = latest_entry
+        context["current_record"] = current_record
 
     except CustomUser.DoesNotExist:
         pass
