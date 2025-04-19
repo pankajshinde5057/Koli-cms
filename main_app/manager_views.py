@@ -9,8 +9,13 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .forms import *
 from .models import *
-from asset_app.models import Notify_Manager
+from asset_app.models import Notify_Manager,AssetsIssuance
 
+LOCATION_CHOICES = (
+    ("Main Room" , "Main Room"),
+    ("Meeting Room", "Meeting Room"),
+    ("Main Office", "Main Office"),
+)
 
 def manager_home(request):
     manager = get_object_or_404(Manager, admin=request.user)
@@ -78,7 +83,7 @@ def save_attendance(request):
         department = get_object_or_404(Department, id=department_id)
 
         # Check if an attendance object already exists for the given date
-        attendance, created = Attendance.objects.get_or_create(department=department, date=date)
+        attendance, created = AttendanceRecord.objects.get_or_create(department=department, date=date)
 
         for employee_dict in employees:
             employee = get_object_or_404(Employee, id=employee_dict.get('id'))
@@ -112,7 +117,7 @@ def manager_update_attendance(request):
 def get_employee_attendance(request):
     attendance_date_id = request.POST.get('attendance_date_id')
     try:
-        date = get_object_or_404(Attendance, id=attendance_date_id)
+        date = get_object_or_404(AttendanceRecord, id=attendance_date_id)
         attendance_data = AttendanceReport.objects.filter(attendance=date)
         employee_data = []
         for attendance in attendance_data:
@@ -131,7 +136,7 @@ def update_attendance(request):
     date = request.POST.get('date')
     employees = json.loads(employee_data)
     try:
-        attendance = get_object_or_404(Attendance, id=date)
+        attendance = get_object_or_404(AttendanceRecord, id=date)
 
         for employee_dict in employees:
             employee = get_object_or_404(
@@ -244,33 +249,38 @@ def manager_fcmtoken(request):
         return HttpResponse("False")
 
 
+
 def manager_view_notification(request):
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
-
-    manager = get_object_or_404(Manager, admin=request.user)
-        
-    asset_notifications = Notify_Manager.objects.filter(manager=manager.admin, approved__isnull=True).order_by('-timestamp')
-
+    asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
+    
     context = {
         'pending_leave_requests': pending_leave_requests,
         'asset_notifications': asset_notifications,
-        'page_title': "View Notifications"
+        'page_title': "View Notifications",
+        'LOCATION_CHOICES': LOCATION_CHOICES
     }
+    
     return render(request, "manager_template/manager_view_notification.html",context)
-
 
 
 def approve_assest_request(request, notification_id):
     if request.method == 'POST':
+        asset_location_  = request.POST.get("asset_location" , "Main Room")
         notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
 
         if notification.approved is None or notification.approved is False:
             asset = notification.asset
-            print(asset)
-            asset.asset_assignee = notification.employee 
-            asset.asset_issued = True
-            asset.save()
+            employee = notification.employee 
 
+            AssetsIssuance.objects.create(
+                asset = asset,
+                asset_location = asset_location_,
+                asset_assignee = employee
+            )   
+            asset.is_asset_issued = True
+            asset.save()
+            
             notification.approved = True
             notification.save()
 
@@ -278,9 +288,8 @@ def approve_assest_request(request, notification_id):
         else:
             messages.info(request, "This request was already approved.")
 
-        print(f"Assigning {notification.employee} to asset {asset.id}")
-
     return redirect('manager_view_notification')
+
 
 
 
@@ -316,7 +325,7 @@ def reject_leave_request(request, leave_id):
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
-            messages.success(request, "Leave request rejected.")
+            messages.warning(request, "Leave request rejected.")
         else:
             messages.info(request, "This leave request has already been processed.")
     return redirect('manager_view_notification')

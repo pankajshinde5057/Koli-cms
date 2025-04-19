@@ -2,40 +2,149 @@
 {% load static %}
 {% load crispy_forms_tags %}
 
-{% block page_title %}{{ page_title|default:"Create Asset" }}{% endblock page_title %}
+{% block page_title %}{{ page_title|default:"Manage Asset" }}{% endblock page_title %}
 
 {% block content %}
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12">
-
-                <!-- general form elements -->
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">{{ page_title|default:"Create Asset" }}</h3>
+            <div class="col-md-10 mx-auto">
+                <!-- Asset Form Card -->
+                <div class="card card-dark">
+                    <div class="card-header bg-gradient-dark">
+                        <h3 class="card-title">
+                            <i class="fas fa-laptop mr-2"></i>
+                            {{ page_title|default:"Create New Asset" }}
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <form method="POST" enctype="multipart/form-data">
+                    <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                         {% csrf_token %}
-                        <div class="card-body blue-border">
+                        <div class="card-body">
                             {% if messages %}
                                 {% for message in messages %}
-                                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
                                 {% endfor %}
                             {% endif %}
 
-                            {{ form|crispy }}
+                            <div class="row">
+                                <!-- Left Column -->
+                                <div class="col-md-6">
+                                    <h5 class="text-primary mb-4"><i class="fas fa-info-circle mr-2"></i>Basic Information</h5>
+                                    <div class="form-group">
+                                        {{ form.asset_name|as_crispy_field }}
+                                    </div>
+                                    <div class="form-group">
+                                        {{ form.asset_brand|as_crispy_field }}
+                                    </div>
+                                    <div class="form-group">
+                                        {{ form.asset_serial_No|as_crispy_field }}
+                                    </div>
+                                    <div class="form-group">
+                                        {{ form.asset_condition|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                <!-- Right Column -->
+                                <div class="col-md-6">
+                                    <h5 class="text-primary mb-4"><i class="fas fa-network-wired mr-2"></i>Technical Details</h5>
+                                    <div class="form-group">
+                                        {{ form.os_version|as_crispy_field }}
+                                    </div>
+                                    <div class="form-group">
+                                        {{ form.ip_address|as_crispy_field }}
+                                    </div>
+                                    
+                                    <h5 class="text-primary mt-4 mb-4">
+                                        <i class="fas fa-user-tie mr-2"></i>Created By
+                                    </h5>
+                                    
+                                    {% if current_user.user_type == "1" or current_user.is_superuser %}
+                                        <!-- Admin View: Show manager dropdown -->
+                                        <div class="form-group">
+                                            <label for="manager">Select Manager</label>
+                                            <select class="form-control" id="manager" name="manager">
+                                                <option value="">Select Manager</option>
+                                                {% for manager in allManager %}
+                                                    <option value="{{ manager.id }}">{{ manager.get_full_name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    {% elif current_user.user_type == "2" %}
+                                        <!-- Manager View: Show name only, auto-fill hidden manager input -->
+                                        <div class="form-group">
+                                            <input type="text" class="form-control" value="{{ current_user.get_full_name }}" disabled>
+                                            <input type="hidden" name="manager" value="{{ current_user.id }}">
+                                        </div>
+                                    {% endif %}
+                                
+                                    <h5 class="text-primary mt-4 mb-4"><i class="fas fa-image mr-2"></i>Media</h5>
+                                    <div class="form-group">
+                                        {{ form.asset_image|as_crispy_field }}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="card-footer">
-                            <button type="submit" class="btn btn-outline-info">Post</button>
+                        <div class="card-footer bg-light">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <button type="submit" class="btn btn-success btn-block">
+                                        <i class="fas fa-save mr-2"></i> Save Asset
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <a href="" class="btn btn-secondary btn-block">
+                                        <i class="fas fa-arrow-left mr-2"></i> Cancel
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
 </section>
 {% endblock content %}
+
+{% block scripts %}
+<script>
+    // Enable Bootstrap validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            // Fetch all the forms we want to apply custom Bootstrap validation styles to
+            var forms = document.getElementsByClassName('needs-validation');
+            // Loop over them and prevent submission
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+    
+    // Dynamic date picker for return date if asset is issued
+    document.getElementById('id_is_asset_issued').addEventListener('change', function() {
+        if(this.checked) {
+            // You can add date picker initialization here if needed
+            console.log('Asset is issued - return date should be set');
+        }
+    });
+</script>
+{% endblock scripts %}

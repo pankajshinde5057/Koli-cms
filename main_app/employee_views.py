@@ -13,7 +13,7 @@ from .models import *
 from django.db.models import Sum, F, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
-
+from asset_app.models import Notify_Manager
 
 def employee_home(request):
     employee = get_object_or_404(Employee, admin=request.user)
@@ -185,6 +185,7 @@ def employee_home(request):
     return render(request, 'employee_template/home_content.html', context)
 
 
+
 def employee_apply_leave(request):
     form = LeaveReportEmployeeForm(request.POST or None)
     employee = get_object_or_404(Employee, admin_id=request.user.id)
@@ -338,19 +339,17 @@ def employee_view_notification(request):
     }
     return render(request, "employee_template/employee_view_notification.html", context)
 
-def employee_requests(request):
-    # leave , device claimed or not , device issue request
-    employee = Employee.objects.get(admin=request.user)
 
-    leave_requests = LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at')
+
+def employee_requests(request):
+    employee = Employee.objects.get(admin=request.user)
     
+    leave_requests = LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at')
     asset_claims = Notify_Manager.objects.filter(employee=request.user).order_by('-timestamp')
 
     context = {
         'leave_requests': leave_requests,
-        # 'leave_reports': leave_reports,
         'asset_claims': asset_claims,
-        # 'issue_reports': issue_reports,
         'page_title': 'My Requests'
     }
 

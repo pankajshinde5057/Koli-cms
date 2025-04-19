@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.urls import reverse_lazy
-from .models import Assets,Notify_Manager,Notify_Employee
+from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance
 from .forms import AssetForm
 from .filters import AssetsFilter
 from django.urls import reverse
@@ -11,34 +11,68 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 import requests,json
 from django.templatetags.static import static
 from django.contrib import messages
+from main_app.models import CustomUser
 
+LOCATION_CHOICES = (
+    ("Main Room" , "Main Room"),
+    ("Meeting Room", "Meeting Room"),
+    ("Main Office", "Main Office"),
+)
 
-class AssetsListView(ListView):
-    model = Assets
-    template_name = 'asset_app/asset_list.html'
-    context_object_name = 'assets'
-    ordering = ['-date_purchased']
+class AssetsListView(LoginRequiredMixin, ListView):
+    template_name = 'asset_app/home.html'
+    ordering = ['-asset_added_date']
 
     def get_queryset(self):
-        if self.request.user: 
-            return Assets.objects.all()
-        return Assets.objects.filter(asset_assignee=self.request.user)
-        
+        user = self.request.user
+        if user.user_type in ['1', '2']:
+            self.model = Assets
+            print(user.user_type)
 
+            return Assets.objects.all().order_by('-asset_added_date')
+        else:
+            self.model = AssetsIssuance
+            print(user.user_type)
+            return AssetsIssuance.objects.filter(asset_assignee=user).order_by('-date_issued')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['asset_list'] = context.get('object_list')
+        context['is_employee'] = self.request.user.user_type == '3' 
+        return context
+        
+    
 class AssetsDetailView(DetailView):
     model = Assets
     template_name = 'asset_app/asset_detail.html'
     context_object_name = 'asset'
-    
-    
+
 
 class AssetsCreateView(LoginRequiredMixin, CreateView):
     model = Assets
-    fields = ['asset_name', 'asset_serial_No', 'asset_manufacturer', 'asset_issued', 'asset_image', 'manager']
+    fields = [
+        'asset_name',
+        'asset_brand', 
+        'asset_serial_No',
+        'asset_condition',
+        'ip_address',
+        'os_version',
+        'asset_image',
+        'manager'
+    ]
+    template_name = 'asset_app/assets_form.html'  
     success_url = reverse_lazy('asset_app:assets-list')
 
     def form_valid(self, form):
+        form.instance.manager = self.request.user
         return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.user.user_type == "1" or self.request.user.is_superuser:
+            context['allManager'] = CustomUser.objects.filter(user_type=2)
+        context['current_user'] = self.request.user
+        return context
     
     
 
@@ -75,34 +109,43 @@ class AssetAssignView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
 
 class AssetClaimView(LoginRequiredMixin, View):
-    template_name = 'asset_app/asset_claim.html'
     login_url = reverse_lazy("login_page")
-
+    
     def handle_no_permission(self):
         messages.warning(self.request, "Please log in to access this page.")
         return redirect(self.login_url)
-    
+
     def get(self, request):
-        if request.user.user_type == '2':
+        user = request.user
+        # Manager View
+        if user.user_type == '2':  
             template_name = 'manager_template/manager_claim.html'
-            unclaimed_assets = Assets.objects.filter(asset_assignee__isnull=True)
+            unclaimed_assets = Assets.objects.filter(is_asset_issued=False)
 
-            return render(request, template_name, {
-                'assests': unclaimed_assets,
-                'page_title': 'Claim Asset',
-            })
-
-        # Default employee view
-        else:
-            unclaimed_assets = Assets.objects.filter(asset_assignee__isnull=True)
-            claimed_assets = Assets.objects.filter(asset_assignee=request.user)   
-           
-            template_name = 'asset_app/asset_claim.html'
             pending_requests = Notify_Manager.objects.filter(
                 asset__in=unclaimed_assets,
-                asset__asset_assignee__isnull=True,
                 manager__isnull=False,
-                approved=None
+                approved__isnull=True  
+            ).values_list('asset_id', flat=True)
+
+            print(unclaimed_assets)
+            print(pending_requests)
+
+            return render(request, template_name, {
+                'assets': unclaimed_assets,
+                'page_title': 'Claim Asset',
+            })
+        
+         # employee view
+        else:
+            template_name = 'asset_app/asset_claim.html'
+            unclaimed_assets = Assets.objects.filter(is_asset_issued=False)
+            claimed_assets = AssetsIssuance.objects.filter(asset_assignee=request.user)   
+           
+            pending_requests = Notify_Manager.objects.filter(
+                asset__in=unclaimed_assets,
+                manager__isnull=False,
+                 approved__isnull=True
             ).values_list('asset_id', flat=True)
 
             return render(request, template_name, {
@@ -111,59 +154,65 @@ class AssetClaimView(LoginRequiredMixin, View):
                 'pending_requests': list(pending_requests),
                 'page_title': 'Claim Asset',
             })
-
+        
 
     def post(self, request, *args, **kwargs):
+        user = request.user
+
         asset_id = request.POST.get('asset_id')
         asset = get_object_or_404(Assets, id=asset_id)
-        if asset.asset_assignee:
-            messages.warning(request, "Asset has already been claimed.")
-            return redirect('asset_app:claim-asset')
-        
-        if request.user.user_type == '2':
-            asset.asset_assignee = request.user
-            asset.save()
-            messages.success(request, "You have successfully claimed the asset.")
+
+        if asset.is_asset_issued:
+            messages.warning(request, "This asset has already been claimed.")
             return redirect('asset_app:asset-claim')
-       
+
         try:
+            manager_message = request.POST.get('message', 'Requesting asset approval.')
             manager = asset.manager
-            manager_message = request.POST.get("message")
 
             Notify_Manager.objects.create(
-                manager = manager,
-                employee = request.user,
-                asset = asset,
-                message = manager_message,
+                manager=manager,
+                employee=user,
+                asset=asset,
+                message=manager_message,
                 approved = None
             )
+
             if hasattr(manager, 'fcm_token') and manager.fcm_token:
                 body = {
                     'notification': {
-                        'title': "OfficeOps - Asset Claimed",
+                        'title': "OfficeOps - Asset Request",
                         'body': manager_message,
                         'click_action': reverse('manager_view_notification'),
                         'icon': static('dist/img/AdminLTELogo.png')
                     },
                     'to': manager.fcm_token
                 }
-                fcm_url = "https://fcm.googleapis.com/fcm/send"
+
                 headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                    'Authorization': 'key=YOUR_FIREBASE_SERVER_KEY', 
                     'Content-Type': 'application/json'
                 }
-                requests.post(fcm_url, data=json.dumps(body), headers=headers)
 
-                messages.success(request, "Your asset request has been sent for approval.")
+                response = requests.post(
+                    "https://fcm.googleapis.com/fcm/send",
+                    data=json.dumps(body),
+                    headers=headers
+                )
+
+                if response.status_code != 200:
+                    print(f"FCM error: {response.content}")
+
+            messages.success(request, "Your asset request has been sent for approval.")
 
         except Exception as e:
             print(f"Notification error: {e}")
             messages.error(request, "Failed to send asset request.")
-    
-        return redirect('asset_app:asset-claim')
-    
 
-    
+        return redirect('asset_app:asset-claim')
+
+   
+  
 
 class AssetUnclaimView(LoginRequiredMixin, View):
     def post(self, request, asset_id):
