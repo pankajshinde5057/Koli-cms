@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect, get_object_or_404,reverse
 from django.utils import timezone
-
+from calendar import monthrange
 from .forms import *
 from .models import *
 from django.db.models import Sum, F, DurationField, ExpressionWrapper
@@ -17,13 +17,10 @@ from asset_app.models import Notify_Manager
 
 def employee_home(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    
-    # Get filter parameters
     date_filter = request.GET.get('date')
     department_filter = request.GET.get('department')
     status_filter = request.GET.get('status')
 
-    # Base queryset - employee's records only
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
 
     # Apply filters
@@ -31,7 +28,6 @@ def employee_home(request):
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
-
     # Apply date filters
     today = timezone.now().date()
     if date_filter == 'today':
@@ -56,8 +52,6 @@ def employee_home(request):
         )
     ).order_by('-date')
 
-    # For weekly and monthly views, we need to calculate differently
-    # First get completed records with their break times
     completed_records = records.filter(clock_out__isnull=False).annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -144,15 +138,30 @@ def employee_home(request):
     ).count()
   
     
-    # Attendance stats using the enhanced status field
-    total_working_days = records.count()
+    
+    
+    # Calculate total working days in current month (excluding Sundays, 1st & 3rd Saturdays)
+    current_year = today.year
+    current_month = today.month
+    days_in_month = monthrange(current_year, current_month)[1]
+
+    total_working_days = 0
+    for day in range(1, days_in_month + 1):
+        date = timezone.datetime(current_year, current_month, day).date()
+        weekday = date.weekday()
+        is_sunday = weekday == 6
+        is_saturday = weekday == 5
+        is_1st_or_3rd_saturday = is_saturday and ((day - 1) // 7) in [0, 2]
+
+        if not is_sunday and not is_1st_or_3rd_saturday:
+            total_working_days += 1
+
     present_days = records.filter(status='present').count()
     late_days = records.filter(status='late').count()
     half_days = records.filter(status='half_day').count()
     absent_days = records.filter(status='absent').count()
     
     attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
-    # Recent activities (last 10)
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
