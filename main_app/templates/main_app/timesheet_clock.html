@@ -75,9 +75,36 @@
         let breakTimerInterval;
         let workingTimerInterval;
 
-        if (clockInInput) {
+        const clockOutForm = document.getElementById('clockOutForm');
+        const clockOutBtn = clockOutForm ? clockOutForm.querySelector('button[type="submit"]') : null;
+
+        if (clockInInput && clockOutBtn) {
             const clockInTime = new Date(clockInInput.value);
+            // const eightHours = 8 * 60 * 60 * 1000 ; // 8 Hours in miliseconds
+            const eightHours = 2 * 60 * 1000; // 2 Min for testing
             workingTimer.style.display = 'block';
+
+            function updateClockOutButton(){
+                const now = new Date()
+                const diff = now - clockInTime
+                
+                if (diff < eightHours){
+                    clockOutBtn.disabled = true;
+                    const remaining = eightHours - diff;
+                    const hours = Math.floor(remaining / 3600000);
+                    const minutes = Math.floor((remaining % 3600000) / 60000);
+                    const seconds = Math.floor((remaining % 60000) / 1000);
+
+                    clockOutBtn.innerHTML = `Clock Out (available in ${hours}h ${minutes}m ${seconds}s) <i class="fas fa-sign-out-alt ms-sm-1"></i>`;
+                }else {
+                    clockOutBtn.disabled = false;
+                    clockOutBtn.innerHTML = `Clock Out <i class="fas fa-sign-out-alt ms-sm-1"></i>`;
+                }
+            }
+
+            updateClockOutButton();
+            setInterval(updateClockOutButton , 1000)
+
 
             workingTimerInterval = setInterval(() => {
                 const now = new Date();
