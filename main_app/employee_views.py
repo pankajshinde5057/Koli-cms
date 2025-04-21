@@ -26,16 +26,12 @@ def employee_home(request):
     department_filter = request.GET.get('department')
     status_filter = request.GET.get('status')
 
-    current_month = request.GET.get('month')
-    current_year = request.GET.get('year')
-
     today = timezone.now().date()
-    month = int(current_month) if current_month else today.month
-    year = int(current_year) if current_year else today.year
-  
+    month = today.month
+    year = today.year
+
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
 
-    # Apply filters
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
