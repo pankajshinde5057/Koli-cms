@@ -24,7 +24,7 @@
                         <thead class="thead-light">
                             <tr>
                                 <th style="width: 25%">Employee</th>
-                                <th style="width: 15%">Date</th>
+                                <th style="width: 15%">Leave Date</th>
                                 <th style="width: 40%">Message</th>
                                 <th style="width: 20%">Actions</th>
                             </tr>
@@ -42,7 +42,7 @@
                                     </td>
                                     <td>
                                         <span class="badge badge-info">
-                                            {{ leave.created_at|date:"M d, Y" }}
+                                            {{ leave.start_date|date:"M d, Y" }}
                                         </span>
                                     </td>
                                     <td>
@@ -88,7 +88,7 @@
                                             <div class="modal-body">
                                                 <div class="row mb-3">
                                                     <div class="col-md-8">
-                                                        <span class="badge badge-primary">{{ leave.created_at|date:"M d, Y" }}</span>
+                                                        <span class="badge badge-primary">{{ leave.start_date|date:"M d, Y" }}</span>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
