@@ -15,8 +15,12 @@ from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager
 
+from zoneinfo import ZoneInfo
+
 
 def employee_home(request):
+    today = timezone.now().date()
+
     employee = get_object_or_404(Employee, admin=request.user)
     date_filter = request.GET.get('date', "today")
     department_filter = request.GET.get('department')
@@ -31,6 +35,7 @@ def employee_home(request):
   
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
 
+    # Apply filters
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
@@ -153,12 +158,12 @@ def employee_home(request):
             total_working_days += 1
 
     present_days = records.filter(status='present').count()
-    half_days = records.filter(status='half_day').count()
+    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__lt=today).count()
+    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__lt=today).count()
+
     late_days = records.filter(status='late').count()
-    absent_days = records.filter(status='absent').count()
-
-    attendance_percentage = ((present_days +(half_days/2)-absent_days) / total_working_days * 100) if total_working_days else 0
-
+    
+    attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
