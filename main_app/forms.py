@@ -1,5 +1,5 @@
 from django import forms
-from django.forms.widgets import DateInput, TextInput
+from django.forms.widgets import DateInput, TextInput, RadioSelect
 
 from .models import *
 
@@ -131,9 +131,10 @@ class LeaveReportEmployeeForm(FormSettings):
 
     class Meta:
         model = LeaveReportEmployee
-        fields = ['date', 'message']
+        fields = [ 'leave_type','start_date', 'end_date', 'message']
         widgets = {
-            'date': DateInput(attrs={'type': 'date'}),
+            'start_date': DateInput(attrs={'type': 'date'}),
+            'end_date': DateInput(attrs={'type': 'date'}),
         }
 
 
