@@ -96,8 +96,14 @@ class Employee(models.Model):
 
 
 class LeaveReportEmployee(models.Model):
+    LEAVE_TYPE = (
+        ('Half-Day','Half-Day'),
+        ('Full-Day','Full-Day')
+    )
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    date = models.CharField(max_length=60)
+    leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
+    start_date = models.DateField(blank=True, null=True, default=None)
+    end_date = models.DateField(blank=True,null=True)
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -156,10 +162,8 @@ class EmployeeSalary(models.Model):
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
-        ('absent', 'Absent'),
         ('late', 'Late'),
         ('half_day', 'Half Day'),
-        ('on_leave', 'On Leave'),
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')

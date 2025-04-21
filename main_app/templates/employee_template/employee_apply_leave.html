@@ -33,7 +33,7 @@
                         {% for leave in leave_history %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ leave.created_at|date:"M d, Y" }}</td>
+                            <td>{{ leave.start_date|date:"M d, Y" }}</td>
                             <td>{{ leave.leave_type|default:"Annual" }}</td>
                             <td>
                                 {% if leave.message|length > 60 %}
@@ -70,8 +70,8 @@
                                             <div class="modal-body">
                                                 <div class="row mb-3">
                                                     <div class="col-md-6">
-                                                        <p><strong>Date:</strong> {{ leave.created_at|date:"M d, Y" }}</p>
-                                                        <p><strong>Type:</strong> {{ leave.leave_type|default:"Annual" }}</p>
+                                                        <p><strong>Date:</strong> {{ leave.start_date|date:"M d, Y" }}</p>
+                                                        <p><strong>Type:</strong> {{ leave.leave_type }}</p>
                                                         <p><strong>Status:</strong> 
                                                             {% if leave.status == 0 %}
                                                                 <span class="badge badge-warning">Pending</span>

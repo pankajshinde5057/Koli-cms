@@ -29,10 +29,22 @@
         <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 1.2px;">
             <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-danger rounded-pill px-3">
-                    <span class="d-none d-sm-inline">Clock Out</span>
-                    <i class="fas fa-sign-out-alt ms-sm-1"></i>
-                </button>
+                {% if complete_8Hours %}
+                    <button type="submit" class="btn btn-danger rounded-pill px-3">
+                        <span class="d-none d-sm-inline">Clock Out</span>
+                        <i class="fas fa-sign-out-alt ms-sm-1"></i>
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn btn-danger rounded-pill px-3" disabled>
+                        <span class="d-none d-sm-inline">
+                            Clock Out (available in 
+                            <span id="countdown" data-seconds="{{ remaining_time }}"></span>
+                        )
+                        </span>
+                        <i class="fas fa-sign-out-alt ms-sm-1"></i>
+                    </button>
+                {% endif %}
+
             </form>
             {% if current_break %}
                 <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3">
@@ -75,37 +87,12 @@
         let breakTimerInterval;
         let workingTimerInterval;
 
-        const clockOutForm = document.getElementById('clockOutForm');
-        const clockOutBtn = clockOutForm ? clockOutForm.querySelector('button[type="submit"]') : null;
-
-        if (clockInInput && clockOutBtn) {
+        const countdownRT = document.getElementById('countdown')
+        console.log(countdownRT)
+        if (clockInInput) {
             const clockInTime = new Date(clockInInput.value);
-            // const eightHours = 8 * 60 * 60 * 1000 ; // 8 Hours in miliseconds
-            const eightHours = 2 * 60 * 1000; // 2 Min for testing
+           
             workingTimer.style.display = 'block';
-
-            function updateClockOutButton(){
-                const now = new Date()
-                const diff = now - clockInTime
-                
-                if (diff < eightHours){
-                    clockOutBtn.disabled = true;
-                    const remaining = eightHours - diff;
-                    const hours = Math.floor(remaining / 3600000);
-                    const minutes = Math.floor((remaining % 3600000) / 60000);
-                    const seconds = Math.floor((remaining % 60000) / 1000);
-
-                    clockOutBtn.innerHTML = `Clock Out (available in ${hours}h ${minutes}m ${seconds}s) <i class="fas fa-sign-out-alt ms-sm-1"></i>`;
-                }else {
-                    clockOutBtn.disabled = false;
-                    clockOutBtn.innerHTML = `Clock Out <i class="fas fa-sign-out-alt ms-sm-1"></i>`;
-                }
-            }
-
-            updateClockOutButton();
-            setInterval(updateClockOutButton , 1000)
-
-
             workingTimerInterval = setInterval(() => {
                 const now = new Date();
                 const diff = Math.floor((now - clockInTime) / 1000); // seconds
@@ -208,4 +195,32 @@
             });
         }
     });
+</script>
+
+<script>
+    const countdownRT = document.getElementById("countdown");
+    let remainingSeconds = parseInt(countdownRT.getAttribute("data-seconds"));
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}m ${secs}s`;
+    }
+
+    function updateCountdown() {
+        if (remainingSeconds > 0) {
+            countdownRT.textContent = formatTime(remainingSeconds);
+            remainingSeconds--;
+        } else {
+            countdownRT.textContent = "now!";
+            const button = countdownRT.closest("button");
+            button.disabled = false;
+            button.querySelector("span.d-none.d-sm-inline").textContent = "Clock Out";
+        }
+    }
+
+    if (!isNaN(remainingSeconds)) {
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    }
 </script>

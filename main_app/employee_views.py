@@ -14,14 +14,19 @@ from django.db.models import Sum, F, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager
+from zoneinfo import ZoneInfo
+
 
 def employee_home(request):
+    today = timezone.now().date()
+
     employee = get_object_or_404(Employee, admin=request.user)
     date_filter = request.GET.get('date')
     department_filter = request.GET.get('department')
     status_filter = request.GET.get('status')
 
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
+    
 
     # Apply filters
     if department_filter:
@@ -29,7 +34,6 @@ def employee_home(request):
     if status_filter:
         records = records.filter(status=status_filter)
     # Apply date filters
-    today = timezone.now().date()
     if date_filter == 'today':
         records = records.filter(date=today)
     elif date_filter == 'week':
@@ -157,9 +161,10 @@ def employee_home(request):
             total_working_days += 1
 
     present_days = records.filter(status='present').count()
+    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__lt=today).count()
+    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__lt=today).count()
+
     late_days = records.filter(status='late').count()
-    half_days = records.filter(status='half_day').count()
-    absent_days = records.filter(status='absent').count()
     
     attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
     recent_activities = ActivityFeed.objects.filter(
@@ -179,7 +184,7 @@ def employee_home(request):
             'half_days': half_days,
             'absent_days': absent_days,
             'attendance_percentage': round(attendance_percentage, 1),
-            'total_breaks_today':total_breaks_today
+            'total_breaks_today':total_breaks_today,
         },
         'daily_view': daily_view,
         'weekly_view': weekly_view,
