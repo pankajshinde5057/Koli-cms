@@ -112,9 +112,9 @@
 						<div>
 							<div class="btn-group">
 								<button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-									{% if request.GET.date == 'today' %}Today
-									{% elif request.GET.date == 'week' %}This Week
-									{% elif request.GET.date == 'month' %}This Month
+									{% if current_filters.date == 'today' %}Today
+									{% elif current_filters.date == 'week' %}This Week
+									{% elif current_filters.date == 'month' %}This Month
 									{% else %}All Time
 									{% endif %}
 								</button>
