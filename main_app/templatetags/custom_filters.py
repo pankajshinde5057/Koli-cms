@@ -5,7 +5,7 @@ register = template.Library()
 @register.filter
 def duration_to_hours_minutes(duration):
     if not duration:
-        return "0h 0m 0s"
+        return "-"
     total_seconds = int(duration.total_seconds())
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
