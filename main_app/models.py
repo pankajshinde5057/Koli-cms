@@ -236,42 +236,6 @@ class AttendanceRecord(models.Model):
             self.is_primary_record = not existing_records
         
         super().save(*args, **kwargs)
-    
-    @property
-    def break_time(self):
-        return sum(
-            (b.duration for b in self.breaks.all() if b.duration), 
-            timezone.timedelta()
-        )
-    
-    @classmethod
-    def get_daily_summary(cls, user, date):
-        """Get aggregated data for a user on a specific date"""
-        records = cls.objects.filter(user=user, date=date)
-        
-        if not records.exists():
-            return None
-        
-        aggregates = records.aggregate(
-            first_clock_in=Min('clock_in'),
-            last_clock_out=Max('clock_out'),
-            total_worked=Sum('total_worked'),
-            total_regular=Sum('regular_hours'),
-            total_overtime=Sum('overtime_hours')
-        )
-        
-        return {
-            'date': date,
-            'user': user,
-            'first_clock_in': aggregates['first_clock_in'],
-            'last_clock_out': aggregates['last_clock_out'],
-            'total_worked': aggregates['total_worked'] or timezone.timedelta(),
-            'total_regular': aggregates['total_regular'] or timezone.timedelta(),
-            'total_overtime': aggregates['total_overtime'] or timezone.timedelta(),
-            'records': records,
-            'is_present': records.filter(status='present').exists(),
-        }
-    
     def __str__(self):
         return f"{self.user} - {self.date} ({self.status}) {self.clock_in.time()} to {self.clock_out.time() if self.clock_out else ''}"
 
