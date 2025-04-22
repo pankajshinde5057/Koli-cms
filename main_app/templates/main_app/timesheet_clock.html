@@ -14,9 +14,9 @@
     </span>
 </li>
 
-
 {% if current_record and latest_entry.breaks.last and not latest_entry.breaks.last.break_end %}
     <input type="hidden" id="breakStartTime" value="{{ latest_entry.breaks.last.break_start|date:'c' }}">
+    <input type="hidden" id="currentBreakType" value="{{ latest_entry.breaks.last.break_type }}">
 {% else %}
     {% if current_record %}
         <input type="hidden" id="clockInTime" value="{{ latest_entry.clock_in|date:'c' }}">
@@ -26,7 +26,8 @@
 <!-- Clock Action Buttons -->
 {% if current_record %}
     <li class="nav-item">
-        <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 1.2px;">
+        <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 4px;">
+            <!-- Clock Out Button -->
             <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
                 {% csrf_token %}
                 {% if complete_8Hours %}
@@ -44,18 +45,28 @@
                         <i class="fas fa-sign-out-alt ms-sm-1"></i>
                     </button>
                 {% endif %}
-
             </form>
+            
+            <!-- Break Buttons -->
             {% if current_break %}
                 <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3">
                     <span class="d-none d-sm-inline">End Break</span>
                     <i class="fas fa-pause-circle ms-sm-1"></i>
                 </button>
             {% else %}
-                <button id="startBreakBtn" class="btn btn-secondary rounded-pill px-3">
-                    <span class="d-none d-sm-inline">Start Break</span>
-                    <i class="fas fa-coffee ms-sm-1"></i>
-                </button>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Break options">
+                    <button id="shortBreakBtn" type="button" 
+                            class="btn btn-primary rounded-pill px-3">
+                        <span class="d-none d-sm-inline">Short Break</span>
+                        <i class="fas fa-mug-hot ms-sm-1"></i>
+                    </button>
+                    <button id="lunchBreakBtn" type="button" 
+                            class="btn btn-warning rounded-pill px-3 {% if has_taken_lunch_today %}disabled{% endif %}"
+                            {% if has_taken_lunch_today %}title="You can only take one lunch break per day"{% endif %}>
+                        <span class="d-none d-sm-inline">Lunch</span>
+                        <i class="fas fa-utensils ms-sm-1"></i>
+                    </button>
+                </div>
             {% endif %}
         </div>
     </li>
@@ -74,7 +85,6 @@
 {% endif %}
 
 <script>
-    // (Your existing JavaScript remains the same)
     document.addEventListener('DOMContentLoaded', function () {
         const clockInInput = document.getElementById("clockInTime");
         const breakStartInput = document.getElementById("breakStartTime");
@@ -139,23 +149,35 @@
             clockOutForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 submitClockAction(this);
-                
             });
         }
         
         // Break buttons
-        const startBreakBtn = document.getElementById('startBreakBtn');
         const endBreakBtn = document.getElementById('endBreakBtn');
-        
-        if (startBreakBtn) {
-            startBreakBtn.addEventListener('click', function() {
-                submitBreakAction();
-            });
-        }
+        const shortBreakBtn = document.getElementById('shortBreakBtn');
+        const lunchBreakBtn = document.getElementById('lunchBreakBtn');
         
         if (endBreakBtn) {
             endBreakBtn.addEventListener('click', function() {
                 submitBreakAction();
+            });
+        }
+        
+        if (shortBreakBtn) {
+            shortBreakBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                submitBreakAction('short');
+            });
+        }
+        
+        if (lunchBreakBtn) {
+            lunchBreakBtn.addEventListener('click', function(e) {
+                if (this.classList.contains('disabled')) {
+                    e.preventDefault();
+                    return;
+                }
+                e.preventDefault();
+                submitBreakAction('lunch');
             });
         }
         
@@ -178,19 +200,23 @@
             });
         }
         
-        function submitBreakAction() {
+        function submitBreakAction(breakType = null) {
             fetch("{% url 'break_action' %}", {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    break_type: breakType
+                })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
                     window.location.reload();
+                } else if (data.message) {
+                    alert(data.message);  // Show error message if lunch break already taken
                 }
             });
         }
