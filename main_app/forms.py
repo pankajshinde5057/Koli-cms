@@ -1,6 +1,6 @@
 from django import forms
 from django.forms.widgets import DateInput, TextInput, RadioSelect
-
+from datetime import date
 from .models import *
 
 
@@ -128,12 +128,15 @@ class FeedbackManagerForm(FormSettings):
 class LeaveReportEmployeeForm(FormSettings):
     def __init__(self, *args, **kwargs):
         super(LeaveReportEmployeeForm, self).__init__(*args, **kwargs)
+        today = date.today().isoformat()
+        self.fields['start_date'].widget.attrs['min'] = today
+        self.fields['end_date'].widget.attrs['min'] = today
 
     class Meta:
         model = LeaveReportEmployee
         fields = [ 'leave_type','start_date', 'end_date', 'message']
         widgets = {
-            'start_date': DateInput(attrs={'type': 'date'}),
+            'start_date': DateInput(attrs={'type': 'date'},),
             'end_date': DateInput(attrs={'type': 'date'}),
         }
 
