@@ -108,21 +108,22 @@
 					<div class="d-flex justify-content-between align-items-center">
 						<h5 class="card-title mb-0">Time History</h5>
 						<div>
-							<div class="btn-group">
-								<button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-									{% if request.GET.date == 'today' %}Today
-									{% elif request.GET.date == 'week' %}This Week
-									{% elif request.GET.date == 'month' %}This Month
-									{% else %}All Time
-									{% endif %}
-								</button>
-								<ul class="dropdown-menu">
-									<li><a class="dropdown-item" href="?date=today">Today</a></li>
-									<li><a class="dropdown-item" href="?date=week">This Week</a></li>
-									<li><a class="dropdown-item" href="?date=month">This Month</a></li>
-									<li><a class="dropdown-item" href="?">All Time</a></li>
-								</ul>
-							</div>
+							<form method="get" class="d-flex align-items-center gap-2">
+								<div class="form-group mb-0">
+									<input type="date" name="start_date" class="form-control form-control-sm"
+										   value="{{ request.GET.start_date }}">
+								</div>
+								<div class="form-group mb-0">
+									<input type="date" name="end_date" class="form-control form-control-sm"
+										   value="{{ request.GET.end_date }}">
+								</div>
+								{% if request.user.is_staff %}
+									<input type="hidden" name="user" value="{{ request.GET.user }}">
+									<input type="hidden" name="department" value="{{ request.GET.department }}">
+								{% endif %}
+								<button type="submit" class="btn btn-sm btn-primary">Filter</button>
+							</form>
+							
 							
 							{% if request.user.is_staff %}
 							<div class="btn-group ms-2">
@@ -153,17 +154,7 @@
 					</div>
 				</div>
 				<div class="card-body">
-					<ul class="nav nav-tabs mb-4" id="timesheetTabs" role="tablist">
-						<li class="nav-item" role="presentation">
-							<button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button">Daily</button>
-						</li>
-						<li class="nav-item" role="presentation">
-							<button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button">Weekly</button>
-						</li>
-						<li class="nav-item" role="presentation">
-							<button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button">Monthly</button>
-						</li>
-					</ul>
+					
 					
 					<div class="tab-content" id="timesheetTabsContent">
 						<div class="tab-pane fade show active" id="daily" role="tabpanel">
