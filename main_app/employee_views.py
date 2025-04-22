@@ -10,17 +10,29 @@ from django.utils import timezone
 from calendar import monthrange
 from .forms import *
 from .models import *
-from django.db.models import Sum, F, DurationField, ExpressionWrapper
+from django.db.models import Sum, F, DurationField, ExpressionWrapper,BigIntegerField
 from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager
 
+from zoneinfo import ZoneInfo
+
+
 def employee_home(request):
+    today = timezone.now().date()
+
     employee = get_object_or_404(Employee, admin=request.user)
-    date_filter = request.GET.get('date')
+    date_filter = request.GET.get('date', "today")
     department_filter = request.GET.get('department')
     status_filter = request.GET.get('status')
 
+    current_month = request.GET.get('month')
+    current_year = request.GET.get('year')
+
+    today = timezone.now().date()
+    month = int(current_month) if current_month else today.month
+    year = int(current_year) if current_year else today.year
+  
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
 
     # Apply filters
@@ -28,18 +40,16 @@ def employee_home(request):
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
-    # Apply date filters
-    today = timezone.now().date()
+
+    records = records.filter(date__month=month, date__year=year)
+
     if date_filter == 'today':
         records = records.filter(date=today)
     elif date_filter == 'week':
         start_date = today - timedelta(days=today.weekday())
         end_date = start_date + timedelta(days=6)
         records = records.filter(date__range=[start_date, end_date])
-    elif date_filter == 'month':
-        records = records.filter(date__month=today.month, date__year=today.year)
 
-    # Daily View with break time calculation
     daily_view = records.annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -58,8 +68,6 @@ def employee_home(request):
             timedelta()
         )
     )
-
-    # Weekly View - calculate in Python if dataset isn't too large
     weekly_data = {}
     for record in completed_records:
         week = record.date.isocalendar()[1]
@@ -70,7 +78,7 @@ def employee_home(request):
                 'overtime_hours': timedelta(),
                 'week_start': record.date - timedelta(days=record.date.weekday())
             }
-        
+
         net_worked = record.total_worked - record.total_break_time
         weekly_data[week]['total_hours'] += net_worked
         weekly_data[week]['regular_hours'] += record.regular_hours
@@ -83,12 +91,11 @@ def employee_home(request):
         'overtime_hours': data['overtime_hours']
     } for week, data in sorted(weekly_data.items(), reverse=True)]
 
-    # Monthly View - calculate in Python
     monthly_data = {}
     for record in completed_records:
-        month = record.date.replace(day=1)
-        if month not in monthly_data:
-            monthly_data[month] = {
+        month_start_date = record.date.replace(day=1)
+        if month_start_date not in monthly_data:
+            monthly_data[month_start_date] = {
                 'total_hours': timedelta(),
                 'regular_hours': timedelta(),
                 'overtime_hours': timedelta(),
@@ -96,18 +103,18 @@ def employee_home(request):
                 'late_days': 0,
                 'half_days': 0
             }
-        
+
         net_worked = record.total_worked - record.total_break_time
-        monthly_data[month]['total_hours'] += net_worked
-        monthly_data[month]['regular_hours'] += record.regular_hours
-        monthly_data[month]['overtime_hours'] += record.overtime_hours
-        
+        monthly_data[month_start_date]['total_hours'] += net_worked
+        monthly_data[month_start_date]['regular_hours'] += record.regular_hours
+        monthly_data[month_start_date]['overtime_hours'] += record.overtime_hours
+
         if record.status == 'present':
-            monthly_data[month]['present_days'] += 1
+            monthly_data[month_start_date]['present_days'] += 1
         elif record.status == 'late':
-            monthly_data[month]['late_days'] += 1
+            monthly_data[month_start_date]['late_days'] += 1
         elif record.status == 'half_day':
-            monthly_data[month]['half_days'] += 1
+            monthly_data[month_start_date]['half_days'] += 1
 
     monthly_view = [{
         'month': month,
@@ -119,9 +126,8 @@ def employee_home(request):
         'half_days': data['half_days']
     } for month, data in sorted(monthly_data.items(), reverse=True)]
 
-    # Current status check
     current_record = AttendanceRecord.objects.filter(
-        user=request.user, 
+        user=request.user,
         clock_out__isnull=True,
         date=today
     ).first()
@@ -129,25 +135,20 @@ def employee_home(request):
     current_break = None
     if current_record:
         current_break = Break.objects.filter(
-            attendance_record=current_record, 
+            attendance_record=current_record,
             break_end__isnull=True
         ).first()
-    
-    total_breaks_today = Break.objects.filter(
-        attendance_record__date=today
+
+    total_breaks_in_month = Break.objects.filter(
+        attendance_record__date__month=month,
+        attendance_record__date__year=year
     ).count()
-  
-    
-    
-    
-    # Calculate total working days in current month (excluding Sundays, 1st & 3rd Saturdays)
-    current_year = today.year
-    current_month = today.month
-    days_in_month = monthrange(current_year, current_month)[1]
+
+    days_in_month = monthrange(year, month)[1]
 
     total_working_days = 0
     for day in range(1, days_in_month + 1):
-        date = timezone.datetime(current_year, current_month, day).date()
+        date = timezone.datetime(year, month, day).date()
         weekday = date.weekday()
         is_sunday = weekday == 6
         is_saturday = weekday == 5
@@ -157,9 +158,10 @@ def employee_home(request):
             total_working_days += 1
 
     present_days = records.filter(status='present').count()
+    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__lt=today).count()
+    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__lt=today).count()
+
     late_days = records.filter(status='late').count()
-    half_days = records.filter(status='half_day').count()
-    absent_days = records.filter(status='absent').count()
     
     attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
     recent_activities = ActivityFeed.objects.filter(
@@ -179,7 +181,7 @@ def employee_home(request):
             'half_days': half_days,
             'absent_days': absent_days,
             'attendance_percentage': round(attendance_percentage, 1),
-            'total_breaks_today':total_breaks_today
+            'total_breaks_today': total_breaks_in_month
         },
         'daily_view': daily_view,
         'weekly_view': weekly_view,
@@ -187,11 +189,15 @@ def employee_home(request):
         'current_filters': {
             'date': date_filter,
             'department': department_filter,
-            'status': status_filter
+            'status': status_filter,
+            'month': str(month),
+            'year': str(year),
         },
         'status_choices': AttendanceRecord.STATUS_CHOICES,
     }
+
     return render(request, 'employee_template/home_content.html', context)
+
 
 
 

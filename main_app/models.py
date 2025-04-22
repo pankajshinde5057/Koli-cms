@@ -96,8 +96,14 @@ class Employee(models.Model):
 
 
 class LeaveReportEmployee(models.Model):
+    LEAVE_TYPE = (
+        ('Half-Day','Half-Day'),
+        ('Full-Day','Full-Day')
+    )
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    date = models.CharField(max_length=60)
+    leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
+    start_date = models.DateField(blank=True, null=True, default=None)
+    end_date = models.DateField(blank=True,null=True)
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -156,10 +162,8 @@ class EmployeeSalary(models.Model):
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
-        ('absent', 'Absent'),
         ('late', 'Late'),
         ('half_day', 'Half Day'),
-        ('on_leave', 'On Leave'),
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
@@ -236,42 +240,6 @@ class AttendanceRecord(models.Model):
             self.is_primary_record = not existing_records
         
         super().save(*args, **kwargs)
-    
-    @property
-    def break_time(self):
-        return sum(
-            (b.duration for b in self.breaks.all() if b.duration), 
-            timezone.timedelta()
-        )
-    
-    @classmethod
-    def get_daily_summary(cls, user, date):
-        """Get aggregated data for a user on a specific date"""
-        records = cls.objects.filter(user=user, date=date)
-        
-        if not records.exists():
-            return None
-        
-        aggregates = records.aggregate(
-            first_clock_in=Min('clock_in'),
-            last_clock_out=Max('clock_out'),
-            total_worked=Sum('total_worked'),
-            total_regular=Sum('regular_hours'),
-            total_overtime=Sum('overtime_hours')
-        )
-        
-        return {
-            'date': date,
-            'user': user,
-            'first_clock_in': aggregates['first_clock_in'],
-            'last_clock_out': aggregates['last_clock_out'],
-            'total_worked': aggregates['total_worked'] or timezone.timedelta(),
-            'total_regular': aggregates['total_regular'] or timezone.timedelta(),
-            'total_overtime': aggregates['total_overtime'] or timezone.timedelta(),
-            'records': records,
-            'is_present': records.filter(status='present').exists(),
-        }
-    
     def __str__(self):
         return f"{self.user} - {self.date} ({self.status}) {self.clock_in.time()} to {self.clock_out.time() if self.clock_out else ''}"
 

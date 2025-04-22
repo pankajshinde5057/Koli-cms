@@ -10,14 +10,12 @@ from django.utils import timezone
 import psutil
 from .forms import *
 from .models import *
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import BasicAuthentication
 from rest_framework import status
-# Create your views here.
-
+from datetime import datetime, time
 
 def login_page(request):
     if request.user.is_authenticated:
@@ -172,6 +170,7 @@ class AttendanceActionView(APIView):
 @login_required
 def clock_in_out(request):
     if request.method == 'POST':
+        now = timezone.now()
         current_record = AttendanceRecord.objects.filter(
             user=request.user, 
             clock_out__isnull=True
@@ -179,37 +178,35 @@ def clock_in_out(request):
         
         if current_record:
             # Clock out
-            current_record.clock_out = timezone.now()
+            current_record.clock_out = now
             current_record.notes = request.POST.get('notes', '')
             current_record.save()
-            
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_out',
                 related_record=current_record
             )
         else:
-            # Clock in
+
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
+
+            late_clock_in = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
             
+            status ='present'
+            if now > late_clock_in:
+                status ='late'
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
-                clock_in=timezone.now(),
+                clock_in=now,
                 department=department,
                 notes=request.POST.get('notes', ''),
-                ip_address= get_router_ip()
+                ip_address=get_router_ip(),
+                status=status
             )
             
-            ActivityFeed.objects.create(
-                user=request.user,
-                activity_type='clock_in',
-                related_record=new_record
-            )
-        
+            ActivityFeed.objects.create(user=request.user,activity_type='clock_in',related_record=new_record)
         return JsonResponse({'status': 'success'})
-    
-    # For GET requests, redirect to dashboard
     return redirect('home')
 
 @login_required
