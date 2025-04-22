@@ -237,16 +237,37 @@ def break_action(request):
             action = 'break_ended'
         else:
             # Start break
+            data = json.loads(request.body)
+            break_type = data.get('break_type', 'short')
+            
+            # Check if trying to take lunch break and already took one today
+            if break_type == 'lunch':
+                today = timezone.now().date()
+                lunch_taken = Break.objects.filter(
+                    attendance_record__user=request.user,
+                    break_type='lunch',
+                    break_start__date=today
+                ).exists()
+                
+                if lunch_taken:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'You can only take one lunch break per day'
+                    }, status=400)
+            
             new_break = Break.objects.create(
                 attendance_record=current_record,
-                break_start=timezone.now()
+                break_start=timezone.now(),
+                break_type=break_type
             )
+            
+            activity_type = 'break_start_short' if break_type == 'short' else 'break_start_lunch'
             ActivityFeed.objects.create(
                 user=request.user,
-                activity_type='break_start',
+                activity_type=activity_type,
                 related_record=current_record
             )
-            action = 'break_started'
+            action = f'break_started_{break_type}'
         
         return JsonResponse({'status': 'success', 'action': action})
     
