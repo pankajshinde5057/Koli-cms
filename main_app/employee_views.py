@@ -10,12 +10,10 @@ from django.utils import timezone
 from calendar import monthrange
 from .forms import *
 from .models import *
-from django.db.models import Sum, F, DurationField, ExpressionWrapper,BigIntegerField
+from django.db.models import Sum, F, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager
-
-from zoneinfo import ZoneInfo
 
 
 def employee_home(request):
