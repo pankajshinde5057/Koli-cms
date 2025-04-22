@@ -5,7 +5,7 @@ from django.db.models import Sum,Min,Max
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from datetime import timedelta
+from datetime import timedelta,time
 from django.core.exceptions import ValidationError
 
 class CustomUserManager(UserManager):
@@ -103,7 +103,7 @@ class LeaveReportEmployee(models.Model):
     )
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
-    start_date = models.DateField(blank=True, null=True, default=None)
+    start_date = models.DateField()
     end_date = models.DateField(blank=True,null=True)
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
@@ -216,6 +216,8 @@ class AttendanceRecord(models.Model):
     
     def save(self, *args, **kwargs):
         # Calculate time durations if clock_out exists
+        if self.clock_in.astimezone().time() > time(hour=9,minute=30):
+            self.status = "late"
         if self.clock_out:
             self.total_worked = self.clock_out - self.clock_in
             
