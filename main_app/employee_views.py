@@ -164,8 +164,8 @@ def employee_home(request):
 
     present_days = records.filter(status='present').count()
     
-    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__month=month,start_date__year=year).count()
-    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__month=month,start_date__year=year).count()
+    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
+    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
 
     late_days = records.filter(status='late').count()
     
