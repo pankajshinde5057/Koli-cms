@@ -44,6 +44,7 @@ class CustomUser(AbstractUser):
     fcm_token = models.TextField(default="")  # For firebase notifications
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = CustomUserManager()
@@ -90,6 +91,21 @@ class Employee(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
+    employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
+    designation = models.CharField(max_length=10)
+    team_lead = models.OneToOneField(Manager, on_delete=models.CASCADE, related_name='team_lead', null=True)
+    phone_number = models.CharField(max_length=10, unique=True, blank=True)
+    emergency_contact = models.JSONField(blank=True,null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.employee_id:
+            last_id = Employee.objects.all().order_by('-id').first()
+            if last_id:
+                emp_num = int(last_id.employee_id.replace('EMP', '')) + 1
+            else:
+                emp_num = 1
+            self.employee_id = f"EMP{emp_num:03d}"  # e.g., EMP001
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.admin.first_name +" "+self.admin.last_name 
