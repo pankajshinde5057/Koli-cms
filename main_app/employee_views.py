@@ -163,9 +163,10 @@ def employee_home(request):
             total_working_days += 1
 
     present_days = records.filter(status='present').count()
-    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
-    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
     
+    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__month=month,start_date__year=year).count()
+    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__month=month,start_date__year=year).count()
+
     late_days = records.filter(status='late').count()
     
     attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
@@ -202,9 +203,6 @@ def employee_home(request):
     }
 
     return render(request, 'employee_template/home_content.html', context)
-
-
-
 
 
 def employee_apply_leave(request):
@@ -258,41 +256,9 @@ def employee_feedback(request):
 
 def employee_view_profile(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    form = EmployeeEditForm(request.POST or None, request.FILES or None,
-                           instance=employee)
-    context = {'form': form,
-               'page_title': 'View/Edit Profile'
+    context = {'employee': employee,
+               'page_title': 'Profile'
                }
-    if request.method == 'POST':
-        try:
-            if form.is_valid():
-                first_name = form.cleaned_data.get('first_name')
-                last_name = form.cleaned_data.get('last_name')
-                password = form.cleaned_data.get('password') or None
-                address = form.cleaned_data.get('address')
-                gender = form.cleaned_data.get('gender')
-                passport = request.FILES.get('profile_pic') or None
-                admin = employee.admin
-                if password != None:
-                    admin.set_password(password)
-                if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
-                admin.first_name = first_name
-                admin.last_name = last_name
-                admin.address = address
-                admin.gender = gender
-                admin.save()
-                employee.save()
-                messages.success(request, "Profile Updated!")
-                return redirect(reverse('employee_view_profile'))
-            else:
-                messages.error(request, "Invalid Data Provided")
-        except Exception as e:
-            messages.error(request, "Error Occured While Updating Profile " + str(e))
-
     return render(request, "employee_template/employee_view_profile.html", context)
 
 
