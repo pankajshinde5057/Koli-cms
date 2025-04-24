@@ -274,20 +274,36 @@ def break_action(request):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404
+from main_app.models import Department, AttendanceRecord
+
 @csrf_exempt
 def get_attendance(request):
     department_id = request.POST.get("department")
+
+    if not department_id:
+        return JsonResponse({'error': 'Department ID not provided'}, status=400)
+
     try:
         department = get_object_or_404(Department, id=department_id)
+        print(department)
         attendance = AttendanceRecord.objects.filter(department=department)
+        print(attendance)
 
         attendance_list = []
         for attd in attendance:
-            data = {"id": attd.id, "attendance_date": str(attd.date)}
-            attendance_list.append(data)
-        return JsonResponse(json.dumps(attendance_list), safe=False)
+            attendance_list.append({
+                "id": attd.id,
+                "attendance_date": str(attd.date),
+            })
+
+        return JsonResponse(attendance_list, safe=False)
+
     except Exception as e:
-        return None
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 
 def showFirebaseJS(request):
