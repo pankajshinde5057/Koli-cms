@@ -1,11 +1,9 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
 from django.db import models
-from django.db.models import Sum,Min,Max
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from datetime import timedelta
 from django.core.exceptions import ValidationError
 
 class CustomUserManager(UserManager):
@@ -94,7 +92,7 @@ class Employee(models.Model):
     employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
     designation = models.CharField(max_length=10)
     team_lead = models.OneToOneField(Manager, on_delete=models.CASCADE, related_name='team_lead', null=True)
-    phone_number = models.CharField(max_length=10,blank=True)
+    phone_number = models.CharField(max_length=10, unique=False)
     emergency_contact = models.JSONField(blank=True,null=True)
 
     def save(self, *args, **kwargs):
