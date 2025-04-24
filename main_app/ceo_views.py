@@ -163,12 +163,15 @@ def manage_manager(request):
 
 
 def manage_employee(request):
-    employees = CustomUser.objects.filter(user_type=3)
+    employees = CustomUser.objects.filter(user_type=3).select_related('employee')
+    valid_employees = [emp for emp in employees if hasattr(emp, 'employee') and emp.employee.id]
+
     context = {
-        'employees': employees,
+        'employees': valid_employees,
         'page_title': 'Manage Employees'
     }
     return render(request, "ceo_template/manage_employee.html", context)
+
 
 
 def manage_division(request):
