@@ -13,7 +13,7 @@
                         <h3 class="card-title">Update Asset</h3>
                     </div>
 
-                    <form method="post" enctype="multipart/form-data">
+                    <form method="post" action="{% url 'asset_app:asset-update' asset.id %}" enctype="multipart/form-data">
                         {% csrf_token %}
                         <div class="card-body">
                             {{ form.as_p }}

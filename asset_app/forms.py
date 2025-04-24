@@ -1,14 +1,22 @@
 # forms.py
 from django import forms
-from .models import Assets
+from .models import Assets, AssetCategory
 from django_filters import FilterSet
+
+
+class AssetCategoryForm(forms.ModelForm):
+    class Meta:
+        model = AssetCategory
+        fields = ['category']
+
 
 class AssetForm(forms.ModelForm):
     class Meta:
         model = Assets
         fields = [
+            'asset_category',
             'asset_name',
-            'asset_serial_No',
+            'asset_serial_number',
             'asset_brand',        
             'asset_image',
             'is_asset_issued',
@@ -16,6 +24,7 @@ class AssetForm(forms.ModelForm):
             'os_version',
             'ip_address',
             'return_date',
+            'barcode'
         ]
 
 class AssetsFilter(FilterSet):

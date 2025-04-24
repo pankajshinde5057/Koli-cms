@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.urls import reverse_lazy
-from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance
+from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory
 from .forms import AssetForm
 from .filters import AssetsFilter
 from django.urls import reverse
@@ -12,6 +12,7 @@ import requests,json
 from django.templatetags.static import static
 from django.contrib import messages
 from main_app.models import CustomUser
+from django.http import HttpResponseForbidden
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -19,28 +20,41 @@ LOCATION_CHOICES = (
     ("Main Office", "Main Office"),
 )
 
+from django.db.models import Q
+
 class AssetsListView(LoginRequiredMixin, ListView):
     template_name = 'asset_app/home.html'
-    ordering = ['-asset_added_date']
+    context_object_name = 'assets'
+    paginate_by = 10 
 
     def get_queryset(self):
         user = self.request.user
-        if user.user_type in ['1', '2']:
-            self.model = Assets
-            print(user.user_type)
+        search_ = self.request.GET.get('search','').strip()
+        sort_by_ = self.request.GET.get('sort_by','').strip()
 
-            return Assets.objects.all().order_by('-asset_added_date')
+        if user.user_type in ['1','2']:
+            self.model = Assets
+            query_set =  Assets.objects.all()
+
         else:
             self.model = AssetsIssuance
-            print(user.user_type)
-            return AssetsIssuance.objects.filter(asset_assignee=user).order_by('-date_issued')
+            query_set =  AssetsIssuance.objects.filter(asset_assignee=user).order_by('-date_issued')
+            
+        if search_:
+            query_set = query_set.filter(asset_name__icontains=search_)
 
+        if sort_by_:
+            query_set = query_set.filter(asset_category__category__icontains=sort_by_)
+
+        return query_set
+       
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['asset_list'] = context.get('object_list')
+        context['asset_categories'] = AssetCategory.objects.all()
         context['is_employee'] = self.request.user.user_type == '3' 
         return context
-        
+
     
 class AssetsDetailView(DetailView):
     model = Assets
@@ -48,12 +62,30 @@ class AssetsDetailView(DetailView):
     context_object_name = 'asset'
 
 
+class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
+    model = AssetCategory
+    fields = ['category']
+    template_name = 'asset_app/assetcategory_form.html'  
+    success_url = reverse_lazy('asset_app:assets-list')
+
+    # success_url = reverse_lazy('asset_app:assetcategory-list')
+
+    def form_valid(self, form):
+        form.instance.category = form.instance.category.lower()
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['current_user'] = self.request.user
+        return context
+
 class AssetsCreateView(LoginRequiredMixin, CreateView):
     model = Assets
     fields = [
+        'asset_category',
         'asset_name',
         'asset_brand', 
-        'asset_serial_No',
+        'asset_serial_number',
         'asset_condition',
         'ip_address',
         'os_version',
@@ -76,21 +108,41 @@ class AssetsCreateView(LoginRequiredMixin, CreateView):
     
     
 
-class AssetUpdateView(UpdateView):
-    model = Assets
-    form_class = AssetForm
-    template_name = 'asset_app/asset_update.html'
-    context_object_name = 'asset'
+# class AssetUpdateView(UpdateView):
+#     model = Assets
+#     form_class = AssetForm
+#     template_name = 'asset_app/asset_update.html'
+#     context_object_name = 'asset'
 
-    def get_success_url(self):
-        return reverse_lazy('asset_app:assets-detail', kwargs={'pk': self.object.pk})
+#     def get_success_url(self):
+#         return reverse('asset_app:asset-update', kwargs={'pk' : self.object.pk})
+
+
+def asset_update_view(request, pk):
+    asset = get_object_or_404(Assets, pk=pk)
+    if request.method == 'POST':
+        print("data = ",request.POST)
+        form = AssetForm(request.POST, request.FILES, instance=asset)
+        print(form.fields.keys())
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Asset updated successfully.")
+            return redirect('asset_app:assets-list')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = AssetForm(instance=asset)
     
+    return render(request, 'asset_app/asset_update.html', {
+        'form': form,
+        'asset': asset
+    }) 
     
 
 class AssetDeleteView(View):
     def get(self, request, pk):
         asset = get_object_or_404(Assets, pk=pk)
-        asset.delete()
+        asset.delete()  
         return redirect('asset_app:assets-list')
     
 
@@ -107,6 +159,76 @@ class AssetAssignView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         return reverse('asset_app:assets-detail', kwargs={'pk': self.object.pk})
 
 
+
+class MyAssetView(LoginRequiredMixin, ListView):
+    template_name = 'asset_app/asset_assign.html'
+    context_object_name = 'asset_issuances'
+    paginate_by = 10
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.user_type == '3':
+            return AssetsIssuance.objects.filter(asset_assignee=user).select_related('asset').order_by('-date_issued')
+        
+        elif user.user_type == '2':
+            return AssetsIssuance.objects.filter(
+                asset__manager=user
+            ).select_related('asset', 'asset_assignee').order_by('-date_issued')
+        
+        # elif user.user_type == '1':
+        #     return AssetsIssuance.objects.all().select_related(
+        #         'asset', 'asset_assignee', 'asset__manager'
+        #     ).order_by('-date_issued')
+        
+        # return AssetsIssuance.objects.none()
+        
+   
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        if user.user_type == '3':  
+            context['total_assets'] = self.get_queryset().count()
+            context['active_assets'] = self.get_queryset().filter(asset__is_asset_issued=True).count()
+        else: 
+            pass
+            # context['total_issued'] = self.get_queryset().count()
+            # context['active_assignments'] = self.get_queryset().filter(
+            #     asset__is_asset_issued=True
+            # ).count()
+        
+        return context
+
+class AssetNotAssignListView(LoginRequiredMixin, View):
+    login_url = reverse_lazy("login_page")
+    template_name = 'asset_app/not_assigned_asset_list.html'
+    
+    def handle_no_permission(self):
+        messages.warning(self.request, "Please log in to access this page.")
+        return redirect(self.login_url)
+    
+    def get(self, request):
+        user = request.user
+        not_assign_assets = Assets.objects.filter(is_asset_issued=False)
+        if user.user_type in ['1','2']:
+            return render(request, self.template_name, {
+                'assets': not_assign_assets,
+                'page_title': 'Not Assigned Asset List',
+            })
+        else:
+            pending_requests = Notify_Manager.objects.filter(
+                asset__in=not_assign_assets,
+                manager__isnull=False,
+                approved__isnull=True
+            ).values_list('asset_id', flat=True)
+
+            return render(request, self.template_name, {
+                'assets': not_assign_assets,
+                'pending_requests': list(pending_requests),
+                'page_title': 'Not Assigned Asset List',
+            })
+        
 
 class AssetClaimView(LoginRequiredMixin, View):
     login_url = reverse_lazy("login_page")
@@ -127,9 +249,6 @@ class AssetClaimView(LoginRequiredMixin, View):
                 manager__isnull=False,
                 approved__isnull=True  
             ).values_list('asset_id', flat=True)
-
-            print(unclaimed_assets)
-            print(pending_requests)
 
             return render(request, template_name, {
                 'assets': unclaimed_assets,

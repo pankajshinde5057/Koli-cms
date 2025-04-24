@@ -156,8 +156,8 @@ def employee_home(request):
             total_working_days += 1
 
     present_days = records.filter(status='present').count()
-    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__lt=today).count()
-    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__lt=today).count()
+    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__lte=today).count()
+    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__lte=today).count()
 
     late_days = records.filter(status='late').count()
     

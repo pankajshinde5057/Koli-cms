@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .forms import *
 from .models import *
-from asset_app.models import Notify_Manager,AssetsIssuance
+from asset_app.models import Notify_Manager,AssetsIssuance,Assets
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -27,10 +27,16 @@ def manager_home(request):
     total_attendance = attendance_list.count()
     attendance_list = []
     department_list = []
+
+    total_assets = Assets.objects.all().count()
+    claimed_assets = Assets.objects.filter(is_asset_issued=True).count()
+    unclaimed_assets = Assets.objects.filter(is_asset_issued=False).count()
+
     for department in departments:
         attendance_count = AttendanceRecord.objects.filter(department=department).count()
         department_list.append(department.name)
         attendance_list.append(attendance_count)
+
     context = {
         'page_title': 'Manager Panel - ' + str(manager.admin.last_name) + ' (' + str(manager.division) + ')',
         'total_employees': total_employees,
@@ -38,7 +44,10 @@ def manager_home(request):
         'total_leave': total_leave,
         'total_department': total_department,
         'department_list': department_list,
-        'attendance_list': attendance_list
+        'attendance_list': attendance_list,
+        'total_assets': total_assets,
+        'claimed_assets': claimed_assets,
+        'unclaimed_assets': unclaimed_assets,
     }
     return render(request, 'manager_template/home_content.html', context)
 
@@ -70,7 +79,6 @@ def get_employees(request):
         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
     except Exception as e:
         return e
-
 
 
 @csrf_exempt
@@ -272,19 +280,25 @@ def approve_assest_request(request, notification_id):
         if notification.approved is None or notification.approved is False:
             asset = notification.asset
             employee = notification.employee 
-
-            AssetsIssuance.objects.create(
-                asset = asset,
-                asset_location = asset_location_,
-                asset_assignee = employee
-            )   
-            asset.is_asset_issued = True
-            asset.save()
+            try:
+                AssetsIssuance.objects.create(
+                    asset=asset,
+                    asset_location=asset_location_,
+                    asset_assignee=employee
+                )
             
-            notification.approved = True
-            notification.save()
+                my_asset = Assets.objects.get(id=asset.id)
+                my_asset.is_asset_issued = True
+                my_asset.save()
+                print(my_asset.is_asset_issued)
 
-            messages.success(request, "Asset request approved successfully.")
+                notification.approved = True
+                notification.save()
+                messages.success(request, "Asset request approved successfully.")
+
+            except:
+                messages.error(request,"This Asset is not Found in Inventry")
+
         else:
             messages.info(request, "This request was already approved.")
 
@@ -292,17 +306,14 @@ def approve_assest_request(request, notification_id):
 
 
 
-
 def reject_assest_request(request, notification_id):
-    if request.method == 'POST':
-        notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
-
-        if notification.approved is None or notification.approved is False:
-            notification.approved = False
-            notification.save()
-            messages.success(request, "Asset request rejected successfully.")
-        else:
-            messages.info(request, "This request was already approved or rejected.")
+    notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
+    if notification.approved is None or notification.approved is False:
+        notification.approved = False
+        notification.save()
+        messages.success(request, "Asset request rejected successfully.")
+    else:
+        messages.info(request, "This request was already approved or rejected.")
 
     return redirect('manager_view_notification')
 
@@ -378,3 +389,4 @@ def fetch_employee_salary(request):
         return HttpResponse(json.dumps(salary_data))
     except Exception as e:
         return HttpResponse('False')
+    

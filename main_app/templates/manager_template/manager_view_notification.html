@@ -167,7 +167,7 @@
                                         <small class="text-muted">{{ asset.asset.asset_brand }}</small>
                                     </td>
                                     <td>
-                                        <small>Serial: <strong>{{ asset.asset.asset_serial_No }}</strong></small><br>
+                                        <small>Serial: <strong>{{ asset.asset.asset_serial_number }}</strong></small><br>
                                         <small>Condition: 
                                             <span class="badge 
                                                 {% if asset.asset.asset_condition == 'new' %}badge-success
@@ -202,128 +202,126 @@
 
     <!-- Asset Modals -->
     {% for asset in asset_notifications %}
-    <div class="modal fade" id="assetModal-{{ asset.id }}" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content shadow-lg">
-                <div class="modal-header bg-gradient-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-laptop mr-2"></i>
-                        Asset Request - {{ asset.asset.asset_name }}
-                    </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                
-                <form method="post" action="{% url 'approve_assest_request' asset.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="asset_id" value="{{ asset.asset.id }}">
+        <div class="modal fade" id="assetModal-{{ asset.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content shadow-lg">
+                    <div class="modal-header bg-gradient-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-laptop mr-2"></i>
+                            Asset Request - {{ asset.asset.asset_name }}
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
                     
-                    <div class="modal-body">
-                        <div class="row">
-                            <!-- Left Column - Asset Details -->
-                            <div class="col-md-5 border-right">
-                                <div class="asset-card p-3 mb-3 bg-light rounded">
-                                    <h6 class="text-primary mb-3">
-                                        <i class="fas fa-info-circle mr-2"></i>Asset Details
-                                    </h6>
-                                    
-                                    {% if asset.asset.asset_image %}
-                                        <div class="text-center mb-3">
-                                            <img src="{{ asset.asset.asset_image.url }}" class="img-fluid rounded border shadow-sm" 
-                                                style="max-height: 180px;" alt="Asset Image">
+                    <form method="POST" action="{% url 'approve_assest_request' asset.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="asset_id" value="{{ asset.asset.id }}">
+                        
+                        <div class="modal-body">
+                            <div class="row">
+                                <!-- Left Column - Asset Details -->
+                                <div class="col-md-5 border-right">
+                                    <div class="asset-card p-3 mb-3 bg-light rounded">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-info-circle mr-2"></i>Asset Details
+                                        </h6>
+                                        
+                                        {% if asset.asset.asset_image %}
+                                            <div class="text-center mb-3">
+                                                <img src="{{ asset.asset.asset_image.url }}" class="img-fluid rounded border shadow-sm" 
+                                                    style="max-height: 180px;" alt="Asset Image">
+                                            </div>
+                                        {% else %}
+                                            <div class="text-center mb-3 p-4 bg-white rounded border">
+                                                <i class="fas fa-image fa-3x text-muted mb-2"></i>
+                                                <p class="small text-muted">No image available</p>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <div class="asset-info">
+                                            <p class="mb-2">
+                                                <strong><i class="fas fa-tag mr-2 text-primary"></i>Name:</strong> 
+                                                {{ asset.asset.asset_name }}
+                                            </p>
+                                            <p class="mb-2">
+                                                <strong><i class="fas fa-barcode mr-2 text-primary"></i>Serial:</strong> 
+                                                {{ asset.asset.asset_serial_number }}
+                                            </p>
+                                            <p class="mb-2">
+                                                <strong><i class="fas fa-industry mr-2 text-primary"></i>Brand:</strong> 
+                                                {{ asset.asset.asset_brand }}
+                                            </p>
+                                            <p class="mb-2">
+                                                <strong><i class="fas fa-microchip mr-2 text-primary"></i>OS:</strong> 
+                                                {{ asset.asset.os_version|default:"-" }}
+                                            </p>
+                                            <p class="mb-3">
+                                                <strong><i class="fas fa-network-wired mr-2 text-primary"></i>IP:</strong> 
+                                                {{ asset.asset.ip_address|default:"-" }}
+                                            </p>
                                         </div>
-                                    {% else %}
-                                        <div class="text-center mb-3 p-4 bg-white rounded border">
-                                            <i class="fas fa-image fa-3x text-muted mb-2"></i>
-                                            <p class="small text-muted">No image available</p>
-                                        </div>
-                                    {% endif %}
-                                    
-                                    <div class="asset-info">
-                                        <p class="mb-2">
-                                            <strong><i class="fas fa-tag mr-2 text-primary"></i>Name:</strong> 
-                                            {{ asset.asset.asset_name }}
-                                        </p>
-                                        <p class="mb-2">
-                                            <strong><i class="fas fa-barcode mr-2 text-primary"></i>Serial:</strong> 
-                                            {{ asset.asset.asset_serial_No }}
-                                        </p>
-                                        <p class="mb-2">
-                                            <strong><i class="fas fa-industry mr-2 text-primary"></i>Brand:</strong> 
-                                            {{ asset.asset.asset_brand }}
-                                        </p>
-                                        <p class="mb-2">
-                                            <strong><i class="fas fa-microchip mr-2 text-primary"></i>OS:</strong> 
-                                            {{ asset.asset.os_version|default:"-" }}
-                                        </p>
-                                        <p class="mb-3">
-                                            <strong><i class="fas fa-network-wired mr-2 text-primary"></i>IP:</strong> 
-                                            {{ asset.asset.ip_address|default:"-" }}
-                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Right Column - Request Details -->
-                            <div class="col-md-7">
-                                <div class="request-card p-3 mb-3 bg-light rounded">
-                                    <h6 class="text-primary mb-3">
-                                        <i class="fas fa-user-tie mr-2"></i>Request By
-                                    </h6>
-                                    
-                                    <div class="employee-details mb-4">
-                                        <div class="d-flex align-items-center mb-3">
-                                            <div>
-                                                <h5>{{ asset.employee.get_full_name }}</h5>
-                                                
+                                
+                                <!-- Right Column - Request Details -->
+                                <div class="col-md-7">
+                                    <div class="request-card p-3 mb-3 bg-light rounded">
+                                        <h6 class="text-primary mb-3">
+                                            <i class="fas fa-user-tie mr-2"></i>Request By
+                                        </h6>
+                                        
+                                        <div class="employee-details mb-4">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div>
+                                                    <h5>{{ asset.employee.get_full_name }}</h5>
+                                                    <p class="text-muted mb-1">{{ asset.employee.designation }}</p>
+                                                    <p class="text-muted mb-1">{{ asset.employee.department }}</p>
+                                                </div>
                                             </div>
                                         </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="asset_location-{{ asset.id }}" class="font-weight-bold">
+                                                <i class="fas fa-map-marker-alt mr-2 text-primary"></i>Assigned Location
+                                            </label>
+                                            <select name="asset_location" id="asset_location-{{ asset.id }}" 
+                                                    class="form-control select2">
+                                                <option value="" disabled selected>Select location</option>
+                                                {% for location, location_name in LOCATION_CHOICES %}
+                                                    <option value="{{ location }}">{{ location_name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        {% if asset.asset.qr_code %}
+                                        <div class="text-center mt-4">
+                                            <img src="{{ asset.asset.qr_code.url }}" class="img-thumbnail" 
+                                                style="max-width: 150px;" alt="QR Code">
+                                            <p class="small text-muted mt-2">Scan QR code to verify asset</p>
+                                        </div>
+                                        {% endif %}
                                     </div>
-                                    
-                                    <div class="form-group">
-                                        <label for="asset_location-{{ asset.id }}" class="font-weight-bold">
-                                            <i class="fas fa-map-marker-alt mr-2 text-primary"></i>Assigned Location
-                                        </label>
-                                        <select name="asset_location" id="asset_location-{{ asset.id }}" 
-                                                class="form-control select2">
-                                            <option value="" disabled selected>Select location</option>
-                                            {% for location, location_name in LOCATION_CHOICES %}
-                                            <option value="{{ location }}">{{ location_name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    
-                                    {% if asset.asset.qr_code %}
-                                    <div class="text-center mt-4">
-                                        <img src="{{ asset.asset.qr_code.url }}" class="img-thumbnail" 
-                                             style="max-width: 150px;" alt="QR Code">
-                                        <p class="small text-muted mt-2">Scan QR code to verify asset</p>
-                                    </div>
-                                    {% endif %}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                            <i class="fas fa-times mr-1"></i> Close
-                        </button>
-                        <form method="post" action="{% url 'reject_assest_request' asset.id %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger">
-                                <i class="fas fa-times-circle mr-1"></i> Reject
+                        
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Close
                             </button>
-                        </form>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-check-circle mr-1"></i> Approve
-                        </button>
-                    </div>
-                </form>
+                            <a href="{% url 'reject_assest_request' asset.id %}" class="btn btn-danger">
+                                <i class="fas fa-times-circle mr-1"></i> Reject
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check-circle mr-1"></i> Approve
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
-    </div>
     {% endfor %}
 </section>
 {% endblock %}

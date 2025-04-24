@@ -70,48 +70,47 @@
         <!-- /.row -->
         <!-- Main row -->
         <div class="row">
-            <div class="col-md-6">
-                <!-- LINE CHART -->
-                <div class="card card-secondary">
-                  <div class="card-header">
-                    <h3 class="card-title">{{page_title}}</h3>
-    
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                      </button>
-                      <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                    </div>
+          <div class="col-md-6">
+              <div class="card">
+                  <div class="card-header bg-dark">
+                      <h3 class="card-title">Assets Inventory</h3>
+                      <div class="card-tools">
+                          <span class="badge badge-light">Total Assets: {{total_assets}}</span>
+                      </div>
                   </div>
                   <div class="card-body">
-                    <div class="chart">
-                      <canvas id="pieChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                    </div>
-                  </div></div>
-                  <!-- /.card-body -->
-                </div>
-                <div class="col-md-6">
-                    <div class="card card-secondary">
-              <div class="card-header">
-                <h3 class="card-title">{{page_title}}</h3>
-
-                <div class="card-tools">
-                  <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                  </button>
-                  <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                </div>
+                        <div class="row">
+                                <div class="col-md-6">
+                                    <div class="small-box bg-success">
+                                        <div class="inner">
+                                            <h3>{{claimed_assets}}</h3>
+                                            <p>Assigned Assets</p>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="ion ion-checkmark-circled"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    {% url 'asset_app:not-assign-asset-list' as not_assign_asset_list %}
+                                    <a href="{{ not_assign_asset_list }}" style="text-decoration: none; color: inherit;">
+                                        <div class="small-box bg-secondary">
+                                            <div class="inner">
+                                                <h3>{{ unclaimed_assets }}</h3>
+                                                <p>Not Assign Assets</p>
+                                            </div>
+                                            <div class="icon">
+                                                <i class="ion ion-alert-circled"></i>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                        </div>
+                  </div>
               </div>
-              <div class="card-body">
-                <div class="chart">
-                  <canvas id="barChart" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                </div>
-              </div>
-              <!-- /.card-body -->
-            </div>
-                </div>
-            <!-- right col -->
-        </div>
-        <!-- /.row (main row) -->
-    </div><!-- /.container-fluid -->
+          </div>
+      </div>
+    </div>
 </section>
 {% endblock content %}
 
