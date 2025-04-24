@@ -15,21 +15,19 @@ from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager
 
+
 def employee_home(request):
     today = timezone.now().date()
-
     employee = get_object_or_404(Employee, admin=request.user)
     date_filter = request.GET.get('date', "today")
     department_filter = request.GET.get('department')
     status_filter = request.GET.get('status')
 
-    today = timezone.now().date()
     current_month = today.month
     current_year = today.year
 
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
 
-    # Date Range Filter
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
     if start_date_str and end_date_str:
@@ -39,20 +37,20 @@ def employee_home(request):
             records = records.filter(date__range=(start_date, end_date))
         except ValueError:
             messages.warning(request, "Invalid date range format. Please use YYYY-MM-DD.")
+    else:
+        records = records.filter(date__month=current_month, date__year=current_year)
+
+        if date_filter == 'today':
+            records = records.filter(date=today)
+        elif date_filter == 'week':
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
+            records = records.filter(date__range=[start_date, end_date])
 
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
-
-    records = records.filter(date__month=current_month, date__year=current_year)
-
-    if date_filter == 'today':
-        records = records.filter(date=today)
-    elif date_filter == 'week':
-        start_date = today - timedelta(days=today.weekday())
-        end_date = start_date + timedelta(days=6)
-        records = records.filter(date__range=[start_date, end_date])
 
     daily_view = records.annotate(
         total_break_time=Coalesce(
@@ -150,7 +148,6 @@ def employee_home(request):
     ).count()
 
     days_in_month = monthrange(current_year, current_month)[1]
-
     total_working_days = 0
     for day in range(1, days_in_month + 1):
         date = timezone.datetime(current_year, current_month, day).date()
@@ -163,12 +160,22 @@ def employee_home(request):
             total_working_days += 1
 
     present_days = records.filter(status='present').count()
-    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
-    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
-    
+    half_days = LeaveReportEmployee.objects.filter(
+        leave_type='Half-Day', status=1,
+        start_date__month=current_month,
+        start_date__year=current_year
+    ).count()
+
+    absent_days = LeaveReportEmployee.objects.filter(
+        leave_type='Full-Day', status=1,
+        start_date__month=current_month,
+        start_date__year=current_year
+    ).count()
+
     late_days = records.filter(status='late').count()
-    
+
     attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
+
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
@@ -202,9 +209,6 @@ def employee_home(request):
     }
 
     return render(request, 'employee_template/home_content.html', context)
-
-
-
 
 
 def employee_apply_leave(request):
