@@ -348,6 +348,22 @@
                 </li>
 
                 <li class="nav-item">
+                    {% url 'add_employee_by_manager' as add_employee_by_manager %}
+                    <a href="{% url 'add_employee_by_manager' %}" class="nav-link {% if add_employee_by_manager == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-th"></i>
+                        <p>Add Employee</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'manage_employee_by_manager' as manage_employee_by_manager %}
+                    <a href="{{ manage_employee_by_manager }}" class="nav-link {% if manage_employee_by_manager == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-th"></i>
+                        <p>Manage Employee</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     {% url 'manager_add_salary' as manager_add_salary %}
                     <a href="{{manager_add_salary}}" class="nav-link {% if manager_add_salary == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>

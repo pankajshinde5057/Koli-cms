@@ -94,7 +94,7 @@ class Employee(models.Model):
     employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
     designation = models.CharField(max_length=10)
     team_lead = models.OneToOneField(Manager, on_delete=models.CASCADE, related_name='team_lead', null=True)
-    phone_number = models.CharField(max_length=10, unique=True, blank=True)
+    phone_number = models.CharField(max_length=10,blank=True)
     emergency_contact = models.JSONField(blank=True,null=True)
 
     def save(self, *args, **kwargs):

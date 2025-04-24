@@ -46,6 +46,11 @@ urlpatterns = [
      path("manager/delete/<int:manager_id>",
           ceo_views.delete_manager, name='delete_manager'),
 
+     path("manager/manage/employees/", manager_views.manage_employee_by_manager, name='manage_employee_by_manager'),
+     path("manager/add/employee/", manager_views.add_employee_by_manager, name='add_employee_by_manager'),
+     path("manager/edit/employee/<int:employee_id>/", manager_views.edit_employee_by_manager, name='edit_employee_by_manager'),
+     path("manager/delete/employee/<int:employee_id>/", manager_views.delete_employee_by_manager, name='delete_employee_by_manager'),
+
      path("division/delete/<int:division_id>",
           ceo_views.delete_division, name='delete_division'),
 

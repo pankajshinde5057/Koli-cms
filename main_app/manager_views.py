@@ -173,6 +173,110 @@ def manager_apply_leave(request):
             messages.error(request, "Form has errors!")
     return render(request, "manager_template/manager_apply_leave.html", context)
 
+def manage_employee_by_manager(request):
+
+    manager = get_object_or_404(Manager, admin=request.user)
+
+    employees = Employee.objects.filter(team_lead=manager)
+    
+    if not employees:
+        messages.warning(request, "No employees found for your team.")
+    
+    context = {
+        'employees': employees,
+        'page_title': 'Manage Employees'
+    }
+    return render(request, 'manager_template/manage_employee_by_manager.html', context)
+
+
+
+def add_employee_by_manager(request):
+    # Only managers can add employees to their department
+    manager = get_object_or_404(Manager, admin=request.user)
+
+    # Form to add a new employee
+    employee_form = EmployeeForm(request.POST or None, request.FILES or None)
+    context = {'form': employee_form, 'page_title': 'Add Employee'}
+
+    if request.method == 'POST':
+        if employee_form.is_valid():
+            first_name = employee_form.cleaned_data.get('first_name')
+            last_name = employee_form.cleaned_data.get('last_name')
+            address = employee_form.cleaned_data.get('address')
+            email = employee_form.cleaned_data.get('email')
+            gender = employee_form.cleaned_data.get('gender')
+            password = employee_form.cleaned_data.get('password')
+            division = employee_form.cleaned_data.get('division')
+            department = manager.department  # The department of the manager
+            passport = request.FILES['profile_pic']
+            
+            fs = FileSystemStorage()
+            filename = fs.save(passport.name, passport)
+            passport_url = fs.url(filename)
+
+            try:
+                # Create the user (employee)
+                user = CustomUser.objects.create_user(
+                    email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                user.gender = gender
+                user.address = address
+                user.employee.division = division
+                user.employee.department = department
+                user.employee.team_lead = manager  # Assign manager as the team lead
+                user.save()
+
+                messages.success(request, "Successfully Added Employee")
+                return redirect(reverse('manage_employee_by_manager'))  # Redirect to employee management page
+            except Exception as e:
+                messages.error(request, "Could Not Add Employee: " + str(e))
+        else:
+            messages.error(request, "Please fill all the details correctly.")
+
+    return render(request, 'manager_template/add_employee_by_manager.html', context)
+
+
+
+def edit_employee_by_manager(request, employee_id):
+    # Get the employee object
+    employee = get_object_or_404(Employee, id=employee_id)
+
+    # Ensure that the logged-in manager is the team lead of the employee
+    if employee.team_lead != request.user.manager:
+        messages.error(request, "You do not have permission to edit this employee.")
+        return redirect('manage_employee_by_manager')
+
+    form = EmployeeForm(request.POST or None, instance=employee)
+    context = {
+        'form': form,
+        'employee_id': employee_id,
+        'page_title': 'Edit Employee'
+    }
+
+    if request.method == 'POST':
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Employee information updated successfully.")
+            return redirect(reverse('manage_employee_by_manager'))
+        else:
+            messages.error(request, "Please fill out the form correctly.")
+
+    return render(request, 'manager_template/edit_employee_by_manager.html', context)
+
+
+def delete_employee_by_manager(request, employee_id):
+    # Get the employee object
+    employee = get_object_or_404(Employee, id=employee_id)
+
+    # Ensure that the logged-in manager is the team lead of the employee
+    if employee.team_lead != request.user.manager:
+        messages.error(request, "You do not have permission to delete this employee.")
+        return redirect('manage_employee_by_manager')
+
+    # Delete the employee
+    employee.delete()
+    messages.success(request, "Employee deleted successfully.")
+    return redirect(reverse('manage_employee_by_manager'))
+
 
 def manager_feedback(request):
     form = FeedbackManagerForm(request.POST or None)
