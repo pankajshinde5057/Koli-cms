@@ -91,7 +91,7 @@ class Employee(models.Model):
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
     employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
     designation = models.CharField(max_length=10)
-    team_lead = models.OneToOneField(Manager, on_delete=models.CASCADE, related_name='team_lead', null=True)
+    team_lead = models.ForeignKey(Manager, on_delete=models.CASCADE, related_name='team_members', null=True, blank=True)
     phone_number = models.CharField(max_length=10, unique=False)
     emergency_contact = models.JSONField(blank=True,null=True)
 
