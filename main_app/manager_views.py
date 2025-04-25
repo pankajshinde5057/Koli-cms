@@ -332,6 +332,47 @@ def manager_feedback(request):
     return render(request, "manager_template/manager_feedback.html", context)
 
 
+from django.templatetags.static import static
+import requests
+ 
+@csrf_exempt
+def manager_send_employee_notification(request):
+    id = request.POST.get('id')
+    message = request.POST.get('message')
+    employee = get_object_or_404(Employee, team_lead_id=id)
+   
+    print(id,message,employee)
+    try:
+        url = "https://fcm.googleapis.com/fcm/send"
+        body = {
+            'notification': {
+                'title': "OfficeOps",
+                'body': message,
+                'click_action': reverse('employee_view_notification'),
+                'icon': static('dist/img/AdminLTELogo.png')
+            },
+            'to': employee.admin.fcm_token
+        }
+        headers = {'Authorization':
+                   'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                   'Content-Type': 'application/json'}
+        data = requests.post(url, data=json.dumps(body), headers=headers)
+        notification = NotificationEmployee(employee=employee, message=message)
+        notification.save()
+        return HttpResponse("True")
+    except Exception as e:
+        return HttpResponse("False")
+   
+   
+def manager_notify_employee(request):
+    employee = CustomUser.objects.filter(user_type=3)
+    context = {
+        'page_title': "Send Notifications To Employees",
+        'employees': employee
+    }
+    return render(request, "manager_template/employee_notification.html", context)
+
+
 def manager_view_profile(request):
     manager = get_object_or_404(Manager, admin=request.user)
     form = ManagerEditForm(request.POST or None, request.FILES or None,instance=manager)
