@@ -42,7 +42,7 @@
                                     </td>
                                     <td>
                                         {% if user == asset.manager %}
-                                            <a href="{% url 'asset_app:asset-update' asset.id %}" class="btn btn-outline-primary btn-sm">Update</a>
+                                            <a href="{% url 'asset_app:aasset-update' asset.id %}" class="btn btn-outline-primary btn-sm">Update</a>
                                             <a href="{% url 'asset_app:asset-delete' asset.pk %}" class="btn btn-outline-danger btn-sm"
                                                 onclick="return confirm('Are you sure you want to delete this asset?');">Delete</a>
                                         {% endif %}

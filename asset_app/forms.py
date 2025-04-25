@@ -17,15 +17,25 @@ class AssetForm(forms.ModelForm):
             'asset_category',
             'asset_name',
             'asset_serial_number',
-            'asset_brand',        
+            'asset_brand',
             'asset_image',
             'is_asset_issued',
             'asset_condition',
             'os_version',
             'ip_address',
             'return_date',
-            'barcode'
         ]
+    
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     if self.instance.pk:
+    #         self.fields['asset_serial_number'].required = False
+    
+    # def clean_asset_serial_number(self):
+    #     serial_number = self.cleaned_data.get('asset_serial_number')
+    #     if not serial_number and self.instance.pk:
+    #         return self.instance.asset_serial_number
+    #     return serial_number
 
 class AssetsFilter(FilterSet):
     class Meta:

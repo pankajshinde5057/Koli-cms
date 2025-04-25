@@ -13,6 +13,8 @@ from django.templatetags.static import static
 from django.contrib import messages
 from main_app.models import CustomUser
 from django.http import HttpResponseForbidden
+from django.db.models import Q
+
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -20,39 +22,67 @@ LOCATION_CHOICES = (
     ("Main Office", "Main Office"),
 )
 
-from django.db.models import Q
 
-class AssetsListView(LoginRequiredMixin, ListView):
+class AssetsListView(ListView):
+    model = Assets
     template_name = 'asset_app/home.html'
     context_object_name = 'assets'
-    paginate_by = 10 
+    paginate_by = 25
 
     def get_queryset(self):
+        queryset = super().get_queryset()
         user = self.request.user
-        search_ = self.request.GET.get('search','').strip()
-        sort_by_ = self.request.GET.get('sort_by','').strip()
 
-        if user.user_type in ['1','2']:
-            self.model = Assets
-            query_set =  Assets.objects.all()
+        # Employee
+        if user.user_type == '3': 
+            issued_assets = AssetsIssuance.objects.filter(
+                asset_assignee=user
+            ).values_list('asset_id', flat=True)
+            queryset = queryset.filter(id__in=issued_assets)
+        
+        # Apply search filter
+        search = self.request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(asset_name__icontains=search) |
+                Q(asset_serial_number__icontains=search) |
+                Q(asset_brand__icontains=search)
+            )
+        
+        # Apply status filter
+        status = self.request.GET.get('status')
+        if status == 'issued':
+            queryset = queryset.filter(is_asset_issued=True)
+        elif status == 'available':
+            queryset = queryset.filter(is_asset_issued=False)
+        
+        # Apply category filter
+        category = self.request.GET.get('category')
+        if category:
+            queryset = queryset.filter(asset_category_id=category)
+        
+        queryset = queryset.select_related(
+            'asset_category',
+            'manager'
+        ).prefetch_related(
+            'assetsissuance_set',
+            'assetsissuance_set__asset_assignee'
+        ).order_by('-updated_date')
+        
+        return queryset
 
-        else:
-            self.model = AssetsIssuance
-            query_set =  AssetsIssuance.objects.filter(asset_assignee=user).order_by('-date_issued')
-            
-        if search_:
-            query_set = query_set.filter(asset_name__icontains=search_)
-
-        if sort_by_:
-            query_set = query_set.filter(asset_category__category__icontains=sort_by_)
-
-        return query_set
-       
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['asset_list'] = context.get('object_list')
         context['asset_categories'] = AssetCategory.objects.all()
-        context['is_employee'] = self.request.user.user_type == '3' 
+        context['is_employee'] = self.request.user.user_type == '3'
+        
+        # Add current filter values to context
+        context['current_filters'] = {
+            'search': self.request.GET.get('search', ''),
+            'status': self.request.GET.get('status', ''),
+            'category': self.request.GET.get('category', '')
+        }
+        
         return context
 
     
@@ -60,6 +90,21 @@ class AssetsDetailView(DetailView):
     model = Assets
     template_name = 'asset_app/asset_detail.html'
     context_object_name = 'asset'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        asset = self.object
+        
+        # Get current issuance record if asset is issued
+        current_issuance = None
+        if asset.is_asset_issued:
+            try:
+                current_issuance = AssetsIssuance.objects.filter(asset=asset).latest('date_issued')
+            except AssetsIssuance.DoesNotExist:
+                pass
+        
+        context['issuance'] = current_issuance
+        return context
 
 
 class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
@@ -108,36 +153,23 @@ class AssetsCreateView(LoginRequiredMixin, CreateView):
     
     
 
-# class AssetUpdateView(UpdateView):
-#     model = Assets
-#     form_class = AssetForm
-#     template_name = 'asset_app/asset_update.html'
-#     context_object_name = 'asset'
+class AssetUpdateView(LoginRequiredMixin, UpdateView):
+    model = Assets
+    form_class = AssetForm
+    template_name = 'asset_app/asset_update.html'
+    context_object_name = 'asset'
 
-#     def get_success_url(self):
-#         return reverse('asset_app:asset-update', kwargs={'pk' : self.object.pk})
-
-
-def asset_update_view(request, pk):
-    asset = get_object_or_404(Assets, pk=pk)
-    if request.method == 'POST':
-        print("data = ",request.POST)
-        form = AssetForm(request.POST, request.FILES, instance=asset)
-        print(form.fields.keys())
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Asset updated successfully.")
-            return redirect('asset_app:assets-list')
-        else:
-            messages.error(request, "Please correct the errors below.")
-    else:
-        form = AssetForm(instance=asset)
+    def get_success_url(self):
+        return reverse('asset_app:asset-update',kwargs={'pk' : self.object.pk})
     
-    return render(request, 'asset_app/asset_update.html', {
-        'form': form,
-        'asset': asset
-    }) 
+    def form_valid(self, form):
+        messages.success(self.request,'Asset Update Successfully!')
+        return super().form_valid(form)
     
+    def form_invalid(self, form):
+        messages.error(self.request,'There was an error Updating Asset.Please Check Form Fields!!')
+        return super().form_invalid(form)
+
 
 class AssetDeleteView(View):
     def get(self, request, pk):

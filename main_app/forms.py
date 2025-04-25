@@ -1,5 +1,5 @@
 from django import forms
-from django.forms.widgets import DateInput, TextInput, RadioSelect
+from django.forms.widgets import DateInput
 from datetime import date
 from .models import *
 
@@ -7,7 +7,6 @@ from .models import *
 class FormSettings(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(FormSettings, self).__init__(*args, **kwargs)
-        # Here make some changes such as:
         for field in self.visible_fields():
             field.field.widget.attrs['class'] = 'form-control'
 
@@ -37,14 +36,14 @@ class CustomUserForm(FormSettings):
 
     def clean_email(self, *args, **kwargs):
         formEmail = self.cleaned_data['email'].lower()
-        if self.instance.pk is None:  # Insert
+        if self.instance.pk is None:  
             if CustomUser.objects.filter(email=formEmail).exists():
                 raise forms.ValidationError(
                     "The given email is already registered")
-        else:  # Update
+        else: 
             dbEmail = self.Meta.model.objects.get(
                 id=self.instance.pk).admin.email.lower()
-            if dbEmail != formEmail:  # There has been changes
+            if dbEmail != formEmail:  
                 if CustomUser.objects.filter(email=formEmail).exists():
                     raise forms.ValidationError("The given email is already registered")
 
@@ -54,15 +53,36 @@ class CustomUserForm(FormSettings):
         model = CustomUser
         fields = ['first_name', 'last_name', 'email', 'gender',  'password','profile_pic', 'address' ]
 
-
 class EmployeeForm(CustomUserForm):
     def __init__(self, *args, **kwargs):
         super(EmployeeForm, self).__init__(*args, **kwargs)
 
+    def save(self, commit=True):
+        employee = super().save(commit=False)
+        admin = employee.admin
+        admin.first_name = self.cleaned_data['first_name']
+        admin.last_name = self.cleaned_data['last_name']
+        admin.email = self.cleaned_data['email']
+        admin.gender = self.cleaned_data['gender']
+        admin.address = self.cleaned_data['address']
+        if self.cleaned_data.get('profile_pic'):
+            admin.profile_pic = self.cleaned_data['profile_pic']
+        password = self.cleaned_data.get('password')
+        if password:
+            admin.set_password(password)
+
+        if commit:
+            admin.save()
+            employee.admin = admin
+            employee.save()
+
+        return employee
+
     class Meta(CustomUserForm.Meta):
         model = Employee
-        fields = CustomUserForm.Meta.fields + \
-            ['division', 'department']
+        fields = CustomUserForm.Meta.fields + [
+            'division', 'department', 'designation', 'team_lead', 'phone_number', 'emergency_contact'
+        ]
 
 
 class AdminForm(CustomUserForm):

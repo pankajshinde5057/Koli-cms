@@ -39,7 +39,7 @@ class AssetCategory(models.Model):
 
 class Assets(models.Model):
     asset_category = models.ForeignKey(AssetCategory, on_delete=models.CASCADE)
-    asset_name = models.CharField(max_length=100,unique=True)
+    asset_name = models.CharField(max_length=100,blank=True,null=True)
     asset_serial_number = models.CharField(max_length=100, unique=True)
     asset_brand = models.CharField(max_length=100)
     asset_image = models.ImageField(upload_to='images/', blank=True, null=True)
@@ -61,11 +61,11 @@ class Assets(models.Model):
         if not self.pk:
             super().save(*args, **kwargs)
 
-        barcode_file = generate_barcode(self.id)
         if not self.barcode:
+            barcode_file = generate_barcode(self.id)
             self.barcode.save(barcode_file.name, barcode_file, save=False)
 
-        super().save(update_fields=['barcode'])
+        super().save(*args, **kwargs)
     
 
     @property

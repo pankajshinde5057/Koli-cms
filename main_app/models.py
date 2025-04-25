@@ -1,11 +1,9 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import UserManager
 from django.db import models
-from django.db.models import Sum,Min,Max
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from datetime import timedelta,time
 from django.core.exceptions import ValidationError
 
 class CustomUserManager(UserManager):
@@ -44,6 +42,7 @@ class CustomUser(AbstractUser):
     fcm_token = models.TextField(default="")  # For firebase notifications
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = CustomUserManager()
@@ -90,10 +89,24 @@ class Employee(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
+    employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
+    designation = models.CharField(max_length=10)
+    team_lead = models.ForeignKey(Manager, on_delete=models.CASCADE, related_name='team_members', null=True, blank=True)
+    phone_number = models.CharField(max_length=10, unique=False)
+    emergency_contact = models.JSONField(blank=True,null=True)
+
+    def save(self, *args, **kwargs):
+        if not self.employee_id:
+            last_id = Employee.objects.all().order_by('-id').first()
+            if last_id:
+                emp_num = int(last_id.employee_id.replace('EMP', '')) + 1
+            else:
+                emp_num = 1
+            self.employee_id = f"EMP{emp_num:03d}"  # e.g., EMP001
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.admin.first_name +" "+self.admin.last_name 
-
 
 
 class LeaveReportEmployee(models.Model):
@@ -103,7 +116,7 @@ class LeaveReportEmployee(models.Model):
     )
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
-    start_date = models.DateField()
+    start_date = models.DateField(blank=True, null=True, default=None)
     end_date = models.DateField(blank=True,null=True)
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
@@ -215,8 +228,6 @@ class AttendanceRecord(models.Model):
     
     def save(self, *args, **kwargs):
         # Calculate time durations if clock_out exists
-        if self.clock_in.astimezone().time() > time(hour=9,minute=30):
-            self.status = "late"
         if self.clock_out:
             self.total_worked = self.clock_out - self.clock_in
             
@@ -242,42 +253,6 @@ class AttendanceRecord(models.Model):
             self.is_primary_record = not existing_records
         
         super().save(*args, **kwargs)
-    
-    @property
-    def break_time(self):
-        return sum(
-            (b.duration for b in self.breaks.all() if b.duration), 
-            timezone.timedelta()
-        )
-    
-    @classmethod
-    def get_daily_summary(cls, user, date):
-        """Get aggregated data for a user on a specific date"""
-        records = cls.objects.filter(user=user, date=date)
-        
-        if not records.exists():
-            return None
-        
-        aggregates = records.aggregate(
-            first_clock_in=Min('clock_in'),
-            last_clock_out=Max('clock_out'),
-            total_worked=Sum('total_worked'),
-            total_regular=Sum('regular_hours'),
-            total_overtime=Sum('overtime_hours')
-        )
-        
-        return {
-            'date': date,
-            'user': user,
-            'first_clock_in': aggregates['first_clock_in'],
-            'last_clock_out': aggregates['last_clock_out'],
-            'total_worked': aggregates['total_worked'] or timezone.timedelta(),
-            'total_regular': aggregates['total_regular'] or timezone.timedelta(),
-            'total_overtime': aggregates['total_overtime'] or timezone.timedelta(),
-            'records': records,
-            'is_present': records.filter(status='present').exists(),
-        }
-    
     def __str__(self):
         return f"{self.user} - {self.date} ({self.status}) {self.clock_in.time()} to {self.clock_out.time() if self.clock_out else ''}"
 

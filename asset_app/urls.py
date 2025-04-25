@@ -11,10 +11,7 @@ urlpatterns = [
     path('asset/claim/', views.AssetClaimView.as_view(), name='asset-claim'),
     path('approve-notification/<int:notification_id>/', views.AssetClaimView.as_view(), name='approve-notification'),
     path('asset/<int:asset_id>/unclaim/',views.AssetUnclaimView.as_view(), name='asset-unclaim'),
-    # path('assets/<int:pk>/update/',views.AssetUpdateView.as_view(), name='asset-update'),
-    
-    path('asset/update/<int:pk>/', views.asset_update_view, name='asset-update'),
-
+    path('assets/<int:pk>/update/',views.AssetUpdateView.as_view(), name='asset-update'),
     path('assets/<int:pk>/delete/', views.AssetDeleteView.as_view(), name='asset-delete'),
 
     path('assets/not-assign-list/', views.AssetNotAssignListView.as_view(), name='not-assign-asset-list'),
