@@ -5,7 +5,7 @@ from django.urls import reverse
 from io import BytesIO
 from django.core.files import File
 import qrcode
-from .utils import generate_qr_code
+from .utils import generate_barcode
 
 
 LOCATION_CHOICES = (
@@ -26,15 +26,27 @@ DEPARTMENT_CHOICE = [
     ('javascript','JavaScript')
 ]
 
+
+class AssetCategory(models.Model):
+    category = models.CharField(max_length=100,unique=True)
+
+    def save(self,*args,**kwargs):
+        self.category = self.category.lower()
+        super().save(*args,**kwargs)
+
+    def __str__(self):
+        return self.category
+
 class Assets(models.Model):
-    asset_name = models.CharField(max_length=100,unique=True)
-    asset_serial_No = models.CharField(max_length=100, unique=True)
+    asset_category = models.ForeignKey(AssetCategory, on_delete=models.CASCADE)
+    asset_name = models.CharField(max_length=100,blank=True,null=True)
+    asset_serial_number = models.CharField(max_length=100, unique=True)
     asset_brand = models.CharField(max_length=100)
     asset_image = models.ImageField(upload_to='images/', blank=True, null=True)
     manager = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='managed_assets')
     
     is_asset_issued = models.BooleanField(default=False)
-    asset_added_date = models.DateTimeField(null=True, blank=True,default=timezone.now)
+    asset_added_date = models.DateTimeField(default=timezone.now)
     updated_date = models.DateTimeField(auto_now=True)
     return_date = models.DateTimeField(null=True, blank=True)
 
@@ -42,25 +54,27 @@ class Assets(models.Model):
     os_version = models.CharField(max_length=100, blank=True, null=True,default=None)
     ip_address = models.CharField(blank=True, null=True,default=None)
     
-    qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+    barcode = models.ImageField(upload_to='barcodes/', blank=True, null=True)
 
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        qr_data = f"http://192.168.1.56:8000/asset-app/asset/{self.id}/detail/" 
-        qr_file = generate_qr_code(qr_data, f"{self.asset_serial_No}_qr.png")
+        if not self.pk:
+            super().save(*args, **kwargs)
 
-        if not self.qr_code:
-            self.qr_code.save(qr_file.name, qr_file, save=False)
-            super().save(update_fields=['qr_code'])
+        if not self.barcode:
+            barcode_file = generate_barcode(self.id)
+            self.barcode.save(barcode_file.name, barcode_file, save=False)
+
+        super().save(*args, **kwargs)
+    
 
     @property
     def status(self):
-        return "Active" if self.is_asset_issued else "Not Active"
+       return "Active" if self.is_asset_issued else "Not Active"
     
 
     def __str__(self):
-        return f"{self.asset_name} ({self.asset_serial_No})"
+        return f"{self.asset_name} ({self.asset_serial_number})"
 
     def get_absolute_url(self):
         return reverse('assets-detail', kwargs={'pk': self.pk})
@@ -82,10 +96,11 @@ class AssetsIssuance(models.Model):
     asset_assignee = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
 
     def __str__(self):
-        return str(self.asset)
+        return f"{self.asset.asset_name} issued to {self.asset_assignee}"
 
     def get_absolute_url(self):
         return reverse('assets-detail', kwargs={'pk': self.pk})
+
 
 class Notify_Manager(models.Model):
     manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='manager_notifications')
