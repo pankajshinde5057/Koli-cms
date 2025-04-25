@@ -111,27 +111,55 @@ def get_employees(request):
 
 
 
+from django.http import HttpResponse, JsonResponse
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
 @csrf_exempt
 def save_attendance(request):
     employee_data = request.POST.get('employee_ids')
     date = request.POST.get('date')
     department_id = request.POST.get('department')
     employees = json.loads(employee_data)
+    
     try:
         department = get_object_or_404(Department, id=department_id)
-        attendance, created = AttendanceRecord.objects.get_or_create(department=department, date=date)
+        
+        # Fetch all attendance records for the department and date
+        attendance_records = AttendanceRecord.objects.filter(department=department, date=date)
 
         for employee_dict in employees:
             employee = get_object_or_404(Employee, id=employee_dict.get('id'))
-            attendance_report, report_created = AttendanceReport.objects.get_or_create(employee=employee, attendance=attendance)
-            if report_created:
+            user = employee.user  # Ensure the user is retrieved from the Employee model
+
+            # Check if attendance record exists for the employee on this date
+            attendance_report = attendance_records.filter(employee=employee).first()
+            
+            if attendance_report is None:
+                # Create a new attendance record and ensure `user` is populated
+                attendance_report = AttendanceRecord(
+                    user=user,  # Assign the user field
+                    employee=employee,
+                    department=department,
+                    date=date,
+                    status=employee_dict.get('status')
+                )
+                attendance_report.save()
+            else:
+                # Update the existing record's status
                 attendance_report.status = employee_dict.get('status')
                 attendance_report.save()
 
     except Exception as e:
-        return None
+        logger.error(f"Error saving attendance: {e}")
+        return JsonResponse({"error": "An error occurred while saving attendance."}, status=500)
 
     return HttpResponse("OK")
+
+
+
 
 
 def manager_update_attendance(request):
