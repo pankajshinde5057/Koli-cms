@@ -73,9 +73,10 @@
                         {% for claim in asset_claims %}
                             <tr>
                                 <td>{{ claim.asset.asset_name }}</td>
-                                <td><code>{{ claim.asset.asset_serial_No }}</code></td>
+                                <td><code>{{ claim.asset.asset_serial_number }}</code></td>
                                 <td>{{ claim.manager.get_full_name|default:claim.manager.username }}</td>
                                 <td>
+                                    {{claim.status}}
                                     {% if claim.status == "Pending" %}
                                         <span class="badge bg-warning">Pending</span>
                                     {% elif claim.status == "Approved" %}

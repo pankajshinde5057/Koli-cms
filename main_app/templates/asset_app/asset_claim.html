@@ -31,7 +31,7 @@
                                     <tr>
                                         <td>{{ forloop.counter }}</td>
                                         <td>{{ asset.asset_name }}</td>
-                                        <td>{{ asset.asset_serial_No }}</td>
+                                        <td>{{ asset.asset_serial_number }}</td>
                                         <td>{{ asset.asset_brand }}</td>
                                         <td>
                                             <span class="badge {% if asset.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">
@@ -86,7 +86,7 @@
                                                                             {% endif %}
                                                                             <div class="asset-info">
                                                                                 <p class="mb-2"><strong><i class="fas fa-tag mr-2"></i>Name:</strong> {{ asset.asset_name }}</p>
-                                                                                <p class="mb-2"><strong><i class="fas fa-barcode mr-2"></i>Serial No:</strong> {{ asset.asset_serial_No }}</p>
+                                                                                <p class="mb-2"><strong><i class="fas fa-barcode mr-2"></i>Serial No:</strong> {{ asset.asset_serial_number }}</p>
                                                                                 <p class="mb-2"><strong><i class="fas fa-industry mr-2"></i>Brand:</strong> {{ asset.asset_brand }}</p>
                                                                                 {% if asset.os_version %}
                                                                                 <p class="mb-2"><strong><i class="fas fa-code-branch mr-2"></i>OS Version:</strong> {{ asset.os_version }}</p>

@@ -177,7 +177,6 @@ class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('late', 'Late'),
-        ('half_day', 'Half Day'),
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)

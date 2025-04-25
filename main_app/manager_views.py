@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from .forms import *
 from .models import *
-from asset_app.models import Notify_Manager,AssetsIssuance
+from asset_app.models import Notify_Manager,AssetsIssuance,Assets
 from django.utils.dateparse import parse_date
 
 LOCATION_CHOICES = (
@@ -110,12 +110,6 @@ def get_employees(request):
         return e
 
 
-
-from django.http import HttpResponse, JsonResponse
-import logging
-
-# Set up logging
-logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def save_attendance(request):
@@ -361,6 +355,47 @@ def manager_feedback(request):
     return render(request, "manager_template/manager_feedback.html", context)
 
 
+from django.templatetags.static import static
+import requests
+ 
+@csrf_exempt
+def manager_send_employee_notification(request):
+    id = request.POST.get('id')
+    message = request.POST.get('message')
+    employee = get_object_or_404(Employee, team_lead_id=id)
+   
+    print(id,message,employee)
+    try:
+        url = "https://fcm.googleapis.com/fcm/send"
+        body = {
+            'notification': {
+                'title': "OfficeOps",
+                'body': message,
+                'click_action': reverse('employee_view_notification'),
+                'icon': static('dist/img/AdminLTELogo.png')
+            },
+            'to': employee.admin.fcm_token
+        }
+        headers = {'Authorization':
+                   'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                   'Content-Type': 'application/json'}
+        data = requests.post(url, data=json.dumps(body), headers=headers)
+        notification = NotificationEmployee(employee=employee, message=message)
+        notification.save()
+        return HttpResponse("True")
+    except Exception as e:
+        return HttpResponse("False")
+   
+   
+def manager_notify_employee(request):
+    employee = CustomUser.objects.filter(user_type=3)
+    context = {
+        'page_title': "Send Notifications To Employees",
+        'employees': employee
+    }
+    return render(request, "manager_template/employee_notification.html", context)
+
+
 def manager_view_profile(request):
     manager = get_object_or_404(Manager, admin=request.user)
     form = ManagerEditForm(request.POST or None, request.FILES or None,instance=manager)
@@ -436,19 +471,25 @@ def approve_assest_request(request, notification_id):
         if notification.approved is None or notification.approved is False:
             asset = notification.asset
             employee = notification.employee 
-
-            AssetsIssuance.objects.create(
-                asset = asset,
-                asset_location = asset_location_,
-                asset_assignee = employee
-            )   
-            asset.is_asset_issued = True
-            asset.save()
+            try:
+                AssetsIssuance.objects.create(
+                    asset=asset,
+                    asset_location=asset_location_,
+                    asset_assignee=employee
+                )
             
-            notification.approved = True
-            notification.save()
+                my_asset = Assets.objects.get(id=asset.id)
+                my_asset.is_asset_issued = True
+                my_asset.save()
+                print(my_asset.is_asset_issued)
 
-            messages.success(request, "Asset request approved successfully.")
+                notification.approved = True
+                notification.save()
+                messages.success(request, "Asset request approved successfully.")
+
+            except:
+                messages.error(request,"This Asset is not Found in Inventry")
+
         else:
             messages.info(request, "This request was already approved.")
 
@@ -456,17 +497,14 @@ def approve_assest_request(request, notification_id):
 
 
 
-
 def reject_assest_request(request, notification_id):
-    if request.method == 'POST':
-        notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
-
-        if notification.approved is None or notification.approved is False:
-            notification.approved = False
-            notification.save()
-            messages.success(request, "Asset request rejected successfully.")
-        else:
-            messages.info(request, "This request was already approved or rejected.")
+    notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
+    if notification.approved is None or notification.approved is False:
+        notification.approved = False
+        notification.save()
+        messages.success(request, "Asset request rejected successfully.")
+    else:
+        messages.info(request, "This request was already approved or rejected.")
 
     return redirect('manager_view_notification')
 
@@ -542,3 +580,4 @@ def fetch_employee_salary(request):
         return HttpResponse(json.dumps(salary_data))
     except Exception as e:
         return HttpResponse('False')
+    
