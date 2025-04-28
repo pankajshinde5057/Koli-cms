@@ -7,6 +7,8 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect, get_object_or_404,reverse
 from django.utils import timezone
+from django.db.models import Q
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
 from .forms import *
 from .models import *
@@ -26,8 +28,10 @@ def employee_home(request):
     current_month = today.month
     current_year = today.year
 
+    # Base query for attendance records
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
 
+    # Handle date range filtering
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
     if start_date_str and end_date_str:
@@ -47,11 +51,60 @@ def employee_home(request):
             end_date = start_date + timedelta(days=6)
             records = records.filter(date__range=[start_date, end_date])
 
+    # Additional filters
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
 
+    # Create detailed time entries (clock in/out and breaks)
+    detailed_time_entries = []
+    for record in records.order_by('date', 'clock_in'):
+        # Add clock in entry
+        detailed_time_entries.append({
+            'type': 'clock_in',
+            'date': record.date,
+            'time': record.clock_in,
+            'record': record,
+            'status': 'Clocked In' if not record.clock_out else 'Clocked Out'
+        })
+        
+        # Add all break entries for this record
+        breaks = record.breaks.all().order_by('break_start')
+        for brk in breaks:
+            detailed_time_entries.append({
+                'type': 'break',
+                'date': record.date,
+                'time': brk.break_start,
+                'end_time': brk.break_end,
+                'duration': brk.duration,
+                'record': record,
+                'status': 'Break Start' if not brk.break_end else 'Break End'
+            })
+        
+        # Add clock out entry if exists
+        if record.clock_out:
+            detailed_time_entries.append({
+                'type': 'clock_out',
+                'date': record.date,
+                'time': record.clock_out,
+                'record': record,
+                'status': 'Clocked Out'
+            })
+    
+    detailed_time_entries.sort(key=lambda x: (x['date'], x['time']), reverse=True)
+
+    paginator = Paginator(detailed_time_entries, 10)
+    page = request.GET.get('page', 1)
+
+    try:
+        paginated_entries = paginator.page(page)
+    except PageNotAnInteger:
+        paginated_entries = paginator.page(1)
+    except EmptyPage:
+        paginated_entries = paginator.page(paginator.num_pages)
+
+    # Daily view with aggregated data
     daily_view = records.annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -64,6 +117,7 @@ def employee_home(request):
         )
     ).order_by('-date')
 
+    # Weekly and monthly summaries
     completed_records = records.filter(clock_out__isnull=False).annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -71,6 +125,7 @@ def employee_home(request):
         )
     )
 
+    # Weekly data calculation
     weekly_data = {}
     for record in completed_records:
         week = record.date.isocalendar()[1]
@@ -94,6 +149,7 @@ def employee_home(request):
         'overtime_hours': data['overtime_hours']
     } for week, data in sorted(weekly_data.items(), reverse=True)]
 
+    # Monthly data calculation
     monthly_data = {}
     for record in completed_records:
         month_start_date = record.date.replace(day=1)
@@ -129,6 +185,7 @@ def employee_home(request):
         'half_days': data['half_days']
     } for month, data in sorted(monthly_data.items(), reverse=True)]
 
+    # Current session status
     current_record = AttendanceRecord.objects.filter(
         user=request.user,
         clock_out__isnull=True,
@@ -142,11 +199,14 @@ def employee_home(request):
             break_end__isnull=True
         ).first()
 
+    # Attendance statistics
     total_breaks_in_month = Break.objects.filter(
         attendance_record__date__month=current_month,
-        attendance_record__date__year=current_year
+        attendance_record__date__year=current_year,
+        attendance_record__user=request.user
     ).count()
 
+    # Calculate working days in month (excluding weekends and holidays)
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
     for day in range(1, days_in_month + 1):
@@ -159,46 +219,92 @@ def employee_home(request):
         if not is_sunday and not is_1st_or_3rd_saturday:
             total_working_days += 1
 
-    present_days = records.filter(status='present').count()
-    half_days = LeaveReportEmployee.objects.filter(
-        leave_type='Half-Day', status=1,
+    # Get distinct dates with attendance records
+    attended_dates = records.values_list('date', flat=True).distinct()
+
+    # Count present and late days (counting each date only once)
+    present_dates = records.filter(
+        status='present'
+    ).values_list('date', flat=True).distinct().count()
+
+    late_dates = records.filter(
+        status='late'
+    ).values_list('date', flat=True).distinct().count()
+
+    # Total present days (including late days as present)
+    present_days = present_dates + late_dates
+
+    # Get approved leaves for the current month
+    approved_leaves = LeaveReportEmployee.objects.filter(
+        employee=employee,
+        status=1,  # Approved leaves
         start_date__month=current_month,
         start_date__year=current_year
-    ).count()
-
-    absent_days = LeaveReportEmployee.objects.filter(
-        leave_type='Full-Day', status=1,
-        start_date__month=current_month,
-        start_date__year=current_year
-    ).count()
-
+    )
     
-    half_days = LeaveReportEmployee.objects.filter(leave_type='Half-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
-    absent_days = LeaveReportEmployee.objects.filter(leave_type='Full-Day',status=1,start_date__month=current_month,start_date__year=current_year).count()
 
-    late_days = records.filter(status='late').count()
+    # Count half days and full day leaves
+    half_days = approved_leaves.filter(leave_type='Half-Day').count()
+    absent_days = approved_leaves.filter(leave_type='Full-Day').count()
 
-    attendance_percentage = (present_days / total_working_days * 100) if total_working_days else 0
+    # Calculate attendance percentage
+    if total_working_days > 0:
+        # Count half days as 0.5 present days
+        effective_present_days = present_days + (half_days * 0.5)
+        attendance_percentage = (effective_present_days / total_working_days) * 100
+    else:
+        attendance_percentage = 0
 
+    attendance_percentage = round(attendance_percentage, 1)
+
+    # Recent activity
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
+    today_records = AttendanceRecord.objects.filter(
+        user=request.user,
+        date=today
+    ).order_by('clock_in')
+    
+    today_total_worked = timedelta()
+    
+    if today_records.exists():
+        # Get first clock-in of the day
+        first_clock_in = today_records.first().clock_in
+        
+        # Get last clock-out of the day (if exists)
+        last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
+        last_clock_out = last_clock_out_record.clock_out if last_clock_out_record else None
+        
+        if first_clock_in and last_clock_out:
+            # Calculate total worked time
+            today_total_worked = last_clock_out - first_clock_in
+            
+            # Subtract total break time
+            total_break_time = sum(
+                (brk.duration for record in today_records 
+                 for brk in record.breaks.all() if brk.duration),
+                timedelta()
+            )
+            today_total_worked -= total_break_time
 
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
+        'today_total_worked': today_total_worked,
         'current_record': current_record,
         'current_break': current_break,
         'recent_activities': recent_activities,
         'attendance_stats': {
             'total_days': total_working_days,
             'present_days': present_days,
-            'late_days': late_days,
+            'late_days': late_dates,
             'half_days': half_days,
             'absent_days': absent_days,
-            'attendance_percentage': round(attendance_percentage, 1),
+            'attendance_percentage': attendance_percentage,
             'total_breaks_today': total_breaks_in_month
         },
+        'detailed_time_entries': paginated_entries,
         'daily_view': daily_view,
         'weekly_view': weekly_view,
         'monthly_view': monthly_view,

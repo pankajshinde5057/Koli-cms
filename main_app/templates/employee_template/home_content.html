@@ -6,6 +6,17 @@
 
 {% block content %}
 <section class="content">
+	<div class="alert alert-info alert-dismissible">
+        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+        <h5><i class="icon fas fa-info"></i> Today's Work Summary</h5>
+        <p>
+            Total Worked Hours Today: 
+            <strong>{{ today_total_worked|duration_to_hours_minutes }}</strong>
+            {% if current_record and not current_record.clock_out %}
+                <span class="badge bg-warning ml-2">Currently Clocked In</span>
+            {% endif %}
+        </p>
+    </div>
 	<div class="container-fluid">
 		<div class="row">
 			<!-- Present Days -->
@@ -159,34 +170,98 @@
 									<thead>
 										<tr>
 											<th>Date</th>
-											<th>Clock In</th>
-											<th>Clock Out</th>
-											<th>Total Clocked</th>
-											<th>Breaks</th>
-											<th>Payout Clocked</th>
+											<th>Type</th>
+											<th>Time</th>
+											<th>End Time</th>
+											<th>Duration</th>
 											<th>Status</th>
 										</tr>
 									</thead>
 									<tbody>
-										{% for day in daily_view %}
+										{% for entry in detailed_time_entries %}
 										<tr>
-											<td>{{ day.clock_in|date:"M d, Y" }}</td>
-											<td>{{ day.clock_in|time:"h:i:s A" }}</td>
-											<td>{{ day.clock_out|time:"h:i:s A"|default:"-" }}</td>
-											<td>{{ day.total_worked|duration_to_hours_minutes}}</td>
-											<td>{{ day.total_break_time|duration_to_hours_minutes }}</td>
-											<td>{{ day.net_worked_time|duration_to_hours_minutes}}</td>
+											<td>{{ entry.date|date:"M d, Y" }}</td>
 											<td>
-												{% if not day.clock_out %}
-													<span class="badge bg-success">Clocked In</span>
+												{% if entry.type == 'clock_in' %}
+													<span class="badge bg-primary">Clock In</span>
+												{% elif entry.type == 'clock_out' %}
+													<span class="badge bg-secondary">Clock Out</span>
 												{% else %}
-													<span class="badge bg-secondary">Clocked Out</span>
+													<span class="badge bg-info">Break</span>
 												{% endif %}
+											</td>
+											<td>{{ entry.time|time:"h:i:s A" }}</td>
+											<td>
+												{% if entry.end_time %}
+													{{ entry.end_time|time:"h:i:s A" }}
+												{% else %}
+													-
+												{% endif %}
+											</td>
+											<td>
+												{% if entry.duration %}
+													{{ entry.duration|duration_to_hours_minutes }}
+												{% else %}
+													-
+												{% endif %}
+											</td>
+											<td>
+												<span class="badge 
+													{% if entry.status == 'Clocked In' %}bg-success
+													{% elif entry.status == 'Clocked Out' %}bg-secondary
+													{% elif entry.status == 'Break Start' %}bg-warning
+													{% else %}bg-info
+													{% endif %}">
+													{{ entry.status }}
+												</span>
 											</td>
 										</tr>
 										{% endfor %}
 									</tbody>
 								</table>
+								<div class="d-flex justify-content-between align-items-center mt-3">
+									<div>
+										Showing {{ detailed_time_entries.start_index }} to {{ detailed_time_entries.end_index }} of {{ detailed_time_entries.paginator.count }} entries
+									</div>
+									<nav>
+										<ul class="pagination mb-0">
+											{% if detailed_time_entries.has_previous %}
+												<li class="page-item">
+													<a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" aria-label="Previous">
+														<span aria-hidden="true">&laquo;</span>
+													</a>
+												</li>
+											{% else %}
+												<li class="page-item disabled">
+													<span class="page-link">&laquo;</span>
+												</li>
+											{% endif %}
+
+											{% for num in detailed_time_entries.paginator.page_range %}
+												{% if detailed_time_entries.number == num %}
+													<li class="page-item active"><span class="page-link">{{ num }}</span></li>
+												{% elif num > detailed_time_entries.number|add:'-3' and num < detailed_time_entries.number|add:'3' %}
+													<li class="page-item">
+														<a class="page-link" href="?page={{ num }}">{{ num }}</a>
+													</li>
+												{% endif %}
+											{% endfor %}
+
+											{% if detailed_time_entries.has_next %}
+												<li class="page-item">
+													<a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" aria-label="Next">
+														<span aria-hidden="true">&raquo;</span>
+													</a>
+												</li>
+											{% else %}
+												<li class="page-item disabled">
+													<span class="page-link">&raquo;</span>
+												</li>
+											{% endif %}
+										</ul>
+									</nav>
+								</div>
+
 							</div>
 						</div>
 

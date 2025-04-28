@@ -282,11 +282,20 @@ def break_action(request):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import get_object_or_404
-from main_app.models import Department, AttendanceRecord
+# @csrf_exempt
+# def get_attendance(request):
+#     department_id = request.POST.get("department")
+#     try:
+#         department = get_object_or_404(Department, id=department_id)
+#         attendance = AttendanceRecord.objects.filter(department=department)
 
+#         attendance_list = []
+#         for attd in attendance:
+#             data = {"id": attd.id, "attendance_date": str(attd.date)}
+#             attendance_list.append(data)
+#         return JsonResponse(json.dumps(attendance_list), safe=False)
+#     except Exception as e:
+#         return None
 @csrf_exempt
 def get_attendance(request):
     department_id = request.POST.get("department")
@@ -296,23 +305,22 @@ def get_attendance(request):
 
     try:
         department = get_object_or_404(Department, id=department_id)
-        print(department)
-        attendance = AttendanceRecord.objects.filter(department=department)
-        print(attendance)
-
-        attendance_list = []
-        for attd in attendance:
-            attendance_list.append({
-                "id": attd.id,
-                "attendance_date": str(attd.date),
-            })
-
+ 
+        # Get employees in that department
+        employees = Employee.objects.filter(department=department)
+        user_ids = employees.values_list('admin_id', flat=True)
+ 
+        # Fetch attendance records of those users
+        attendance = AttendanceRecord.objects.filter(user_id__in=user_ids)
+ 
+        attendance_list = [
+            {"id": attd.id, "attendance_date": str(attd.date)}
+            for attd in attendance
+        ]
         return JsonResponse(attendance_list, safe=False)
-
+ 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
+        return JsonResponse({"error": str(e)}, status=400)
 
 def showFirebaseJS(request):
     data = """
