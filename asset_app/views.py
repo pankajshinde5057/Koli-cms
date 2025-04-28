@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.urls import reverse_lazy
-from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory
+from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory
 from .forms import AssetForm
 from .filters import AssetsFilter
 from django.urls import reverse
@@ -14,6 +14,7 @@ from django.contrib import messages
 from main_app.models import CustomUser
 from django.http import HttpResponseForbidden
 from django.db.models import Q
+from django.utils import timezone
 
 
 LOCATION_CHOICES = (
@@ -95,17 +96,21 @@ class AssetsDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         asset = self.object
         
-        # Get current issuance record if asset is issued
-        current_issuance = None
-        if asset.is_asset_issued:
-            try:
-                current_issuance = AssetsIssuance.objects.filter(asset=asset).latest('date_issued')
-            except AssetsIssuance.DoesNotExist:
-                pass
+        current_issuance = AssetsIssuance.objects.filter(
+            asset=asset,
+        ).select_related('asset_assignee').first()
         
-        context['issuance'] = current_issuance
-        return context
+        # Get historical issuances (inactive)
+        historical_issuances = AssetAssignmentHistory.objects.filter(
+            asset=asset,
+        ).order_by('-date_assigned')
 
+        context.update({
+            'current_issuance': current_issuance,
+            'historical_issuances': historical_issuances,
+            'now': timezone.now() 
+        })
+        return context
 
 class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
     model = AssetCategory
