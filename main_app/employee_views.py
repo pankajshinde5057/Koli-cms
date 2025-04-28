@@ -261,17 +261,44 @@ def employee_home(request):
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
+    today_records = AttendanceRecord.objects.filter(
+        user=request.user,
+        date=today
+    ).order_by('clock_in')
+    
+    today_total_worked = timedelta()
+    
+    if today_records.exists():
+        # Get first clock-in of the day
+        first_clock_in = today_records.first().clock_in
+        
+        # Get last clock-out of the day (if exists)
+        last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
+        last_clock_out = last_clock_out_record.clock_out if last_clock_out_record else None
+        
+        if first_clock_in and last_clock_out:
+            # Calculate total worked time
+            today_total_worked = last_clock_out - first_clock_in
+            
+            # Subtract total break time
+            total_break_time = sum(
+                (brk.duration for record in today_records 
+                 for brk in record.breaks.all() if brk.duration),
+                timedelta()
+            )
+            today_total_worked -= total_break_time
 
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
+        'today_total_worked': today_total_worked,
         'current_record': current_record,
         'current_break': current_break,
         'recent_activities': recent_activities,
         'attendance_stats': {
             'total_days': total_working_days,
             'present_days': present_days,
-            'late_days': late_dates,  # Using late_dates instead of late_days
+            'late_days': late_dates,
             'half_days': half_days,
             'absent_days': absent_days,
             'attendance_percentage': attendance_percentage,

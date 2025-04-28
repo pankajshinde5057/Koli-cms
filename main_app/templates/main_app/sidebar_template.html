@@ -329,26 +329,6 @@
                 </li>
 
                 <li class="nav-item">
-                    {% url 'manager_add_salary' as manager_add_salary %}
-                    <a href="{{manager_add_salary}}" class="nav-link {% if manager_add_salary == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Add Salary
-
-                        </p>
-                    </a>
-                </li>  
-                 <li class="nav-item">
-                    {% url 'edit_employee_salary' as edit_employee_salary %}
-                    <a href="{{edit_employee_salary}}" class="nav-link {% if edit_employee_salary == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Edit Salary
-
-                        </p>
-                    </a>
-                </li>
-                <li class="nav-item">
                     {% url 'manager_take_attendance' as manager_take_attendance %}
                     <a href="{{manager_take_attendance}}" class="nav-link {% if manager_take_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>
@@ -511,16 +491,6 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    {% url 'employee_view_salary' as employee_view_salary %}
-                    <a href="{% url 'employee_view_salary' %}" class="nav-link {% if employee_view_salary == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            View Salary
-                        </p>
-                    </a>
-                </li>
-          
                 <li class="nav-item">
                     {% url 'employee_view_attendance' as employee_view_attendance %}
                     <a href="{{employee_view_attendance}}" class="nav-link {% if employee_view_attendance == request.path %} active {% endif %}">
