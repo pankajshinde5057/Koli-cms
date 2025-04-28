@@ -494,8 +494,8 @@ import requests
 def manager_send_employee_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
-    employee = get_object_or_404(Employee, team_lead_id=id)
-   
+    # employee = get_object_or_404(Employee, team_lead_id=id)
+    employee = CustomUser.objects.filter(id = id).first()
     print(id,message,employee)
     try:
         url = "https://fcm.googleapis.com/fcm/send"
@@ -506,10 +506,11 @@ def manager_send_employee_notification(request):
                 'click_action': reverse('employee_view_notification'),
                 'icon': static('dist/img/AdminLTELogo.png')
             },
-            'to': employee.admin.fcm_token
+            'to': employee.fcm_token
         }
+        employee = Employee.objects.filter(admin = employee).first()
         headers = {'Authorization':
-                   'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                   'key=dxHXv-hbaBoaO0OyQN0_W3:APA91bH4UU9a727PTFs2kQzSaB3O1UWzEMoWVVrKdNGj1cgBD4vPQHIhaWd_C6o9ocbpLOvR1-_stx52N96ywgex3IDByDpicjQ-hMRLqDJXxEVUFGM3huo',
                    'Content-Type': 'application/json'}
         data = requests.post(url, data=json.dumps(body), headers=headers)
         notification = NotificationEmployee(employee=employee, message=message)

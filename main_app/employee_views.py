@@ -435,7 +435,7 @@ def employee_view_salary(request):
 
 def employee_view_notification(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    notifications = NotificationEmployee.objects.filter(employee=employee)
+    notifications = NotificationEmployee.objects.filter(employee=employee).order_by('-id')
     context = {
         'notifications': notifications,
         'page_title': "View Notifications"
