@@ -1,141 +1,137 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
-{% block page_title %}{{page_title}}{% endblock page_title %}
-{% block custom_css %}
-<style>
-.attendance_div_red{
-    padding: 10px;
-    background: #f44336;
-    border: 3px solid white;
-    text-align: center;
-    color: #fff;
-    border-radius: 30px;
-    box-shadow: 1px 1px 1px grey;
-    margin: 5px;
-}
-.attendance_div_green{
-    padding: 10px;
-    background: #4CAF50;
-    border: 3px solid white;
-    text-align: center;
-    color: #fff;
-    border-radius: 30px;
-    box-shadow: 1px 1px 1px grey;
-    margin: 5px;
-}
-</style>
-{% endblock custom_css %}
+{% block page_title %}{{page_title}}{% endblock %}
 
 {% block content %}
-
 <section class="content">
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{page_title}}</h3>
+                        <h3 class="card-title">{{ page_title }}</h3>
                     </div>
-                    <!-- /.card-header -->
-                    <!-- form start -->
                     <div class="card-body">
-
-
-
-                        <div class="form-group">
-                            <label>Select Department</label>
-                            <select  id="department" class="form-control">
-                                <option value="">----</option>
-                                {% for department in departments  %}
-                                <option value="{{department.id}}">{{department.name}} </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>Start Date</label>
-                                    <input type="date" class="form-control" placeholder="Start Date" name="start_date" required id="start_date">
+                        <form id="attendanceForm">
+                            {% csrf_token %}
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Start Date</label>
+                                        <input type="date" name="start_date" class="form-control" 
+                                               value="{{ default_start }}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>End Date</label>
+                                        <input type="date" name="end_date" class="form-control" 
+                                               value="{{ default_end }}" required>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-lg-6">
-                                <div class="form-group">
-                                    <label>End Date</label>
-                                    <input type="date" class="form-control" placeholder="End Date" name="end_date"  id="end_date">
-                                </div>
+                            <div class="form-group text-center">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> View Attendance
+                                </button>
                             </div>
-                            <button type="button" id="fetch_attendance" class="btn btn-primary btn-block">Fetch
-                                Attendance Data</button>
-               </div>
-
-                    </div>
-                    <!-- /.card-body -->
-
-                    <div class="card-footer">
-                            
-                        <div class="row" id="attendance_data"></div>
+                        </form>
                     </div>
                 </div>
-                <!-- /.card -->
-
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Attendance Records</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="attendanceTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Clock In</th>
+                                        <th>Clock Out</th>
+                                        <th>Total Worked</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be loaded via AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </section>
-{% endblock content %}
-
+{% endblock %}
 
 {% block custom_js %}
 <script>
-    $(document).ready(function () {
-
-       
-        $("#fetch_attendance").click(function () {
-            var department = $("#department").val()
-            var start_date = $("#start_date").val()
-            var end_date = $("#end_date").val()
-            if (department.length  == 0 || end_date.length ==0 ||start_date.length == 0){
-                alert("Please Select Department and Date Range");
-                return false;
-            }
-            $("#attendance_data").html(null)
-            $.ajax({
-                url: "{% url 'employee_view_attendance' %}",
-                type: 'POST',
-                data: {
-                    department: department,
-                    start_date: start_date,
-                    end_date:end_date
-                }
-            }).done(function (response) {
-                var json_data = JSON.parse(response)
-                if (json_data.length < 1) {
-                    $("#attendance_data").html("<div class='col-md-12 alert alert-danger'>No Data For Specified Parameters</div>")
-
+$(document).ready(function() {
+    $('#attendanceForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        var form = $(this);
+        var button = form.find('button[type="submit"]');
+        button.html('<i class="fas fa-spinner fa-spin"></i> Loading...').attr('disabled', true);
+        
+        $.ajax({
+            url: window.location.pathname,
+            type: 'POST',
+            data: form.serialize(),
+            success: function(response) {
+                if (response.error) {
+                    toastr.error(response.error);
                 } else {
-                    var div_data = ""
-                         
-                    for (key in json_data) {
-                    if (json_data[key]['status']){
-                        div_data += "<div class='col-lg-3 attendance_div_green'><b>"+ json_data[key]['date'] + "</b><br/>Present</div>" 
-                    }else{
-
-                        div_data += "<div class='col-lg-3 attendance_div_red'><b>"+ json_data[key]['date'] + "</b><br/>Absent</div>"
+                    var tableBody = $('#attendanceTable tbody');
+                    tableBody.empty();
+                    
+                    if (response.data.length === 0) {
+                        tableBody.append(
+                            '<tr><td colspan="5" class="text-center">No attendance records found</td></tr>'
+                        );
+                    } else {
+                        $.each(response.data, function(i, record) {
+                            // Format total worked time to HH:MM:SS
+                            var totalWorked = '--';
+                            if (record.total_worked && record.total_worked !== '0:00:00') {
+                                var parts = record.total_worked.split(':');
+                                if (parts.length === 3) {
+                                    totalWorked = parts[0] + 'h ' + parts[1] + 'm';
+                                } else {
+                                    totalWorked = record.total_worked;
+                                }
+                            }
+                            
+                            var row = $('<tr>');
+                            row.append($('<td>').text(record.date));
+                            row.append($('<td>').text(
+                                record.status.charAt(0).toUpperCase() + record.status.slice(1)
+                            ));
+                            row.append($('<td>').text(record.clock_in));
+                            row.append($('<td>').text(record.clock_out));
+                            row.append($('<td>').text(totalWorked));
+                            tableBody.append(row);
+                        });
                     }
                 }
-                    div_data += ""
-                    $("#attendance_data").html(div_data)
-
+            },
+            error: function(xhr) {
+                try {
+                    var error = JSON.parse(xhr.responseText);
+                    toastr.error(error.error || 'An error occurred');
+                } catch (e) {
+                    toastr.error('An error occurred while processing your request');
                 }
-            }).fail(function (response) {
-                $("#attendance_data").html("Error While Fetching Records")
-            })
-
-
-          
-
-        })
-    })
+            },
+            complete: function() {
+                button.html('<i class="fas fa-search"></i> View Attendance').attr('disabled', false);
+            }
+        });
+    });
+});
 </script>
-{% endblock custom_js %}
+{% endblock %}
