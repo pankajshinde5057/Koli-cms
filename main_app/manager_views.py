@@ -82,14 +82,72 @@ def manager_home(request):
     return render(request, 'manager_template/home_content.html', context)
 
 
+# def manager_take_attendance(request):
+#     manager = get_object_or_404(Manager, admin=request.user)
+#     departments = Department.objects.filter(division=manager.division)
+#     context = {
+#         'departments': departments,
+#         'page_title': 'Take Attendance'
+#     }
+
+#     return render(request, 'manager_template/manager_take_attendance.html', context)
+
+
+# @csrf_exempt
+# def get_employees(request):
+#     department_id = request.POST.get('department')
+#     try:
+#         department = get_object_or_404(Department, id=department_id)
+#         employees = Employee.objects.filter(division_id=department.division.id)
+#         employee_data = []
+#         for employee in employees:
+#             data = {
+#                 "id": employee.id,
+#                 "name": employee.admin.last_name + " " + employee.admin.first_name
+#             }
+#             employee_data.append(data)
+#         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
+#     except Exception as e:
+#         return e
+
+
+# @csrf_exempt
+# def save_attendance(request):
+#     employee_data = request.POST.get('employee_ids')
+#     date = request.POST.get('date')
+#     department_id = request.POST.get('department')
+#     employees = json.loads(employee_data)
+#     try:
+#         department = get_object_or_404(Department, id=department_id)
+#         attendance, created = AttendanceRecord.objects.get_or_create(department=department, date=date)
+
+#         for employee_dict in employees:
+#             employee = get_object_or_404(Employee, id=employee_dict.get('id'))
+#             attendance_report, report_created = AttendanceReport.objects.get_or_create(employee=employee, attendance=attendance)
+#             if report_created:
+#                 attendance_report.status = employee_dict.get('status')
+#                 attendance_report.save()
+
+#     except Exception as e:
+#         return None
+
+#     return HttpResponse("OK")
+
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+from .models import Manager, Department, Employee, AttendanceRecord, CustomUser
+import json
+from datetime import datetime
+
 def manager_take_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
     context = {
         'departments': departments,
-        'page_title': 'Take Attendance'
+        'page_title': 'Take Attendance',
     }
-
     return render(request, 'manager_template/manager_take_attendance.html', context)
 
 
@@ -98,7 +156,7 @@ def get_employees(request):
     department_id = request.POST.get('department')
     try:
         department = get_object_or_404(Department, id=department_id)
-        employees = Employee.objects.filter(division_id=department.division.id)
+        employees = Employee.objects.filter(department=department)
         employee_data = []
         for employee in employees:
             data = {
@@ -108,32 +166,109 @@ def get_employees(request):
             employee_data.append(data)
         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
     except Exception as e:
-        return e
+        return JsonResponse({'error': str(e)}, status=400)
 
 
 @csrf_exempt
 def save_attendance(request):
     employee_data = request.POST.get('employee_ids')
-    date = request.POST.get('date')
+    date_str = request.POST.get('date')
     department_id = request.POST.get('department')
-    employees = json.loads(employee_data)
+
+    # Log incoming data for debugging
+    print("Employee Data:", employee_data)
+    print("Date:", date_str)
+    print("Department ID:", department_id)
+
     try:
+        employees = json.loads(employee_data)
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
         department = get_object_or_404(Department, id=department_id)
-        attendance, created = AttendanceRecord.objects.get_or_create(department=department, date=date)
 
-        for employee_dict in employees:
-            employee = get_object_or_404(Employee, id=employee_dict.get('id'))
-            attendance_report, report_created = AttendanceReport.objects.get_or_create(employee=employee, attendance=attendance)
-            if report_created:
-                attendance_report.status = employee_dict.get('status')
-                attendance_report.save()
+        for emp in employees:
+            employee = get_object_or_404(Employee, id=emp.get('id'))
+            user = employee.admin  # CustomUser linked
+            status = 'present' if emp.get('status') == 1 else 'late'
 
+            # Only create if not already exists
+            attendance_record, created = AttendanceRecord.objects.get_or_create(
+                user=user,
+                date=date_obj,
+                defaults={
+                    'clock_in': timezone.make_aware(datetime.combine(date_obj, datetime.min.time())),  # Make the datetime aware
+                    'status': status,
+                    'department': department,
+                    'is_primary_record': True,
+                }
+            )
+            if not created:
+                # Update status if already exists
+                attendance_record.status = status
+                attendance_record.save()
+
+            # Update the present day count in employee's dashboard
+            if status == 'present':
+                employee.present_days += 1
+            employee.save()
+
+        return HttpResponse("OK")
     except Exception as e:
-        return None
+        # Log the exception for debugging
+        print("Error:", str(e))
+        return JsonResponse({'error': str(e)}, status=400)
 
-    return HttpResponse("OK")
 
 
+
+
+# def manager_update_attendance(request):
+#     manager = get_object_or_404(Manager, admin=request.user)
+#     departments = Department.objects.filter(division=manager.division)
+#     context = {
+#         'departments': departments,
+#         'page_title': 'Update Attendance'
+#     }
+
+#     return render(request, 'manager_template/manager_update_attendance.html', context)
+
+
+# @csrf_exempt
+# def get_employee_attendance(request):
+#     attendance_date_id = request.POST.get('attendance_date_id')
+#     try:
+#         date = get_object_or_404(AttendanceRecord, id=attendance_date_id)
+#         attendance_data = AttendanceReport.objects.filter(attendance=date)
+#         employee_data = []
+#         for attendance in attendance_data:
+#             data = {"id": attendance.employee.admin.id,
+#                     "name": attendance.employee.admin.last_name + " " + attendance.employee.admin.first_name,
+#                     "status": attendance.status}
+#             employee_data.append(data)
+#         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
+#     except Exception as e:
+#         return e
+
+
+# @csrf_exempt
+# def update_attendance(request):
+#     employee_data = request.POST.get('employee_ids')
+#     date = request.POST.get('date')
+#     employees = json.loads(employee_data)
+#     try:
+#         attendance = get_object_or_404(AttendanceRecord, id=date)
+
+#         for employee_dict in employees:
+#             employee = get_object_or_404(
+#                 Employee, admin_id=employee_dict.get('id'))
+#             attendance_report = get_object_or_404(AttendanceReport, employee=employee, attendance=attendance)
+#             attendance_report.status = employee_dict.get('status')
+#             attendance_report.save()
+#     except Exception as e:
+#         return None
+
+#     return HttpResponse("OK")
+
+# View to update attendance for the manager
 def manager_update_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
@@ -145,41 +280,61 @@ def manager_update_attendance(request):
     return render(request, 'manager_template/manager_update_attendance.html', context)
 
 
+# View to get employee attendance details based on selected date
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404
+from .models import AttendanceRecord, Employee
+ 
 @csrf_exempt
 def get_employee_attendance(request):
     attendance_date_id = request.POST.get('attendance_date_id')
     try:
-        date = get_object_or_404(AttendanceRecord, id=attendance_date_id)
-        attendance_data = AttendanceReport.objects.filter(attendance=date)
-        employee_data = []
-        for attendance in attendance_data:
-            data = {"id": attendance.employee.admin.id,
-                    "name": attendance.employee.admin.last_name + " " + attendance.employee.admin.first_name,
-                    "status": attendance.status}
-            employee_data.append(data)
-        return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
+        # Fetch the AttendanceRecord using the provided id
+        date_record = get_object_or_404(AttendanceRecord, id=attendance_date_id)
+       
+        # Fetch all attendance records for the same date
+        attendance_data = AttendanceRecord.objects.filter(date=date_record.date)
+       
+        # Prepare response data
+        employee_data = [
+            {
+                "id": attendance.user.id,  # The user is related to CustomUser
+                "name": f"{attendance.user.last_name} {attendance.user.first_name}",
+                "status": attendance.status
+            }
+            for attendance in attendance_data
+        ]
+       
+        return JsonResponse(employee_data, safe=False)
+ 
     except Exception as e:
-        return e
+        return JsonResponse({"error": str(e)}, status=400)
 
 
+# View to update attendance status
 @csrf_exempt
 def update_attendance(request):
     employee_data = request.POST.get('employee_ids')
     date = request.POST.get('date')
     employees = json.loads(employee_data)
+
     try:
         attendance = get_object_or_404(AttendanceRecord, id=date)
 
         for employee_dict in employees:
-            employee = get_object_or_404(
-                Employee, admin_id=employee_dict.get('id'))
-            attendance_report = get_object_or_404(AttendanceReport, employee=employee, attendance=attendance)
+            employee = get_object_or_404(Employee, admin_id=employee_dict.get('id'))
+            attendance_report = get_object_or_404(AttendanceRecord, employee=employee, attendance=attendance)
             attendance_report.status = employee_dict.get('status')
             attendance_report.save()
-    except Exception as e:
-        return None
 
-    return HttpResponse("OK")
+        return JsonResponse({"message": "Attendance updated successfully!"})
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+# View to get attendance records for a department
 
 
 def manager_apply_leave(request):
