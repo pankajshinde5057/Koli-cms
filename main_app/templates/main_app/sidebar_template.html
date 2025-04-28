@@ -492,16 +492,6 @@
                 </li>
 
                 <li class="nav-item">
-                    {% url 'employee_view_salary' as employee_view_salary %}
-                    <a href="{% url 'employee_view_salary' %}" class="nav-link {% if employee_view_salary == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            View Salary
-                        </p>
-                    </a>
-                </li>
-          
-                <li class="nav-item">
                     {% url 'employee_view_attendance' as employee_view_attendance %}
                     <a href="{{employee_view_attendance}}" class="nav-link {% if employee_view_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>
