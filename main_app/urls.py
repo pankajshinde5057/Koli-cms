@@ -46,7 +46,7 @@ urlpatterns = [
      path("manager/delete/<int:manager_id>",
           ceo_views.delete_manager, name='delete_manager'),
 
-     path("manager/manage/employees/", manager_views.manage_employee_by_manager, name='manage_employee_by_manager'),
+     path("manage/employees/", manager_views.manage_employee_by_manager, name='manage_employee_by_manager'),
      path("manager/add/employee/", manager_views.add_employee_by_manager, name='add_employee_by_manager'),
      path("manager/edit/employee/<int:employee_id>/", manager_views.edit_employee_by_manager, name='edit_employee_by_manager'),
      path("manager/delete/employee/<int:employee_id>/", manager_views.delete_employee_by_manager, name='delete_employee_by_manager'),
@@ -112,6 +112,12 @@ urlpatterns = [
           name='approve_leave_request'),
      path('manager/leave-reject/<int:leave_id>/', manager_views.reject_leave_request,
           name='reject_leave_request'),
+
+     path('get_available_assets/', manager_views.get_available_assets, name='get_available_assets'),
+     path('get_assigned_assets/', manager_views.get_assigned_assets, name='get_assigned_assets'),
+     path('assign_assets/', manager_views.assign_assets, name='assign_assets'),
+     path('remove_asset_assignment/', manager_views.remove_asset_assignment, name='remove_asset_assignment'),
+     
 
      # Employee
      path("employee/home/", employee_views.employee_home, name='employee_home'),

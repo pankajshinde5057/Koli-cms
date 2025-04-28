@@ -1,6 +1,6 @@
 # forms.py
 from django import forms
-from .models import Assets, AssetCategory
+from .models import Assets, AssetCategory, AssetsIssuance
 from django_filters import FilterSet
 
 
@@ -25,17 +25,6 @@ class AssetForm(forms.ModelForm):
             'ip_address',
             'return_date',
         ]
-    
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     if self.instance.pk:
-    #         self.fields['asset_serial_number'].required = False
-    
-    # def clean_asset_serial_number(self):
-    #     serial_number = self.cleaned_data.get('asset_serial_number')
-    #     if not serial_number and self.instance.pk:
-    #         return self.instance.asset_serial_number
-    #     return serial_number
 
 class AssetsFilter(FilterSet):
     class Meta:
@@ -43,3 +32,4 @@ class AssetsFilter(FilterSet):
         fields = {
             'asset_name': ['icontains'],
         }
+        

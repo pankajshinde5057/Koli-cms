@@ -142,15 +142,10 @@
                                                 <a href="{% url 'asset_app:asset-update' asset.pk %}" class="btn btn-sm btn-primary" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                {% if asset.is_asset_issued %}
-                                                <a href="" class="btn btn-sm btn-warning" title="Mark Returned">
-                                                    <i class="fas fa-undo"></i>
+                                                <a href="{% url 'asset_app:asset-delete' asset.pk %}" class="btn btn-sm btn-danger" 
+                                                title="Delete Asset"
+                                                onclick="return confirm('Are you sure you want to delete this asset?');"><i class="fas fa-trash"></i>
                                                 </a>
-                                                {% else %}
-                                                <a href="" class="btn btn-sm btn-success" title="Issue Asset">
-                                                    <i class="fas fa-hand-holding"></i>
-                                                </a>
-                                                {% endif %}
                                                 {% endif %}
                                             </div>
                                         </td>
@@ -174,47 +169,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                    <!-- /.card-body -->
-                    <div class="card-footer clearfix">
-                        {% if is_paginated %}
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="text-muted">
-                                Showing <b>{{ page_obj.start_index }}</b> to <b>{{ page_obj.end_index }}</b> of <b>{{ page_obj.paginator.count }}</b> assets
-                            </div>
-                            <ul class="pagination pagination-sm m-0 float-right">
-                                {% if page_obj.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page=1&search={{ request.GET.search }}&status={{ request.GET.status }}&category={{ request.GET.category }}">«</a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ request.GET.search }}&status={{ request.GET.status }}&category={{ request.GET.category }}">‹</a>
-                                    </li>
-                                {% endif %}
-                                
-                                {% for num in page_obj.paginator.page_range %}
-                                    {% if page_obj.number == num %}
-                                        <li class="page-item active">
-                                            <span class="page-link">{{ num }}</span>
-                                        </li>
-                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ num }}&search={{ request.GET.search }}&status={{ request.GET.status }}&category={{ request.GET.category }}">{{ num }}</a>
-                                        </li>
-                                    {% endif %}
-                                {% endfor %}
-                                
-                                {% if page_obj.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ request.GET.search }}&status={{ request.GET.status }}&category={{ request.GET.category }}">›</a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&search={{ request.GET.search }}&status={{ request.GET.status }}&category={{ request.GET.category }}">»</a>
-                                    </li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -250,23 +204,30 @@
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    // Enable tooltips
-    $('[title]').tooltip();
+    $(document).ready(function() {
+        // Enable tooltips
+        $('[title]').tooltip();
+        
+        // Make table rows clickable
+        $('tr[data-href]').click(function(e) {
+            if (!$(e.target).is('a, button, input, i, .btn')) {
+                window.location = $(this).attr('data-href');
+            }
+        });
     
-    // Make table rows clickable
-    $('tr[data-href]').click(function(e) {
-        if (!$(e.target).is('a, button, input, i, .btn')) {
-            window.location = $(this).attr('data-href');
-        }
+        // Add confirmation for delete actions
+        $('a[href*="asset-delete"]').click(function(e) {
+            if (!confirm('Are you sure you want to delete this asset?')) {
+                e.preventDefault();
+            }
+        });
+    
+        // Add confirmation for return/issue actions
+        $('a[href*="asset-return"], a[href*="asset-issue"]').click(function(e) {
+            if (!confirm('Are you sure you want to perform this action?')) {
+                e.preventDefault();
+            }
+        });
     });
-
-    // Add confirmation for return/issue actions
-    $('a[href*="asset-return"], a[href*="asset-issue"]').click(function(e) {
-        if (!confirm('Are you sure you want to perform this action?')) {
-            e.preventDefault();
-        }
-    });
-});
 </script>
 {% endblock %}

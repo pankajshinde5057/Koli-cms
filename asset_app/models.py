@@ -96,10 +96,27 @@ class AssetsIssuance(models.Model):
     asset_assignee = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.asset.asset_name} issued to {self.asset_assignee}"
+        status = "Active" if self.is_active else "Returned"
+        return f"{self.asset.asset_name} ({status}) issued to {self.asset_assignee}"
 
     def get_absolute_url(self):
         return reverse('assets-detail', kwargs={'pk': self.pk})
+
+class AssetAssignmentHistory(models.Model):
+    asset = models.ForeignKey(Assets, on_delete=models.CASCADE)
+    assignee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    manager = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='managed_assignments')
+    date_assigned = models.DateTimeField()
+    date_returned = models.DateTimeField()
+    location = models.CharField(max_length=100, choices=LOCATION_CHOICES)
+    notes = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-date_returned']
+        verbose_name_plural = 'Assignment Histories'
+
+    def __str__(self):
+        return f"{self.asset} assignment history"
 
 
 class Notify_Manager(models.Model):

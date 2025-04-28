@@ -7,8 +7,9 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from .forms import *
 from .models import *
-from asset_app.models import Notify_Manager,AssetsIssuance,Assets
+from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory
 from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_GET, require_POST
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -343,7 +344,7 @@ def manager_apply_leave(request):
         'form': form,
         'leave_history': LeaveReportManager.objects.filter(manager=manager),
         'page_title': 'Apply for Leave'
-    }
+    }   
     if request.method == 'POST':
         if form.is_valid():
             try:
@@ -359,20 +360,198 @@ def manager_apply_leave(request):
             messages.error(request, "Form has errors!")
     return render(request, "manager_template/manager_apply_leave.html", context)
 
+from django.db.models import Count,Q
+
 def manage_employee_by_manager(request):
 
+    # manager instanccce
     manager = get_object_or_404(Manager, admin=request.user)
+    search_ = request.GET.get("search",'').strip()
+    print(search_)
 
-    employees = Employee.objects.filter(team_lead=manager)
-    
-    if not employees:
-        messages.warning(request, "No employees found for your team.")
-    
+    # get employees with asset count
+    employees = Employee.objects.filter(team_lead=manager).annotate(
+        asset_count = Count('admin__assetsissuance'),
+    ).select_related('admin', 'department', 'division','team_lead')
+
+    location_choices = dict(LOCATION_CHOICES)
+   
     context = {
         'employees': employees,
-        'page_title': 'Manage Employees'
+        'page_title': 'Manage Employees',
+        'location_choices': location_choices,
     }
+
+    if not employees:
+            messages.warning(request, "No employees found for your team.")
+
     return render(request, 'manager_template/manage_employee_by_manager.html', context)
+
+@require_GET
+def get_available_assets(request):
+    try:
+        available_assets = Assets.objects.filter(
+            is_asset_issued=False,
+        ).select_related('asset_category')
+
+        assets_data = [{
+            'id': asset.id,
+            'asset_name': asset.asset_name,
+            'asset_serial_number': asset.asset_serial_number,
+            'asset_category': asset.asset_category.category,
+            'asset_brand': asset.asset_brand,
+            'status': "Available"
+        } for asset in available_assets]
+
+        
+        bundle_categories = ['Laptop', 'Keyboard', 'Mouse', 'Cooling Pad', 'Monitor']
+        bundle_assets = []
+
+        for category in bundle_categories:
+            asset = Assets.objects.filter(
+                is_asset_issued=False,
+                asset_category__category=category.lower()
+            ).select_related('asset_category').first()
+            if asset:
+                bundle_assets.append({
+                    'id': asset.id,
+                    'asset_name': asset.asset_name,
+                    'asset_serial_number': asset.asset_serial_number,
+                    'asset_category': asset.asset_category.category,
+                    'asset_brand': asset.asset_brand,
+                    'status': "Available"
+                })
+        print(bundle_assets)
+        
+        return JsonResponse({'assets': assets_data,'bundle_assets': bundle_assets, 'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@require_GET
+def get_assigned_assets(request):
+    employee_id = request.GET.get('employee_id')
+    try:
+        employee = Employee.objects.get(admin_id=employee_id)
+        assigned_assets = AssetsIssuance.objects.filter(
+            asset_assignee=employee.admin,
+        ).select_related('asset')
+
+
+        assets_data = [{
+            'id': issuance.asset.id,
+            'asset_name': issuance.asset.asset_name,
+            'asset_serial_number': issuance.asset.asset_serial_number,
+            'issuance_id': issuance.id,
+            'location': issuance.asset_location,
+            'date_issued': issuance.date_issued.strftime('%Y-%m-%d')
+        } for issuance in assigned_assets]
+        
+        return JsonResponse({'assets': assets_data, 'success': True})
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def assign_assets(request):
+    try:
+        data = json.loads(request.body)
+        employee_id = data.get('employee_id')
+        asset_ids = data.get('asset_ids', [])
+        location = data.get('location')
+
+        if not employee_id:
+            return JsonResponse({'success': False, 'error': 'Employee ID is required'})
+        
+        if not asset_ids:
+            return JsonResponse({'success': False, 'error': 'Asset IDs are required'})
+
+        employee = Employee.objects.get(admin_id=employee_id)
+
+        assets = Assets.objects.filter(
+            id__in=asset_ids, 
+            is_asset_issued=False,
+            manager=request.user 
+        )
+
+        if not assets.exists():
+            return JsonResponse({'success': False, 'error': 'No available assets found to assign'})
+
+        created_issuances = []
+        for asset in assets:
+            issuance = AssetsIssuance.objects.create(
+                asset=asset,
+                asset_location=location,
+                asset_assignee=employee.admin,
+            )
+            asset.is_asset_issued = True
+            asset.save()
+
+            created_issuances.append({
+                'issuance_id': issuance.id,
+                'asset_id': asset.id,
+                'asset_name': asset.asset_name,
+                'serial_number': asset.asset_serial_number
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully assigned {len(created_issuances)} asset(s)',
+            'issuances': created_issuances
+        })
+        
+    except Employee.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Employee not found'})
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def remove_asset_assignment(request):
+    try:
+        data = json.loads(request.body)
+        issuance_id = data.get('issuance_id')
+        asset_id = data.get('asset_id')
+
+        # Verify the asset belongs to this manager before removal
+        asset = Assets.objects.get(
+            id=asset_id,
+            manager=request.user
+        )
+        
+        issuance = AssetsIssuance.objects.select_for_update().get(
+            id=issuance_id,
+            asset=asset
+        )
+
+        asset.return_date = timezone.now()        
+        asset.is_asset_issued = False
+        asset.save()
+
+        AssetAssignmentHistory.objects.create(
+            asset = asset,
+            assignee = issuance.asset_assignee,
+            date_assigned = issuance.date_issued,
+            date_returned = timezone.now(),
+            location = issuance.asset_location,
+            manager = request.user
+        )
+
+        issuance.delete()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Asset assignment removed successfully',
+            'return_date': asset.return_date.strftime('%Y-%m-%d %H:%M:%S'),
+            'asset_status': asset.status 
+        })
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 
 
