@@ -299,6 +299,10 @@ def break_action(request):
 @csrf_exempt
 def get_attendance(request):
     department_id = request.POST.get("department")
+
+    if not department_id:
+        return JsonResponse({'error': 'Department ID not provided'}, status=400)
+
     try:
         department = get_object_or_404(Department, id=department_id)
  
