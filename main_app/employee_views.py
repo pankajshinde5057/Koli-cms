@@ -261,16 +261,45 @@ def employee_home(request):
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
+
+    LATE_LOGIN_TIME = timezone.datetime.strptime('09:30:00', '%H:%M:%S').time()
+    HALF_DAY_TIME = timezone.datetime.strptime('13:00:00', '%H:%M:%S').time()
     today_records = AttendanceRecord.objects.filter(
         user=request.user,
         date=today
     ).order_by('clock_in')
-    
+
     today_total_worked = timedelta()
-    
+    today_status = None
+    today_late = False
+    today_half_day = False
+
     if today_records.exists():
+        today_record = today_records.first()  # Get the main record for today
+        
+        # Automatically set status based on clock-in time
+        if today_record.clock_in.time() >= HALF_DAY_TIME:
+            today_record.status = 'half_day'
+            today_record.save()
+            today_half_day = True
+        elif today_record.clock_in.time() >= LATE_LOGIN_TIME:
+            today_record.status = 'late'
+            today_record.save()
+            today_late = True
+        else:
+            today_record.status = 'present'
+            today_record.save()
+        
+        today_status = today_record.status
+        
+        # Calculate late minutes if late
+        if today_late:
+            late_time = datetime.combine(today, today_record.clock_in.time()) - datetime.combine(today, LATE_LOGIN_TIME)
+            today_record.late_minutes = late_time.seconds // 60
+            today_record.save()
+        
         # Get first clock-in of the day
-        first_clock_in = today_records.first().clock_in
+        first_clock_in = today_record.clock_in
         
         # Get last clock-out of the day (if exists)
         last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
@@ -283,15 +312,31 @@ def employee_home(request):
             # Subtract total break time
             total_break_time = sum(
                 (brk.duration for record in today_records 
-                 for brk in record.breaks.all() if brk.duration),
+                for brk in record.breaks.all() if brk.duration),
                 timedelta()
             )
             today_total_worked -= total_break_time
+
+    today_status = None
+    today_late = False
+    today_half_day = False
+
+    if today_records.exists():
+        today_record = today_records.first()  # Get the main record for today
+        today_status = today_record.status
+        
+        if today_status == 'late':
+            today_late = True
+        elif today_status == 'half_day':
+            today_half_day = True
 
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
         'today_total_worked': today_total_worked,
+        'today_status': today_status,
+        'today_late': today_late,
+        'today_half_day': today_half_day,
         'current_record': current_record,
         'current_break': current_break,
         'recent_activities': recent_activities,
@@ -415,13 +460,11 @@ def employee_view_attendance(request):
             if start_date > end_date:
                 return JsonResponse({'error': 'Start date cannot be after end date'}, status=400)
             
-            # Get all records in date range
             all_records = AttendanceRecord.objects.filter(
                 user=request.user,
                 date__range=(start_date, end_date)
             ).order_by('date', 'clock_in')
-            
-            # Group records by date and process each day
+        
             daily_summaries = {}
             for record in all_records:
                 date_str = record.date.strftime('%Y-%m-%d')
@@ -464,9 +507,8 @@ def employee_view_attendance(request):
                     "clock_in": day['first_clock_in'].strftime('%H:%M:%S') if day['first_clock_in'] else '--',
                     "clock_out": day['last_clock_out'].strftime('%H:%M:%S') if day['last_clock_out'] else '--',
                     "total_worked": str(net_worked),
-                    "records_count": day['records_count']  # For debugging
+                    "records_count": day['records_count']
                 })
-            
             return JsonResponse({'data': json_data}, safe=False)
             
         except ValueError as e:
