@@ -59,13 +59,16 @@
                         </div>
                     </div>
                     <div class="input-group mb-3">
-                        <input required type="password" name='password' class="form-control" placeholder="Password">
+                        <input required type="password" id="password" name="password" class="form-control" placeholder="Password">
                         <div class="input-group-append">
-                            <div class="input-group-text">
-                                <span class="fas fa-lock"></span>
+                            <div class="input-group-text" style="cursor: pointer;" id="togglePassword">
+                                <span class="fas fa-lock" id="lockIcon"></span>
+                                <span class="fas fa-eye d-none" id="eyeIcon"></span>
                             </div>
                         </div>
                     </div>
+                    
+                    
                     <div class="input-group mb-3">
                         <div class="g-recaptcha" data-sitekey="{{SITE_KEY}}"></div>
                     </div>
@@ -106,6 +109,23 @@
     <!-- AdminLTE App -->
     <script src="{% static 'dist/js/adminlte.min.js' %}"></script>
 
+    <script>
+        const togglePassword = document.getElementById("togglePassword");
+        const passwordInput = document.getElementById("password");
+        const eyeIcon = document.getElementById("eyeIcon");
+        const lockIcon = document.getElementById("lockIcon");
+    
+        togglePassword.addEventListener("click", function () {
+            const isHidden = passwordInput.type === "password";
+    
+            passwordInput.type = isHidden ? "text" : "password";
+    
+            // Toggle visibility between lock and eye
+            lockIcon.classList.toggle("d-none", isHidden);
+            eyeIcon.classList.toggle("d-none", !isHidden);
+        });
+    </script>
+    
 </body>
 
 </html>
