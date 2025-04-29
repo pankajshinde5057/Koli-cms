@@ -86,8 +86,7 @@ class Manager(models.Model):
 
 
 class Employee(models.Model):
-    user = models.OneToOneField('CustomUser', on_delete=models.CASCADE,null=True, blank=False)
-    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='admin_employee')
+    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
     employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
@@ -173,43 +172,40 @@ class EmployeeSalary(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('late', 'Late'),
     ]
     
-    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE)
-    employee = models.ForeignKey('Employee', on_delete=models.CASCADE, null=True, blank=True)
-    department = models.ForeignKey('Department', on_delete=models.SET_NULL, null=True, blank=True)
-    
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
     date = models.DateField(auto_now_add=True)
-    clock_in = models.DateTimeField(null=True)
+    clock_in = models.DateTimeField()
     clock_out = models.DateTimeField(null=True, blank=True)
-    
-    # Status and Notes
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present')
+    department = models.ForeignKey('Department', on_delete=models.SET_NULL, null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     location = models.CharField(max_length=255, null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
     
-    # Time Calculations
+    # Time calculations
     total_worked = models.DurationField(null=True, blank=True)
     regular_hours = models.DurationField(null=True, blank=True)
     overtime_hours = models.DurationField(null=True, blank=True)
     
-    # Flags and Verification
+    # Flags
     is_primary_record = models.BooleanField(default=False)
     requires_verification = models.BooleanField(default=False)
+    
+    # Verification
     is_verified = models.BooleanField(default=False)
     verified_by = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_attendances')
     verification_time = models.DateTimeField(null=True, blank=True)
     
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Unique Constraint and Indexes
     class Meta:
         ordering = ['-date', 'user__email']
         indexes = [
@@ -223,6 +219,7 @@ class AttendanceRecord(models.Model):
         if self.clock_out and self.clock_in and self.clock_out < self.clock_in:
             raise ValidationError("Clock out time cannot be before clock in time.")
         
+        # Ensure clock-in is on the same date
         if self.clock_in.date() != self.date:
             raise ValidationError("Clock in time must be on the same date as the attendance record.")
         
@@ -256,12 +253,8 @@ class AttendanceRecord(models.Model):
             self.is_primary_record = not existing_records
         
         super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.user} - {self.date} ({self.status}) {self.clock_in.time()} to {self.clock_out.time() if self.clock_out else ''}"
-
-
-
 
 class Break(models.Model):
     BREAK_TYPE_CHOICES = [
