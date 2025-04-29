@@ -7,16 +7,38 @@
 {% block content %}
 <section class="content">
 	<div class="alert alert-info alert-dismissible">
-        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-        <h5><i class="icon fas fa-info"></i> Today's Work Summary</h5>
-        <p>
-            Total Worked Hours Today: 
-            <strong>{{ today_total_worked|duration_to_hours_minutes }}</strong>
-            {% if current_record and not current_record.clock_out %}
-                <span class="badge bg-warning ml-2">Currently Clocked In</span>
-            {% endif %}
-        </p>
-    </div>
+		<button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+		<h5><i class="icon fas fa-info"></i> Today's Work Summary</h5>
+		<p>
+			<strong>Status:</strong>
+			{% if today_status %}
+				{% if today_late %}
+					<span class="badge bg-warning">Late</span>
+				{% elif today_half_day %}
+					<span class="badge bg-secondary">Half Day</span>
+				{% else %}
+					<span class="badge bg-success">Present</span>
+				{% endif %}
+			{% else %}
+				<span class="badge bg-danger">Not Checked In</span>
+			{% endif %}
+			
+			<strong class="ml-3">Total Hours:</strong> 
+			{{ today_total_worked|duration_to_hours_minutes }}
+			
+			{% if current_record and not current_record.clock_out %}
+				<span class="badge bg-warning ml-2">Currently Clocked In</span>
+			{% endif %}
+		</p>
+		<p class="mb-0">
+			{% if today_late %}
+				<i class="fas fa-clock text-warning"></i> Late by {{ today_record.late_minutes }} minutes
+			{% endif %}
+			{% if today_half_day %}
+				<i class="fas fa-user-clock text-secondary"></i> Half day - {{ today_record.half_day_hours }} hours worked
+			{% endif %}
+		</p>
+	</div>
 	<div class="container-fluid">
 		<div class="row">
 			<!-- Present Days -->
@@ -165,7 +187,7 @@
 				<div class="card-body">
 					<div class="tab-content" id="timesheetTabsContent">
 						<div class="tab-pane fade show active" id="daily" role="tabpanel">
-							<div class="table-responsive">
+							<div class="table-responsive" id="timeHistoryTable">
 								<table class="table table-striped">
 									<thead>
 										<tr>
@@ -220,16 +242,15 @@
 									</tbody>
 								</table>
 								<div class="d-flex justify-content-between align-items-center mt-3">
-									<div>
+									<div id="entriesInfo">
 										Showing {{ detailed_time_entries.start_index }} to {{ detailed_time_entries.end_index }} of {{ detailed_time_entries.paginator.count }} entries
 									</div>
 									<nav>
-										<ul class="pagination mb-0">
+										<ul class="pagination mb-0" id="paginationContainer">
 											{% if detailed_time_entries.has_previous %}
 												<li class="page-item">
-													<a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" aria-label="Previous">
-														<span aria-hidden="true">&laquo;</span>
-													</a>
+													<a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" 
+													onclick="loadPage(event, {{ detailed_time_entries.previous_page_number }})">&laquo;</a>
 												</li>
 											{% else %}
 												<li class="page-item disabled">
@@ -242,16 +263,16 @@
 													<li class="page-item active"><span class="page-link">{{ num }}</span></li>
 												{% elif num > detailed_time_entries.number|add:'-3' and num < detailed_time_entries.number|add:'3' %}
 													<li class="page-item">
-														<a class="page-link" href="?page={{ num }}">{{ num }}</a>
+														<a class="page-link" href="?page={{ num }}" 
+														onclick="loadPage(event, {{ num }})">{{ num }}</a>
 													</li>
 												{% endif %}
 											{% endfor %}
 
 											{% if detailed_time_entries.has_next %}
 												<li class="page-item">
-													<a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" aria-label="Next">
-														<span aria-hidden="true">&raquo;</span>
-													</a>
+													<a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" 
+													onclick="loadPage(event, {{ detailed_time_entries.next_page_number }})">&raquo;</a>
 												</li>
 											{% else %}
 												<li class="page-item disabled">
@@ -261,7 +282,6 @@
 										</ul>
 									</nav>
 								</div>
-
 							</div>
 						</div>
 
@@ -315,7 +335,6 @@
 {% endblock content %}
 
 {% block custom_js %}
-
 <!-- Auto-submit form when both dates are selected -->
 <script>
 	function submitIfBothDatesSelected() {
@@ -326,6 +345,51 @@
 			form.submit();
 		}
 	}
+
+	// AJAX pagination function
+	function loadPage(event, pageNumber) {
+		event.preventDefault();
+		
+		// Get current query parameters
+		const urlParams = new URLSearchParams(window.location.search);
+		urlParams.set('page', pageNumber);
+		
+		// Show loading indicator
+		const tableContainer = document.getElementById('timeHistoryTable');
+		tableContainer.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+		
+		// Make AJAX request
+		fetch(window.location.pathname + '?' + urlParams.toString(), {
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest',
+			}
+		})
+		.then(response => response.text())
+		.then(html => {
+			// Parse the response
+			const parser = new DOMParser();
+			const doc = parser.parseFromString(html, 'text/html');
+			
+			// Update the table content
+			const newTable = doc.getElementById('timeHistoryTable');
+			if (newTable) {
+				document.getElementById('timeHistoryTable').innerHTML = newTable.innerHTML;
+			}
+			
+			// Update URL without reloading
+			window.history.pushState({}, '', window.location.pathname + '?' + urlParams.toString());
+		})
+		.catch(error => {
+			console.error('Error loading page:', error);
+			// Fallback to normal page load if AJAX fails
+			window.location.href = event.target.href;
+		});
+	}
+
+	// Handle back/forward navigation
+	window.addEventListener('popstate', function() {
+		window.location.reload();
+	});
 </script>
 
 <!-- Firebase Integration -->

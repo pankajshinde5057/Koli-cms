@@ -262,16 +262,45 @@ def employee_home(request):
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
+
+    LATE_LOGIN_TIME = timezone.datetime.strptime('09:30:00', '%H:%M:%S').time()
+    HALF_DAY_TIME = timezone.datetime.strptime('13:00:00', '%H:%M:%S').time()
     today_records = AttendanceRecord.objects.filter(
         user=request.user,
         date=today
     ).order_by('clock_in')
-    
+
     today_total_worked = timedelta()
-    
+    today_status = None
+    today_late = False
+    today_half_day = False
+
     if today_records.exists():
+        today_record = today_records.first()  # Get the main record for today
+        
+        # Automatically set status based on clock-in time
+        if today_record.clock_in.time() >= HALF_DAY_TIME:
+            today_record.status = 'half_day'
+            today_record.save()
+            today_half_day = True
+        elif today_record.clock_in.time() >= LATE_LOGIN_TIME:
+            today_record.status = 'late'
+            today_record.save()
+            today_late = True
+        else:
+            today_record.status = 'present'
+            today_record.save()
+        
+        today_status = today_record.status
+        
+        # Calculate late minutes if late
+        if today_late:
+            late_time = datetime.combine(today, today_record.clock_in.time()) - datetime.combine(today, LATE_LOGIN_TIME)
+            today_record.late_minutes = late_time.seconds // 60
+            today_record.save()
+        
         # Get first clock-in of the day
-        first_clock_in = today_records.first().clock_in
+        first_clock_in = today_record.clock_in
         
         # Get last clock-out of the day (if exists)
         last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
@@ -284,15 +313,31 @@ def employee_home(request):
             # Subtract total break time
             total_break_time = sum(
                 (brk.duration for record in today_records 
-                 for brk in record.breaks.all() if brk.duration),
+                for brk in record.breaks.all() if brk.duration),
                 timedelta()
             )
             today_total_worked -= total_break_time
+
+    today_status = None
+    today_late = False
+    today_half_day = False
+
+    if today_records.exists():
+        today_record = today_records.first()  # Get the main record for today
+        today_status = today_record.status
+        
+        if today_status == 'late':
+            today_late = True
+        elif today_status == 'half_day':
+            today_half_day = True
 
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
         'today_total_worked': today_total_worked,
+        'today_status': today_status,
+        'today_late': today_late,
+        'today_half_day': today_half_day,
         'current_record': current_record,
         'current_break': current_break,
         'recent_activities': recent_activities,
@@ -391,38 +436,87 @@ def employee_fcmtoken(request):
         return HttpResponse("False")
 
 
-@ csrf_exempt
+@csrf_exempt
 def employee_view_attendance(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    if request.method != 'POST':
+    
+    if request.method == 'GET':
         division = get_object_or_404(Division, id=employee.division.id)
         context = {
             'departments': Department.objects.filter(division=division),
-            'page_title': 'View Attendance'
+            'page_title': 'View Attendance',
+            'default_start': (timezone.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
+            'default_end': timezone.now().strftime('%Y-%m-%d')
         }
         return render(request, 'employee_template/employee_view_attendance.html', context)
-    else:
-        department_id = request.POST.get('department')
-        start = request.POST.get('start_date')
-        end = request.POST.get('end_date')
+    
+    elif request.method == 'POST':
         try:
-            department = get_object_or_404(Department, id=department_id)
-            start_date = datetime.strptime(start, "%Y-%m-%d")
-            end_date = datetime.strptime(end, "%Y-%m-%d")
-            attendance = AttendanceRecord.objects.filter(
-                date__range=(start_date, end_date), department=department)
-            attendance_reports = ActivityFeed.objects.filter(
-                related_record__in=attendance, user=employee)
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            
+            if not all([start_date, end_date]):
+                return JsonResponse({'error': 'Missing required parameters'}, status=400)
+            
+            if start_date > end_date:
+                return JsonResponse({'error': 'Start date cannot be after end date'}, status=400)
+            
+            all_records = AttendanceRecord.objects.filter(
+                user=request.user,
+                date__range=(start_date, end_date)
+            ).order_by('date', 'clock_in')
+        
+            daily_summaries = {}
+            for record in all_records:
+                date_str = record.date.strftime('%Y-%m-%d')
+                
+                if date_str not in daily_summaries:
+                    daily_summaries[date_str] = {
+                        'date': date_str,
+                        'first_clock_in': record.clock_in,
+                        'last_clock_out': record.clock_out,
+                        'status': record.status,
+                        'total_worked': record.total_worked or timedelta(),
+                        'records_count': 1
+                    }
+                else:
+                    day = daily_summaries[date_str]
+                    # Update first clock-in if earlier
+                    if record.clock_in and (day['first_clock_in'] is None or record.clock_in < day['first_clock_in']):
+                        day['first_clock_in'] = record.clock_in
+                    # Update last clock-out if later
+                    if record.clock_out and (day['last_clock_out'] is None or record.clock_out > day['last_clock_out']):
+                        day['last_clock_out'] = record.clock_out
+                    # Update status (prioritize 'late' over 'present')
+                    if record.status == 'late':
+                        day['status'] = 'late'
+                    # Sum total worked time
+                    if record.total_worked:
+                        day['total_worked'] += record.total_worked
+                    day['records_count'] += 1
+            
+            # Convert to list and format for response
             json_data = []
-            for report in attendance_reports:
-                data = {
-                    "date":  str(report.related_record.date),
-                    "status": report.activity_type
-                }
-                json_data.append(data)
-            return JsonResponse(json.dumps(json_data), safe=False)
+            for date_str, day in sorted(daily_summaries.items(), reverse=True):
+                # Calculate net worked time (subtract breaks if needed)
+                # Note: You might need to add break time calculation logic here
+                net_worked = day['total_worked']
+                
+                json_data.append({
+                    "date": date_str,
+                    "status": day['status'],
+                    "clock_in": day['first_clock_in'].strftime('%H:%M:%S') if day['first_clock_in'] else '--',
+                    "clock_out": day['last_clock_out'].strftime('%H:%M:%S') if day['last_clock_out'] else '--',
+                    "total_worked": str(net_worked),
+                    "records_count": day['records_count']
+                })
+            return JsonResponse({'data': json_data}, safe=False)
+            
+        except ValueError as e:
+            return JsonResponse({'error': f'Invalid date format: {str(e)}'}, status=400)
         except Exception as e:
-            return None
+            return JsonResponse({'error': str(e)}, status=500)
+        
 
 def employee_view_salary(request):
     employee = get_object_or_404(Employee, admin=request.user)

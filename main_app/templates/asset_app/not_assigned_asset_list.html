@@ -36,7 +36,6 @@
                                             <td>{{ asset.asset_name }}</td>
                                             <td>{{ asset.asset_serial_number }}</td>
                                             <td>{{ asset.asset_brand }}</td>
-                                            {{asset.is_asset_issued}}
                                             {% if request.user.user_type == '3' %}
                                                 <td>
                                                     {% if asset.id in pending_requests %}

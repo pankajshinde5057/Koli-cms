@@ -40,16 +40,7 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    {% url 'admin_view_profile' as admin_view_profile %}
-                    <a href="{{admin_view_profile}}" class="nav-link {% if admin_view_profile == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            View/Edit Profile
-
-                        </p>
-                    </a>
-                </li>
+               
                 <li class="nav-item">
                     {% url 'add_manager' as add_manager %}
                     <a href="{{add_manager}}" class="nav-link {% if add_manager == request.path %} active {% endif %}">
@@ -264,7 +255,7 @@
 {% elif request.user.user_type == '2' %}
     <!-- Brand Logo -->
     <a href="#" class="brand-link">
-        <img src="{% static 'dist/img/koli-logo.svg' %}" style="heigh:50px; width:50px" alt="AdminLTE Logo"
+        <img src="{% static 'dist/img/koli-logo.svg' %}" style="height:50px; width:50px" alt="AdminLTE Logo"
             class="brand-image img-circle elevation-3" style="opacity: .8">
         <span class="brand-text font-weight-light">Manager Panel</span>
     </a>

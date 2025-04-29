@@ -30,7 +30,7 @@
                                 {% for manager in allManager %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{manager.last_name}}, {{manager.first_name}}</td>
+                                    <td>{{manager.last_name}} {{manager.first_name}}</td>
                                     <td>{{manager.email}}</td>
                                     <td>{{manager.gender}}</td>
                                     <td>{{manager.manager.division.name}}</td>
