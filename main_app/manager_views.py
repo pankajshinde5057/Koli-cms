@@ -11,6 +11,7 @@ from .models import *
 from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_POST
+from asset_app.models import AssetIssue
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -861,10 +862,12 @@ def manager_fcmtoken(request):
 def manager_view_notification(request):
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
-    
+    asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
+   
     context = {
         'pending_leave_requests': pending_leave_requests,
         'asset_notifications': asset_notifications,
+        'asset_issue_notifications': asset_issue_notifications,
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES
     }
@@ -972,6 +975,15 @@ def manager_add_salary(request):
             messages.warning(request, "Error Occured While Processing Form")
     return render(request, "manager_template/manager_add_salary.html", context)
 
+
+def resolve_asset_issue(request,pk):
+    if request.methods == "POST":
+        issue_asset = get_object_or_404(AssetIssue,pk=pk)
+        issue_asset.is_resolved = True
+        issue_asset.save()
+        messages.success(request,"Asset Issue Resolved!!")
+    
+    return redirect('manager_view_notification')
 
 
 @csrf_exempt
