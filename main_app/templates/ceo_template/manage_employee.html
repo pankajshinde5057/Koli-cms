@@ -31,7 +31,7 @@
                                 {% for employee in employees %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{employee.last_name}}, {{employee.first_name}}</td>
+                                    <td>{{employee.last_name}} {{employee.first_name}}</td>
                                     <td>{{employee.email}}</td>
                                     <td>{{employee.gender}}</td>
                                     <td>{{employee.employee.division.name}}</td>

@@ -154,6 +154,7 @@ def add_department(request):
 
 
 def manage_manager(request):
+    
     allManager = CustomUser.objects.filter(user_type=2)
     context = {
         'allManager': allManager,
@@ -355,7 +356,7 @@ def check_email_availability(request):
 @csrf_exempt
 def employee_feedback_message(request):
     if request.method != 'POST':
-        feedbacks = FeedbackEmployee.objects.all()
+        feedbacks = FeedbackEmployee.objects.all().order_by('-id')
         context = {
             'feedbacks': feedbacks,
             'page_title': 'Employee Feedback Messages'
@@ -376,7 +377,7 @@ def employee_feedback_message(request):
 @csrf_exempt
 def manager_feedback_message(request):
     if request.method != 'POST':
-        feedbacks = FeedbackManager.objects.all()
+        feedbacks = FeedbackManager.objects.all().order_by('-id')
         context = {
             'feedbacks': feedbacks,
             'page_title': 'Manager Feedback Messages'
@@ -397,7 +398,7 @@ def manager_feedback_message(request):
 @csrf_exempt
 def view_manager_leave(request):
     if request.method != 'POST':
-        allLeave = LeaveReportManager.objects.all()
+        allLeave = LeaveReportManager.objects.all().order_by('-date')
         context = {
             'allLeave': allLeave,
             'page_title': 'Leave Applications From Manager'
@@ -558,7 +559,9 @@ def send_employee_notification(request):
 def send_manager_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
+    print("******************",id)
     manager = get_object_or_404(Manager, admin_id=id)
+    print("******************",manager)
     try:
         url = "https://fcm.googleapis.com/fcm/send"
         body = {
