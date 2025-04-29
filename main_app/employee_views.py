@@ -209,6 +209,7 @@ def employee_home(request):
     # Calculate working days in month (excluding weekends and holidays)
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
+    print("days_in_month",days_in_month)
     for day in range(1, days_in_month + 1):
         date = timezone.datetime(current_year, current_month, day).date()
         weekday = date.weekday()

@@ -1,3 +1,4 @@
+from calendar import calendar
 import json
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
@@ -138,10 +139,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from .models import Manager, Department, Employee, AttendanceRecord, CustomUser
 import json
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 def manager_take_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
+    print("manager",manager)
     departments = Department.objects.filter(division=manager.division)
     context = {
         'departments': departments,
@@ -172,48 +174,143 @@ def get_employees(request):
 def save_attendance(request):
     employee_data = request.POST.get('employee_ids')
     date_str = request.POST.get('date')
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
     department_id = request.POST.get('department')
+    half_full_day = request.POST.get('half_full_day')
+    today = date_obj.today()
+    current_month = today.month
+    current_year = today.year
+    
+    start_date = today.replace(day=1)
 
+    # Add a month, then subtract days until we get back to the last day of the current month
+    if today.month == 12:
+        next_month = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        next_month = today.replace(month=today.month + 1, day=1)
+
+    end_date = next_month - timedelta(days=1)
+    manager_id = request.user.id
     # Log incoming data for debugging
+    print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$", )
+    print("start_date", start_date)
+    print("end_date", end_date)
     print("Employee Data:", employee_data)
+    print("half_full_day:", half_full_day)
     print("Date:", date_str)
     print("Department ID:", department_id)
 
     try:
         employees = json.loads(employee_data)
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        
         department = get_object_or_404(Department, id=department_id)
 
         for emp in employees:
-            employee = get_object_or_404(Employee, id=emp.get('id'))
+            if half_full_day:
+                employee = Employee.objects.filter(id = int(emp)).first()
+            else:
+                employee = get_object_or_404(Employee, id=emp.get('id'))
+            print("employee.admin",employee)
             user = employee.admin  # CustomUser linked
-            status = 'present' if emp.get('status') == 1 else 'late'
+            # if half_full_day:
+            status = 'present'
+            # else:
+            #     status = 'present' if emp.get('status') == 1 else 'late'
 
             # Only create if not already exists
-            attendance_record, created = AttendanceRecord.objects.get_or_create(
-                user=user,
-                date=date_obj,
-                defaults={
-                    'clock_in': timezone.make_aware(datetime.combine(date_obj, datetime.min.time())),  # Make the datetime aware
-                    'status': status,
-                    'department': department,
-                    'is_primary_record': True,
-                }
-            )
-            if not created:
-                # Update status if already exists
-                attendance_record.status = status
-                attendance_record.save()
+            # created = False
+            # try:
+            #     attendance_record, created = AttendanceRecord.objects.get_or_create(
+            #         user=user,
+            #         date=date_obj,
+            #         defaults={
+            #             'clock_in': timezone.make_aware(datetime.combine(date_obj, datetime.min.time())),  # Make the datetime aware
+            #             'status': status,
+            #             'department': department,
+            #             'is_primary_record': True,
+            #         }
+            #     )
+            # except:
+            #     pass
+            # print("createdcreated",created)
+            # if not created:
+            #     # Update status if already exists
+            #     attendance_record.status = status
+            #     attendance_record.save()
 
             # Update the present day count in employee's dashboard
-            if status == 'present':
-                employee.present_days += 1
-            employee.save()
+            # exist_data = AttendanceRecord.objects.filter( date__range=(start_date, end_date), department=department,user = employee.admin)
+            # print("exist_data>>>>>>>>>>>>>>>>>>>>>>>>>>",exist_data)
+            # LeaveReportEmployee.objects.filter(
+            #     employee=employee,
+            #     status=1,  # Approved leaves
+            #     start_date__month=current_month,
+            #     start_date__year=current_year
+            # )
+            # if exist_data:
+            #     present_dates = exist_data.filter(
+            #         status='present'
+            #     ).values_list('date', flat=True).distinct().count()
+
+            #     late_dates = exist_data.filter(
+            #         status='late'
+            #     ).values_list('date', flat=True).distinct().count()
+            #     print("late_dates",late_dates)
+            #     print("present_dates",present_dates)
+            # if status == 'present':
+            #     employee.present_days += 1
+            # employee.save()
+            
+            if half_full_day == "full":
+                total_work = 8*60*60
+                clock_in = datetime.combine(date_obj, time(9, 0, 0)) 
+                clock_out = datetime.combine(date_obj, time(18, 0, 0)) 
+            if half_full_day == "half":
+                total_work = 4*60*60
+                clock_in = datetime.combine(date_obj, time(9, 0, 0)) 
+                clock_out = datetime.combine(date_obj, time(13, 0, 0)) 
+            is_primary_record = 1
+            required_verfication = 0
+            user_id = int(emp)
+            verified_by_id = user
+            attendance = AttendanceRecord.objects.create(
+                date=date_obj,
+                clock_in=clock_in,
+                clock_out=clock_out,  # or provide clock_out datetime
+                status='Present',
+                total_worked=total_work,  # e.g., 8 hours in seconds
+                regular_hours=0,
+                overtime_hours=0,
+                is_primary_record=True,
+                requires_verification=False,
+                is_verified=True,
+                verification_time=None,
+                created_at=timezone.now(),
+                updated_at=timezone.now(),
+                user_id=user_id,
+                verified_by_id=manager_id,
+                department_id=department_id
+            )
+            attendance.save()
+
+    
 
         return HttpResponse("OK")
     except Exception as e:
+        import traceback
         # Log the exception for debugging
         print("Error:", str(e))
+        exc_type, exc_value, exc_tb = traceback.format_exc().splitlines()[-1], e, e.__traceback__
+    
+        # Print the error message
+        print(f"Error: {exc_value}")
+        
+        # Print the line number and traceback details
+        print("Traceback details:")
+        print(f"File: {exc_tb.tb_frame.f_code.co_filename}, Line: {exc_tb.tb_lineno}")
+        
+        # Print the complete traceback for debugging
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=400)
 
 
