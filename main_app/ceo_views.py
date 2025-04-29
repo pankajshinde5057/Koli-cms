@@ -154,6 +154,7 @@ def add_department(request):
 
 
 def manage_manager(request):
+    
     allManager = CustomUser.objects.filter(user_type=2)
     context = {
         'allManager': allManager,
