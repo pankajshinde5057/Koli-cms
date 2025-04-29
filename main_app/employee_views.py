@@ -15,7 +15,7 @@ from .models import *
 from django.db.models import Sum, F, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
-from asset_app.models import Notify_Manager
+from asset_app.models import Notify_Manager,AssetIssue
 
 
 def employee_home(request):
@@ -497,14 +497,18 @@ def employee_view_notification(request):
 
 
 def employee_requests(request):
-    employee = Employee.objects.get(admin=request.user)
+    try:
+        employee = Employee.objects.get(admin=request.user)
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee not found.")
     
     leave_requests = LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at')
     asset_claims = Notify_Manager.objects.filter(employee=request.user).order_by('-timestamp')
-
+    asset_issues = AssetIssue.objects.filter(reported_by=request.user).order_by("reported_date")
     context = {
         'leave_requests': leave_requests,
         'asset_claims': asset_claims,
+        'asset_issues': asset_issues,
         'page_title': 'My Requests'
     }
 

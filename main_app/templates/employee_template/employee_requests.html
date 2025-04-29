@@ -100,6 +100,62 @@
             </div>
         </div>
     </div>
+
+    <!-- Asset Issues Card -->
+    <div class="card card-primary mt-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0"><i class="fas fa-laptop mr-2"></i>Asset Issues</h3>
+            <small class="float-right">Technical Review</small>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Asset</th>
+                            <th>Issue Type</th>
+                            <th>Status</th>
+                            <th>Reported Date</th>
+                            <th>Resolved Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in asset_issues %}
+                            <tr>
+                                <td>{{ issue.asset.asset_name }}</td>
+                                <td>{{ issue.get_issue_type_display }}</td>
+                                <td>
+                                    {% if issue.status == "pending" %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif issue.status == "in_progress" %}
+                                        <span class="badge bg-light">In Progress</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Resolved</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ issue.reported_date|date:"M j, Y" }}</td>
+                                <td>
+                                    {% if issue.resolved_date %}
+                                        {{ issue.resolved_date|date:"M j, Y" }}
+                                    {% else %}
+                                        <span class="text-danger border-1 border-bottom border-top border-danger">Not Resolved</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="fas fa-box-open fa-2x mb-2"></i><br>
+                                    No asset issues found
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </section>
 
 {% endblock content %}

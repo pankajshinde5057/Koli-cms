@@ -38,9 +38,10 @@ class AssetCategory(models.Model):
         return self.category
 
 class Assets(models.Model):
+    PREFIX = "KOLI"
     asset_category = models.ForeignKey(AssetCategory, on_delete=models.CASCADE)
     asset_name = models.CharField(max_length=100,blank=True,null=True)
-    asset_serial_number = models.CharField(max_length=100, unique=True)
+    asset_serial_number = models.CharField(max_length=100,unique=True,blank=True)
     asset_brand = models.CharField(max_length=100)
     asset_image = models.ImageField(upload_to='images/', blank=True, null=True)
     manager = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name='managed_assets')
@@ -59,14 +60,23 @@ class Assets(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.pk:
+            last_asset = Assets.objects.filter(asset_category__category=self.asset_category.category).order_by("-asset_added_date").first()
+            if last_asset:
+                last_numeric_number = int(last_asset.asset_serial_number[len(last_asset.PREFIX)+len(last_asset.asset_category.category[:4]):])
+                new_numeric_value = last_numeric_number + 1
+                new_serial_number = f"{self.PREFIX}{last_asset.asset_category.category[:4].upper()}{str(new_numeric_value).zfill(4)}"
+                print(new_serial_number)
+            else:
+                new_serial_number = f"{self.PREFIX}{self.asset_category.category[:4].upper()}0001"
+            
+            self.asset_serial_number = new_serial_number
             super().save(*args, **kwargs)
 
         if not self.barcode:
             barcode_file = generate_barcode(self.id)
             self.barcode.save(barcode_file.name, barcode_file, save=False)
-
+        
         super().save(*args, **kwargs)
-    
 
     @property
     def status(self):
@@ -117,6 +127,37 @@ class AssetAssignmentHistory(models.Model):
 
     def __str__(self):
         return f"{self.asset} assignment history"
+
+class AssetIssue(models.Model):
+    ISSUE_TYPES = (
+        ('hardware', 'Hardware Problem'),
+        ('software', 'Software Problem'),
+        ('performance', 'Performance Issue'),
+        ('other', 'Other'),
+    )
+
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+    )
+    
+    asset = models.ForeignKey(Assets, on_delete=models.CASCADE, related_name='asset_issue_notifications',null=True)
+    reported_by =models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='asset_issue_requests',null=True)
+    reported_date = models.DateTimeField(auto_now_add=True)
+    issue_type = models.CharField(max_length=20, choices=ISSUE_TYPES)
+    description = models.TextField()
+    notes = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='resolved_issues',null=True, blank=True)
+    resolved_date = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_resolved(self):
+        return self.status == 'resolved'
+
+    def __str__(self):
+        return f"{self.get_issue_type_display()} - {self.get_status_display()}"
 
 
 class Notify_Manager(models.Model):
