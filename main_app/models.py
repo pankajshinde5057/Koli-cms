@@ -86,8 +86,7 @@ class Manager(models.Model):
 
 
 class Employee(models.Model):
-    user = models.OneToOneField('CustomUser', on_delete=models.CASCADE,null=True, blank=False)
-    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='admin_employee')
+    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
     employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
