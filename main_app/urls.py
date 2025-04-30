@@ -119,7 +119,7 @@ urlpatterns = [
      path('assign_assets/', manager_views.assign_assets, name='assign_assets'),
      path('remove_asset_assignment/', manager_views.remove_asset_assignment, name='remove_asset_assignment'),
      
-     path('resolve_asset_issue/', manager_views.resolve_asset_issue, name='resolve_asset_issue'),
+     path('resolve_asset_issue/<int:asset_issu_id>/', manager_views.resolve_asset_issue, name='resolve_asset_issue'),
      
 
      # Employee
