@@ -106,8 +106,7 @@ class AssetsIssuance(models.Model):
     asset_assignee = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
 
     def __str__(self):
-        status = "Active" if self.is_active else "Returned"
-        return f"{self.asset.asset_name} ({status}) issued to {self.asset_assignee}"
+        return f"{self.asset.asset_name} issued to {self.asset_assignee}"
 
     def get_absolute_url(self):
         return reverse('assets-detail', kwargs={'pk': self.pk})
@@ -157,7 +156,7 @@ class AssetIssue(models.Model):
         return self.status == 'resolved'
 
     def __str__(self):
-        return f"{self.get_issue_type_display()} - {self.get_status_display()}"
+        return f"{self.asset}-{self.get_issue_type_display()} - {self.get_status_display()}"
 
 
 class Notify_Manager(models.Model):
