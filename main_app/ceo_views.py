@@ -537,7 +537,7 @@ def send_employee_notification(request):
         url = "https://fcm.googleapis.com/fcm/send"
         body = {
             'notification': {
-                'title': "OfficeOps",
+                'title': "KoliInfoTech",
                 'body': message,
                 'click_action': reverse('employee_view_notification'),
                 'icon': static('dist/img/AdminLTELogo.png')

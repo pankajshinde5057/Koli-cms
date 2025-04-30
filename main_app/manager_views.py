@@ -990,12 +990,14 @@ def manager_add_salary(request):
     return render(request, "manager_template/manager_add_salary.html", context)
 
 
-def resolve_asset_issue(request,pk):
-    if request.methods == "POST":
-        issue_asset = get_object_or_404(AssetIssue,pk=pk)
-        issue_asset.is_resolved = True
+def resolve_asset_issue(request,asset_issu_id):
+    if request.method == "POST":
+        issue_asset = get_object_or_404(AssetIssue,pk=asset_issu_id)
+        issue_asset.status = request.POST.get('status')
+        issue_asset.notes = request.POST.get('resolution_notes')
+        issue_asset.resolved_date = datetime.now()
         issue_asset.save()
-        messages.success(request,"Asset Issue Resolved!!")
+        messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
     return redirect('manager_view_notification')
 
