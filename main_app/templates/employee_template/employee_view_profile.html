@@ -16,9 +16,9 @@
                                 <div class="text-center mb-4">
                                     {% static '/dist/img/avatar-placeholder.jpeg' as avatar_placeholder  %}
                                     <img src="{{ employee.admin.profile_pic|default:avatar_placeholder }}" 
-                                         class="img-fluid rounded-circle" 
+                                         class="img-circle elevation-2" 
                                          alt="Profile Image" 
-                                         style="width: 250px; height: 250px; object-fit: cover;">
+                                         style="width: 250px; height: 250px; object-fit: contain;">
                                     <h3 class="mt-3">{{ employee.admin.get_full_name }}</h3>
                                     <h5 class="text-muted">{{ employee.designation }}</h5>
                                     <span class="badge bg-{{ employee.get_department_color }} mt-2">
