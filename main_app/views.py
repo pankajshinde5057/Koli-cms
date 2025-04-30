@@ -40,12 +40,10 @@ def doLogin(request, **kwargs):
     if request.method != "POST":
         return HttpResponse("<h4>Denied</h4>")
     else:
-        # Google recaptcha
         captcha_token = request.POST.get("g-recaptcha-response")
         captcha_url = "https://www.google.com/recaptcha/api/siteverify"
         captcha_key = SECRET_KEY
         data = {"secret": captcha_key, "response": captcha_token}
-        # Make request
         try:
             captcha_server = requests.post(url=captcha_url, data=data)
             response = json.loads(captcha_server.text)
@@ -183,7 +181,7 @@ def clock_in_out(request):
             user=request.user, 
             clock_out__isnull=True
         ).first()
-        
+
         if current_record:
             # Clock out
             current_record.clock_out = now
@@ -198,17 +196,15 @@ def clock_in_out(request):
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
 
-            late_clock_in = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
-            half_day_clock_in = datetime.combine(now.date(), time(13, 0), tzinfo=now.tzinfo)
+            late_time = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
+            half_day_time = datetime.combine(now.date(), time(13, 0), tzinfo=now.tzinfo)  # 1:00 PM
 
-            status = 'present'
-            if now > half_day_clock_in:
+            if now > half_day_time:
                 status = 'half_day'
-                # Increase half-day count for the employee
-                request.user.employee.attendance_stats.half_days += 1
-                request.user.employee.attendance_stats.save()
-            elif now > late_clock_in:
+            elif now > late_time:
                 status = 'late'
+            else:
+                status = 'present'
 
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
@@ -218,12 +214,13 @@ def clock_in_out(request):
                 ip_address=get_router_ip(),
                 status=status
             )
-            
+
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_in',
                 related_record=new_record
             )
+
         return JsonResponse({'status': 'success'})
     return redirect('home')
 
