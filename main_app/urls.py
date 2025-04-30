@@ -6,6 +6,7 @@ from main_app.EditSalaryView import EditSalaryView
 from . import ceo_views, manager_views, employee_views, views
 
 
+
 urlpatterns = [
      path("", views.login_page, name='login_page'),
      path("get_attendance", views.get_attendance, name='get_attendance'),
