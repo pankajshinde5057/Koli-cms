@@ -421,6 +421,30 @@
                         <div class="tab-content pt-3" id="issueTabContent-{{ issue.id }}">
                             <!-- Details Tab -->
                             <div class="tab-pane fade show active" id="details-{{ issue.id }}" role="tabpanel">
+                                <div class="card card-danger card-outline">
+                                    <div class="card-header bg-light">
+                                        <h6><i class="fas fa-file-alt mr-2"></i>Issue Description</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="p-3 bg-light rounded">
+                                            <h5>{{ issue.description }}</h5>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {% if issue.notes %}
+                                <div class="card mt-3">
+                                    <div class="card-header card-success card-outline bg-light">
+                                        <h6><i class="fas fa-sticky-note mr-2"></i>Reviews<small class="float-right">Manager Review</small></h6>
+                                        
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="p-3 bg-light rounded">
+                                            {{ issue.notes }}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="card mb-3">
@@ -462,34 +486,12 @@
                                     </div>
                                 </div>
                                 
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6><i class="fas fa-file-alt mr-2"></i>Issue Description</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="p-3 bg-light rounded">
-                                            {{ issue.description }}
-                                        </div>
-                                    </div>
-                                </div>
                                 
-                                {% if issue.notes %}
-                                <div class="card mt-3">
-                                    <div class="card-header bg-light">
-                                        <h6><i class="fas fa-sticky-note mr-2"></i>Previous Notes</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="p-3 bg-light rounded">
-                                            {{ issue.notes }}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endif %}
                             </div>
                             
                             <!-- action Tab -->
                             <div class="tab-pane fade" id="resolve-{{ issue.id }}" role="tabpanel">
-                                <form method="post" action="{% url 'resolve_asset_issue' %}">
+                                <form method="post" action="{% url 'resolve_asset_issue' issue.id %}">
                                     {% csrf_token %}
                                     <div class="form-group">
                                         <label class="font-weight-bold">Resolution Status</label>
