@@ -27,10 +27,18 @@ def employee_home(request):
 
     current_month = today.month
     current_year = today.year
+    start_date = today.replace(day=1)
 
+    # Add a month, then subtract days until we get back to the last day of the current month
+    if today.month == 12:
+        next_month = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        next_month = today.replace(month=today.month + 1, day=1)
+
+    end_date = next_month - timedelta(days=1)
     # Base query for attendance records
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
-
+    # print("recordsaaaaa",records)
     # Handle date range filtering
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
@@ -44,19 +52,19 @@ def employee_home(request):
     else:
         records = records.filter(date__month=current_month, date__year=current_year)
 
-        if date_filter == 'today':
-            records = records.filter(date=today)
-        elif date_filter == 'week':
-            start_date = today - timedelta(days=today.weekday())
-            end_date = start_date + timedelta(days=6)
-            records = records.filter(date__range=[start_date, end_date])
-
+        # if date_filter == 'today':
+        #     records = records.filter(date=today)
+        # elif date_filter == 'week':
+        #     start_date = today - timedelta(days=today.weekday())
+        #     end_date = start_date + timedelta(days=6)
+        #     records = records.filter(date__range=[start_date, end_date])
+    # print("recordsbbbbbbb",records)
     # Additional filters
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
-
+    # print("recordsccccc",records)
     # Create detailed time entries (clock in/out and breaks)
     detailed_time_entries = []
     for record in records.order_by('date', 'clock_in'):
@@ -209,6 +217,41 @@ def employee_home(request):
     # Calculate working days in month (excluding weekends and holidays)
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
+    weekend_days_list = []
+
+    month_record = AttendanceRecord.objects.filter(
+        user_id=request.user,  
+        date__range=(start_date, end_date)
+    )
+    print("month_record",month_record)
+    record_dict = {rec.date: rec.status for rec in month_record}
+    absent_days = 0
+    current_date = start_date
+    while current_date <= end_date:
+        weekday = current_date.weekday()
+        is_sunday = weekday == 6
+        is_saturday = weekday == 5
+        is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
+        if not is_sunday and not is_1st_or_3rd_saturday:
+            status = record_dict.get(current_date)
+            if not status:
+                absent_days+=1
+            elif status == "half":
+                print("status",status)
+                absent_days += 0.5
+            else:
+                leave_records = LeaveReportEmployee.objects.filter(
+                    employee=employee,
+                    status=1,  # Approved
+                    leave_type = "Half-Day",
+                    start_date=current_date  # The specific date you're checking
+                )
+                # leave_count = LeaveReportEmployee.objects.filter(employee = employee)
+                print("leaveeeeeeeeeee)***************",leave_records)
+                if leave_records:
+                    absent_days+=0.5
+        current_date += timedelta(days=1)
+    print("absent_days",absent_days)
     print("days_in_month",days_in_month)
     for day in range(1, days_in_month + 1):
         date = timezone.datetime(current_year, current_month, day).date()
@@ -216,13 +259,14 @@ def employee_home(request):
         is_sunday = weekday == 6
         is_saturday = weekday == 5
         is_1st_or_3rd_saturday = is_saturday and ((day - 1) // 7) in [0, 2]
-
+        if is_1st_or_3rd_saturday or is_sunday:
+            weekend_days_list.append(str(date))
         if not is_sunday and not is_1st_or_3rd_saturday:
             total_working_days += 1
+        
 
     # Get distinct dates with attendance records
     attended_dates = records.values_list('date', flat=True).distinct()
-
     # Count present and late days (counting each date only once)
     present_dates = records.filter(
         status='present'
@@ -231,7 +275,6 @@ def employee_home(request):
     late_dates = records.filter(
         status='late'
     ).values_list('date', flat=True).distinct().count()
-
     # Total present days (including late days as present)
     present_days = present_dates + late_dates
 
@@ -246,8 +289,8 @@ def employee_home(request):
 
     # Count half days and full day leaves
     half_days = approved_leaves.filter(leave_type='Half-Day').count()
-    absent_days = approved_leaves.filter(leave_type='Full-Day').count()
-
+    # absent_days = approved_leaves.filter(leave_type='Full-Day').count()
+    print("todaytoday",today.day, start_date.day)
     # Calculate attendance percentage
     if total_working_days > 0:
         # Count half days as 0.5 present days
