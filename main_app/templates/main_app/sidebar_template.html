@@ -383,7 +383,7 @@
                 </li>
                 <li class="nav-item">
                     {% url 'asset_app:assets-category' as assets_category %}
-                    <a href="{{assets_category}}" class="nav-link">
+                    <a href="{{assets_category}}" class="nav-link {% if assets_category == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>
                         <p>
                             Add Asset Categories
@@ -412,7 +412,7 @@
                 
                 <li class="nav-item">
                     {% url 'asset_app:not-assign-asset-list' as not_assign_asset_list %}
-                    <a href="{{not_assign_asset_list}}" class="nav-link {% if assets_unclaim_list == request.path %} active {% endif %}">
+                    <a href="{{not_assign_asset_list}}" class="nav-link {% if not_assign_asset_list == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>
                         <p>
                             Not Assign Devices
@@ -421,13 +421,14 @@
                 </li>
                 <li class="nav-item">
                     {% url 'asset_app:my-assets' as my_assets %}
-                    <a href="{{my_assets}}" class="nav-link {% if my_assets == request.path %} active {% endif %}">
+                    <a href="{{ my_assets }}" class="nav-link {% if my_assets == request.path_info %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>
                         <p>
                             My Assigned Assets
                         </p>
                     </a>
                 </li>
+                
 
                
 
@@ -543,7 +544,7 @@
                 </li>
                 <li class="nav-item">
                     {% url 'asset_app:not-assign-asset-list' as not_assign_asset_list %}
-                    <a href="{{not_assign_asset_list}}" class="nav-link {% if assets_unclaim_list == request.path %} active {% endif %}">
+                    <a href="{{not_assign_asset_list}}" class="nav-link {% if not_assign_asset_list == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-th"></i>
                         <p>
                             Available Devices

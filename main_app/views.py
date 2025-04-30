@@ -195,15 +195,21 @@ def clock_in_out(request):
                 related_record=current_record
             )
         else:
-
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
 
             late_clock_in = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
-            
-            status ='present'
-            if now > late_clock_in:
-                status ='late'
+            half_day_clock_in = datetime.combine(now.date(), time(13, 0), tzinfo=now.tzinfo)
+
+            status = 'present'
+            if now > half_day_clock_in:
+                status = 'half_day'
+                # Increase half-day count for the employee
+                request.user.employee.attendance_stats.half_days += 1
+                request.user.employee.attendance_stats.save()
+            elif now > late_clock_in:
+                status = 'late'
+
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
                 clock_in=now,
@@ -213,9 +219,15 @@ def clock_in_out(request):
                 status=status
             )
             
-            ActivityFeed.objects.create(user=request.user,activity_type='clock_in',related_record=new_record)
+            ActivityFeed.objects.create(
+                user=request.user,
+                activity_type='clock_in',
+                related_record=new_record
+            )
         return JsonResponse({'status': 'success'})
     return redirect('home')
+
+
 
 @login_required
 def break_action(request):
