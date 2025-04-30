@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.urls import reverse_lazy
-from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory
+from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory,AssetIssue
 from .forms import AssetForm
 from .filters import AssetsFilter
 from django.urls import reverse
@@ -15,6 +15,7 @@ from main_app.models import CustomUser
 from django.http import HttpResponseForbidden
 from django.db.models import Q
 from django.utils import timezone
+from django.http import JsonResponse
 
 
 LOCATION_CHOICES = (
@@ -213,29 +214,47 @@ class MyAssetView(LoginRequiredMixin, ListView):
                 asset__manager=user
             ).select_related('asset', 'asset_assignee').order_by('-date_issued')
         
-        # elif user.user_type == '1':
-        #     return AssetsIssuance.objects.all().select_related(
-        #         'asset', 'asset_assignee', 'asset__manager'
-        #     ).order_by('-date_issued')
-        
-        # return AssetsIssuance.objects.none()
         
    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
+        context['issue_types'] = AssetIssue.ISSUE_TYPES
+
         if user.user_type == '3':  
             context['total_assets'] = self.get_queryset().count()
             context['active_assets'] = self.get_queryset().filter(asset__is_asset_issued=True).count()
-        else: 
-            pass
-            # context['total_issued'] = self.get_queryset().count()
-            # context['active_assignments'] = self.get_queryset().filter(
-            #     asset__is_asset_issued=True
-            # ).count()
         
         return context
+    
+
+    def post(self,request,*args,**kwargs):
+        if request.method == "POST":
+            asset_id_ = request.POST.get("asset_id")
+            issue_type_ = request.POST.get("issue_type")
+            description_ = request.POST.get("description")
+
+            if asset_id_ and issue_type_ and description_:
+                asset = Assets.objects.filter(id=asset_id_).first()
+                existing_issue = AssetIssue.objects.filter(asset=asset,reported_by=request.user).exists()
+                if existing_issue:
+                    messages.warning(request,"Issue For this asset is alredy submited!! Check My Requests.")
+                    return redirect('asset_app:my-assets')
+
+                AssetIssue.objects.create(
+                    asset=asset,
+                    reported_by=request.user,
+                    issue_type=issue_type_,
+                    description=description_,
+                )
+                messages.success(request,"Issue Reported Successfully")
+                return redirect('asset_app:my-assets')
+            else:
+                messages.error(request,"Something Wrong!!!")
+                return redirect('asset_app:my-assets')
+
+        return redirect('asset_app:my-assets')
+
 
 class AssetNotAssignListView(LoginRequiredMixin, View):
     login_url = reverse_lazy("login_page")
