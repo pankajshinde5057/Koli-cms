@@ -180,7 +180,7 @@ class AttendanceRecord(models.Model):
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
-    date = models.DateField(auto_now_add=True)
+    date = models.DateField(auto_now_add=False)
     clock_in = models.DateTimeField()
     clock_out = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present')
