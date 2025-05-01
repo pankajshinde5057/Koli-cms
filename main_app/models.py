@@ -157,12 +157,10 @@ class NotificationManager(models.Model):
 
 
 class NotificationEmployee(models.Model):
-    created_by = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
 
 
 class EmployeeSalary(models.Model):

@@ -156,7 +156,7 @@ def save_attendance(request):
                 employee = CustomUser.objects.filter(id = int(emp)).first()
             else:
                 employee = get_object_or_404(CustomUser, id=emp.get('id'))
-            print("employee.admin",employee)
+            print("employee.admin",employee.id)
             user = employee  # CustomUser linked
             # if half_full_day:
             status = 'present'
@@ -208,28 +208,39 @@ def save_attendance(request):
             # employee.save()
             
             if half_full_day == "full":
+                leave_status = "Full-Day"
                 total_work = 8*60*60
                 status = "present"
                 clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
                 clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             if half_full_day == "half":
                 total_work = 4*60*60
-                
+                leave_status = "Half-Day"
+                print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",which_half)
                 if which_half =="first":
                     # pass
                     status = "present"
-                    clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
-                    clock_out = datetime.combine(date_obj, time(18, 30, 0))
+                    clock_in = datetime.combine(date_obj, time(9, 00, 0)) 
+                    clock_out = datetime.combine(date_obj, time(13, 00, 0))
                 else:
                     status = "late"
-                    clock_in = datetime.combine(date_obj, time(19, 30, 0)) 
-                    clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
+                    clock_in = datetime.combine(date_obj, time(14, 00, 0)) 
+                    clock_out = datetime.combine(date_obj, time(18, 00, 0)) 
+            employee = Employee.objects.get(admin = employee)
+            leave_record = LeaveReportEmployee.objects.create(
+                employee = employee,
+                leave_type = leave_status,
+                start_date = date_obj,
+                end_date = date_obj,
+                message = f"Added From {request.user}",
+                status = 1,
+                created_at = today,
+                updated_at = today
+            )
+            leave_record.save()
             print("clock_inclock_in>>>>>>>>>>>>>>>",clock_in)
             print("clock_inclock_in>>>>>>>>>>>>>>>",clock_out)
-            is_primary_record = 1
-            required_verfication = 0
             user_id = int(emp)
-            verified_by_id = user
             date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
             print("date_obj",date_obj)
             manager_id = request.user.id
