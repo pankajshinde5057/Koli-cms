@@ -124,6 +124,7 @@ def save_attendance(request):
     date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
     department_id = request.POST.get('department')
     half_full_day = request.POST.get('half_full_day')
+    which_half = request.POST.get('which_half')
     today = date_obj.today()
     current_month = today.month
     current_year = today.year
@@ -213,9 +214,16 @@ def save_attendance(request):
                 clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             if half_full_day == "half":
                 total_work = 4*60*60
-                status = "late"
-                clock_in = datetime.combine(date_obj, time(19, 30, 0)) 
-                clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
+                
+                if which_half =="first":
+                    # pass
+                    status = "present"
+                    clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
+                    clock_out = datetime.combine(date_obj, time(18, 30, 0))
+                else:
+                    status = "late"
+                    clock_in = datetime.combine(date_obj, time(19, 30, 0)) 
+                    clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             print("clock_inclock_in>>>>>>>>>>>>>>>",clock_in)
             print("clock_inclock_in>>>>>>>>>>>>>>>",clock_out)
             is_primary_record = 1
