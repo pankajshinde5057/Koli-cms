@@ -1,4 +1,3 @@
-from calendar import calendar
 import json
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
@@ -13,6 +12,11 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_POST
 from asset_app.models import AssetIssue
 from .models import CustomUser
+from django.templatetags.static import static
+import requests
+from django.http import JsonResponse, HttpResponse
+from django.utils import timezone
+from datetime import datetime, time, timedelta
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -84,66 +88,6 @@ def manager_home(request):
     }
     return render(request, 'manager_template/home_content.html', context)
 
-
-# def manager_take_attendance(request):
-#     manager = get_object_or_404(Manager, admin=request.user)
-#     departments = Department.objects.filter(division=manager.division)
-#     context = {
-#         'departments': departments,
-#         'page_title': 'Take Attendance'
-#     }
-
-#     return render(request, 'manager_template/manager_take_attendance.html', context)
-
-
-# @csrf_exempt
-# def get_employees(request):
-#     department_id = request.POST.get('department')
-#     try:
-#         department = get_object_or_404(Department, id=department_id)
-#         employees = Employee.objects.filter(division_id=department.division.id)
-#         employee_data = []
-#         for employee in employees:
-#             data = {
-#                 "id": employee.id,
-#                 "name": employee.admin.last_name + " " + employee.admin.first_name
-#             }
-#             employee_data.append(data)
-#         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
-#     except Exception as e:
-#         return e
-
-
-# @csrf_exempt
-# def save_attendance(request):
-#     employee_data = request.POST.get('employee_ids')
-#     date = request.POST.get('date')
-#     department_id = request.POST.get('department')
-#     employees = json.loads(employee_data)
-#     try:
-#         department = get_object_or_404(Department, id=department_id)
-#         attendance, created = AttendanceRecord.objects.get_or_create(department=department, date=date)
-
-#         for employee_dict in employees:
-#             employee = get_object_or_404(Employee, id=employee_dict.get('id'))
-#             attendance_report, report_created = AttendanceReport.objects.get_or_create(employee=employee, attendance=attendance)
-#             if report_created:
-#                 attendance_report.status = employee_dict.get('status')
-#                 attendance_report.save()
-
-#     except Exception as e:
-#         return None
-
-#     return HttpResponse("OK")
-
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from .models import Manager, Department, Employee, AttendanceRecord, CustomUser
-import json
-from datetime import datetime, time, timedelta
-
 def manager_take_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     print("manager",manager)
@@ -185,8 +129,6 @@ def save_attendance(request):
     current_year = today.year
     
     start_date = today.replace(day=1)
-
-    # Add a month, then subtract days until we get back to the last day of the current month
     if today.month == 12:
         next_month = today.replace(year=today.year + 1, month=1, day=1)
     else:
@@ -325,56 +267,6 @@ def save_attendance(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
-
-
-
-# def manager_update_attendance(request):
-#     manager = get_object_or_404(Manager, admin=request.user)
-#     departments = Department.objects.filter(division=manager.division)
-#     context = {
-#         'departments': departments,
-#         'page_title': 'Update Attendance'
-#     }
-
-#     return render(request, 'manager_template/manager_update_attendance.html', context)
-
-
-# @csrf_exempt
-# def get_employee_attendance(request):
-#     attendance_date_id = request.POST.get('attendance_date_id')
-#     try:
-#         date = get_object_or_404(AttendanceRecord, id=attendance_date_id)
-#         attendance_data = AttendanceReport.objects.filter(attendance=date)
-#         employee_data = []
-#         for attendance in attendance_data:
-#             data = {"id": attendance.employee.admin.id,
-#                     "name": attendance.employee.admin.last_name + " " + attendance.employee.admin.first_name,
-#                     "status": attendance.status}
-#             employee_data.append(data)
-#         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
-#     except Exception as e:
-#         return e
-
-
-# @csrf_exempt
-# def update_attendance(request):
-#     employee_data = request.POST.get('employee_ids')
-#     date = request.POST.get('date')
-#     employees = json.loads(employee_data)
-#     try:
-#         attendance = get_object_or_404(AttendanceRecord, id=date)
-
-#         for employee_dict in employees:
-#             employee = get_object_or_404(
-#                 Employee, admin_id=employee_dict.get('id'))
-#             attendance_report = get_object_or_404(AttendanceReport, employee=employee, attendance=attendance)
-#             attendance_report.status = employee_dict.get('status')
-#             attendance_report.save()
-#     except Exception as e:
-#         return None
-
-#     return HttpResponse("OK")
-
 # View to update attendance for the manager
 def manager_update_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
@@ -385,13 +277,6 @@ def manager_update_attendance(request):
     }
 
     return render(request, 'manager_template/manager_update_attendance.html', context)
-
-
-# View to get employee attendance details based on selected date
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import get_object_or_404
-from .models import AttendanceRecord, Employee
  
 @csrf_exempt
 def get_employee_attendance(request):
@@ -776,10 +661,6 @@ def manager_feedback(request):
         else:
             messages.error(request, "Form has errors!")
     return render(request, "manager_template/manager_feedback.html", context)
-
-
-from django.templatetags.static import static
-import requests
  
 @csrf_exempt
 def manager_send_employee_notification(request):
@@ -804,7 +685,8 @@ def manager_send_employee_notification(request):
                    'key=dxHXv-hbaBoaO0OyQN0_W3:APA91bH4UU9a727PTFs2kQzSaB3O1UWzEMoWVVrKdNGj1cgBD4vPQHIhaWd_C6o9ocbpLOvR1-_stx52N96ywgex3IDByDpicjQ-hMRLqDJXxEVUFGM3huo',
                    'Content-Type': 'application/json'}
         data = requests.post(url, data=json.dumps(body), headers=headers)
-        notification = NotificationEmployee(employee=employee, message=message)
+        notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
+
         notification.save()
         return HttpResponse("True")
     except Exception as e:
