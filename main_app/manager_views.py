@@ -564,6 +564,8 @@ def add_employee_by_manager(request):
             gender = employee_form.cleaned_data.get('gender')
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
+            designation = employee_form.cleaned_data.get('designation')
+            phone_number = employee_form.cleaned_data.get('phone_number')
             department = manager.department  # The department of the manager
             passport = request.FILES['profile_pic']
             
@@ -580,6 +582,8 @@ def add_employee_by_manager(request):
                 user.employee.division = division
                 user.employee.department = department
                 user.employee.team_lead = manager  # Assign manager as the team lead
+                user.employee.phone_number = phone_number
+                user.employee.designation = designation
                 user.save()
 
                 messages.success(request, "Successfully Added Employee")
@@ -606,6 +610,7 @@ def edit_employee_by_manager(request, employee_id):
     context = {
         'form': form,
         'employee_id': employee_id,
+        "user_object" : employee,
         'page_title': 'Edit Employee'
     }
 
@@ -700,7 +705,7 @@ def manager_notify_employee(request):
 def manager_view_profile(request):
     manager = get_object_or_404(Manager, admin=request.user)
     form = ManagerEditForm(request.POST or None, request.FILES or None,instance=manager)
-    context = {'form': form, 'page_title': 'View/Update Profile'}
+    context = {'form': form, 'page_title': 'View/Update Profile','user_object': manager.admin, }
     if request.method == 'POST':
         try:
             if form.is_valid():
