@@ -278,6 +278,12 @@ def save_attendance(request):
 
 
 # View to update attendance for the manager
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Employee, Department, AttendanceRecord
+import json
+
 def manager_update_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
@@ -285,58 +291,105 @@ def manager_update_attendance(request):
         'departments': departments,
         'page_title': 'Update Attendance'
     }
-
     return render(request, 'manager_template/manager_update_attendance.html', context)
- 
+
 @csrf_exempt
-def get_employee_attendance(request):
-    attendance_date_id = request.POST.get('attendance_date_id')
+def get_employees(request):
+    department_id = request.POST.get('department_id')
     try:
-        # Fetch the AttendanceRecord using the provided id
-        date_record = get_object_or_404(AttendanceRecord, id=attendance_date_id)
-       
-        # Fetch all attendance records for the same date
-        attendance_data = AttendanceRecord.objects.filter(date=date_record.date)
-       
-        # Prepare response data
+        employees = Employee.objects.filter(department_id=department_id)
         employee_data = [
             {
-                "id": attendance.user.id,  # The user is related to CustomUser
-                "name": f"{attendance.user.last_name} {attendance.user.first_name}",
-                "status": attendance.status
+                "id": emp.admin.id,
+                "name": f"{emp.admin.last_name} {emp.admin.first_name}"
             }
-            for attendance in attendance_data
+            for emp in employees
         ]
-       
+        print("employee_data-----",employee_data)
         return JsonResponse(employee_data, safe=False)
- 
+    except Exception as e:
+        
+        return JsonResponse({"error": str(e)}, status=400)
+
+@csrf_exempt
+def get_attendance_dates(request):
+    employee_id = request.POST.get('employee_id')
+    try:
+        dates = AttendanceRecord.objects.filter(user=request.user)
+        date_data = [{
+            "date": d['date'].strftime('%Y-%m-%d'), 
+            "display": d['date'].strftime('%b %d, %Y')
+        } for d in dates]
+        
+        return JsonResponse(date_data, safe=False)
+    except Exception as e:
+        print("in exception for fetch employee",e)
+        return JsonResponse({"error": str(e)}, status=400)
+
+@csrf_exempt
+def get_attendance_details(request):
+    employee_id = request.POST.get('employee_id')
+    date = request.POST.get('date')
+    try:
+        attendance = AttendanceRecord.objects.filter(
+            employee__admin_id=employee_id,
+            date=date
+        ).order_by('clock_in')
+        
+        if not attendance.exists():
+            return JsonResponse({"error": "No attendance records found"}, status=404)
+        
+        first_clock_in = attendance.first().clock_in.strftime('%H:%M') if attendance.first().clock_in else None
+        last_clock_out = attendance.last().clock_out.strftime('%H:%M') if attendance.last().clock_out else None
+        
+        return JsonResponse({
+            "first_clock_in": first_clock_in,
+            "last_clock_out": last_clock_out,
+            "status": attendance.first().status
+        })
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
-
-# View to update attendance status
 @csrf_exempt
 def update_attendance(request):
-    employee_data = request.POST.get('employee_ids')
-    date = request.POST.get('date')
-    employees = json.loads(employee_data)
-
     try:
-        attendance = get_object_or_404(AttendanceRecord, id=date)
-
-        for employee_dict in employees:
-            employee = get_object_or_404(Employee, admin_id=employee_dict.get('id'))
-            attendance_report = get_object_or_404(AttendanceRecord, employee=employee, attendance=attendance)
-            attendance_report.status = employee_dict.get('status')
-            attendance_report.save()
-
+        data = json.loads(request.body)
+        employee_id = data.get('employee_id')
+        date = data.get('date')
+        first_clock_in = data.get('first_clock_in')
+        last_clock_out = data.get('last_clock_out')
+        status = data.get('status')
+        
+        # Get all attendance records for the day
+        attendances = AttendanceRecord.objects.filter(
+            employee__admin_id=employee_id,
+            date=date
+        ).order_by('clock_in')
+        
+        if not attendances.exists():
+            return JsonResponse({"error": "No attendance records found"}, status=404)
+        
+        # Update first record's clock_in
+        first_record = attendances.first()
+        if first_clock_in:
+            first_record.clock_in = f"{date} {first_clock_in}"
+        
+        # Update last record's clock_out
+        last_record = attendances.last()
+        if last_clock_out:
+            last_record.clock_out = f"{date} {last_clock_out}"
+        
+        # Update status for all records
+        for record in attendances:
+            record.status = status
+            record.save()
+        
+        first_record.save()
+        last_record.save()
+        
         return JsonResponse({"message": "Attendance updated successfully!"})
-
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
-
-
-# View to get attendance records for a department
 
 
 def manager_apply_leave(request):
