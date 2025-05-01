@@ -11,6 +11,7 @@ from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOIC
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_POST
 from asset_app.models import AssetIssue
+from .models import CustomUser
 from django.templatetags.static import static
 import requests
 from django.http import JsonResponse, HttpResponse
@@ -107,7 +108,7 @@ def get_employees(request):
         employee_data = []
         for employee in employees:
             data = {
-                "id": employee.id,
+                "id": employee.admin.id,
                 "name": employee.admin.last_name + " " + employee.admin.first_name
             }
             employee_data.append(data)
@@ -134,9 +135,9 @@ def save_attendance(request):
         next_month = today.replace(month=today.month + 1, day=1)
 
     end_date = next_month - timedelta(days=1)
-    manager_id = request.user.id
+    
     # Log incoming data for debugging
-    print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$", )
+    print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",request.user.id )
     print("start_date", start_date)
     print("end_date", end_date)
     print("Employee Data:", employee_data)
@@ -151,11 +152,11 @@ def save_attendance(request):
 
         for emp in employees:
             if half_full_day:
-                employee = Employee.objects.filter(id = int(emp)).first()
+                employee = CustomUser.objects.filter(id = int(emp)).first()
             else:
-                employee = get_object_or_404(Employee, id=emp.get('id'))
+                employee = get_object_or_404(CustomUser, id=emp.get('id'))
             print("employee.admin",employee)
-            user = employee.admin  # CustomUser linked
+            user = employee  # CustomUser linked
             # if half_full_day:
             status = 'present'
             # else:
@@ -207,21 +208,28 @@ def save_attendance(request):
             
             if half_full_day == "full":
                 total_work = 8*60*60
-                clock_in = datetime.combine(date_obj, time(9, 0, 0)) 
-                clock_out = datetime.combine(date_obj, time(18, 0, 0)) 
+                status = "present"
+                clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
+                clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             if half_full_day == "half":
                 total_work = 4*60*60
-                clock_in = datetime.combine(date_obj, time(9, 0, 0)) 
-                clock_out = datetime.combine(date_obj, time(13, 0, 0)) 
+                status = "late"
+                clock_in = datetime.combine(date_obj, time(19, 30, 0)) 
+                clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
+            print("clock_inclock_in>>>>>>>>>>>>>>>",clock_in)
+            print("clock_inclock_in>>>>>>>>>>>>>>>",clock_out)
             is_primary_record = 1
             required_verfication = 0
             user_id = int(emp)
             verified_by_id = user
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+            print("date_obj",date_obj)
+            manager_id = request.user.id
             attendance = AttendanceRecord.objects.create(
                 date=date_obj,
                 clock_in=clock_in,
                 clock_out=clock_out,  # or provide clock_out datetime
-                status='Present',
+                status=status,
                 total_worked=total_work,  # e.g., 8 hours in seconds
                 regular_hours=0,
                 overtime_hours=0,
@@ -235,6 +243,7 @@ def save_attendance(request):
                 verified_by_id=manager_id,
                 department_id=department_id
             )
+            print(">>>>>>>>>>>>>>>>>>>INSERTION",user_id, manager_id)
             attendance.save()
 
     
@@ -858,12 +867,14 @@ def manager_add_salary(request):
     return render(request, "manager_template/manager_add_salary.html", context)
 
 
-def resolve_asset_issue(request,pk):
-    if request.methods == "POST":
-        issue_asset = get_object_or_404(AssetIssue,pk=pk)
-        issue_asset.is_resolved = True
+def resolve_asset_issue(request,asset_issu_id):
+    if request.method == "POST":
+        issue_asset = get_object_or_404(AssetIssue,pk=asset_issu_id)
+        issue_asset.status = request.POST.get('status')
+        issue_asset.notes = request.POST.get('resolution_notes')
+        issue_asset.resolved_date = datetime.now()
         issue_asset.save()
-        messages.success(request,"Asset Issue Resolved!!")
+        messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
     return redirect('manager_view_notification')
 

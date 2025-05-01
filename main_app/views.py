@@ -208,6 +208,7 @@ def clock_in_out(request):
 
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
+                date = now.date(),
                 clock_in=now,
                 department=department,
                 notes=request.POST.get('notes', ''),
