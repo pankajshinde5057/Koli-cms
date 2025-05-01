@@ -398,6 +398,25 @@
             }
         });
     });
+
+    // Phone number input filter with message
+    $("#id_phone_number, #id_emergency_contact").on("input", function() {
+        const original = this.value;
+        const digitsOnly = original.replace(/\D/g, '');
+        const warningId = this.id + "_warning";
+
+        if (original !== digitsOnly) {
+            // Show warning
+            if ($("#" + warningId).length === 0) {
+                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Only digits are allowed</span>").insertAfter(this);
+            }
+        } else {
+            // Remove warning
+            $("#" + warningId).remove();
+        }
+
+        this.value = digitsOnly;
+    });
 </script>
 
 {% endblock custom_js %}
