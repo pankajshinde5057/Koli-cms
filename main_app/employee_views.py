@@ -41,6 +41,7 @@ def employee_home(request):
     # print("recordsaaaaa",records)
     # Handle date range filtering
     start_date_str = request.GET.get('start_date')
+    print("start_date_str",start_date_str)
     end_date_str = request.GET.get('end_date')
     if start_date_str and end_date_str:
         try:
@@ -227,7 +228,9 @@ def employee_home(request):
     record_dict = {rec.date: rec.status for rec in month_record}
     absent_days = 0
     current_date = start_date
-    while current_date <= end_date:
+    print("START DATE",start_date)
+    while current_date <= today:
+        print("CURREBNT DATE",current_date)
         weekday = current_date.weekday()
         is_sunday = weekday == 6
         is_saturday = weekday == 5
