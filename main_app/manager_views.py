@@ -17,8 +17,6 @@ import requests
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, time, timedelta
-from django.db.models import Count,Q
-
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -278,12 +276,6 @@ def save_attendance(request):
 
 
 # View to update attendance for the manager
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Employee, Department, AttendanceRecord
-import json
-
 def manager_update_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
@@ -291,105 +283,58 @@ def manager_update_attendance(request):
         'departments': departments,
         'page_title': 'Update Attendance'
     }
-    return render(request, 'manager_template/manager_update_attendance.html', context)
 
+    return render(request, 'manager_template/manager_update_attendance.html', context)
+ 
 @csrf_exempt
-def get_employees(request):
-    department_id = request.POST.get('department_id')
+def get_employee_attendance(request):
+    attendance_date_id = request.POST.get('attendance_date_id')
     try:
-        employees = Employee.objects.filter(department_id=department_id)
+        # Fetch the AttendanceRecord using the provided id
+        date_record = get_object_or_404(AttendanceRecord, id=attendance_date_id)
+       
+        # Fetch all attendance records for the same date
+        attendance_data = AttendanceRecord.objects.filter(date=date_record.date)
+       
+        # Prepare response data
         employee_data = [
             {
-                "id": emp.admin.id,
-                "name": f"{emp.admin.last_name} {emp.admin.first_name}"
+                "id": attendance.user.id,  # The user is related to CustomUser
+                "name": f"{attendance.user.last_name} {attendance.user.first_name}",
+                "status": attendance.status
             }
-            for emp in employees
+            for attendance in attendance_data
         ]
-        print("employee_data-----",employee_data)
+       
         return JsonResponse(employee_data, safe=False)
-    except Exception as e:
-        
-        return JsonResponse({"error": str(e)}, status=400)
-
-@csrf_exempt
-def get_attendance_dates(request):
-    employee_id = request.POST.get('employee_id')
-    try:
-        dates = AttendanceRecord.objects.filter(user=request.user)
-        date_data = [{
-            "date": d['date'].strftime('%Y-%m-%d'), 
-            "display": d['date'].strftime('%b %d, %Y')
-        } for d in dates]
-        
-        return JsonResponse(date_data, safe=False)
-    except Exception as e:
-        print("in exception for fetch employee",e)
-        return JsonResponse({"error": str(e)}, status=400)
-
-@csrf_exempt
-def get_attendance_details(request):
-    employee_id = request.POST.get('employee_id')
-    date = request.POST.get('date')
-    try:
-        attendance = AttendanceRecord.objects.filter(
-            employee__admin_id=employee_id,
-            date=date
-        ).order_by('clock_in')
-        
-        if not attendance.exists():
-            return JsonResponse({"error": "No attendance records found"}, status=404)
-        
-        first_clock_in = attendance.first().clock_in.strftime('%H:%M') if attendance.first().clock_in else None
-        last_clock_out = attendance.last().clock_out.strftime('%H:%M') if attendance.last().clock_out else None
-        
-        return JsonResponse({
-            "first_clock_in": first_clock_in,
-            "last_clock_out": last_clock_out,
-            "status": attendance.first().status
-        })
+ 
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
+
+# View to update attendance status
 @csrf_exempt
 def update_attendance(request):
+    employee_data = request.POST.get('employee_ids')
+    date = request.POST.get('date')
+    employees = json.loads(employee_data)
+
     try:
-        data = json.loads(request.body)
-        employee_id = data.get('employee_id')
-        date = data.get('date')
-        first_clock_in = data.get('first_clock_in')
-        last_clock_out = data.get('last_clock_out')
-        status = data.get('status')
-        
-        # Get all attendance records for the day
-        attendances = AttendanceRecord.objects.filter(
-            employee__admin_id=employee_id,
-            date=date
-        ).order_by('clock_in')
-        
-        if not attendances.exists():
-            return JsonResponse({"error": "No attendance records found"}, status=404)
-        
-        # Update first record's clock_in
-        first_record = attendances.first()
-        if first_clock_in:
-            first_record.clock_in = f"{date} {first_clock_in}"
-        
-        # Update last record's clock_out
-        last_record = attendances.last()
-        if last_clock_out:
-            last_record.clock_out = f"{date} {last_clock_out}"
-        
-        # Update status for all records
-        for record in attendances:
-            record.status = status
-            record.save()
-        
-        first_record.save()
-        last_record.save()
-        
+        attendance = get_object_or_404(AttendanceRecord, id=date)
+
+        for employee_dict in employees:
+            employee = get_object_or_404(Employee, admin_id=employee_dict.get('id'))
+            attendance_report = get_object_or_404(AttendanceRecord, employee=employee, attendance=attendance)
+            attendance_report.status = employee_dict.get('status')
+            attendance_report.save()
+
         return JsonResponse({"message": "Attendance updated successfully!"})
+
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+
+
+# View to get attendance records for a department
 
 
 def manager_apply_leave(request):
@@ -415,7 +360,7 @@ def manager_apply_leave(request):
             messages.error(request, "Form has errors!")
     return render(request, "manager_template/manager_apply_leave.html", context)
 
-
+from django.db.models import Count,Q
 
 def manage_employee_by_manager(request):
 
@@ -648,7 +593,6 @@ def add_employee_by_manager(request):
                 user.employee.phone_number = phone_number
                 user.employee.designation = designation
                 user.save()
-                # employee.save()
 
                 messages.success(request, "Successfully Added Employee")
                 return redirect(reverse('manage_employee_by_manager'))  # Redirect to employee management page
@@ -659,8 +603,13 @@ def add_employee_by_manager(request):
 
     return render(request, 'manager_template/add_employee_by_manager.html', context)
 
+
+
 def edit_employee_by_manager(request, employee_id):
+    # Get the employee object
     employee = get_object_or_404(Employee, id=employee_id)
+
+    # Ensure that the logged-in manager is the team lead of the employee
     if employee.team_lead != request.user.manager:
         messages.error(request, "You do not have permission to edit this employee.")
         return redirect('manage_employee_by_manager')
@@ -675,48 +624,13 @@ def edit_employee_by_manager(request, employee_id):
 
     if request.method == 'POST':
         if form.is_valid():
-            first_name = form.cleaned_data.get('first_name')
-            last_name = form.cleaned_data.get('last_name')
-            address = form.cleaned_data.get('address')
-            username = form.cleaned_data.get('username')
-            email = form.cleaned_data.get('email')
-            gender = form.cleaned_data.get('gender')
-            password = form.cleaned_data.get('password') or None
-            division = form.cleaned_data.get('division')
-            department = form.cleaned_data.get('department')
-            passport = request.FILES.get('profile_pic') or None
-
-            try:
-                user = CustomUser.objects.get(id=employee.admin.id)
-                if passport is not None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    user.profile_pic = passport_url
-
-                user.username = username
-                user.email = email
-                if password is not None:
-                    user.set_password(password)  
-                user.first_name = first_name
-                user.last_name = last_name
-                user.gender = gender
-                user.address = address
-                user.save()
-                
-                employee.division = division
-                employee.department = department
-                employee.save()
-
-                messages.success(request, "Employee information updated successfully.")
-                return redirect(reverse('manage_employee_by_manager'))
-            except Exception as e:
-                messages.error(request, "Could not update employee: " + str(e))
+            form.save()
+            messages.success(request, "Employee information updated successfully.")
+            return redirect(reverse('manage_employee_by_manager'))
         else:
             messages.error(request, "Please fill out the form correctly.")
 
     return render(request, 'manager_template/edit_employee_by_manager.html', context)
-
 
 
 def delete_employee_by_manager(request, employee_id):
