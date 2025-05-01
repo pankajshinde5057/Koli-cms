@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
-from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory,AssetIssue
 from .forms import AssetForm
@@ -16,6 +16,8 @@ from django.http import HttpResponseForbidden
 from django.db.models import Q
 from django.utils import timezone
 from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import ProtectedError
 
 
 LOCATION_CHOICES = (
@@ -116,10 +118,37 @@ class AssetsDetailView(DetailView):
 class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
     model = AssetCategory
     fields = ['category']
-    template_name = 'asset_app/assetcategory_form.html'  
-    success_url = reverse_lazy('asset_app:assets-list')
+    template_name = 'asset_app/assetcategory_form.html'
+    success_url = reverse_lazy('asset_app:assetscategory-create')
 
-    # success_url = reverse_lazy('asset_app:assetcategory-list')
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['current_user'] = self.request.user
+        context['page_title'] = "Asset Categories"
+        
+        categories = AssetCategory.objects.all()
+        
+        search_query = self.request.GET.get('search')
+        if search_query:
+            categories = categories.filter(category__icontains=search_query)
+        
+        context['categories'] = categories
+        return context
+
+    def form_valid(self, form):
+        form.instance.category = form.instance.category.lower()
+        messages.success(self.request, "Asset category created successfully!")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request,'This category already present')
+        return super().form_invalid(form)
+    
+class AssetCategoryUpdateView(LoginRequiredMixin, UpdateView):
+    model = AssetCategory
+    fields = ['category']
+    template_name = 'asset_app/assetcategory_form.html'
+    success_url = reverse_lazy('asset_app:assetscategory-create')
 
     def form_valid(self, form):
         form.instance.category = form.instance.category.lower()
@@ -128,7 +157,37 @@ class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_user'] = self.request.user
+        context['page_title'] = "Update Asset Category"
+        context['categories'] = AssetCategory.objects.all() 
         return context
+
+
+class AssetCategoryDeleteView(LoginRequiredMixin, DeleteView):
+    model = AssetCategory
+    template_name = 'asset_app/assetcategory_form.html'
+    success_url = reverse_lazy('asset_app:assetscategory-create')
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        try:
+            self.object.delete()
+            messages.success(request, f"Category '{self.object.category}' deleted successfully.")
+            return redirect(self.success_url)
+        except ProtectedError as e:
+            protected_objects = list(e.protected_objects)
+            error_message = (
+                f"Cannot delete category '{self.object.category}' because it's being used by: "
+                f"{', '.join(str(obj) for obj in protected_objects[:3])}"
+                f"{' and more...' if len(protected_objects) > 3 else ''}"
+            )
+            messages.error(request, error_message)
+            return redirect('asset_app:assetscategory-create')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['current_user'] = self.request.user
+        return context
+
 
 class AssetsCreateView(LoginRequiredMixin, CreateView):
     model = Assets
@@ -220,6 +279,7 @@ class MyAssetView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         context['issue_types'] = AssetIssue.ISSUE_TYPES
+        # context['status_choices'] = AssetIssue.STATUS_CHOICES
 
         if user.user_type == '3':  
             context['total_assets'] = self.get_queryset().count()
@@ -356,7 +416,7 @@ class AssetClaimView(LoginRequiredMixin, View):
             if hasattr(manager, 'fcm_token') and manager.fcm_token:
                 body = {
                     'notification': {
-                        'title': "OfficeOps - Asset Request",
+                        'title': "KoliInfoTech - Asset Request",
                         'body': manager_message,
                         'click_action': reverse('manager_view_notification'),
                         'icon': static('dist/img/AdminLTELogo.png')
@@ -400,4 +460,36 @@ class AssetUnclaimView(LoginRequiredMixin, View):
 
 
 
-
+def print_all_barcode(request):
+    assets = Assets.objects.all().order_by('asset_serial_number')
+    assets_to_print = []
+    show_print_view = False
+    
+    if request.method == 'POST':
+        show_print_view = True
+        
+        if 'print_all' in request.POST:
+            assets_to_print = assets
+        elif 'print_selected' in request.POST:
+            selected_ids = request.POST.getlist('selected_assets')
+            if not selected_ids:
+                return render(request, 'asset_app/print_assets_barcode.html', {
+                    'assets': assets,
+                    'error_message': 'Please select at least one asset to print'
+                })
+            assets_to_print = assets.filter(id__in=selected_ids)
+    
+        search_query = request.POST.get('search', '')
+        
+        if search_query:
+            assets = assets.filter(asset_serial_number__icontains=search_query
+            ) | assets.filter(asset_category__category__icontains=search_query
+            )
+        
+    
+    context = {
+        'assets': assets,
+        'assets_to_print': assets_to_print,
+        'show_print_view': show_print_view,
+    }
+    return render(request, 'asset_app/print_assets_barcode.html', context)

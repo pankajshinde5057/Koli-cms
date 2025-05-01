@@ -537,7 +537,7 @@ def send_employee_notification(request):
         url = "https://fcm.googleapis.com/fcm/send"
         body = {
             'notification': {
-                'title': "OfficeOps",
+                'title': "KoliInfoTech",
                 'body': message,
                 'click_action': reverse('employee_view_notification'),
                 'icon': static('dist/img/AdminLTELogo.png')
@@ -548,7 +548,7 @@ def send_employee_notification(request):
                    'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
                    'Content-Type': 'application/json'}
         data = requests.post(url, data=json.dumps(body), headers=headers)
-        notification = NotificationEmployee(employee=employee, message=message)
+        notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
         notification.save()
         return HttpResponse("True")
     except Exception as e:
