@@ -84,6 +84,8 @@ def add_employee(request):
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
             department = employee_form.cleaned_data.get('department')
+            team_lead = employee_form.cleaned_data.get('team_lead')
+            
             passport = request.FILES['profile_pic']
             fs = FileSystemStorage()
             filename = fs.save(passport.name, passport)
@@ -95,6 +97,8 @@ def add_employee(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
+                if team_lead:
+                    user.employee.team_lead = team_lead
                 user.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_employee'))
