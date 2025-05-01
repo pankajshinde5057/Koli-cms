@@ -1,207 +1,242 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
 
-{% block page_title %}
-  {{ page_title }}
-{% endblock page_title %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block custom_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
 
 {% block content %}
 <section class="content">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-12">
-
-        <div class="card card-primary">
-          <div class="card-header">
-            <h3 class="card-title">{{ page_title }}</h3>
-          </div>
-
-          <div class="card-body">
-            <div class="form-group">
-              <label>Department</label>
-              <select name="department" class="form-control" id="department">
-                <option value="">----</option>
-                {% for department in departments %}
-                  <option value="{{ department.id }}">{{ department.name }}</option>
-                {% endfor %}
-              </select>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ page_title }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label>Department</label>
+                            <select name="department" class="form-control" id="department">
+                                <option value="">----</option>
+                                {% for department in departments %}
+                                <option value="{{ department.id }}">{{ department.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button type="button" id="fetch_employee" class="btn btn-primary btn-block">Fetch Employees</button>
+                        <div class="form-group" id="employee_data"></div>
+                    </div>
+                </div>
             </div>
-
-            <div class="form-group">
-              <div id="error_attendance" class="alert alert-danger" style="display: none;"></div>
-              <div id="success_attendance" class="alert alert-success" style="display: none;"></div>
-              <button type="button" id="fetch_attendance" class="btn btn-primary btn-block">
-                Fetch Attendance
-              </button>
-            </div>
-
-            <div id="attendance_block" class="form-group" style="display: none;">
-              <div class="form-group">
-                <label>Attendance Date</label>
-                <select name="attendance_date" id="attendance_date" class="form-control"></select>
-              </div>
-
-              <div id="fetch_employee_block" class="form-group" style="display: none;">
-                <button type="button" id="fetch_employee" class="btn btn-primary btn-block">
-                  Fetch Employees
-                </button>
-              </div>
-
-              <div id="employee_data" class="card-footer"></div>
-            </div>
-
-          </div>
         </div>
 
-      </div>
+        <!-- View Attendance Section -->
+        <div class="row mt-4" id="attendance_section" style="display:none;">
+            <div class="col-md-12 card card-secondary p-3">
+                <div class="form-group">
+                    <label>Select Month:</label>
+                    <select id="month" class="form-control">
+                        <option value="01">01</option>
+                        <option value="02">02</option>
+                        <option value="03">03</option>
+                        <option value="04">04</option>
+                        <option value="05">05</option>
+                        <option value="06">06</option>
+                        <option value="07">07</option>
+                        <option value="08">08</option>
+                        <option value="09">09</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Select Year:</label>
+                    <select id="year" class="form-control">
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button type="button" id="view_attendance" class="btn btn-success">View Attendance</button>
+                </div>
+                <div id="attendance_details"></div>
+            </div>
+        </div>
     </div>
-  </div>
 </section>
-{% endblock content %}
+{% endblock %}
+
+
 
 {% block custom_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script>
-$(document).ready(function() {
+$(document).ready(function () {
+    $("#fetch_employee").click(function () {
+        var department = $("#department").val();
+        $("#employee_data").html("");
+        $("#attendance_section").hide();
 
-  // Fetch Attendance Dates
-  $("#fetch_attendance").click(function() {
-    var department = $("#department").val();
-    if (!department) {
-      $("#error_attendance").html("Kindly choose a department").show();
-      $("#attendance_block").hide();
-      return;
-    }
-
-    $.ajax({
-      url: "{% url 'get_attendance' %}",
-      type: "POST",
-      data: {
-        department: department,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      },
-      dataType: "json", 
-      success: function(response) {
-        if (response.length > 0) {
-          var html = "";
-          for (var key in response) {
-            html += "<option value='" + response[key]['id'] + "'>" + response[key]['attendance_date'] + "</option>";
-          }
-          $("#attendance_date").html(html);
-          $("#error_attendance").hide();
-          $("#attendance_block").show();
-          $("#fetch_employee_block").show();
-        } else {
-          $("#error_attendance").html("No attendance dates found for the selected department").show();
-          $("#attendance_block").hide();
+        if (!department) {
+            alert("Please select a department");
+            return;
         }
-      },
-      error: function(xhr, status, error) {
-        alert("Error while fetching attendance dates: " + xhr.responseText);
-      }
+
+        $.ajax({
+            url: "{% url 'get_employees' %}",
+            type: "POST",
+            data: {
+                department: department,
+                csrfmiddlewaretoken: '{{ csrf_token }}',
+            },
+            success: function (response) {
+                var employees = JSON.parse(response);
+                if (employees.length < 1) {
+                    alert("No employees found");
+                } else {
+                    var html = `
+                        <div class='form-group'>
+                            <label>Employees</label>
+                            <select id='employee' class='form-control' multiple>
+                                ${employees.map(emp => `<option value="${emp.id}">${emp.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class='form-group'>
+                            <label>Attendance Date</label>
+                            <input type='date' class='form-control' id='attendance_date'>
+                        </div>
+                        <div class='form-group'>
+                            <label>Half-Day/Full-Day</label><br>
+                            <div class='form-check form-check-inline'>
+                                <input type='radio' class='form-check-input' id='half_day' name='half_full_day' value='half' checked>
+                                <label class='form-check-label' for='half_day'>Half-Day</label>
+                            </div>
+                            <div class='form-check form-check-inline'>
+                                <input type='radio' class='form-check-input' id='full_day' name='half_full_day' value='full'>
+                                <label class='form-check-label' for='full_day'>Full-Day</label>
+                            </div>
+                        </div>
+                        <div class='form-group' id='half_day_options'>
+                            <label>Which Half?</label><br>
+                            <div class='form-check form-check-inline'>
+                                <input type='radio' class='form-check-input' name='which_half' value='first' checked>
+                                <label class='form-check-label'>First Half</label>
+                            </div>
+                            <div class='form-check form-check-inline'>
+                                <input type='radio' class='form-check-input' name='which_half' value='second'>
+                                <label class='form-check-label'>Second Half</label>
+                            </div>
+                        </div>
+                        <div class='form-group'>
+                            <button type='button' id='update_attendance' class='btn btn-success'>Update Attendance</button>
+                        </div>
+                    `;
+
+                    $("#employee_data").html(html);
+                    $("#employee").select2({ placeholder: "Select employees", allowClear: true });
+                    $("#attendance_section").show();
+
+                    $("input[name='half_full_day']").change(function () {
+                        if ($(this).val() === "half") {
+                            $("#half_day_options").show();
+                        } else {
+                            $("#half_day_options").hide();
+                        }
+                    });
+
+                    $("#half_day_options").show();
+                }
+            },
+            error: function () {
+                alert("Error fetching employees");
+            }
+        });
     });
-  });
 
-  // Fetch Employee List
-  $("#fetch_employee").click(function() {
-    var attendance_date = $("#attendance_date").val();
-    $("#employee_data").html('');  // Clear previous data
+    $(document).on("click", "#update_attendance", function () {
+        $(this).prop("disabled", true).text("Updating...");
+        var employee_data = $("#employee").val();
+        var attendance_date = $("#attendance_date").val();
+        var department = $("#department").val();
+        var half_full_day = $("input[name='half_full_day']:checked").val();
+        var which_half = $("input[name='which_half']:checked").val() || "";
 
-    if (!attendance_date) {
-      alert("Please choose an attendance date.");
-      return;
-    }
-
-    $.ajax({
-      url: "{% url 'get_employee_attendance' %}",
-      type: "POST",
-      data: {
-        attendance_date_id: attendance_date,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      },
-      dataType: "json", 
-      success: function(response) {
-        if (response.length > 0) {
-          var div_data = `
-            <hr/>
-            <div class="form-group">
-              <label>Employee Attendance</label>
-              <div class="row">
-          `;
-
-          for (var key in response) {
-            div_data += `
-              <div class="col-lg-3">
-                <div class="form-check custom-control custom-checkbox">
-                  <input type="checkbox" class="custom-control-input" 
-                    ${response[key]['status'] ? "checked" : ""} 
-                    name="employee_data[]" value="${response[key]['id']}" id="checkbox${response[key]['id']}" />
-                  <label class="custom-control-label" for="checkbox${response[key]['id']}">
-                    ${response[key]['name']} ${response[key]['status'] ? "[Present]" : "[Absent]"}
-                  </label>
-                </div>
-              </div>
-            `;
-          }
-
-          div_data += `
-              </div>
-            </div>
-            <div class="form-group">
-              <button id="save_attendance" class="btn btn-success" type="button">Save Attendance</button>
-            </div>
-          `;
-
-          $("#employee_data").html(div_data);
-        } else {
-          alert("No employee data to display.");
+        if (!employee_data || !attendance_date || !department) {
+            alert("Please complete all required fields");
+            $(this).prop("disabled", false).text("Update Attendance");
+            return;
         }
-      },
-      error: function(xhr, status, error) {
-        alert("Error while fetching employees: " + xhr.responseText);
-      }
+
+        $.ajax({
+            url: "{% url 'update_attendance' %}",
+            type: "POST",
+            data: {
+                employee_ids: JSON.stringify(employee_data),
+                date: attendance_date,
+                department: department,
+                half_full_day: half_full_day,
+                which_half: which_half,
+                csrfmiddlewaretoken: '{{ csrf_token }}',
+            },
+            success: function (response) {
+                if (response.message === "Attendance updated successfully!") {
+                    alert("Attendance updated successfully");
+                    location.reload();
+                } else {
+                    alert("Error updating attendance");
+                    $("#update_attendance").prop("disabled", false).text("Update Attendance");
+                }
+            },
+            error: function () {
+                alert("Error updating attendance");
+                $("#update_attendance").prop("disabled", false).text("Update Attendance");
+            }
+        });
     });
-  });
 
-  // Save Attendance
-  $(document).on('click', '#save_attendance', function() {
-    var employee_data = $("input[name='employee_data[]']").map(function() {
-      return {
-        id: $(this).val(),
-        status: $(this).is(":checked") ? 1 : 0
-      };
-    }).get();
+    $("#view_attendance").click(function () {
+        var employee_id = $("#employee").val();
+        var month = $("#month").val();
+        var year = $("#year").val();
 
-    var attendance_date = $("#attendance_date").val();
-    if (!attendance_date) {
-      alert("Please choose an attendance date.");
-      return;
-    }
-
-    $(this).text("Saving...");
-
-    $.ajax({
-      url: "{% url 'update_attendance' %}",
-      type: "POST",
-      data: {
-        date: attendance_date,
-        employee_ids: JSON.stringify(employee_data),
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      },
-      dataType: "json", 
-      success: function(response) {
-        if (response.message) {
-          alert(response.message);
-          location.reload();  // Reload to reflect changes
-        } else {
-          alert("Error updating attendance. Please try again.");
+        if (!employee_id || !month || !year) {
+            alert("Please select all fields");
+            return;
         }
-      },
-      error: function(xhr, status, error) {
-        alert("Error while saving attendance: " + xhr.responseText);
-      }
-    });
-  });
 
+        $.ajax({
+            url: "{% url 'get_employee_attendance' %}",
+            type: "POST",
+            data: {
+                employee_id: employee_id,
+                month: month,
+                year: year,
+                csrfmiddlewaretoken: '{{ csrf_token }}',
+            },
+            success: function (response) {
+                if (response.length < 1) {
+                    $("#attendance_details").html("No attendance records found.");
+                } else {
+                    var html = `<h4>Attendance for ${month}/${year}</h4><ul>`;
+                    response.forEach(function(item) {
+                        html += `<li>${item.date}: ${item.status}</li>`;
+                    });
+                    html += "</ul>";
+                    $("#attendance_details").html(html);
+                }
+            },
+            error: function () {
+                alert("Error loading attendance data");
+            }
+        });
+    });
 });
 </script>
-{% endblock custom_js %}
+{% endblock %}
