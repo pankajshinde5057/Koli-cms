@@ -1,6 +1,6 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
-{% block page_title %}{{page_title}}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
 
 {% block custom_css %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
@@ -26,19 +26,6 @@
                                 {% endfor %}
                             </select>
                         </div>
-
-                        <!-- Half-Day/Full-Day Radio Button Input -->
-                        {% comment %} <div class="form-group">
-                            <label>Half-Day/Full-Day</label><br>
-                            <div class="form-check form-check-inline">
-                                <input type="radio" class="form-check-input" id="half_day" name="half_full_day" value="half" checked>
-                                <label class="form-check-label" for="half_day">Half-Day</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input type="radio" class="form-check-input" id="full_day" name="half_full_day" value="full">
-                                <label class="form-check-label" for="full_day">Full-Day</label>
-                            </div>
-                        </div> {% endcomment %}
                     </div>
 
                     <div class="card-footer">
@@ -56,13 +43,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script>
 $(document).ready(function () {
-    // Initialize Select2 on the employee dropdown
-    $("#employee").select2({
-        placeholder: "Select employees",
-        allowClear: true,
-        multiple: true
-    });
-
     $("#fetch_employee").click(function () {
         var department = $("#department").val();
         $("#employee_data").html("");
@@ -70,6 +50,7 @@ $(document).ready(function () {
             alert("Please select a department");
             return;
         }
+
         $.ajax({
             url: "{% url 'get_employees' %}",
             type: "POST",
@@ -86,19 +67,40 @@ $(document).ready(function () {
                     for (var key in employees) {
                         select_data += "<option value='" + employees[key]['id'] + "'>" + employees[key]['name'] + "</option>";
                     }
-                    select_data += "</select></div><div class='form-group'><label>Attendance Date</label><input type='date' class='form-control' id='attendance_date'></div>";
+                    select_data += "</select></div>";
+
+                    select_data += "<div class='form-group'><label>Attendance Date</label><input type='date' class='form-control' id='attendance_date'></div>";
+
                     select_data += "<div class='form-group'><label>Half-Day/Full-Day</label><br>";
                     select_data += "<div class='form-check form-check-inline'><input type='radio' class='form-check-input' id='half_day' name='half_full_day' value='half' checked><label class='form-check-label' for='half_day'>Half-Day</label></div>";
                     select_data += "<div class='form-check form-check-inline'><input type='radio' class='form-check-input' id='full_day' name='half_full_day' value='full'><label class='form-check-label' for='full_day'>Full-Day</label></div></div>";
+
+                    select_data += "<div class='form-group' id='half_day_options'>";
+                    select_data += "<label>Which Half?</label><br>";
+                    select_data += "<div class='form-check form-check-inline'><input type='radio' class='form-check-input' name='which_half' value='first' checked><label class='form-check-label'>First Half</label></div>";
+                    select_data += "<div class='form-check form-check-inline'><input type='radio' class='form-check-input' name='which_half' value='second'><label class='form-check-label'>Second Half</label></div>";
+                    select_data += "</div>";
+
                     select_data += "<div class='form-group'><button type='button' id='save_attendance' class='btn btn-success'>Save Attendance</button></div>";
+
                     $("#employee_data").html(select_data);
 
-                    // Reinitialize Select2 on the newly populated select box
                     $("#employee").select2({
                         placeholder: "Select employees",
                         allowClear: true,
                         multiple: true
                     });
+
+                    // Show/hide "which_half" options
+                    $("input[name='half_full_day']").on("change", function () {
+                        if ($(this).val() === "half") {
+                            $("#half_day_options").show();
+                        } else {
+                            $("#half_day_options").hide();
+                        }
+                    });
+
+                    $("#half_day_options").show(); // show by default since 'half' is checked
                 }
             },
             error: function () {
@@ -109,23 +111,17 @@ $(document).ready(function () {
 
     $(document).on("click", "#save_attendance", function () {
         $(this).attr("disabled", "disabled").text("Saving...");
-        var employee_data = $("#employee").val();  // Get the selected employee IDs
+        var employee_data = $("#employee").val();
         var attendance_date = $("#attendance_date").val();
         var department = $("#department").val();
-        var half_full_day = $("input[name='half_full_day']:checked").val();  // Get selected Half-Day/Full-Day value
-        
+        var half_full_day = $("input[name='half_full_day']:checked").val();
+        var which_half = $("input[name='which_half']:checked").val() || "";
+
         if (!attendance_date || !department || !employee_data.length || !half_full_day) {
             alert("Please select employees, attendance date, Half-Day/Full-Day option, and department");
+            $(this).removeAttr("disabled").text("Save Attendance");
             return;
         }
-
-        // Log data for debugging
-        console.log("Sending data:", {
-            employee_ids: JSON.stringify(employee_data),
-            date: attendance_date,
-            department: department,
-            half_full_day: half_full_day
-        });
 
         $.ajax({
             url: "{% url 'save_attendance' %}",
@@ -135,18 +131,21 @@ $(document).ready(function () {
                 date: attendance_date,
                 department: department,
                 half_full_day: half_full_day,
+                which_half: which_half,
                 csrfmiddlewaretoken: '{{ csrf_token }}',
             },
             success: function (response) {
                 if (response == "OK") {
                     alert("Attendance saved successfully");
-                    location.reload();  // Reload page after successful save
+                    location.reload();
                 } else {
                     alert("Error saving attendance");
+                    $("#save_attendance").removeAttr("disabled").text("Save Attendance");
                 }
             },
             error: function () {
                 alert("Error saving attendance");
+                $("#save_attendance").removeAttr("disabled").text("Save Attendance");
             }
         });
     });
