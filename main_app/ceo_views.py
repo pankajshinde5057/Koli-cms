@@ -86,6 +86,8 @@ def add_employee(request):
             department = employee_form.cleaned_data.get('department')
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
+            team_lead = employee_form.cleaned_data.get('team_lead')
+            
             passport = request.FILES['profile_pic']
             fs = FileSystemStorage()
             filename = fs.save(passport.name, passport)
@@ -99,6 +101,8 @@ def add_employee(request):
                 user.employee.department = department
                 user.employee.phone_number = phone_number
                 user.employee.designation = designation
+                if team_lead:
+                    user.employee.team_lead = team_lead
                 user.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_employee'))
@@ -554,7 +558,7 @@ def send_employee_notification(request):
                    'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
                    'Content-Type': 'application/json'}
         data = requests.post(url, data=json.dumps(body), headers=headers)
-        notification = NotificationEmployee(employee=employee, message=message)
+        notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
         notification.save()
         return HttpResponse("True")
     except Exception as e:

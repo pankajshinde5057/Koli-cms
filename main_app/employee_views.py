@@ -1,13 +1,11 @@
 import json
 from datetime import datetime
 from django.contrib import messages
-from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect, get_object_or_404,reverse
 from django.utils import timezone
-from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
 from .forms import *
@@ -16,7 +14,8 @@ from django.db.models import Sum, F, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager,AssetIssue
-
+from django.utils.timezone import localtime, make_aware
+from datetime import timedelta, datetime, time
 
 def employee_home(request):
     today = timezone.now().date()
@@ -41,6 +40,7 @@ def employee_home(request):
     # print("recordsaaaaa",records)
     # Handle date range filtering
     start_date_str = request.GET.get('start_date')
+    print("start_date_str",start_date_str)
     end_date_str = request.GET.get('end_date')
     if start_date_str and end_date_str:
         try:
@@ -227,7 +227,9 @@ def employee_home(request):
     record_dict = {rec.date: rec.status for rec in month_record}
     absent_days = 0
     current_date = start_date
-    while current_date <= end_date:
+    print("START DATE",start_date)
+    while current_date <= today:
+        print("CURREBNT DATE",current_date)
         weekday = current_date.weekday()
         is_sunday = weekday == 6
         is_saturday = weekday == 5
@@ -478,7 +480,6 @@ def employee_fcmtoken(request):
     except Exception as e:
         return HttpResponse("False")
 
-
 @csrf_exempt
 def employee_view_attendance(request):
     employee = get_object_or_404(Employee, admin=request.user)
@@ -492,7 +493,7 @@ def employee_view_attendance(request):
             'default_end': timezone.now().strftime('%Y-%m-%d')
         }
         return render(request, 'employee_template/employee_view_attendance.html', context)
-    
+
     elif request.method == 'POST':
         try:
             start_date = request.POST.get('start_date')
@@ -507,7 +508,7 @@ def employee_view_attendance(request):
             all_records = AttendanceRecord.objects.filter(
                 user=request.user,
                 date__range=(start_date, end_date)
-            ).order_by('date', 'clock_in')
+            ).exclude(clock_in=None).exclude(clock_out=None).order_by('date', 'clock_in')
         
             daily_summaries = {}
             for record in all_records:
@@ -524,41 +525,47 @@ def employee_view_attendance(request):
                     }
                 else:
                     day = daily_summaries[date_str]
-                    # Update first clock-in if earlier
-                    if record.clock_in and (day['first_clock_in'] is None or record.clock_in < day['first_clock_in']):
+
+                    if record.clock_in and record.clock_in < day['first_clock_in']:
                         day['first_clock_in'] = record.clock_in
-                    # Update last clock-out if later
-                    if record.clock_out and (day['last_clock_out'] is None or record.clock_out > day['last_clock_out']):
+
+                    if record.clock_out and record.clock_out > day['last_clock_out']:
                         day['last_clock_out'] = record.clock_out
-                    # Update status (prioritize 'late' over 'present')
+
                     if record.status == 'late':
                         day['status'] = 'late'
-                    # Sum total worked time
+
                     if record.total_worked:
                         day['total_worked'] += record.total_worked
+
                     day['records_count'] += 1
             
-            # Convert to list and format for response
             json_data = []
             for date_str, day in sorted(daily_summaries.items(), reverse=True):
-                # Calculate net worked time (subtract breaks if needed)
-                # Note: You might need to add break time calculation logic here
-                net_worked = day['total_worked']
-                
+                # Define lunch break period
+                lunch_start = make_aware(datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 0)))
+                lunch_end = make_aware(datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 40)))
+
+                # Subtract lunch time if work period spans it
+                if day['first_clock_in'] <= lunch_start and day['last_clock_out'] >= lunch_end:
+                    day['total_worked'] -= timedelta(minutes=40)
+
                 json_data.append({
                     "date": date_str,
                     "status": day['status'],
-                    "clock_in": day['first_clock_in'].strftime('%H:%M:%S') if day['first_clock_in'] else '--',
-                    "clock_out": day['last_clock_out'].strftime('%H:%M:%S') if day['last_clock_out'] else '--',
-                    "total_worked": str(net_worked),
+                    "clock_in": localtime(day['first_clock_in']).strftime('%I:%M %p') if day['first_clock_in'] else '--',
+                    "clock_out": localtime(day['last_clock_out']).strftime('%I:%M %p') if day['last_clock_out'] else '--',
+                    "total_worked": str(day['total_worked']),
                     "records_count": day['records_count']
                 })
+
             return JsonResponse({'data': json_data}, safe=False)
-            
+
         except ValueError as e:
             return JsonResponse({'error': f'Invalid date format: {str(e)}'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
         
 
 def employee_view_salary(request):

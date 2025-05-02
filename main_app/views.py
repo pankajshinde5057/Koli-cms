@@ -37,24 +37,22 @@ def login_page(request):
 
 
 def doLogin(request, **kwargs):
-    # if request.method != "POST":
-    #     return HttpResponse("<h4>Denied</h4>")
-    # else:
-    #     # Google recaptcha
-    #     captcha_token = request.POST.get("g-recaptcha-response")
-    #     captcha_url = "https://www.google.com/recaptcha/api/siteverify"
-    #     captcha_key = SECRET_KEY
-    #     data = {"secret": captcha_key, "response": captcha_token}
-    #     # Make request
-    #     try:
-    #         captcha_server = requests.post(url=captcha_url, data=data)
-    #         response = json.loads(captcha_server.text)
-    #         if response["success"] == False:
-    #             messages.error(request, "Invalid Captcha. Try Again")
-    #             return redirect("/")
-    #     except:
-    #         messages.error(request, "Captcha could not be verified. Try Again")
-    #         return redirect("/")
+    if request.method != "POST":
+        return HttpResponse("<h4>Denied</h4>")
+    else:
+        captcha_token = request.POST.get("g-recaptcha-response")
+        captcha_url = "https://www.google.com/recaptcha/api/siteverify"
+        captcha_key = SECRET_KEY
+        data = {"secret": captcha_key, "response": captcha_token}
+        try:
+            captcha_server = requests.post(url=captcha_url, data=data)
+            response = json.loads(captcha_server.text)
+            if response["success"] == False:
+                messages.error(request, "Invalid Captcha. Try Again")
+                return redirect("/")
+        except:
+            messages.error(request, "Captcha could not be verified. Try Again")
+            return redirect("/")
 
         # Authenticate
         user = authenticate(
@@ -183,7 +181,7 @@ def clock_in_out(request):
             user=request.user, 
             clock_out__isnull=True
         ).first()
-        
+
         if current_record:
             # Clock out
             current_record.clock_out = now
@@ -195,15 +193,19 @@ def clock_in_out(request):
                 related_record=current_record
             )
         else:
-
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
 
-            late_clock_in = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
-            
-            status ='present'
-            if now > late_clock_in:
-                status ='late'
+            late_time = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
+            half_day_time = datetime.combine(now.date(), time(13, 0), tzinfo=now.tzinfo)  # 1:00 PM
+
+            if now > half_day_time:
+                status = 'half_day'
+            elif now > late_time:
+                status = 'late'
+            else:
+                status = 'present'
+
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
                 date = now.date(),
@@ -213,10 +215,17 @@ def clock_in_out(request):
                 ip_address=get_router_ip(),
                 status=status
             )
-            
-            ActivityFeed.objects.create(user=request.user,activity_type='clock_in',related_record=new_record)
+
+            ActivityFeed.objects.create(
+                user=request.user,
+                activity_type='clock_in',
+                related_record=new_record
+            )
+
         return JsonResponse({'status': 'success'})
     return redirect('home')
+
+
 
 @login_required
 def break_action(request):
