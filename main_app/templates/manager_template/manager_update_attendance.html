@@ -79,6 +79,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script>
 $(document).ready(function () {
+    // Initialize Select2
+    $("#department").select2();
+    
     $("#fetch_employee").click(function () {
         var department = $("#department").val();
         $("#employee_data").html("");
@@ -104,13 +107,13 @@ $(document).ready(function () {
                     var html = `
                         <div class='form-group'>
                             <label>Employees</label>
-                            <select id='employee' class='form-control' multiple>
+                            <select id='employee' class='form-control select2' multiple>
                                 ${employees.map(emp => `<option value="${emp.id}">${emp.name}</option>`).join('')}
                             </select>
                         </div>
                         <div class='form-group'>
                             <label>Attendance Date</label>
-                            <input type='date' class='form-control' id='attendance_date'>
+                            <input type='date' class='form-control' id='attendance_date' value="{{ current_date|date:'Y-m-d' }}">
                         </div>
                         <div class='form-group'>
                             <label>Half-Day/Full-Day</label><br>
@@ -150,8 +153,6 @@ $(document).ready(function () {
                             $("#half_day_options").hide();
                         }
                     });
-
-                    $("#half_day_options").show();
                 }
             },
             error: function () {
@@ -161,16 +162,17 @@ $(document).ready(function () {
     });
 
     $(document).on("click", "#update_attendance", function () {
-        $(this).prop("disabled", true).text("Updating...");
-        var employee_data = $("#employee").val();
+        var $btn = $(this);
+        $btn.prop("disabled", true).text("Updating...");
+        
+        var employee_ids = $("#employee").val();
         var attendance_date = $("#attendance_date").val();
-        var department = $("#department").val();
         var half_full_day = $("input[name='half_full_day']:checked").val();
         var which_half = $("input[name='which_half']:checked").val() || "";
 
-        if (!employee_data || !attendance_date || !department) {
-            alert("Please complete all required fields");
-            $(this).prop("disabled", false).text("Update Attendance");
+        if (!employee_ids || !attendance_date) {
+            alert("Please select employees and date");
+            $btn.prop("disabled", false).text("Update Attendance");
             return;
         }
 
@@ -178,25 +180,31 @@ $(document).ready(function () {
             url: "{% url 'update_attendance' %}",
             type: "POST",
             data: {
-                employee_ids: JSON.stringify(employee_data),
+                employee_ids: JSON.stringify(employee_ids),
                 date: attendance_date,
-                department: department,
                 half_full_day: half_full_day,
                 which_half: which_half,
                 csrfmiddlewaretoken: '{{ csrf_token }}',
             },
             success: function (response) {
-                if (response.message === "Attendance updated successfully!") {
-                    alert("Attendance updated successfully");
-                    location.reload();
+                if (response.error) {
+                    alert("Error: " + response.error);
                 } else {
-                    alert("Error updating attendance");
-                    $("#update_attendance").prop("disabled", false).text("Update Attendance");
+                    alert(response.message);
+                    // Refresh the attendance view
+                    $("#view_attendance").click();
                 }
             },
-            error: function () {
-                alert("Error updating attendance");
-                $("#update_attendance").prop("disabled", false).text("Update Attendance");
+            error: function (xhr) {
+                try {
+                    var err = JSON.parse(xhr.responseText);
+                    alert("Error: " + (err.error || "Failed to update attendance"));
+                } catch (e) {
+                    alert("Error: Failed to update attendance");
+                }
+            },
+            complete: function () {
+                $btn.prop("disabled", false).text("Update Attendance");
             }
         });
     });
@@ -206,31 +214,64 @@ $(document).ready(function () {
         var month = $("#month").val();
         var year = $("#year").val();
 
-        if (!employee_id || !month || !year) {
-            alert("Please select all fields");
+        if (!employee_id || employee_id.length === 0) {
+            alert("Please select at least one employee");
             return;
         }
+
+        if (!month || !year) {
+            alert("Please select month and year");
+            return;
+        }
+
+        // For multiple employees, we'll just use the first one for viewing
+        var first_employee = Array.isArray(employee_id) ? employee_id[0] : employee_id;
 
         $.ajax({
             url: "{% url 'get_employee_attendance' %}",
             type: "POST",
             data: {
-                employee_id: employee_id,
+                employee_id: first_employee,
                 month: month,
                 year: year,
                 csrfmiddlewaretoken: '{{ csrf_token }}',
             },
             success: function (response) {
-                if (response.length < 1) {
-                    $("#attendance_details").html("No attendance records found.");
-                } else {
-                    var html = `<h4>Attendance for ${month}/${year}</h4><ul>`;
-                    response.forEach(function(item) {
-                        html += `<li>${item.date}: ${item.status}</li>`;
-                    });
-                    html += "</ul>";
-                    $("#attendance_details").html(html);
+                if (response.error) {
+                    alert(response.error);
+                    return;
                 }
+                
+                if (response.length === 0) {
+                    $("#attendance_details").html("<p>No attendance records found for selected period.</p>");
+                    return;
+                }
+
+                var html = `
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Time In</th>
+                                    <th>Time Out</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${response.map(item => `
+                                    <tr>
+                                        <td>${item.date}</td>
+                                        <td>${item.status}</td>
+                                        <td>${item.time_in || '-'}</td>
+                                        <td>${item.time_out || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                $("#attendance_details").html(html);
             },
             error: function () {
                 alert("Error loading attendance data");
