@@ -10,6 +10,7 @@ from .forms import *
 from .models import *
 
 
+
 def admin_home(request):
     total_manager = Manager.objects.all().count()
     total_employees = Employee.objects.all().count()
