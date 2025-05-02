@@ -606,10 +606,7 @@ def add_employee_by_manager(request):
 
 
 def edit_employee_by_manager(request, employee_id):
-    # Get the employee object
     employee = get_object_or_404(Employee, id=employee_id)
-
-    # Ensure that the logged-in manager is the team lead of the employee
     if employee.team_lead != request.user.manager:
         messages.error(request, "You do not have permission to edit this employee.")
         return redirect('manage_employee_by_manager')
@@ -624,9 +621,49 @@ def edit_employee_by_manager(request, employee_id):
 
     if request.method == 'POST':
         if form.is_valid():
-            form.save()
-            messages.success(request, "Employee information updated successfully.")
-            return redirect(reverse('manage_employee_by_manager'))
+            first_name = form.cleaned_data.get('first_name')
+            last_name = form.cleaned_data.get('last_name')
+            address = form.cleaned_data.get('address')
+            username = form.cleaned_data.get('username')
+            email = form.cleaned_data.get('email')
+            gender = form.cleaned_data.get('gender')
+            password = form.cleaned_data.get('password') or None
+            division = form.cleaned_data.get('division')
+            department = form.cleaned_data.get('department')
+            passport = request.FILES.get('profile_pic') or None
+            try:
+                # Get the related CustomUser instance
+                user = CustomUser.objects.get(id=employee.admin.id)
+
+                # If a new passport image is uploaded, update the profile_pic
+                if passport is not None:
+                    fs = FileSystemStorage()
+                    filename = fs.save(passport.name, passport)
+                    passport_url = fs.url(filename)
+                    user.profile_pic = passport_url
+
+                # Update the CustomUser fields
+                user.username = username
+                user.email = email
+                if password is not None:
+                    user.set_password(password)  # Set the new password
+                user.first_name = first_name
+                user.last_name = last_name
+                user.gender = gender
+                user.address = address
+
+                # Save the CustomUser instance
+                user.save()
+
+                # Update the Employee model fields
+                employee.division = division
+                employee.department = department
+                employee.save()
+
+                messages.success(request, "Employee information updated successfully.")
+                return redirect(reverse('manage_employee_by_manager'))
+            except Exception as e:
+                messages.error(request, "Could not update employee: " + str(e))
         else:
             messages.error(request, "Please fill out the form correctly.")
 

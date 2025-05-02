@@ -65,8 +65,7 @@ def add_manager(request):
 
             except Exception as e:
                 messages.error(request, "Could Not Add " + str(e))
-        else:
-            messages.error(request, "Please fulfil all requirements")
+        
 
     return render(request, 'ceo_template/add_manager_template.html', context)
 
