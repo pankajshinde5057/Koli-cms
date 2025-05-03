@@ -26,66 +26,73 @@
                                 {% endfor %}
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Employee</label>
+                            <select name="employee" class="form-control" id="employee">
+                                <option value="">----</option>
+                                
+                                    {% for employee in employees %}
+                                        <option value="{{ employee.employee_id }}">{{ employee.admin.first_name }} {{ employee.admin.last_name }}</option>
+                                    {% endfor %}
+                                
+                            </select>
+                        </div>
+                        
                     </div>
                     <div class="card-footer">
-                        <button type="button" id="fetch_employee" class="btn btn-primary btn-block">Fetch Employees</button>
+                        <button type="button" id="fetch_employee" class="btn btn-primary btn-block">Update Employees</button>
                         <div class="form-group" id="employee_data"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- View Attendance Section -->
+        <!-- View Attendance Button Section -->
+        <div class="row mt-3" id="view_attendance_btn_section" style="display: none;">
+            <div class="col-md-12">
+                <button class="btn btn-primary btn-block" id="open_view_attendance">
+                    <i class="fas fa-eye"></i> View Attendance for Selected Employee
+                </button>
+            </div>
+        </div>
+
+        <!-- Month/Year and Date Range Section -->
         <div class="row mt-4" id="attendance_section" style="display:none;">
-            <div class="col-md-12 card card-secondary p-3">
-                <div class="form-group">
-                    <label>Select Month:</label>
-                    <select id="month" class="form-control">
-                        <option value="01">01</option>
-                        <option value="02">02</option>
-                        <option value="03">03</option>
-                        <option value="04">04</option>
-                        <option value="05">05</option>
-                        <option value="06">06</option>
-                        <option value="07">07</option>
-                        <option value="08">08</option>
-                        <option value="09">09</option>
-                        <option value="10">10</option>
-                        <option value="11">11</option>
-                        <option value="12">12</option>
-                    </select>
+            <div class="col-md-12">
+                <div class="card card-primary">
+                    <div class="card-header d-flex justify-content-between align-items-left flex-wrap">
+                        <h4 class="card-title mb-0">View Attendance</h4>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <!-- Filter Buttons -->
+                            <div class="btn-group" role="group" aria-label="Attendance Filters">
+                                <button type="button" id="this_week" class="btn btn-warning">This Week</button>
+                                <button type="button" id="this_month" class="btn btn-info">This Month</button>
+                                <button type="button" id="this_year" class="btn btn-success">This Year</button>
+                            </div>
+                            
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Select Year:</label>
-                    <select id="year" class="form-control">
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
-                        <option value="2023">2023</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <button type="button" id="view_attendance" class="btn btn-success">View Attendance</button>
-                </div>
-                <div id="attendance_details"></div>
             </div>
         </div>
     </div>
 </section>
 {% endblock %}
 
-
-
 {% block custom_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script>
 $(document).ready(function () {
-    // Initialize Select2
-    $("#department").select2();
-    
+    $("#department, #employee").select2();
+    $("#month, #year").select2({ width: '100%' });
+
+    let lastSelectedEmployeeIds = [];
+
     $("#fetch_employee").click(function () {
         var department = $("#department").val();
         $("#employee_data").html("");
         $("#attendance_section").hide();
+        $("#view_attendance_btn_section").hide();
 
         if (!department) {
             alert("Please select a department");
@@ -105,12 +112,6 @@ $(document).ready(function () {
                     alert("No employees found");
                 } else {
                     var html = `
-                        <div class='form-group'>
-                            <label>Employees</label>
-                            <select id='employee' class='form-control select2' multiple>
-                                ${employees.map(emp => `<option value="${emp.id}">${emp.name}</option>`).join('')}
-                            </select>
-                        </div>
                         <div class='form-group'>
                             <label>Attendance Date</label>
                             <input type='date' class='form-control' id='attendance_date' value="{{ current_date|date:'Y-m-d' }}">
@@ -144,15 +145,12 @@ $(document).ready(function () {
 
                     $("#employee_data").html(html);
                     $("#employee").select2({ placeholder: "Select employees", allowClear: true });
-                    $("#attendance_section").show();
 
                     $("input[name='half_full_day']").change(function () {
-                        if ($(this).val() === "half") {
-                            $("#half_day_options").show();
-                        } else {
-                            $("#half_day_options").hide();
-                        }
+                        $("#half_day_options").toggle($(this).val() === "half");
                     });
+
+                    $("#view_attendance_btn_section").show();
                 }
             },
             error: function () {
@@ -164,7 +162,7 @@ $(document).ready(function () {
     $(document).on("click", "#update_attendance", function () {
         var $btn = $(this);
         $btn.prop("disabled", true).text("Updating...");
-        
+
         var employee_ids = $("#employee").val();
         var attendance_date = $("#attendance_date").val();
         var half_full_day = $("input[name='half_full_day']:checked").val();
@@ -191,17 +189,11 @@ $(document).ready(function () {
                     alert("Error: " + response.error);
                 } else {
                     alert(response.message);
-                    // Refresh the attendance view
-                    $("#view_attendance").click();
+                    lastSelectedEmployeeIds = employee_ids;
                 }
             },
-            error: function (xhr) {
-                try {
-                    var err = JSON.parse(xhr.responseText);
-                    alert("Error: " + (err.error || "Failed to update attendance"));
-                } catch (e) {
-                    alert("Error: Failed to update attendance");
-                }
+            error: function () {
+                alert("Error updating attendance");
             },
             complete: function () {
                 $btn.prop("disabled", false).text("Update Attendance");
@@ -209,72 +201,112 @@ $(document).ready(function () {
         });
     });
 
+    // Date filter logic
+    function setDateRange(startDate, endDate) {
+        $("#start_date").val(startDate);
+        $("#end_date").val(endDate);
+    }
+
+    // Filter buttons for week, month, and year
+    $("#this_week").click(function () {
+        var startDate = new Date();
+        var endDate = new Date();
+        var dayOfWeek = startDate.getDay();
+        startDate.setDate(startDate.getDate() - dayOfWeek);
+        endDate.setDate(startDate.getDate() + 6);
+        setDateRange(formatDate(startDate), formatDate(endDate));
+    });
+
+    $("#this_month").click(function () {
+        var startDate = new Date();
+        startDate.setDate(1);
+        var endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+        setDateRange(formatDate(startDate), formatDate(endDate));
+    });
+
+    $("#this_year").click(function () {
+        var startDate = new Date(new Date().getFullYear(), 0, 1);
+        var endDate = new Date(new Date().getFullYear(), 11, 31);
+        setDateRange(formatDate(startDate), formatDate(endDate));
+    });
+
+    function formatDate(date) {
+        return date.getFullYear() + "-" + (date.getMonth() + 1).toString().padStart(2, "0") + "-" + date.getDate().toString().padStart(2, "0");
+    }
+
+    $("#open_view_attendance").click(function () {
+        if (!lastSelectedEmployeeIds.length) {
+            alert("Please select an employee first.");
+            return;
+        }
+        $("#attendance_section").slideDown();
+    });
+
     $("#view_attendance").click(function () {
-        var employee_id = $("#employee").val();
+        var employeeId = $("#employee").val();
+        console.log(employeeId);
+        if (Array.isArray(employeeId)) {
+            if (employeeId.length !== 1) {
+                alert("Please select only one employee to view attendance.");
+                return;
+            }
+            employeeId = employeeId[0];
+        }
+
         var month = $("#month").val();
         var year = $("#year").val();
+        var startDate = $("#start_date").val();
+        var endDate = $("#end_date").val();
 
-        if (!employee_id || employee_id.length === 0) {
-            alert("Please select at least one employee");
+        if (!employeeId || !month || !year || !startDate || !endDate) {
+            alert("Please select employee, month, year, and date range.");
             return;
         }
-
-        if (!month || !year) {
-            alert("Please select month and year");
-            return;
-        }
-
-        // For multiple employees, we'll just use the first one for viewing
-        var first_employee = Array.isArray(employee_id) ? employee_id[0] : employee_id;
 
         $.ajax({
             url: "{% url 'get_employee_attendance' %}",
             type: "POST",
             data: {
-                employee_id: first_employee,
+                employee_id: employeeId,
                 month: month,
                 year: year,
+                start_date: startDate,
+                end_date: endDate,
                 csrfmiddlewaretoken: '{{ csrf_token }}',
             },
             success: function (response) {
                 if (response.error) {
-                    alert(response.error);
-                    return;
+                    alert("Error: " + response.error);
+                } else {
+                    var html = '';
+                    if (response.length > 0) {
+                        html += `<table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                            <th>Clock In</th>
+                                            <th>Clock Out</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                        response.forEach(function (attendance) {
+                            html += `<tr>
+                                        <td>${attendance.date}</td>
+                                        <td>${attendance.status}</td>
+                                        <td>${attendance.clock_in}</td>
+                                        <td>${attendance.clock_out}</td>
+                                      </tr>`;
+                        });
+                        html += `</tbody></table>`;
+                        $("#attendance_details").html(html);
+                    } else {
+                        $("#attendance_details").html("No attendance records found.");
+                    }
                 }
-                
-                if (response.length === 0) {
-                    $("#attendance_details").html("<p>No attendance records found for selected period.</p>");
-                    return;
-                }
-
-                var html = `
-                    <div class="table-responsive">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th>Time In</th>
-                                    <th>Time Out</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${response.map(item => `
-                                    <tr>
-                                        <td>${item.date}</td>
-                                        <td>${item.status}</td>
-                                        <td>${item.time_in || '-'}</td>
-                                        <td>${item.time_out || '-'}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                $("#attendance_details").html(html);
             },
             error: function () {
-                alert("Error loading attendance data");
+                alert("Error fetching attendance data.");
             }
         });
     });
