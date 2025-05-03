@@ -15,6 +15,7 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 
+
 def admin_home(request):
     total_manager = Manager.objects.all().count()
     total_employees = Employee.objects.all().count()
@@ -70,8 +71,7 @@ def add_manager(request):
 
             except Exception as e:
                 messages.error(request, "Could Not Add " + str(e))
-        else:
-            messages.error(request, "Please fulfil all requirements")
+        
 
     return render(request, 'ceo_template/add_manager_template.html', context)
 
@@ -89,6 +89,8 @@ def add_employee(request):
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
             department = employee_form.cleaned_data.get('department')
+            team_lead = employee_form.cleaned_data.get('team_lead')
+            
             passport = request.FILES['profile_pic']
             fs = FileSystemStorage()
             filename = fs.save(passport.name, passport)
@@ -100,6 +102,8 @@ def add_employee(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
+                if team_lead:
+                    user.employee.team_lead = team_lead
                 user.save()
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_employee'))
@@ -553,7 +557,7 @@ def send_employee_notification(request):
                    'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
                    'Content-Type': 'application/json'}
         data = requests.post(url, data=json.dumps(body), headers=headers)
-        notification = NotificationEmployee(employee=employee, message=message)
+        notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
         notification.save()
         return HttpResponse("True")
     except Exception as e:
