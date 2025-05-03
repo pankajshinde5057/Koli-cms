@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_POST
 from asset_app.models import AssetIssue
 from .models import CustomUser
+from django.utils.timezone import localtime
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -22,6 +23,9 @@ LOCATION_CHOICES = (
 
 def manager_home(request):
     manager = get_object_or_404(Manager, admin=request.user)
+    
+    today = date.today()
+    current_time = timezone.now()
 
     predefined_names = ['Python Department', 'React JS Department', 'Node JS Department']
     all_departments = Department.objects.all()
@@ -41,13 +45,22 @@ def manager_home(request):
 
     employee_ids = employees.values_list('id', flat=True)
     filtered_records = AttendanceRecord.objects.filter(user_id__in=employee_ids)
+    
+    on_break_now = Break.objects.filter(
+        attendance_record__user__in=employee_ids,
+        break_start__date=today,
+        break_start__lte=current_time,
+    ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
+
+    total_on_break = on_break_now.count()
 
     if start_date and end_date:
         date_range = [parse_date(start_date), parse_date(end_date)]
         filtered_records = filtered_records.filter(date__range=date_range)
 
     time_history_data = []
-
+    break_entries = []
+    
     for employee in employees:
         emp_records = filtered_records.filter(user=employee)
         total_present = emp_records.filter(status='present').count()
@@ -60,6 +73,26 @@ def manager_home(request):
                 end_date__gte=parse_date(start_date)
             )
         total_leave = emp_leaves.count()
+    
+        emp_breaks = Break.objects.filter(
+            attendance_record__user=employee,
+            break_start__date=today
+        ).order_by('break_start')
+
+        for b in emp_breaks:
+            if b.break_end:
+                duration = int((b.break_end - b.break_start).total_seconds() / 60)
+            else:
+                duration = 0 
+
+        break_entries.append({
+            'employee_id': employee.id,
+            'employee_name': employee.get_full_name(),
+            'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
+            'break_start': localtime(b.break_start).strftime('%H:%M'),
+            'break_end': localtime(b.break_end).strftime('%H:%M') if b.break_end else 'Ongoing',
+            'break_duration': duration,
+        })
 
         time_history_data.append({
             'employee_name': employee.get_full_name(),
@@ -67,7 +100,7 @@ def manager_home(request):
             'present': total_present,
             'late': total_late,
             'leave': total_leave,
-            'working_days': total_present + total_late
+            'working_days': total_present + total_late,
         })
 
     context = {
@@ -81,6 +114,8 @@ def manager_home(request):
         'total_attendance': filtered_records.count(),
         'total_leave': sum(item['leave'] for item in time_history_data),
         'total_department': all_departments.count(),
+        'total_on_break' : total_on_break,
+        'break_entries': break_entries,
     }
     return render(request, 'manager_template/home_content.html', context)
 
@@ -934,9 +969,17 @@ def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
         if leave_request.status == 0:
+            if not leave_request.end_date:
+                leave_request.end_date = leave_request.start_date
+                leave_request.save()
+
             leave_request.status = 1
             leave_request.save()
-            messages.success(request, "Leave request approved.")
+
+            if leave_request.leave_type == 'Half-Day':
+                messages.success(request, "Half-Day leave approved.")
+            else:
+                messages.success(request, "Full-Day leave approved.")
         else:
             messages.info(request, "This leave request has already been processed.")
     return redirect('manager_view_notification')

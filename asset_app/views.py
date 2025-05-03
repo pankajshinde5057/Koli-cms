@@ -4,7 +4,7 @@ from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory,AssetIssue
-from .forms import AssetForm
+from .forms import AssetForm,AssetCategoryForm
 from .filters import AssetsFilter
 from django.urls import reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -117,7 +117,7 @@ class AssetsDetailView(DetailView):
 
 class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
     model = AssetCategory
-    fields = ['category']
+    form_class = AssetCategoryForm
     template_name = 'asset_app/assetcategory_form.html'
     success_url = reverse_lazy('asset_app:assetscategory-create')
 
@@ -146,19 +146,23 @@ class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
     
 class AssetCategoryUpdateView(LoginRequiredMixin, UpdateView):
     model = AssetCategory
-    fields = ['category']
+    fields = ['category','has_os' ,'has_ip']
     template_name = 'asset_app/assetcategory_form.html'
     success_url = reverse_lazy('asset_app:assetscategory-create')
 
     def form_valid(self, form):
-        form.instance.category = form.instance.category.lower()
+        form.instance.category = form.instance.category.lower().strip()
+        messages.success(
+            self.request,
+            f'Category "{form.instance.category}" updated successfully'
+        )
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['current_user'] = self.request.user
         context['page_title'] = "Update Asset Category"
-        context['categories'] = AssetCategory.objects.all() 
+        context['categories'] = AssetCategory.objects.all().order_by('category') 
         return context
 
 
@@ -189,31 +193,43 @@ class AssetCategoryDeleteView(LoginRequiredMixin, DeleteView):
         return context
 
 
+def get_category_config(request):
+    category_id = request.GET.get('category_id')
+    try:
+        category = AssetCategory.objects.get(id=category_id)
+        return JsonResponse({
+            'has_os': category.has_os,
+            'has_ip': category.has_ip
+        })
+    except AssetCategory.DoesNotExist:
+        return JsonResponse({'error': 'Invalid category'}, status=400)
+
 class AssetsCreateView(LoginRequiredMixin, CreateView):
     model = Assets
-    fields = [
-        'asset_category',
-        'asset_name',
-        'asset_brand', 
-        'asset_serial_number',
-        'asset_condition',
-        'ip_address',
-        'os_version',
-        'asset_image',
-        'manager'
-    ]
-    template_name = 'asset_app/assets_form.html'  
+    form_class = AssetForm
+    template_name = 'asset_app/assets_form.html'
     success_url = reverse_lazy('asset_app:assets-list')
 
     def form_valid(self, form):
-        form.instance.manager = self.request.user
-        return super().form_valid(form)
+        asset = form.save(commit=False)
+
+        # if user is type 2 (Manager)
+        if self.request.user.user_type == "2":
+            asset.manager = self.request.user
+
+        asset.save()
+        messages.success(self.request, "Created Successfully!!")
+        return redirect(self.success_url)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request.user.user_type == "1" or self.request.user.is_superuser:
-            context['allManager'] = CustomUser.objects.filter(user_type=2)
-        context['current_user'] = self.request.user
+        user = self.request.user
+
+        # Pass all managers only if admin or superuser
+        if user.user_type == "1" or user.is_superuser:
+            context['allManager'] = CustomUser.objects.filter(user_type="2")
+        
+        context['current_user'] = user
         return context
     
     
@@ -234,12 +250,23 @@ class AssetUpdateView(LoginRequiredMixin, UpdateView):
     def form_invalid(self, form):
         messages.error(self.request,'There was an error Updating Asset.Please Check Form Fields!!')
         return super().form_invalid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        asset = self.get_object()
+        context['show_all_fields'] = bool(asset.ip_address or asset.os_version)
+        context['basic_fields'] = ['asset_category', 'asset_name', 'asset_brand', 'asset_condition', 'asset_image']
+        return context
 
 
 class AssetDeleteView(View):
     def get(self, request, pk):
         asset = get_object_or_404(Assets, pk=pk)
-        asset.delete()  
+        try:
+            asset.delete()
+            messages.success(request, "Asset deleted successfully.")
+        except ProtectedError:
+            messages.error(request, "Cannot delete this asset because it is currently issued.")
         return redirect('asset_app:assets-list')
     
 

@@ -8,7 +8,12 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from .forms import *
 from .models import *
-
+from collections import defaultdict
+from xhtml2pdf import pisa
+from calendar import monthrange
+from datetime import datetime,timedelta
+from decimal import Decimal
+from django.template.loader import get_template
 
 def admin_home(request):
     total_manager = Manager.objects.all().count()
@@ -614,3 +619,167 @@ def delete_department(request, department_id):
     department.delete()
     messages.success(request, "Department deleted successfully!")
     return redirect(reverse('manage_department'))
+
+
+def generate_performance_report(request):
+    departments = Department.objects.all()
+    
+    if request.method == 'POST':
+        employee_id = request.POST.get('employee')
+        month = request.POST.get('month')
+        year = request.POST.get('year')
+        
+        try:
+            employee = Employee.objects.get(admin__id=employee_id)
+            user = employee.admin
+            year = int(year)
+            month = int(month)
+
+            # Get the number of days in the selected month
+            num_days = monthrange(year, month)[1]
+            
+            # Calculate date range for the selected month
+            start_date = datetime(year, month, 1).date()
+            end_date = datetime(year, month, num_days).date()
+            
+            # Get attendance records
+            attendance_records = AttendanceRecord.objects.filter(
+                user=user,
+                date__gte=start_date,
+                date__lte=end_date
+            ).order_by('date')
+            
+            # Get leave records
+            leave_records = LeaveReportEmployee.objects.filter(
+                employee=employee,
+                status=1,
+            )
+            
+            # Create a dictionary to track leave days
+            leave_days = defaultdict(Decimal)
+            for leave in leave_records:
+                current_date = leave.start_date
+                while current_date <= leave.end_date:
+                    if current_date.month == month and current_date.year == year:
+                        if leave.leave_type == "Full-Day":
+                            leave_days[current_date] += Decimal('1.0')
+                        elif leave.leave_type == "Half-Day":
+                            leave_days[current_date] += Decimal('0.5')
+                    current_date += timedelta(days=1)
+            
+            # Calculate statistics
+            present_days = 0
+            late_days = 0
+            half_days = 0
+            absent_days = 0
+            total_worked = timedelta()
+            total_regular = timedelta()
+            total_overtime = timedelta()
+            daily_records = []
+
+            for day in range(1, num_days + 1):
+                current_date = datetime(year, month, day).date()
+                attendance = attendance_records.filter(date=current_date).first()
+                leave_hours = leave_days.get(current_date, Decimal('0.0'))
+                
+                day_status = {
+                    'date': current_date,
+                    'attendance': attendance,
+                    'leave': float(leave_hours),
+                    'breaks_taken' : 0,
+                    'total_break_time' : timedelta()
+                }
+
+                if attendance:
+                    print(attendance.id)
+                    break_records = Break.objects.filter(
+                        attendance_record_id=attendance.id,
+                    )
+                    print(break_records)
+                    for breaks in break_records:
+                        if breaks.break_end:
+                            break_duration = breaks.break_end - breaks.break_start
+                            day_status['total_break_time'] += break_duration
+                            day_status['breaks_taken'] += 1
+
+                    if attendance.status == 'present':
+                        present_days += 1
+                    elif attendance.status == 'late':
+                        late_days += 1
+
+                    if attendance.total_worked:
+                        total_worked += attendance.total_worked
+                    if attendance.regular_hours:
+                        total_regular += attendance.regular_hours
+                    if attendance.overtime_hours:
+                        total_overtime += attendance.overtime_hours
+                
+                elif leave_hours > 0:
+                    if leave_hours == Decimal('0.5'):
+                        half_days += 1
+                    else:
+                        absent_days += 1
+                
+                else:
+                    if current_date.weekday() < 5:
+                        absent_days += 1 
+                
+                daily_records.append(day_status)
+
+            
+            # Convert timedelta to hours
+            total_worked_hours = total_worked.total_seconds() / 3600
+            total_regular_hours = total_regular.total_seconds() / 3600
+            total_overtime_hours = total_overtime.total_seconds() / 3600
+            
+            context = {
+                'employee': employee,
+                'month': month,
+                'month_name': datetime(year, month, 1).strftime('%B'),
+                'year': year,
+                'daily_records': daily_records,
+                'present_days': present_days,
+                'half_days': half_days,
+                'late_days': late_days,
+                'absent_days': absent_days,
+                'total_worked_hours': round(total_worked_hours, 2),
+                'total_regular_hours': round(total_regular_hours, 2),
+                'total_overtime_hours': round(total_overtime_hours, 2),
+                'num_days': num_days,
+            }
+            
+            # For PDF generation
+            if 'generate_pdf' in request.POST:
+                template = get_template('ceo_template/attendance_report_pdf.html')
+                html = template.render(context)
+                
+                response = HttpResponse(content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="attendance_report_{employee.admin.get_full_name()}_{month}_{year}.pdf"'
+                
+                pisa_status = pisa.CreatePDF(html, dest=response)
+                if pisa_status.err:
+                    return HttpResponse('Error generating PDF')
+                return response
+            
+            # For HTML preview
+            return render(request, 'ceo_template/attendance_report_pdf.html', context)
+            
+        except Exception as e:
+            messages.error(request,str(e))
+            return redirect('generate_performance_report')
+    
+    all_months = [
+            (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
+            (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
+            (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
+        ]
+
+    current_month = datetime.now().month
+    months = all_months[current_month-1:] + all_months[:current_month-1]
+    context = {
+        'departments': departments,
+        "page_title": 'Generate Report',
+        'months': months,
+        'years': range(datetime.now().year, datetime.now().year - 6,-1),
+    }
+    return render(request, 'ceo_template/generate_report.html', context)

@@ -24,18 +24,6 @@
       </div>
 
       <div class="col-lg-3 col-md-6 col-12 mb-3">
-        <div class="small-box bg-success">
-          <div class="inner">
-            <h3>{{ total_attendance }}</h3>
-            <p>Total Attendance Taken</p>
-          </div>
-          <div class="icon">
-            <i class="ion ion-stats-bars"></i>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-lg-3 col-md-6 col-12 mb-3">
         <div class="small-box bg-warning">
           <div class="inner">
             <h3>{{ total_leave }}</h3>
@@ -58,9 +46,69 @@
           </div>
         </div>
       </div>
+      
+      <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="small-box bg-danger">
+          <div class="inner">
+            <h3>{{ total_department }}</h3>
+            <p>Employees on Leave</p>
+          </div>
+          <div class="icon">
+            <i class="ion ion-pie-graph"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-lg-3 col-md-6 col-12 mb-3">
+        <div class="small-box bg-danger">
+          <div class="inner">
+            <h3>{{ total_on_break }}</h3>
+            <p>On Break</p>
+          </div>
+          <div class="icon">
+            <i class="ion ion-pie-graph"></i>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Time History -->
+    <div class="card mt-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Today's Employee Breaks</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>No</th>
+                <th>Employee Name</th>
+                <th>Department</th>
+                <th>Break Start</th>
+                <th>Break End</th>
+                <th>Duration (mins)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in break_entries %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ entry.employee_name }}</td>
+                  <td>{{ entry.department }}</td>
+                  <td>{{ entry.break_start }}</td>
+                  <td>{{ entry.break_end }}</td>
+                  <td>{{ entry.break_duration }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    
+
+    <!-- Time History 
     <div class="row mt-4">
       <div class="col-md-12">
         <div class="card card-info">
@@ -115,6 +163,7 @@
         </div>
       </div>
     </div>
+    -->
 
   </div>
 </section>
