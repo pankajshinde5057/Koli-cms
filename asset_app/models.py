@@ -29,6 +29,8 @@ DEPARTMENT_CHOICE = [
 
 class AssetCategory(models.Model):
     category = models.CharField(max_length=100,unique=True)
+    has_os = models.BooleanField(default=False)
+    has_ip = models.BooleanField(default=False)
 
     def save(self,*args,**kwargs):
         self.category = self.category.lower()
@@ -54,6 +56,9 @@ class Assets(models.Model):
     asset_condition = models.CharField(max_length=100, choices=ASSET_CONDITION_CHOICES, blank=True, null=True)
     os_version = models.CharField(max_length=100, blank=True, null=True,default=None)
     ip_address = models.CharField(blank=True, null=True,default=None)
+    processor = models.CharField(max_length=100, blank=True, null=True)  
+    ram = models.CharField(max_length=50, blank=True, null=True)  
+    storage = models.CharField(max_length=50, blank=True, null=True)
     
     barcode = models.ImageField(upload_to='barcodes/', blank=True, null=True)
 
