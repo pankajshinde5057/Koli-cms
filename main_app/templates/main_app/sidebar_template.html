@@ -206,66 +206,44 @@
 
                         </p>
                     </a>
-                </li>
+                <!-- Barcode and Asset Management Section -->
+                <li class="nav-header">ASSET MANAGEMENT</li>
+
                 <li class="nav-item">
                     {% url 'asset_app:print_all_barcode' as print_barcodes %}
                     <a href="{{print_barcodes}}" class="nav-link {% if print_barcodes == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Print Barcode
-
-                        </p>
+                        <i class="nav-icon fas fa-barcode"></i>
+                        <p>Print Barcode</p>
                     </a>
                 </li>
                 <li class="nav-item">
                     {% url 'asset_app:assetscategory-create' as assets_category %}
                     <a href="{{assets_category}}" class="nav-link {% if assets_category == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Add Asset Categories
-
-                        </p>
+                        <i class="nav-icon fas fa-list-alt"></i>
+                        <p>Add Asset Categories</p>
                     </a>
                 </li>
                 <li class="nav-item">
                     {% url 'asset_app:assets-create' as assets_create %}
                     <a href="{{assets_create}}" class="nav-link {% if assets_create == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-plus-square"></i>
-                        <p>
-                            Create Assets
-                        </p>
+                        <p>Create Assets</p>
                     </a>
                 </li>
                 <li class="nav-item">
                     {% url 'asset_app:assets-list' as assets_home %}
                     <a href="{{assets_home}}" class="nav-link {% if assets_home == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            All Assets List
-                        </p>
+                        <i class="nav-icon fas fa-th-list"></i>
+                        <p>All Assets List</p>
                     </a>
                 </li>
-
-            <!-- {% for asset in unclaimed_assets %}
-                <li class="nav-item">
-                <a href="{% url 'asset_app:asset-assign' asset.id %}" 
-                class="nav-link {% if request.path == asset.get_absolute_url %} active {% endif %}">
-                    <i class="nav-icon fas fa-laptop"></i>
-                    <p>Assign {{ asset.asset_name }}</p>
-                </a>
-                </li>
-            {% endfor %} -->
-
-                
                 <li class="nav-item">
                     {% url 'asset_app:asset-claim' as assets_claim %}
                     <a href="{{assets_claim}}" class="nav-link {% if assets_claim == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-hand-holding"></i>
-                        <p>
-                            Claim Asset
-                        </p>
+                        <p>Claim Asset</p>
                     </a>
-                </li> 
+                </li>
 
                 
                 
@@ -399,63 +377,58 @@
                         </p>
                     </a>
                 </li>
+
+
+                <li class="nav-header">ASSET MANAGEMENT</li>
+
                 <li class="nav-item">
                     {% url 'asset_app:print_all_barcode' as print_barcodes %}
                     <a href="{{print_barcodes}}" class="nav-link {% if print_barcodes == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Print Barcode
-
-                        </p>
+                        <i class="nav-icon fas fa-barcode"></i>
+                        <p>Print Barcode</p>
                     </a>
                 </li>
+
                 <li class="nav-item">
                     {% url 'asset_app:assetscategory-create' as assets_category %}
                     <a href="{{assets_category}}" class="nav-link {% if assets_category == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Add Asset Categories
-
-                        </p>
+                        <i class="nav-icon fas fa-list-alt"></i>
+                        <p>Add Asset Categories</p>
                     </a>
                 </li>
+
                 <li class="nav-item">
                     {% url 'asset_app:assets-create' as assets_create %}
                     <a href="{{assets_create}}" class="nav-link {% if assets_create == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-plus-square"></i>
-                        <p>
-                            Create Assets
-                        </p>
+                        <p>Create Assets</p>
                     </a>
                 </li>
+
                 <li class="nav-item">
                     {% url 'asset_app:assets-list' as assets_home %}
                     <a href="{{assets_home}}" class="nav-link {% if assets_home == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-list-alt"></i>
-                        <p>
-                            All Assets List
-                        </p>
+                        <i class="nav-icon fas fa-th-list"></i>
+                        <p>All Assets List</p>
                     </a>
                 </li>
-                
+
                 <li class="nav-item">
                     {% url 'asset_app:not-assign-asset-list' as not_assign_asset_list %}
                     <a href="{{not_assign_asset_list}}" class="nav-link {% if not_assign_asset_list == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
-                        <p>
-                            Not Assign Devices
-                        </p>
+                        <i class="nav-icon fas fa-exclamation-triangle"></i>
+                        <p>Not Assigned Devices</p>
                     </a>
                 </li>
+
                 <li class="nav-item">
                     {% url 'asset_app:my-assets' as my_assets %}
                     <a href="{{my_assets}}" class="nav-link {% if my_assets == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-laptop"></i>
-                        <p>
-                            My Assigned Assets
-                        </p>
+                        <p>My Assigned Assets</p>
                     </a>
                 </li>
+
                 
 
                
@@ -551,6 +524,8 @@
                         </p>
                     </a>
                 </li>
+                <li class="nav-header">ASSET MANAGEMENT</li>
+                
                 <li class="nav-item">
                     {% url 'employee_requests' as employee_requests %}
                     <a href="{{employee_requests}}" class="nav-link {% if employee_requests == request.path %} active {% endif %}">
@@ -564,7 +539,7 @@
                 <li class="nav-item">
                     {% url 'asset_app:my-assets' as my_assets %}
                     <a href="{{my_assets}}" class="nav-link {% if my_assets == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
+                        <i class="nav-icon fas fa-laptop"></i>
                         <p>
                             My Assigned Assets
                         </p>

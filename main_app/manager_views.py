@@ -276,14 +276,54 @@ def save_attendance(request):
 
 
 # For displaying the update page
+# def manager_update_attendance(request):
+#     manager = get_object_or_404(Manager, admin=request.user)
+#     departments = Department.objects.filter(division=manager.division)
+#     context = {
+#         'departments': departments,
+#         'page_title': 'Update Attendance'
+#     }
+#     return render(request, 'manager_template/manager_update_attendance.html', context)
+
+from datetime import datetime
+
+from datetime import datetime
+from django.shortcuts import render, get_object_or_404
+from .models import Manager, Department, Employee  # Assuming Employee model exists
+
 def manager_update_attendance(request):
+    # Fetch the manager based on logged-in user
     manager = get_object_or_404(Manager, admin=request.user)
+    
+    # Get the departments related to the manager's division
     departments = Department.objects.filter(division=manager.division)
+    print(departments)
+    # Get the employees based on departments (can be filtered per department if needed)
+    employees = Employee.objects.filter(department__in=departments)
+    print(employees)
+    # Get the current year and create a list of years (you can adjust as needed)
+    current_year = datetime.now().year
+    years = [current_year, current_year + 1, current_year + 2, current_year + 3, current_year + 4]
+
+    # List of months (full month names for the dropdown)
+    months = [
+        ("01", "January"), ("02", "February"), ("03", "March"), ("04", "April"),
+        ("05", "May"), ("06", "June"), ("07", "July"), ("08", "August"),
+        ("09", "September"), ("10", "October"), ("11", "November"), ("12", "December")
+    ]
+    
+    # Prepare the context
     context = {
         'departments': departments,
-        'page_title': 'Update Attendance'
+        'employees': employees,
+        'page_title': 'Update Attendance',
+        'months': months,
+        'years': years,
     }
+    
     return render(request, 'manager_template/manager_update_attendance.html', context)
+
+
 
 # For handling the AJAX updates
 @csrf_exempt
@@ -360,41 +400,56 @@ def update_attendance(request):
     
     return JsonResponse({"error": "Invalid request method"}, status=400)
  
+
 @csrf_exempt
 def get_employee_attendance(request):
     if request.method == 'POST':
         try:
+            # Get data from the request
             employee_id = request.POST.get('employee_id')
-            month = request.POST.get('month')
-            year = request.POST.get('year')
-            
-            if not employee_id or not month or not year:
-                return JsonResponse({"error": "Employee ID, month, and year are required"}, status=400)
-            
-            # Get attendance records for this employee for the selected month/year
+            month = int(request.POST.get('month'))  # Ensure it's an integer
+            year = int(request.POST.get('year'))  # Ensure it's an integer
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+
+            if not employee_id or not month or not year or not start_date or not end_date:
+                return JsonResponse({"error": "Employee ID, month, year, start date, and end date are required"}, status=400)
+
+            # Convert start and end dates from string to date objects
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            # Query attendance data
             attendance_data = AttendanceRecord.objects.filter(
                 user_id=employee_id,
                 date__year=year,
-                date__month=month
+                date__month=month,
+                date__range=[start_date, end_date]
             ).order_by('date')
-            
+
+            # If no attendance data exists for the given parameters
             if not attendance_data.exists():
                 return JsonResponse([], safe=False)
-            
-            # Prepare response data
+
+            # Prepare attendance data for response
             attendance_list = []
             for attendance in attendance_data:
                 attendance_list.append({
                     "date": str(attendance.date),
                     "status": attendance.status,
-                    "time_in": str(attendance.time_in) if attendance.time_in else "",
-                    "time_out": str(attendance.time_out) if attendance.time_out else ""
+                    "clock_in": str(attendance.clock_in),
+                    "clock_out": str(attendance.clock_out) if attendance.clock_out else "",
+                    "total_worked": str(attendance.total_worked) if attendance.total_worked else "",
+                    "regular_hours": str(attendance.regular_hours) if attendance.regular_hours else "",
+                    "overtime_hours": str(attendance.overtime_hours) if attendance.overtime_hours else "",
+                    "is_primary_record": attendance.is_primary_record,
                 })
-            
+
             return JsonResponse(attendance_list, safe=False)
-        
+
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
 
