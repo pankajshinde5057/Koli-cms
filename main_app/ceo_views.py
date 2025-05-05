@@ -635,6 +635,14 @@ def generate_performance_report(request):
         month = request.POST.get('month')
         year = request.POST.get('year')
         department_id = request.POST.get('department')
+
+        if not month or not year:
+            messages.error(request, "Month and Year are required fields")
+            return redirect('generate_performance_report')
+            
+        if not department_id and not employee_ids:
+            messages.error(request, "Please select at least one filter (Department or Employee)")
+            return redirect('generate_performance_report')
         
         try:
             year = int(year)
@@ -651,7 +659,6 @@ def generate_performance_report(request):
             all_reports = []
             for employee in employees:
                 user = employee.admin
-                
                 # Get the number of days in the selected month
                 num_days = monthrange(year, month)[1]
                 start_date = datetime(year, month, 1).date()
@@ -673,7 +680,6 @@ def generate_performance_report(request):
                     user=user,
                     date__range=(start_date, end_date)
                 ).order_by('date').select_related('user')
-
                 # Get all leave records for the month in one query
                 leave_records = LeaveReportEmployee.objects.filter(
                     employee=employee,
@@ -681,7 +687,6 @@ def generate_performance_report(request):
                     start_date__lte=end_date,
                     end_date__gte=start_date
                 )
-
                 # Create a dictionary to track leave days
                 leave_days = defaultdict(Decimal)
                 for leave in leave_records:
@@ -699,7 +704,6 @@ def generate_performance_report(request):
                 break_records = Break.objects.filter(
                     attendance_record_id__in=attendance_ids
                 )
-
                 # Create a mapping of attendance ID to break records
                 breaks_map = defaultdict(list)
                 for br in break_records:
@@ -782,7 +786,6 @@ def generate_performance_report(request):
                             absent_days += 1
 
                     daily_records.append(day_status)
-
                 # Convert timedelta to hours
                 total_worked_hours = total_worked.total_seconds() / 3600
                 total_regular_hours = total_regular.total_seconds() / 3600
@@ -810,7 +813,6 @@ def generate_performance_report(request):
                     'absent_percentage': absent_percentage,
                 }
                 all_reports.append(report_data)
-            
             # For HTML preview
             if 'generate_html' in request.POST:
                 if len(all_reports) == 1:
@@ -828,7 +830,7 @@ def generate_performance_report(request):
                     template = get_template('ceo_template/attendance_report_pdf.html')
                     filename = f"attendance_report_{all_reports[0]['employee'].admin.get_full_name()}_{month}_{year}.pdf"
                 else:
-                    template = get_template('ceo_template/multi_employee_pdf.html')
+                    template = get_template('ceo_template/multi_employee_report.html')
                     filename = f"attendance_report_{month}_{year}.pdf"
                 
                 html = template.render({
