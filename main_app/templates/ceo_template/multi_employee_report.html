@@ -1,0 +1,18 @@
+{% extends 'main_app/base.html' %}
+{% block content %}
+<div class="container">
+    <h2>Attendance Reports - {{ month_name }} {{ year }}</h2>
+    
+    {% for report in all_reports %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>{{ report.employee.admin.get_full_name }}</h3>
+        </div>
+        <div class="card-body">
+            <!-- Include your existing single employee report display here -->
+            {% include 'ceo_template/attendance_report_pdf.html' with report=report %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
