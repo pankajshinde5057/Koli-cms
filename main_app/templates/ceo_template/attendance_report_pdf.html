@@ -61,6 +61,9 @@
             padding: 0.15em 0.4em;
             border-radius: 3px;
         }
+        .weekend-row {
+            background-color: #f8f9fa;
+        }
         .performance-summary h6 {
             font-size: 9pt;
             font-weight: bold;
@@ -106,111 +109,75 @@
         
         <!-- Attendance Tables -->
         <div class="row">
-            <div class="col-10 mx-auto d-flex justify-content-center">
-                <div class="col-6">
-                    <table class="table table-sm table-bordered attendance-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Worked</th>
-                                <th>Total Breaks</th>
-                                <th>Total Breaks Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for record in daily_records|slice:":15" %}
-                            <tr>
-                                <td>{{ record.date|date:"d (D)" }}</td>
-                                <td class="text-center">
-                                    {% if record.attendance %}
-                                        {% if record.attendance.status == 'present' %}
-                                            <span class="badge status-badge bg-success">P</span>
-                                        {% elif record.attendance.status == 'late' %}
-                                            <span class="badge status-badge bg-warning text-dark">Late</span>
-                                        {% endif %}
-                                    {% else %}
-                                        {% if record.leave > 0 %}
-                                            {% if record.leave == 0.5 %}
-                                                <span class="badge status-badge bg-primary">HF</span>
-                                            {% else %}
-                                                <span class="badge status-badge bg-primary">LV</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="badge status-badge bg-danger">A</span>
-                                        {% endif %}
-                                    {% endif %}
-                                </td>
-                                <td>{{ record.attendance.total_worked|working_duration }}</td>
-                                <td>{{record.breaks_taken}}</td>
-                                <td>{{record.total_break_time}}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="col-6 ps-1">
-                    <table class="table table-sm table-bordered attendance-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Worked</th>
-                                <th>Total Breaks</th>
-                                <th>Total Breaks Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for record in daily_records|slice:"15:31" %}
-                            <tr>
-                                <td>{{ record.date|date:"d (D)" }}</td>
-                                <td class="text-center">
-                                    {% if record.attendance %}
-                                        {% if record.attendance.status == 'present' %}
-                                            <span class="badge status-badge bg-success">P</span>
-                                        {% elif record.attendance.status == 'late' %}
-                                            <span class="badge status-badge bg-warning text-dark">Late</span>
-                                        {% endif %}
-                                    {% else %}
-                                        {% if record.leave > 0 %}
-                                            {% if record.leave == 0.5 %}
-                                                <span class="badge status-badge bg-primary">HF</span>
-                                            {% else %}
-                                                <span class="badge status-badge bg-primary">LV</span>
-                                            {% endif %}
-                                        {% else %}
-                                            <span class="badge status-badge bg-danger">A</span>
-                                        {% endif %}
-                                    {% endif %}
-                                </td>
-                                <td>{{ record.attendance.total_worked|default:"-" }}</td>
-                                <td>{{record.breaks_taken}}</td>
-                                <td>{{record.total_break_time}}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            <div class="col-10 mx-auto">
+                <table class="table table-sm table-bordered attendance-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Worked</th>
+                            <th>Breaks</th>
+                            <th>Break Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in daily_records %}
+                        <tr class="{% if record.is_weekend %}weekend-row{% endif %}">
+                            <td>{{ record.date|date:"d-m-Y (D)" }}</td>
+                            <td class="text-center">
+                                {% if record.is_weekend %}
+                                    <span class="badge bg-secondary">WO</span>
+                                {% elif record.status == 'present' %}
+                                    <span class="badge bg-success">P</span>
+                                {% elif record.status == 'late' %}
+                                    <span class="badge bg-warning text-dark">Late</span>
+                                {% elif record.status == 'half-day' %}
+                                    <span class="badge bg-primary">HF</span>
+                                {% elif record.status == 'leave' %}
+                                    <span class="badge bg-info">LV</span>
+                                {% else %}
+                                    <span class="badge bg-danger">A</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.attendance and record.attendance.total_worked %}
+                                    {{ record.attendance.total_worked|working_duration }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>{{ record.breaks_taken }}</td>
+                            <td>
+                                {% if record.total_break_time %}
+                                    {{ record.total_break_time|format_timedelta }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <!-- Performance Summary -->
         <div class="performance-summary mt-1">
-            <div class="col-10 mx-auto performance-summary mt-1">
+            <div class="col-10 mx-auto">
                 <h6>Performance Summary</h6>
                 <div class="row">
                     <div class="col-6">
                         <table class="table table-sm table-borderless mb-1">
-                            <tr><td>Working Days:</td><td class="fw-bold">{{ num_days }}</td></tr>
+                            <tr><td>Total Days:</td><td class="fw-bold">{{ daily_records|length }}</td></tr>
+                            <tr><td>Working Days:</td><td class="fw-bold">{{ total_working_days }}</td></tr>
                             <tr><td>Present Days:</td><td class="fw-bold">{{ present_days }} ({{ present_percentage }}%)</td></tr>
-                            <tr><td>Late Days:</td><td class="fw-bold">{{ late_days }}</td></tr>
-                            <tr><td>Half Days:</td><td class="fw-bold">{{ half_days }}</td></tr>
                         </table>
                     </div>
                     <div class="col-6">
                         <table class="table table-sm table-borderless mb-1">
+                            <tr><td>Late Arrivals:</td><td class="fw-bold">{{ late_days }}</td></tr>
+                            <tr><td>Half Days:</td><td class="fw-bold">{{ half_days }}</td></tr>
                             <tr><td>Absent Days:</td><td class="fw-bold">{{ absent_days }} ({{ absent_percentage }}%)</td></tr>
-                            <tr><td>Total Worked:</td><td class="fw-bold">{{ total_worked_hours }} hrs</td></tr>
                         </table>
                     </div>
                 </div>
@@ -218,9 +185,21 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer">
-            Generated on {% now "M j, Y H:i" %}<br>
-            <button class="btn btn-sm btn-outline-secondary mt-1 no-print" onclick="window.print()">Print Report</button>
+        <div class="footer mt-3">
+            <div class="legend d-flex justify-content-center">
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <span class="badge bg-danger">A</span> = Absent &nbsp;&nbsp;
+                    <span class="badge bg-success">P</span> = Present &nbsp;&nbsp;
+                    <span class="badge bg-warning text-dark">Late</span> = Late Arrival &nbsp;&nbsp;
+                    <span class="badge bg-primary">HF</span> = Half-Day &nbsp;&nbsp;
+                    <span class="badge bg-info">LV</span> = Full-Day Leave &nbsp;&nbsp;
+                    <span class="badge bg-secondary">WO</span> = Weekly Off
+                </div>
+            </div>
+            <div class="generated-info mt-2">
+                Generated on {% now "M j, Y H:i" %}<br>
+                <button class="btn btn-sm btn-outline-secondary mt-1 no-print" onclick="window.print()">Print Report</button>
+            </div>
         </div>
 
     </div>

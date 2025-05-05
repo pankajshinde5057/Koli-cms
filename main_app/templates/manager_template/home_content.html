@@ -48,7 +48,7 @@
         </div>
       </div>
       
-      <div class="col-lg-3 col-md-6 col-12 mb-3">
+      <!-- <div class="col-lg-3 col-md-6 col-12 mb-3">
         <div class="small-box bg-danger">
           <div class="inner">
             <h3>{{ total_department }}</h3>
@@ -58,16 +58,16 @@
             <i class="ion ion-pie-graph"></i>
           </div>
         </div>
-      </div>
+      </div> -->
       
       <div class="col-lg-3 col-md-6 col-12 mb-3">
-        <div class="small-box bg-danger">
+        <div class="small-box bg-secondary">
           <div class="inner">
             <h3>{{ total_on_break }}</h3>
             <p>On Break</p>
           </div>
           <div class="icon">
-            <i class="ion ion-pie-graph"></i>
+            <i class="fas fa-mug-hot"></i>
           </div>
         </div>
       </div>
@@ -98,7 +98,7 @@
                   <td>{{ entry.department }}</td>
                   <td>{{ entry.break_start }}</td>
                   <td>{{ entry.break_end }}</td>
-                  <td>{{ entry.break_duration }}</td>
+                  <td>{{ entry.break_duration }} min</td>
                 </tr>
               {% endfor %}
             </tbody>

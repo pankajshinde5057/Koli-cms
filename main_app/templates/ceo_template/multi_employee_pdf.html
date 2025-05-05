@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+    <style>
+        /* Your existing PDF styles */
+        .employee-report {
+            page-break-after: always;
+            margin-bottom: 20px;
+        }
+        .employee-report:last-child {
+            page-break-after: auto;
+        }
+    </style>
+</head>
+<body>
+    {% for report in all_reports %}
+    <div class="employee-report">
+        {% include 'ceo_template/attendance_report_pdf.html' with employee=report.employee daily_records=report.daily_records ... %}
+    </div>
+    {% endfor %}
+</body>
+</html>

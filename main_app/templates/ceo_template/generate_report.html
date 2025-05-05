@@ -5,6 +5,12 @@
 
 {% block custom_css %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--multiple {
+        min-height: 38px;
+        border: 1px solid #ced4da;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -21,6 +27,7 @@
             <label for="department">Department</label>
             <select name="department" id="department" class="form-control">
               <option value="">-- Select Department --</option>
+              <option value="all">All Departments</option>
               {% for department in departments %}
               <option value="{{ department.id }}">{{ department.name }}</option>
               {% endfor %}
@@ -28,18 +35,18 @@
           </div>
 
           <div class="form-group">
-            <label for="employee">Employee</label>
-            <select name="employee" id="employee" class="form-control">
-              <option value="">-- Select Employee --</option>
+            <label for="employee">Employee(s)</label>
+            <select name="employee" id="employee" class="form-control select2-multiple" multiple="multiple">
               <!-- Filled dynamically by JS -->
             </select>
+            <small class="form-text text-muted">Leave empty to select all employees</small>
           </div>
 
           <div class="form-group">
             <label for="month">Month</label>
             <select name="month" class="form-control">
               {% for num, name in months %}
-              <option value="{{ num }}">{{ name }}</option>
+              <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
               {% endfor %}
             </select>
           </div>
@@ -48,7 +55,7 @@
             <label for="year">Year</label>
             <select name="year" class="form-control">
               {% for y in years %}
-              <option value="{{ y }}">{{ y }}</option>
+              <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
               {% endfor %}
             </select>
           </div>
@@ -68,6 +75,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script>
 $(document).ready(function () {
+  // Initialize Select2 for multiple selection
+  $('.select2-multiple').select2({
+    placeholder: "-- Select Employee(s) --",
+    allowClear: true
+  });
+
   $('#department').change(function () {
     const deptId = $(this).val();
     if (deptId) {
@@ -80,7 +93,7 @@ $(document).ready(function () {
         },
         success: function (response) {
           const employees = JSON.parse(response);
-          $('#employee').empty().append('<option value="">-- Select Employee --</option>');
+          $('#employee').empty();
           employees.forEach(emp => {
             $('#employee').append(`<option value="${emp.id}">${emp.name}</option>`);
           });
@@ -89,6 +102,8 @@ $(document).ready(function () {
           alert("Error fetching employees.");
         }
       });
+    } else {
+      $('#employee').empty();
     }
   });
 });
