@@ -43,7 +43,8 @@
                 <li class="nav-item">
                     {% url 'generate_performance_report' as generate_report %}
                     <a href="{{generate_report}}" class="nav-link {% if generate_report == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
+                        <i class="nav-icon fas fa-file-download"></i>
+
                         <p>
                            Generate Report
 
@@ -216,9 +217,7 @@
 
                         </p>
                     </a>
-                <!-- Barcode and Asset Management Section -->
                 <li class="nav-header">ASSET MANAGEMENT</li>
-
                 <li class="nav-item">
                     {% url 'asset_app:print_all_barcode' as print_barcodes %}
                     <a href="{{print_barcodes}}" class="nav-link {% if print_barcodes == request.path %} active {% endif %}">
@@ -401,10 +400,7 @@
                         </p>
                     </a>
                 </li>
-
-
                 <li class="nav-header">ASSET MANAGEMENT</li>
-
                 <li class="nav-item">
                     {% url 'asset_app:print_all_barcode' as print_barcodes %}
                     <a href="{{print_barcodes}}" class="nav-link {% if print_barcodes == request.path %} active {% endif %}">
@@ -549,7 +545,6 @@
                     </a>
                 </li>
                 <li class="nav-header">ASSET MANAGEMENT</li>
-                
                 <li class="nav-item">
                     {% url 'employee_requests' as employee_requests %}
                     <a href="{{employee_requests}}" class="nav-link {% if employee_requests == request.path %} active {% endif %}">
@@ -572,7 +567,7 @@
                 <li class="nav-item">
                     {% url 'asset_app:not-assign-asset-list' as not_assign_asset_list %}
                     <a href="{{not_assign_asset_list}}" class="nav-link {% if not_assign_asset_list == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-th"></i>
+                        <i class="nav-icon fas fa-network-wired"></i>
                         <p>
                             Available Devices
                         </p>

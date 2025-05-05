@@ -313,47 +313,26 @@ def save_attendance(request):
 # For displaying the update page
 # def manager_update_attendance(request):
 #     manager = get_object_or_404(Manager, admin=request.user)
+#     # employees = Employee.objects.filter(department__in=departments)
 #     departments = Department.objects.filter(division=manager.division)
 #     context = {
 #         'departments': departments,
+#         # 'employees': employees,
 #         'page_title': 'Update Attendance'
 #     }
 #     return render(request, 'manager_template/manager_update_attendance.html', context)
 
-from datetime import datetime
+# from datetime import datetime
 
-from datetime import datetime
-from django.shortcuts import render, get_object_or_404
-from .models import Manager, Department, Employee  # Assuming Employee model exists
 
 def manager_update_attendance(request):
-    # Fetch the manager based on logged-in user
     manager = get_object_or_404(Manager, admin=request.user)
-    
-    # Get the departments related to the manager's division
     departments = Department.objects.filter(division=manager.division)
-    print(departments)
-    # Get the employees based on departments (can be filtered per department if needed)
     employees = Employee.objects.filter(department__in=departments)
-    print(employees)
-    # Get the current year and create a list of years (you can adjust as needed)
-    current_year = datetime.now().year
-    years = [current_year, current_year + 1, current_year + 2, current_year + 3, current_year + 4]
-
-    # List of months (full month names for the dropdown)
-    months = [
-        ("01", "January"), ("02", "February"), ("03", "March"), ("04", "April"),
-        ("05", "May"), ("06", "June"), ("07", "July"), ("08", "August"),
-        ("09", "September"), ("10", "October"), ("11", "November"), ("12", "December")
-    ]
-    
-    # Prepare the context
     context = {
         'departments': departments,
         'employees': employees,
         'page_title': 'Update Attendance',
-        'months': months,
-        'years': years,
     }
     
     return render(request, 'manager_template/manager_update_attendance.html', context)
@@ -361,6 +340,81 @@ def manager_update_attendance(request):
 
 
 # For handling the AJAX updates
+# @csrf_exempt
+# def update_attendance(request):
+#     if request.method == 'POST':
+#         try:
+#             employee_ids = json.loads(request.POST.get('employee_ids', '[]'))
+#             date_str = request.POST.get('date')
+#             half_full_day = request.POST.get('half_full_day')  # 'half' or 'full'
+#             which_half = request.POST.get('which_half', '')  # 'first' or 'second'
+            
+#             if not employee_ids or not date_str:
+#                 return JsonResponse({"error": "Employee IDs and date are required"}, status=400)
+            
+#             try:
+#                 date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+#             except ValueError:
+#                 return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+            
+#             updated_count = 0
+#             for emp_id in employee_ids:
+#                 try:
+#                     # Calculate times based on attendance type
+#                     if half_full_day == 'full':
+#                         # Full day timing (9:00 AM to 6:00 PM)
+#                         status = 'present'
+#                         clock_in = datetime.combine(date_obj, time(9, 0))  # 9:00 AM
+#                         clock_out = datetime.combine(date_obj, time(18, 0))  # 6:00 PM
+#                         total_work = 9 * 60 * 60  # 9 hours in seconds
+#                     else:
+#                         # Half day timing
+#                         if which_half == 'first':
+#                             # First half (9:00 AM to 1:30 PM)
+#                             status = 'half_day_first'
+#                             clock_in = datetime.combine(date_obj, time(9, 0))
+#                             clock_out = datetime.combine(date_obj, time(13, 30))
+#                             total_work = 4.5 * 60 * 60  # 4.5 hours
+#                         else:
+#                             # Second half (1:30 PM to 6:00 PM)
+#                             status = 'half_day_second'
+#                             clock_in = datetime.combine(date_obj, time(13, 30))
+#                             clock_out = datetime.combine(date_obj, time(18, 0))
+#                             total_work = 4.5 * 60 * 60  # 4.5 hours
+                    
+#                     # Update or create the attendance record
+#                     record, created = AttendanceRecord.objects.update_or_create(
+#                         user_id=emp_id,
+#                         date=date_obj,
+#                         defaults={
+#                             'status': status,
+#                             'clock_in': clock_in,
+#                             'clock_out': clock_out,
+#                             'total_worked': total_work,
+#                             'is_primary_record': True,
+#                             'requires_verification': False,
+#                             'is_verified': True,
+#                             'verified_by': request.user,
+#                             'updated_at': timezone.now()
+#                         }
+#                     )
+#                     updated_count += 1
+                    
+#                 except Exception as e:
+#                     print(f"Error updating attendance for employee {emp_id}: {str(e)}")
+#                     continue
+            
+#             return JsonResponse({
+#                 "message": f"Attendance updated successfully for {updated_count} employees",
+#                 "updated_count": updated_count
+#             })
+            
+#         except Exception as e:
+#             return JsonResponse({"error": str(e)}, status=400)
+    
+#     return JsonResponse({"error": "Invalid request method"}, status=400)
+from django.forms.models import model_to_dict
+
 @csrf_exempt
 def update_attendance(request):
     if request.method == 'POST':
@@ -381,6 +435,9 @@ def update_attendance(request):
             updated_count = 0
             for emp_id in employee_ids:
                 try:
+                    # Fetch the employee
+                    employee = Employee.objects.get(employee_id=emp_id)
+
                     # Calculate times based on attendance type
                     if half_full_day == 'full':
                         # Full day timing (9:00 AM to 6:00 PM)
@@ -403,9 +460,15 @@ def update_attendance(request):
                             clock_out = datetime.combine(date_obj, time(18, 0))
                             total_work = 4.5 * 60 * 60  # 4.5 hours
                     
+                    # Save previous record snapshot (optional)
+                    old_record = AttendanceRecord.objects.filter(user=employee.admin, date=date_obj).first()
+                    if old_record:
+                        old_data = model_to_dict(old_record)
+                        print("Previous record:", old_data)
+
                     # Update or create the attendance record
                     record, created = AttendanceRecord.objects.update_or_create(
-                        user_id=emp_id,
+                        user=employee.admin,  # Correct reference to employee's admin (CustomUser)
                         date=date_obj,
                         defaults={
                             'status': status,
@@ -419,6 +482,9 @@ def update_attendance(request):
                             'updated_at': timezone.now()
                         }
                     )
+
+                    # Save updated record snapshot (optional)
+                    print("Updated record:", model_to_dict(record))
                     updated_count += 1
                     
                 except Exception as e:
@@ -429,63 +495,74 @@ def update_attendance(request):
                 "message": f"Attendance updated successfully for {updated_count} employees",
                 "updated_count": updated_count
             })
+            print(updated_count)
             
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     
     return JsonResponse({"error": "Invalid request method"}, status=400)
- 
+
+from django.http import JsonResponse
+from datetime import datetime
+from .models import Employee, AttendanceRecord
 
 @csrf_exempt
 def get_employee_attendance(request):
     if request.method == 'POST':
         try:
-            # Get data from the request
             employee_id = request.POST.get('employee_id')
-            month = int(request.POST.get('month'))  # Ensure it's an integer
-            year = int(request.POST.get('year'))  # Ensure it's an integer
-            start_date = request.POST.get('start_date')
-            end_date = request.POST.get('end_date')
+            month = request.POST.get('month')
+            year = request.POST.get('year')
 
-            if not employee_id or not month or not year or not start_date or not end_date:
-                return JsonResponse({"error": "Employee ID, month, year, start date, and end date are required"}, status=400)
+            if not employee_id or not month or not year:
+                return JsonResponse({"error": "Employee ID, month, and year are required"}, status=400)
 
-            # Convert start and end dates from string to date objects
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            # Fetch the employee
+            employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
 
-            # Query attendance data
+            # Filter attendance records for the given month and year
             attendance_data = AttendanceRecord.objects.filter(
-                user_id=employee_id,
-                date__year=year,
-                date__month=month,
-                date__range=[start_date, end_date]
+                user__employee=employee,
+                date__year=int(year),
+                date__month=int(month)
             ).order_by('date')
 
-            # If no attendance data exists for the given parameters
-            if not attendance_data.exists():
-                return JsonResponse([], safe=False)
+            # Get current year and dynamically generate a list of years and months
+            current_year = datetime.now().year
+            years = [str(current_year + i) for i in range(0, 5)]  # Next 5 years from current year
 
-            # Prepare attendance data for response
-            attendance_list = []
-            for attendance in attendance_data:
-                attendance_list.append({
+            # List of months
+            months = [
+                ("01", "January"), ("02", "February"), ("03", "March"), ("04", "April"),
+                ("05", "May"), ("06", "June"), ("07", "July"), ("08", "August"),
+                ("09", "September"), ("10", "October"), ("11", "November"), ("12", "December")
+            ]
+
+            # Prepare the attendance list
+            attendance_list = [
+                {
                     "date": str(attendance.date),
                     "status": attendance.status,
-                    "clock_in": str(attendance.clock_in),
+                    "clock_in": str(attendance.clock_in) if attendance.clock_in else "",
                     "clock_out": str(attendance.clock_out) if attendance.clock_out else "",
-                    "total_worked": str(attendance.total_worked) if attendance.total_worked else "",
-                    "regular_hours": str(attendance.regular_hours) if attendance.regular_hours else "",
-                    "overtime_hours": str(attendance.overtime_hours) if attendance.overtime_hours else "",
-                    "is_primary_record": attendance.is_primary_record,
-                })
+                    "employee_name": f"{employee.admin.first_name} {employee.admin.last_name}",
+                    "department": employee.department.name if employee.department else "",
+                    "year": year,
+                    "month": month,
+                }
+                for attendance in attendance_data
+            ]
 
             return JsonResponse(attendance_list, safe=False)
 
+        except Employee.DoesNotExist:
+            return JsonResponse({"error": "Employee not found"}, status=400)
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
+
+
 
 
 def manager_apply_leave(request):
