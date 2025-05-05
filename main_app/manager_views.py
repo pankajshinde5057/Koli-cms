@@ -138,8 +138,12 @@ def manager_take_attendance(request):
 def get_employees(request):
     department_id = request.POST.get('department')
     try:
-        department = get_object_or_404(Department, id=department_id)
-        employees = Employee.objects.filter(department=department)
+        if department_id == 'all':
+            employees = Employee.objects.all()
+        else:
+            department = get_object_or_404(Department, id=department_id)
+            employees = Employee.objects.filter(department=department)
+        
         employee_data = []
         for employee in employees:
             data = {
