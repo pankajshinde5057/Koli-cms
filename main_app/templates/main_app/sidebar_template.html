@@ -338,7 +338,7 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
+                {% comment %} <li class="nav-item">
                     {% url 'manager_take_attendance' as manager_take_attendance %}
                     <a href="{{manager_take_attendance}}" class="nav-link {% if manager_take_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-clipboard-check"></i>
@@ -347,13 +347,13 @@
 
                         </p>
                     </a>
-                </li>
+                </li> {% endcomment %}
                 <li class="nav-item">
                     {% url 'manager_update_attendance' as manager_update_attendance %}
                     <a href="{{manager_update_attendance}}" class="nav-link {% if manager_update_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-calendar-day"></i>
                         <p>
-                            View/Update Attendance
+                            View Attendance
 
                         </p>
                     </a>

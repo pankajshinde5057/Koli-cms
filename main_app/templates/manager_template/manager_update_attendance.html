@@ -11,92 +11,75 @@
 <section class="content">
     <div class="container-fluid">
         <!-- Department and Employee Selection -->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label>Department</label>
-                            <select name="department" class="form-control" id="department">
-                                <option value="">----</option>
-                                {% for department in departments %}
-                                <option value="{{ department.id }}">{{ department.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Employee</label>
-                            <select name="employee" class="form-control" id="employee">
-                                <option value="">----</option>
-                                {% for employee in employees %}
-                                <option value="{{ employee.employee_id }}">{{ employee.admin.first_name }} {{ employee.admin.last_name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <button type="button" id="fetch_employee" class="btn btn-primary btn-block">Update Employees</button>
-                        <div class="form-group" id="employee_data"></div>
-                    </div>
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title">{{ page_title }}</h3>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>Department</label>
+                    <select name="department" class="form-control" id="department">
+                        <option value="">----</option>
+                        {% for department in departments %}
+                        <option value="{{ department.id }}">{{ department.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Employee</label>
+                    <select name="employee" class="form-control" id="employee">
+                        <option value="">----</option>
+                        {% for employee in employees %}
+                        <option value="{{ employee.employee_id }}">{{ employee.admin.first_name }} {{ employee.admin.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- ✅ View Attendance Button moved inside the card-body -->
+                <div class="form-group mt-3">
+                    <button class="btn btn-primary btn-block" id="open_view_attendance">
+                        <i class="fas fa-eye"></i> View Attendance for Selected Employee
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- View Attendance Button -->
-        <div class="row mt-3" id="view_attendance_btn_section" style="display: none;">
-            <div class="col-md-12">
-                <button class="btn btn-primary btn-block" id="open_view_attendance">
-                    <i class="fas fa-eye"></i> View Attendance for Selected Employee
+        <!-- Attendance Display Section -->
+        <div class="card card-primary mt-4" id="attendance_section" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="card-title mb-0">View Attendance</h4>
+                <div class="btn-group ml-auto">
+                    <button type="button" id="this_week" class="btn btn-warning">This Week</button>
+                    <button type="button" id="this_month" class="btn btn-info">This Month</button>
+                    <button type="button" id="this_year" class="btn btn-success">This Year</button>
+                    <button type="button" id="filter_btn" class="btn btn-primary">Filter</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-md-6">
+                        <label>Select Month:</label>
+                        <select id="month" class="form-control select2">
+                            <option value="">-- Month --</option>
+                            {% for m in months %}
+                            <option value="{{ m.0 }}">{{ m.1 }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Select Year:</label>
+                        <select id="year" class="form-control select2">
+                            <option value="">-- Year --</option>
+                            {% for y in years %}
+                            <option value="{{ y }}">{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <button type="button" id="view_attendance" class="btn btn-success btn-block">
+                    <i class="fas fa-calendar-check"></i> View Attendance
                 </button>
-            </div>
-        </div>
-
-        <!-- Attendance Section -->
-        <div class="row mt-4" id="attendance_section" style="display:none;">
-            <div class="col-md-12">
-                <div class="card card-primary">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-    <h4 class="card-title mb-0">View Attendance</h4>
-    <div class="btn-group ml-auto" role="group">
-        <button type="button" id="this_week" class="btn btn-warning">This Week</button>
-        <button type="button" id="this_month" class="btn btn-info">This Month</button>
-        <button type="button" id="this_year" class="btn btn-success">This Year</button>
-    </div>
-</div>
-
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label>Select Month:</label>
-                                <select id="month" class="form-control select2">
-                                    <option value="">-- Month --</option>
-                                    {% for m in months %}
-                                    <option value="{{ m.0 }}">{{ m.1 }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label>Select Year:</label>
-                                <select id="year" class="form-control select2">
-                                    <option value="">-- Year --</option>
-                                    {% for y in years %}
-                                    <option value="{{ y }}">{{ y }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group mt-3">
-                            <button type="button" id="view_attendance" class="btn btn-success btn-block">
-                                <i class="fas fa-calendar-check"></i> View Attendance
-                            </button>
-                        </div>
-                        <div id="attendance_details" class="mt-3"></div>
-                    </div>
-                </div>
+                <div id="attendance_details" class="mt-4"></div>
             </div>
         </div>
     </div>
@@ -106,141 +89,80 @@
 {% block custom_js %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 
 <script>
 $(document).ready(function () {
     $("#department, #employee, #month, #year").select2({ width: '100%' });
 
-    let lastSelectedEmployeeId = null;
-
-    $("#fetch_employee").click(function () {
-        var department = $("#department").val();
-        $("#employee_data").html("");
-        $("#attendance_section").hide();
-        $("#view_attendance_btn_section").hide();
-
-        if (!department) {
-            alert("Please select a department");
-            return;
-        }
-
-        $.ajax({
-            url: "{% url 'get_employees' %}",
-            type: "POST",
-            data: {
-                department: department,
-                csrfmiddlewaretoken: '{{ csrf_token }}',
-            },
-            success: function (employees) {
-                if (employees.length < 1) {
-                    alert("No employees found");
-                    return;
-                }
-
-                const html = `
-                    <div class='form-group'>
-                        <label>Attendance Date</label>
-                        <input type='date' class='form-control' id='attendance_date' value="{{ current_date|date:'Y-m-d' }}">
-                    </div>
-                    <div class='form-group'>
-                        <label>Half-Day/Full-Day</label><br>
-                        <div class='form-check form-check-inline'>
-                            <input type='radio' class='form-check-input' id='half_day' name='half_full_day' value='half' checked>
-                            <label class='form-check-label' for='half_day'>Half-Day</label>
-                        </div>
-                        <div class='form-check form-check-inline'>
-                            <input type='radio' class='form-check-input' id='full_day' name='half_full_day' value='full'>
-                            <label class='form-check-label' for='full_day'>Full-Day</label>
-                        </div>
-                    </div>
-                    <div class='form-group' id='half_day_options'>
-                        <label>Which Half?</label><br>
-                        <div class='form-check form-check-inline'>
-                            <input type='radio' class='form-check-input' name='which_half' value='first' checked>
-                            <label class='form-check-label'>First Half</label>
-                        </div>
-                        <div class='form-check form-check-inline'>
-                            <input type='radio' class='form-check-input' name='which_half' value='second'>
-                            <label class='form-check-label'>Second Half</label>
-                        </div>
-                    </div>
-                    <div class='form-group'>
-                        <button type='button' id='update_attendance' class='btn btn-success'>Update Attendance</button>
-                    </div>`;
-                $("#employee_data").html(html);
-                $("#view_attendance_btn_section").show();
-
-                $("input[name='half_full_day']").change(function () {
-                    $("#half_day_options").toggle($(this).val() === "half");
-                });
-            },
-            error: function () {
-                alert("Error fetching employees");
-            }
-        });
-    });
-
-    $(document).on("click", "#update_attendance", function () {
-        var $btn = $(this);
-        $btn.prop("disabled", true).text("Updating...");
-
-        var employee_id = $("#employee").val();
-        var attendance_date = $("#attendance_date").val();
-        var half_full_day = $("input[name='half_full_day']:checked").val();
-        var which_half = $("input[name='which_half']:checked").val() || "";
-
-        if (!employee_id || !attendance_date) {
-            alert("Please select an employee and date");
-            $btn.prop("disabled", false).text("Update Attendance");
-            return;
-        }
-
-        $.ajax({
-            url: "{% url 'update_attendance' %}",
-            type: "POST",
-            data: {
-                employee_ids: JSON.stringify([employee_id]),
-                date: attendance_date,
-                half_full_day: half_full_day,
-                which_half: which_half,
-                csrfmiddlewaretoken: '{{ csrf_token }}',
-            },
-            success: function (response) {
-                if (response.error) {
-                    alert("Error: " + response.error);
-                } else {
-                    alert(response.message);
-                    lastSelectedEmployeeId = employee_id;
-                }
-            },
-            error: function () {
-                alert("Error updating attendance");
-            },
-            complete: function () {
-                $btn.prop("disabled", false).text("Update Attendance");
-            }
-        });
-    });
-
+    // Show attendance section
     $("#open_view_attendance").click(function () {
-        if (!lastSelectedEmployeeId) {
-            alert("Please select an employee first.");
+        const department = $("#department").val();
+        const employeeId = $("#employee").val();
+    
+        if (!department || !employeeId) {
+            alert("Please select both department and employee.");
             return;
         }
+    
         $("#attendance_section").slideDown();
     });
+    
 
-    $("#view_attendance").click(function () {
-        var employeeId = $("#employee").val();
-        var month = $("#month").val();
-        var year = $("#year").val();
+    // View or Filter button clicked
+    $("#view_attendance, #filter_btn").click(function () {
+        // Allow manual month/year selection
+        $("#month, #year").prop('disabled', false);
+        const employeeId = $("#employee").val();
+        const month = $("#month").val();
+        const year = $("#year").val();
 
-        if (!employeeId || !month || !year) {
-            alert("Please select an employee, month, and year.");
+        if (!employeeId || (!month && !year)) {
+            alert("Please select employee and at least month or year.");
             return;
         }
 
+        fetchAttendanceData(employeeId, month, year, null);
+    });
+
+    // Quick filter: This Week, Month, Year
+    $("#this_week, #this_month, #this_year").click(function () {
+        const today = new Date();
+        const employeeId = $("#employee").val();
+        let month = null, year = today.getFullYear(), week = null;
+
+        if (!employeeId) {
+            alert("Please select an employee.");
+            return;
+        }
+
+        if (this.id === "this_week") {
+            week = getWeekNumber(today);
+        } else if (this.id === "this_month") {
+            month = today.getMonth() + 1;
+        }
+
+        // Disable and reset month/year
+        $("#month, #year").val('').trigger('change').prop('disabled', true);
+
+        fetchAttendanceData(employeeId, month, year, week);
+    });
+
+    // Automatically re-enable dropdowns when clicked
+    $("#month, #year").on("select2:opening", function () {
+        $(this).prop("disabled", false);
+    });
+
+    // Week number logic
+    function getWeekNumber(d) {
+        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        let dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    }
+
+    // AJAX call
+    function fetchAttendanceData(employeeId, month, year, week) {
         $.ajax({
             url: "{% url 'get_employee_attendance' %}",
             type: "POST",
@@ -248,55 +170,30 @@ $(document).ready(function () {
                 employee_id: employeeId,
                 month: month,
                 year: year,
+                week: week,
                 csrfmiddlewaretoken: '{{ csrf_token }}',
             },
             success: function (response) {
-                if (response.error) {
-                    alert("Error: " + response.error);
-                    return;
-                }
-
-                let html = '';
+                let html = "";
                 if (response.length > 0) {
-                    const employeeName = response[0].employee_name;
-                    const department = response[0].department;
-
-                    html += `<div class="mb-3"><strong>Employee:</strong> ${employeeName} | <strong>Department:</strong> ${department}</div>`;
-                    html += `<table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th>Clock In</th>
-                                        <th>Clock Out</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-
-                    response.forEach(function (entry) {
-                        const clockInTime = entry.clock_in ? entry.clock_in.split(' ')[1].slice(0, 5) : '-';
-                        const clockOutTime = entry.clock_out ? entry.clock_out.split(' ')[1].slice(0, 5) : '-';
-
-                        html += `<tr>
-                            <td>${entry.date}</td>
-                            <td>${entry.status}</td>
-                            <td>${clockInTime}</td>
-                            <td>${clockOutTime}</td>
-                        </tr>`;
+                    const emp = response[0];
+                    html += `<div><strong>Employee:</strong> ${emp.employee_name} | <strong>Department:</strong> ${emp.department}</div>`;
+                    html += `<table class="table table-bordered mt-2"><thead>
+                                <tr><th>Date</th><th>Status</th><th>Clock In</th><th>Clock Out</th></tr>
+                             </thead><tbody>`;
+                    response.forEach(r => {
+                        const inTime = r.clock_in ? r.clock_in.split(" ")[1].slice(0, 5) : '-';
+                        const outTime = r.clock_out ? r.clock_out.split(" ")[1].slice(0, 5) : '-';
+                        html += `<tr><td>${r.date}</td><td>${r.status}</td><td>${inTime}</td><td>${outTime}</td></tr>`;
                     });
-
-                    html += `</tbody></table>`;
+                    html += "</tbody></table>";
                 } else {
-                    html = "<p>No attendance records found for the selected month and year.</p>";
+                    html = "<p>No attendance records found.</p>";
                 }
-
                 $("#attendance_details").html(html);
-            },
-            error: function () {
-                alert("Error fetching attendance data");
             }
         });
-    });
+    }
 });
 </script>
 {% endblock %}
