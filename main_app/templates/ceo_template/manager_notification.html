@@ -1,6 +1,5 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
-{% block page_title %}{{page_title}}{% endblock page_title %}
 
 {% block content %}
 
@@ -11,12 +10,19 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">{{page_title}}</h3>
+                        <button class="btn btn-primary float-right" data-toggle="modal" data-target="#bulkNotificationModal">
+                            Send Bulk Notification
+                        </button>
+                        <button class="btn btn-info float-right mr-2" data-toggle="modal" data-target="#selectiveNotificationModal">
+                            Send to Selected
+                        </button>
                     </div>
                     <!-- /.card-header -->
                     <div class="card-body">
                         <table id="example2" class="table table-bordered table-hover">
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" id="selectAll"></th>
                                     <th>SN</th>
                                     <th>Full Name</th>
                                     <th>Email</th>
@@ -29,6 +35,7 @@
                             <tbody>
                                 {% for manager in allManager %}
                                 <tr>
+                                    <td><input type="checkbox" class="managerCheckbox" value="{{manager.id}}"></td>
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{manager.last_name}} {{manager.first_name}}</td>
                                     <td>{{manager.email}}</td>
@@ -54,20 +61,17 @@
         </div>
     </div>
 </section>
-<div class = "modal fade" id = "myModal" tabindex = "-1" role = "dialog" 
+
+<!-- Indidual Notification Model -->
+<div class = "modal fade" id = "myModal" tabindex = "-1" role ="dialog" 
    aria-labelledby = "myModalLabel" aria-hidden = "true">
-   
    <div class = "modal-dialog">
       <div class = "modal-content">
-         
          <div class = "modal-header">Send Notification
             <button type = "button" class = "close" data-dismiss = "modal" aria-hidden = "true">
                   &times;
             </button>
-            
-           
          </div>
-         
          <div class = "modal-body">
             <div class="form-group">
                 <input type="text" id="message" class='form-control'>
@@ -84,23 +88,108 @@
                Send Notification
             </button>
          </div>
-         
-      </div><!-- /.modal-content -->
-   </div><!-- /.modal-dialog -->
-  
+      </div>
+   </div>
 </div>
-<!-- /.modal -->
+
+<!-- Bulk Notification Modal -->
+<div class="modal fade" id="bulkNotificationModal" tabindex="-1" role="dialog" aria-labelledby="bulkNotificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">Send Bulk Notification
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <textarea id="bulkMessage" class='form-control' placeholder="Enter notification message for all managers"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" id='sendBulk' class="btn btn-success send_bulk_notification">Send to All Manager</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Selective Notification Modal -->
+<div class="modal fade" id="selectiveNotificationModal" tabindex="-1" role="dialog" aria-labelledby="selectiveNotificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">Send to Selected Managers
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <textarea id="selectiveMessage" class='form-control' placeholder="Enter notification message for selected managers"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" id='sendSelected' class="btn btn-success send_selected_notification">Send to Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock content %}
 {% block custom_js %}
   <script>
+    // Individual notification
       $(".show_notification").click(function(){
           $("#manager_id").val($(this).val())
       })
       $(".send_notification").click(function(){
           var id = $("#manager_id").val()
           var message = $("#message").val()
+          if (message.trim() == ""){
+            alert("Please enter message");
+            return;
+          }
           sendNotification(id,message);
       })
+
+    // Bulk notification
+    $(".send_bulk_notification").click(function(){
+        let message = $("#bulkMessage").val();
+        if (message.trim() === "") {
+            alert("Please enter a message");
+            return;
+        }
+        sendBulkNotification(message);  
+    })
+
+    // Selective notification
+    $(".send_selected_notification").click(function(){
+        var message = $("#selectiveMessage").val();
+        if (message.trim() === "") {
+            alert("Please enter a message");
+            return;
+        }
+        var selectedManagers = [];
+        $(".managerCheckbox:checked").each(function(){
+            selectedManagers.push($(this).val());
+        });
+        
+        if (selectedManagers.length === 0) {
+            alert("Please select at least one manager");
+            return;
+        }
+        
+        sendSelectedNotification(selectedManagers, message);
+    })
+
+    // Select all checkbox functionality
+    $("#selectAll").click(function(){
+        $(".managerCheckbox").prop('checked', $(this).prop('checked'));
+    });
+
     function sendNotification(id,message){
         $.ajax({
             url: "{% url 'send_manager_notification' %}",
@@ -121,7 +210,49 @@
         }).fail(function (response) {
             alert("Error in saving token")
         })
+    }
 
+    function sendBulkNotification(message) {
+        $.ajax({
+            url: "{% url 'send_bulk_manager_notification' %}",
+            type: 'POST',
+            data: {
+                message: message
+            }
+        }).done(function(response) {
+            if (response == 'True') {
+                alert("Bulk Notification Sent");
+                $("#bulkNotificationModal").modal('hide');
+                $("#bulkMessage").val('');
+            } else {
+                alert("Bulk Notification could not be sent. Please try again.");
+            }
+        }).fail(function(response) {
+            alert("Error in sending bulk notification");
+        });
+    }
+
+    function sendSelectedNotification(selectedManagers, message) {
+        $.ajax({
+            url: "{% url 'send_selected_manager_notification' %}",
+            type: 'POST',
+            data: {
+                manager_ids: JSON.stringify(selectedManagers),
+                message: message
+            }
+        }).done(function(response) {
+            if (response == 'True') {
+                alert("Notification Sent to Selected Managers");
+                $("#selectiveNotificationModal").modal('hide');
+                $("#selectiveMessage").val('');
+                $(".managerCheckbox").prop('checked', false);
+                $("#selectAll").prop('checked', false);
+            } else {
+                alert("Notification could not be sent. Please try again.");
+            }
+        }).fail(function(response) {
+            alert("Error in sending notification");
+        });
     }
 
   </script>

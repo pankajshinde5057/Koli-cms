@@ -49,6 +49,12 @@ urlpatterns = [
      path("manager/delete/<int:manager_id>",
           ceo_views.delete_manager, name='delete_manager'),
 
+     path('send_bulk_employee_notification/', ceo_views.send_bulk_employee_notification, name='send_bulk_employee_notification'),
+     path('send_selected_employee_notification/', ceo_views.send_selected_employee_notification, name='send_selected_employee_notification'),
+     
+     path('send_bulk_manager_notification/', ceo_views.send_bulk_manager_notification, name='send_bulk_manager_notification'),
+     path('send_selected_manager_notification/', ceo_views.send_selected_manager_notification, name='send_selected_manager_notification'),
+
      path("manage/employees/", manager_views.manage_employee_by_manager, name='manage_employee_by_manager'),
      path("manager/add/employee/", manager_views.add_employee_by_manager, name='add_employee_by_manager'),
      path("manager/edit/employee/<int:employee_id>/", manager_views.edit_employee_by_manager, name='edit_employee_by_manager'),
@@ -122,6 +128,9 @@ urlpatterns = [
      path('remove_asset_assignment/', manager_views.remove_asset_assignment, name='remove_asset_assignment'),
      
      path('resolve_asset_issue/<int:asset_issu_id>/', manager_views.resolve_asset_issue, name='resolve_asset_issue'),
+
+     path('send_selected_employee_notification_by_manager', manager_views.send_selected_employee_notification_by_manager, name='send_selected_employee_notification_by_manager'),
+     path('send_bulk_employee_notification_by_manager', manager_views.send_bulk_employee_notification_by_manager, name='send_bulk_employee_notification_by_manager'),
      
 
      # Employee

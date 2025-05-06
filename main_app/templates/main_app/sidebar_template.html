@@ -259,16 +259,15 @@
                 </li>
             {% endfor %} -->
 
-                
-                <li class="nav-item">
-                    {% url 'asset_app:asset-claim' as assets_claim %}
-                    <a href="{{assets_claim}}" class="nav-link {% if assets_claim == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-hand-holding"></i>
-                        <p>
-                            Claim Asset
-                        </p>
-                    </a>
-                </li> 
+            <!-- <li class="nav-item">
+                {% url 'asset_app:asset-claim' as assets_claim %}
+                <a href="{{assets_claim}}" class="nav-link {% if assets_claim == request.path %} active {% endif %}">
+                    <i class="nav-icon fas fa-hand-holding"></i>
+                    <p>
+                        Claim Asset
+                    </p>
+                </a>
+            </li>  -->
 
                 
                 
