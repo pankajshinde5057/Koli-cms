@@ -4,37 +4,33 @@
 {% block page_title %}Update Asset{% endblock page_title %}
 
 {% block content %}
-    <section class="content">
-        <div class="col">
-            <div class="card card-primary">
-                <div class="card-header">
-                </div>
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div class="card-body">
-                        {% for field in form %}
+<section class="content">
+    <div class="col">
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title">Update Asset</h3>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="card-body">
+                    {% for field in form %}
+                        {% if field.name in basic_fields or show_all_fields or show_IP_fields %}
                             <div class="form-group">
-                                <label for="{{ field.id_for_label }}">
-                                    {{ field.label }}
-                                    {% if field.name == 'asset_serial_number' and asset.pk %}
-                                        <small class="text-muted">(Current: {{ asset.asset_serial_number }})</small>
-                                    {% endif %}
-                                </label>
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                                 {{ field }}
                                 {% if field.errors %}
-                                    <div class="text-danger">
-                                        {{ field.errors }}
-                                    </div>
+                                    <div class="text-danger">{{ field.errors }}</div>
                                 {% endif %}
                             </div>
-                        {% endfor %}
-                    </div>
-                    <div class="card-footer text-center">
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                        <a href="{% url 'asset_app:assets-list' %}" class="btn btn-secondary ml-2">Cancel</a>
-                    </div>
-                </form>
-            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="card-footer text-center">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a href="{% url 'asset_app:assets-list' %}" class="btn btn-secondary ml-2">Cancel</a>
+                </div>
+            </form>
         </div>
-    </section>
+    </div>
+</section>
 {% endblock content %}

@@ -1,0 +1,133 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block custom_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--multiple {
+        min-height: 38px;
+        border: 1px solid #ced4da;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <form method="POST">
+      {% csrf_token %}
+      <div class="card card-primary">
+        <div class="card-header">
+          <h3 class="card-title">{{ page_title }}</h3>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="department">Department</label>
+            <select name="department" id="department" class="form-control">
+              <option value="">-- Select Department --</option>
+              <option value="all">All Departments</option>
+              {% for department in departments %}
+                <option value="{{ department.id }}">{{ department.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="employee">Employee(s)</label>
+            <select name="employee" id="employee" class="form-control select2-multiple" multiple="multiple">
+              <!-- Filled dynamically by JS -->
+            </select>
+            <small class="form-text text-muted">Leave empty to select all employees</small>
+          </div>
+
+          <div class="form-group">
+            <label for="month">Month</label>
+            <select name="month" class="form-control">
+              {% for num, name in months %}
+              <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="year">Year</label>
+            <select name="year" class="form-control">
+              {% for y in years %}
+              <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <button type="submit" name="generate_html" class="btn btn-info">Generate Report</button>
+          <button type="submit" name="generate_pdf" class="btn btn-danger">Generate PDF</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block custom_js %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+  <script>
+  $(document).ready(function() {
+      // Initialize Select2
+      $('.select2-multiple').select2({
+          placeholder: "-- Select Employee(s) --",
+          allowClear: true
+      });
+
+      // Department change handler
+      $('#department').change(function() {
+          const deptId = $(this).val();
+          if (deptId) {
+              $.ajax({
+                  url: '{% url "get_employees" %}',
+                  type: 'POST',
+                  data: {
+                      'department': deptId,
+                      'csrfmiddlewaretoken': '{{ csrf_token }}'
+                  },
+                  success: function(response) {
+                      const employees = JSON.parse(response);
+                      $('#employee').empty();
+                      employees.forEach(emp => {
+                          $('#employee').append(`<option value="${emp.id}">${emp.name}</option>`);
+                      });
+                  }
+              });
+          } else {
+              $('#employee').empty();
+          }
+      });
+
+      // Form submission validation
+      $('form').submit(function(e) {
+          const department = $('#department').val();
+          const employees = $('#employee').val();
+          const month = $('select[name="month"]').val();
+          const year = $('select[name="year"]').val();
+          
+          // Validate month and year are selected
+          if (!month || !year) {
+              alert('Please select both Month and Year');
+              e.preventDefault();
+              return false;
+          }
+          
+          // Validate at least one filter is selected (department or employee)
+          if (!department && (!employees || employees.length === 0)) {
+              alert('Please select at least one filter (Department or Employee)');
+              e.preventDefault();
+              return false;
+          }
+          
+          return true;
+      });
+  });
+  </script>
+{% endblock %}
