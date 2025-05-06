@@ -574,7 +574,7 @@ def add_employee_by_manager(request):
             division = employee_form.cleaned_data.get('division')
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
-            department = manager.department  # The department of the manager
+            department = employee_form.cleaned_data.get('department')
             passport = request.FILES['profile_pic']
             
             fs = FileSystemStorage()
@@ -589,7 +589,7 @@ def add_employee_by_manager(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
-                user.employee.team_lead = manager  # Assign manager as the team lead
+                user.employee.team_lead = manager  
                 user.employee.phone_number = phone_number
                 user.employee.designation = designation
                 user.save()

@@ -291,7 +291,7 @@ def edit_employee(request, employee_id):
                 employee.department = department
                 user.save()
                 employee.save()
-                messages.success(request, "Successfully Updated")
+                messages.success(request, "Employee information updated successfully.")
                 return redirect(reverse('edit_employee', args=[employee_id]))
             except Exception as e:
                 messages.error(request, "Could Not Update " + str(e))
