@@ -72,6 +72,8 @@ urlpatterns = [
           ceo_views.edit_division, name='edit_division'),
      path("department/edit/<int:department_id>",
           ceo_views.edit_department, name='edit_department'),
+     path('generate_performance_report',ceo_views.generate_performance_report,name='generate_performance_report'),
+     
 
 
      path('clock-in-out/', views.clock_in_out, name='clock_in_out'),
@@ -89,15 +91,13 @@ urlpatterns = [
           name='manager_view_profile'),
      path("manager/attendance/take/", manager_views.manager_take_attendance,
           name='manager_take_attendance'),
-     path("manager/attendance/update/", manager_views.manager_update_attendance,
-          name='manager_update_attendance'),
+     path("manager/attendance/update/", manager_views.manager_update_attendance, name='manager_update_attendance'),
+      
      path("manager/get_employees/", manager_views.get_employees, name='get_employees'),
-     path("manager/attendance/fetch/", manager_views.get_employee_attendance,
-          name='get_employee_attendance'),
-     path("manager/attendance/save/",
-          manager_views.save_attendance, name='save_attendance'),
-     path("manager/attendance/update/",
-          manager_views.update_attendance, name='update_attendance'),
+     path("manager/attendance/fetch/", manager_views.get_employee_attendance, name='get_employee_attendance'),
+     path("manager/attendance/save/", manager_views.save_attendance, name='save_attendance'),
+     path("manager/attendance/update-data/", manager_views.update_attendance,
+     name='update_attendance'),
      path("manager/fcmtoken/", manager_views.manager_fcmtoken, name='manager_fcmtoken'),
      path("manager/view/notification/", manager_views.manager_view_notification,
           name="manager_view_notification"),

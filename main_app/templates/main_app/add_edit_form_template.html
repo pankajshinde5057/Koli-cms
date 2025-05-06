@@ -1,4 +1,17 @@
 {% load static %}
+<style>
+    .required-asterisk {
+        color: red;
+        font-weight: bold;
+        margin-left: 3px;
+    }
+    .text-danger {
+        color: red;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+</style>
+
 <section class="content">
     <div class="container-fluid">
         <form id="profile-form" method="POST" enctype="multipart/form-data">
@@ -9,7 +22,7 @@
                     <div class="text-center mt-4">
                         <div class="image">
                             {% if page_title == "View/Update Profile" %}
-                                {{user_object.department}}
+                                {{ user_object.department }}
                                 {% if user_object.profile_pic %}
                                     <img src="{{ user_object.profile_pic }}" class="img-circle elevation-2" alt="User Image" style="width: 250px; height: 250px; object-fit: contain;">
                                 {% else %}
@@ -29,10 +42,9 @@
                                 {% endif %}
                             {% endif %}
                         </div>
-                        
-                    </div> 
+                    </div>
 
-                    <!-- Dynamic Left Side Fields -->
+                    <!-- Contact Info Section -->
                     <div class="card mb-4 mt-4">
                         <div class="card-header bg-light">
                             <h5 class="card-title mb-0">Contact Info</h5>
@@ -41,7 +53,16 @@
                             {% for field in form %}
                                 {% if field.name in "profile_pic email phone_number address" %}
                                     <div class="form-group">
-                                        {{ field.label_tag }} {{ field }}
+                                        <label for="{{ field.id_for_label }}">
+                                            {{ field.label }}
+                                            {% if field.errors %}
+                                                <span class="required-asterisk">*</span>
+                                            {% endif %}
+                                        </label>
+                                        {{ field }}
+                                        {% if field.errors %}
+                                            <div class="text-danger">{{ field.errors|striptags }}</div>
+                                        {% endif %}
                                     </div>
                                 {% endif %}
                             {% endfor %}
@@ -49,7 +70,7 @@
                     </div>
                 </div>
 
-                <!-- Main Form Section -->
+                <!-- Account Information -->
                 <div class="col-md-8 mt-4">
                     <div class="card mb-4">
                         <div class="card-header bg-light">
@@ -61,7 +82,16 @@
                                     {% if field.name not in "profile_pic email phone_number address" %}
                                         <div class="col-md-6">
                                             <div class="form-group">
-                                                {{ field.label_tag }} {{ field }}
+                                                <label for="{{ field.id_for_label }}">
+                                                    {{ field.label }}
+                                                    {% if field.errors %}
+                                                        <span class="required-asterisk">*</span>
+                                                    {% endif %}
+                                                </label>
+                                                {{ field }}
+                                                {% if field.errors %}
+                                                    <div class="text-danger">{{ field.errors|striptags }}</div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     {% endif %}

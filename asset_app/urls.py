@@ -7,6 +7,7 @@ urlpatterns = [
     path('asset/category/',views.AssetCategoryCreateView.as_view(), name='assetscategory-create'),
     path('asset/<int:pk>/detail/', views.AssetsDetailView.as_view(), name='assets-detail'),
     path('assets/new/',views.AssetsCreateView.as_view(), name='assets-create'),
+    path('get-parameters/', views.get_category_config, name='get_category_config'),
     path('assign/<int:pk>/',views.AssetAssignView.as_view(), name='asset-assign'),
     path('asset/claim/', views.AssetClaimView.as_view(), name='asset-claim'),
     path('approve-notification/<int:notification_id>/', views.AssetClaimView.as_view(), name='approve-notification'),

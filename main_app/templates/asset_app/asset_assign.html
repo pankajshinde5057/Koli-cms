@@ -123,7 +123,6 @@
                                     {% elif request.user.user_type == '1' %}
                                         <th>Manager</th>
                                     {% endif %}
-                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -171,14 +170,6 @@
                                             {{ issuance.asset.manager.get_full_name }}
                                         </td>
                                         {% endif %}
-                                        
-                                        <td>
-                                            {% if issuance.has_open_issue %}
-                                                <span class="badge badge-danger">Issue Reported</span>
-                                            {% else %}
-                                                <span class="badge badge-success">No Issues</span>
-                                            {% endif %}
-                                        </td>
                                         
                                         <td>
                                             <a href="{% url 'asset_app:assets-detail' issuance.asset.id %}" 

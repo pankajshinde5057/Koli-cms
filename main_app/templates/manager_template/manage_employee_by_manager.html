@@ -242,7 +242,7 @@
                 $('#availableCount').text(response.assets.length);
                 response.assets.forEach(function(asset) {
                     select.append(new Option(
-                        `${asset.asset_name} (${asset.asset_serial_number})`, 
+                        `${asset.asset_category} (${asset.asset_serial_number})`, 
                         asset.id
                     ));
                 });

@@ -24,22 +24,9 @@
                                     <span class="sr-only">Toggle Dropdown</span>
                                 </button>
                                 <div class="dropdown-menu dropdown-menu-right" role="menu">
-                                    <a href="{% url 'asset_app:asset-delete' asset.pk %}" class="dropdown-item text-danger"
-                                       onclick="return confirm('Are you sure you want to delete this asset?');">
-                                        <i class="fas fa-trash-alt mr-2"></i>Delete
-                                    </a>
                                     {% if asset.barcode %}
                                     <a href="{{ asset.barcode.url }}" class="dropdown-item" download>
                                         <i class="fas fa-barcode mr-2"></i>Download Barcode
-                                    </a>
-                                    {% endif %}
-                                    {% if asset.is_asset_issued %}
-                                    <a href="" class="dropdown-item text-warning">
-                                        <i class="fas fa-undo mr-2"></i>Mark as Returned
-                                    </a>
-                                    {% else %}
-                                    <a href="" class="dropdown-item text-success">
-                                        <i class="fas fa-hand-holding mr-2"></i>Issue Asset
                                     </a>
                                     {% endif %}
                                 </div>
@@ -115,9 +102,11 @@
                                     <li class="nav-item">
                                         <a class="nav-link active" data-toggle="tab" href="#details">Details</a>
                                     </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link" data-toggle="tab" href="#technical">Technical</a>
-                                    </li>
+                                    {% if asset.asset_category.has_os or asset.asset_category.has_ip %}
+                                        <li class="nav-item">
+                                            <a class="nav-link" data-toggle="tab" href="#technical">Technical</a>
+                                        </li>
+                                    {% endif %}
                                     <li class="nav-item">
                                         <a class="nav-link" data-toggle="tab" href="#issuance">Issuance</a>
                                     </li>
@@ -155,23 +144,40 @@
 
                                     <!-- Technical Tab -->
                                     <div class="tab-pane" id="technical">
+                                        {% if asset.asset_category.has_os and asset.asset_category.has_ip %}
+                                            <dl class="row">
+                                                <dt class="col-sm-4">OS Version</dt>
+                                                <dd class="col-sm-8">{{ asset.os_version|default:"Not specified" }}</dd>
+                                        
+                                                <dt class="col-sm-4">IP Address</dt>
+                                                <dd class="col-sm-8">{{ asset.ip_address|default:"Not assigned" }}</dd>
+                                        
+                                                <dt class="col-sm-4">Processor</dt>
+                                                <dd class="col-sm-8">{{ asset.processor|default:"Not specified" }}</dd>
+                                        
+                                                <dt class="col-sm-4">RAM</dt>
+                                                <dd class="col-sm-8">{{ asset.ram|default:"Not specified" }}</dd>
+                                        
+                                                <dt class="col-sm-4">Storage</dt>
+                                                <dd class="col-sm-8">{{ asset.storage|default:"Not specified" }}</dd>
+                                        
+                                                <dt class="col-sm-4">Current Status</dt>
+                                                <dd class="col-sm-8">
+                                                    {% if asset.is_asset_issued %}
+                                                        <span class="badge badge-success">Assigned</span>
+                                                    {% else %}
+                                                        <span class="badge badge-secondary">Available</span>
+                                                    {% endif %}
+                                                </dd>
+                                            </dl>
+                                        {% elif asset.asset_category.has_ip %}
                                         <dl class="row">
-                                            <dt class="col-sm-4">OS Version</dt>
-                                            <dd class="col-sm-8">{{ asset.os_version|default:"Not specified" }}</dd>
-
                                             <dt class="col-sm-4">IP Address</dt>
-                                            <dd class="col-sm-8">{{ asset.ip_address|default:"Not assigned" }}</dd>
-
-                                            <dt class="col-sm-4">Current Status</dt>
-                                            <dd class="col-sm-8">
-                                                {% if asset.is_asset_issued %}
-                                                <span class="badge badge-success">Assigned</span>
-                                                {% else %}
-                                                <span class="badge badge-secondary">Available</span>
-                                                {% endif %}
-                                            </dd>
+                                            <dd class="col-sm-8">{{ asset.ip_address|default:"Not specified" }}</dd>
                                         </dl>
+                                        {% endif %}
                                     </div>
+                                    
 
                                     <!-- Issuance Tab -->
                                     <div class="tab-pane" id="issuance">
