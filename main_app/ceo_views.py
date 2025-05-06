@@ -91,6 +91,8 @@ def add_employee(request):
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
             department = employee_form.cleaned_data.get('department')
+            designation = employee_form.cleaned_data.get('designation')
+            phone_number = employee_form.cleaned_data.get('phone_number')
             team_lead = employee_form.cleaned_data.get('team_lead')
             
             passport = request.FILES['profile_pic']
@@ -104,6 +106,8 @@ def add_employee(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
+                user.employee.phone_number = phone_number
+                user.employee.designation = designation
                 if team_lead:
                     user.employee.team_lead = team_lead
                 user.save()
@@ -211,6 +215,7 @@ def edit_manager(request, manager_id):
     context = {
         'form': form,
         'manager_id': manager_id,
+        "user_object" : manager,
         'page_title': 'Edit Manager'
     }
     if request.method == 'POST':
@@ -260,6 +265,7 @@ def edit_employee(request, employee_id):
     context = {
         'form': form,
         'employee_id': employee_id,
+        "user_object" : employee,
         'page_title': 'Edit Employee'
     }
     if request.method == 'POST':
@@ -293,7 +299,7 @@ def edit_employee(request, employee_id):
                 employee.department = department
                 user.save()
                 employee.save()
-                messages.success(request, "Successfully Updated")
+                messages.success(request, "Employee information updated successfully.")
                 return redirect(reverse('edit_employee', args=[employee_id]))
             except Exception as e:
                 messages.error(request, "Could Not Update " + str(e))
