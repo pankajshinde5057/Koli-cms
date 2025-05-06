@@ -251,7 +251,10 @@ def edit_manager(request, manager_id):
         user = CustomUser.objects.get(id=manager_id)
         manager = Manager.objects.get(id=user.id)
         return render(request, "ceo_template/edit_manager_template.html", context)
-
+    
+    return render(request, "ceo_template/edit_manager_template.html", context)
+    
+    
 
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
@@ -300,6 +303,10 @@ def edit_employee(request, employee_id):
             messages.error(request, "Please Fill Form Properly!")
     else:
         return render(request, "ceo_template/edit_employee_template.html", context)
+
+    return render(request, "ceo_template/edit_employee_template.html", context)
+
+
 
 
 def edit_division(request, division_id):
