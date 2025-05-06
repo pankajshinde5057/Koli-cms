@@ -3,6 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
+
+from main_app.notification_badge import send_notification
 from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory,AssetIssue
 from .forms import AssetForm,AssetCategoryForm
 from .filters import AssetsFilter
@@ -328,13 +330,15 @@ class MyAssetView(LoginRequiredMixin, ListView):
                     messages.warning(request,"Issue For this asset is alredy submited!! Check My Requests.")
                     return redirect('asset_app:my-assets')
 
-                AssetIssue.objects.create(
+                new_asset = AssetIssue.objects.create(
                     asset=asset,
                     reported_by=request.user,
                     issue_type=issue_type_,
                     description=description_,
                 )
+                new_asset.save()
                 messages.success(request,"Issue Reported Successfully")
+                send_notification(request.user, "Issue Reported Successfully","asset issue",new_asset.id,"manager")
                 return redirect('asset_app:my-assets')
             else:
                 messages.error(request,"Something Wrong!!!")
@@ -431,15 +435,15 @@ class AssetClaimView(LoginRequiredMixin, View):
         try:
             manager_message = request.POST.get('message', 'Requesting asset approval.')
             manager = asset.manager
-
-            Notify_Manager.objects.create(
+            print(">>>>>>>>>>>>>",manager.id,user.id,asset,manager_message)
+            new_req = Notify_Manager.objects.create(
                 manager=manager,
                 employee=user,
                 asset=asset,
                 message=manager_message,
                 approved = None
             )
-
+            new_req.save()
             if hasattr(manager, 'fcm_token') and manager.fcm_token:
                 body = {
                     'notification': {
@@ -464,7 +468,7 @@ class AssetClaimView(LoginRequiredMixin, View):
 
                 if response.status_code != 200:
                     print(f"FCM error: {response.content}")
-
+            send_notification(manager, manager_message,"notification",new_req.id,"manager")
             messages.success(request, "Your asset request has been sent for approval.")
 
         except Exception as e:
