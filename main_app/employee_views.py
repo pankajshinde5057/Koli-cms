@@ -37,10 +37,8 @@ def employee_home(request):
     end_date = next_month - timedelta(days=1)
     # Base query for attendance records
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
-    # print("recordsaaaaa",records)
     # Handle date range filtering
     start_date_str = request.GET.get('start_date')
-    print("start_date_str",start_date_str)
     end_date_str = request.GET.get('end_date')
     if start_date_str and end_date_str:
         try:
@@ -58,13 +56,11 @@ def employee_home(request):
         #     start_date = today - timedelta(days=today.weekday())
         #     end_date = start_date + timedelta(days=6)
         #     records = records.filter(date__range=[start_date, end_date])
-    # print("recordsbbbbbbb",records)
     # Additional filters
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
-    # print("recordsccccc",records)
     # Create detailed time entries (clock in/out and breaks)
     detailed_time_entries = []
     for record in records.order_by('date', 'clock_in'):
@@ -223,13 +219,10 @@ def employee_home(request):
         user_id=request.user,  
         date__range=(start_date, end_date)
     )
-    print("month_record",month_record)
     record_dict = {rec.date: rec.status for rec in month_record}
     absent_days = 0
     current_date = start_date
-    print("START DATE",start_date)
     while current_date <= today:
-        print("CURREBNT DATE",current_date)
         weekday = current_date.weekday()
         is_sunday = weekday == 6
         is_saturday = weekday == 5
@@ -239,7 +232,6 @@ def employee_home(request):
             if not status:
                 absent_days+=1
             elif status == "half":
-                print("status",status)
                 absent_days += 0.5
             else:
                 leave_records = LeaveReportEmployee.objects.filter(
@@ -249,12 +241,10 @@ def employee_home(request):
                     start_date=current_date  # The specific date you're checking
                 )
                 # leave_count = LeaveReportEmployee.objects.filter(employee = employee)
-                print("leaveeeeeeeeeee)***************",leave_records)
                 if leave_records:
                     absent_days+=0.5
         current_date += timedelta(days=1)
-    print("absent_days",absent_days)
-    print("days_in_month",days_in_month)
+
     for day in range(1, days_in_month + 1):
         date = timezone.datetime(current_year, current_month, day).date()
         weekday = date.weekday()
@@ -292,7 +282,6 @@ def employee_home(request):
     # Count half days and full day leaves
     half_days = approved_leaves.filter(leave_type='Half-Day').count()
     # absent_days = approved_leaves.filter(leave_type='Full-Day').count()
-    print("todaytoday",today.day, start_date.day)
     # Calculate attendance percentage
     if total_working_days > 0:
         # Count half days as 0.5 present days
