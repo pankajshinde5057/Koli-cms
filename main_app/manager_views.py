@@ -465,7 +465,7 @@ def get_employee_attendance(request):
                 return JsonResponse({"error": "Year is required"}, status=400)
 
             employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
-
+            print("employee",employee)
             # Base queryset
             queryset = AttendanceRecord.objects.filter(user__employee=employee)
 
