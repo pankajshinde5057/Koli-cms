@@ -300,6 +300,8 @@ class MyAssetView(LoginRequiredMixin, ListView):
                 asset__manager=user
             ).select_related('asset', 'asset_assignee').order_by('-date_issued')
         
+        else:
+            return AssetsIssuance.objects.all()
         
    
     def get_context_data(self, **kwargs):
@@ -323,19 +325,27 @@ class MyAssetView(LoginRequiredMixin, ListView):
 
             if asset_id_ and issue_type_ and description_:
                 asset = Assets.objects.filter(id=asset_id_).first()
-                existing_issue = AssetIssue.objects.filter(asset=asset,reported_by=request.user).exists()
-                if existing_issue:
-                    messages.warning(request,"Issue For this asset is alredy submited!! Check My Requests.")
-                    return redirect('asset_app:my-assets')
 
+                existing_unresolved_issue = AssetIssue.objects.filter(
+                    asset=asset,
+                    reported_by=self.request.user,
+                    issue_type = issue_type_,
+                    status__in=['pending', 'in_progress']
+                ).exists()
+
+                if existing_unresolved_issue:
+                    messages.warning(request, "An unresolved issue of this type already exists for this asset!")
+                    return redirect('asset_app:my-assets')
+                
                 AssetIssue.objects.create(
                     asset=asset,
-                    reported_by=request.user,
+                    reported_by=self.request.user,
                     issue_type=issue_type_,
                     description=description_,
                 )
-                messages.success(request,"Issue Reported Successfully")
+                messages.success(request, "Issue Reported Successfully")
                 return redirect('asset_app:my-assets')
+                
             else:
                 messages.error(request,"Something Wrong!!!")
                 return redirect('asset_app:my-assets')
