@@ -18,6 +18,12 @@ import requests
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, time, timedelta
+from django.core.paginator import Paginator
+from django.forms.models import model_to_dict
+from django.http import JsonResponse
+from datetime import datetime
+
+
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -1031,11 +1037,17 @@ def manager_fcmtoken(request):
         return HttpResponse("False")
 
 
-
 def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
-    notifications = NotificationManager.objects.filter(manager=manager).order_by('-id')
+    notification_from_admin = NotificationManager.objects.filter(manager=manager)
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
+    pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
+    pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
+
+    # this is foor histoory
+    leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
+    asset_notification_history = Notify_Manager.objects.filter(manager=request.user, approved__isnull=False).order_by('-timestamp')
+    resolved_asset_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
     asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
     asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
    
@@ -1047,7 +1059,133 @@ def manager_view_notification(request):
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES
     }
+    
+    # status_filter = request.GET.get('status', 'all')
+    # date_from = request.GET.get('date_from')
+    # date_to = request.GET.get('date_to')
+
+    # # Apply filters to leave history
+    # if status_filter != 'all':
+    #     leave_history = leave_history.filter(status=1 if status_filter == 'approved' else 2)
+    
+    # if date_from:
+    #     leave_history = leave_history.filter(updated_at__gte=date_from)
+    # if date_to:
+    #     leave_history = leave_history.filter(updated_at__lte=date_to)
+
+    leave_paginator = Paginator(leave_history, 3)  # Show 3 items per page
+    asset_notification_paginator = Paginator(asset_notification_history, 3)
+    resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
+
+    page_number = request.GET.get('page')
+    leave_page_obj = leave_paginator.get_page(page_number)
+    asset_notification_page_obj = asset_notification_paginator.get_page(page_number)
+    resolved_issues_page_obj = resolved_issues_paginator.get_page(page_number)
+    
+    context = {
+        'notification_from_admin' : notification_from_admin,
+        'pending_leave_requests': pending_leave_requests,
+        'asset_notifications': pending_asset_notifications,
+        'asset_issue_notifications': pending_asset_issues,
+        'pending_issue': pending_asset_issues.filter(status='pending'),
+        'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
+
+        # this is for historyy
+        'leave_page_obj': leave_page_obj,
+        'asset_notification_page_obj': asset_notification_page_obj,
+        'resolved_issues_page_obj': resolved_issues_page_obj,
+
+        # # Filter values for template
+        # 'status_filter': status_filter,
+        # 'date_from': date_from or '',
+        # 'date_to': date_to or '',
+
+        'page_title': "View Notifications",
+        'LOCATION_CHOICES': LOCATION_CHOICES,
+    }
+
     return render(request, "manager_template/manager_view_notification.html", context)
+
+
+@csrf_exempt
+def send_bulk_employee_notification_by_manager(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        employees = Employee.objects.all()
+        success = True
+        
+        try:
+            for employee in employees:
+                if employee.admin.fcm_token:
+                    url = "https://fcm.googleapis.com/fcm/send"
+                    body = {
+                        'notification': {
+                            'title': "KoliInfoTech",
+                            'body': message,
+                            'click_action': reverse('employee_view_notification'),
+                            'icon': static('dist/img/AdminLTELogo.png')
+                        },
+                        'to': employee.admin.fcm_token
+                    }
+                    headers = {
+                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                        'Content-Type': 'application/json'
+                    }
+                    requests.post(url, data=json.dumps(body), headers=headers)
+                
+                # Save notification to database
+                notification = NotificationEmployee(
+                    employee=employee,
+                    message=message,
+                    created_by=request.user
+                )
+                notification.save()
+                
+            return HttpResponse("True")
+        except Exception as e:
+            print(e)
+            return HttpResponse("False")
+
+@csrf_exempt
+def send_selected_employee_notification_by_manager(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        employee_ids = json.loads(request.POST.get('employee_ids'))
+        print(employee_ids)
+        success = True
+        
+        try:
+            for emp_id in employee_ids:
+                employee = get_object_or_404(Employee, admin_id=emp_id)
+                if employee.admin.fcm_token:
+                    url = "https://fcm.googleapis.com/fcm/send"
+                    body = {
+                        'notification': {
+                            'title': "KoliInfoTech",
+                            'body': message,
+                            'click_action': reverse('employee_view_notification'),
+                            'icon': static('dist/img/AdminLTELogo.png')
+                        },
+                        'to': employee.admin.fcm_token
+                    }
+                    headers = {
+                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                        'Content-Type': 'application/json'
+                    }
+                    requests.post(url, data=json.dumps(body), headers=headers)
+                
+                # Save notification to database
+                notification = NotificationEmployee(
+                    employee=employee,
+                    message=message,
+                    created_by=request.user
+                )
+                notification.save()
+                
+            return HttpResponse("True")
+        except Exception as e:
+            print(e)
+            return HttpResponse("False")
 
 
 def approve_assest_request(request, notification_id):

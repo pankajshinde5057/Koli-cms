@@ -257,7 +257,10 @@ def edit_manager(request, manager_id):
         user = CustomUser.objects.get(id=manager_id)
         manager = Manager.objects.get(id=user.id)
         return render(request, "ceo_template/edit_manager_template.html", context)
-
+    
+    return render(request, "ceo_template/edit_manager_template.html", context)
+    
+    
 
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
@@ -307,6 +310,10 @@ def edit_employee(request, employee_id):
             messages.error(request, "Please Fill Form Properly!")
     else:
         return render(request, "ceo_template/edit_employee_template.html", context)
+
+    return render(request, "ceo_template/edit_employee_template.html", context)
+
+
 
 
 def edit_division(request, division_id):
@@ -585,6 +592,86 @@ def send_employee_notification(request):
         return HttpResponse("True")
     except Exception as e:
         return HttpResponse("False")
+    
+@csrf_exempt
+def send_bulk_employee_notification(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        employees = Employee.objects.all()
+        success = True
+        
+        try:
+            for employee in employees:
+                if employee.admin.fcm_token:
+                    url = "https://fcm.googleapis.com/fcm/send"
+                    body = {
+                        'notification': {
+                            'title': "KoliInfoTech",
+                            'body': message,
+                            'click_action': reverse('employee_view_notification'),
+                            'icon': static('dist/img/AdminLTELogo.png')
+                        },
+                        'to': employee.admin.fcm_token
+                    }
+                    headers = {
+                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                        'Content-Type': 'application/json'
+                    }
+                    requests.post(url, data=json.dumps(body), headers=headers)
+                
+                # Save notification to database
+                notification = NotificationEmployee(
+                    employee=employee,
+                    message=message,
+                    created_by=request.user
+                )
+                notification.save()
+                
+            return HttpResponse("True")
+        except Exception as e:
+            print(e)
+            return HttpResponse("False")
+
+@csrf_exempt
+def send_selected_employee_notification(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        employee_ids = json.loads(request.POST.get('employee_ids'))
+        print(employee_ids)
+        success = True
+        
+        try:
+            for emp_id in employee_ids:
+                employee = get_object_or_404(Employee, admin_id=emp_id)
+                if employee.admin.fcm_token:
+                    url = "https://fcm.googleapis.com/fcm/send"
+                    body = {
+                        'notification': {
+                            'title': "KoliInfoTech",
+                            'body': message,
+                            'click_action': reverse('employee_view_notification'),
+                            'icon': static('dist/img/AdminLTELogo.png')
+                        },
+                        'to': employee.admin.fcm_token
+                    }
+                    headers = {
+                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                        'Content-Type': 'application/json'
+                    }
+                    requests.post(url, data=json.dumps(body), headers=headers)
+                
+                # Save notification to database
+                notification = NotificationEmployee(
+                    employee=employee,
+                    message=message,
+                    created_by=request.user
+                )
+                notification.save()
+                
+            return HttpResponse("True")
+        except Exception as e:
+            print(e)
+            return HttpResponse("False")
 
 
 @csrf_exempt
@@ -614,6 +701,83 @@ def send_manager_notification(request):
         return HttpResponse("True")
     except Exception as e:
         return HttpResponse("False")
+
+@csrf_exempt
+def send_bulk_manager_notification(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        managers = Manager.objects.all()
+        success = True
+        
+        try:
+            for manager in managers:
+                if manager.admin.fcm_token:
+                    url = "https://fcm.googleapis.com/fcm/send"
+                    body = {
+                        'notification': {
+                            'title': "KoliInfoTech",
+                            'body': message,
+                            'click_action': reverse('manager_view_notification'),
+                            'icon': static('dist/img/AdminLTELogo.png')
+                        },
+                        'to': manager.admin.fcm_token
+                    }
+                    headers = {
+                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                        'Content-Type': 'application/json'
+                    }
+                    requests.post(url, data=json.dumps(body), headers=headers)
+                
+                # Save notification to database
+                notification = NotificationManager(
+                    manager=manager,
+                    message=message,
+                )
+                notification.save()
+                
+            return HttpResponse("True")
+        except Exception as e:
+            print(e)
+            return HttpResponse("False")
+
+@csrf_exempt
+def send_selected_manager_notification(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        manager_ids = json.loads(request.POST.get('manager_ids'))
+        success = True
+        
+        try:
+            for manager_id in manager_ids:
+                manager = get_object_or_404(Manager, admin_id=manager_id)
+                if manager.admin.fcm_token:
+                    url = "https://fcm.googleapis.com/fcm/send"
+                    body = {
+                        'notification': {
+                            'title': "KoliInfoTech",
+                            'body': message,
+                            'click_action': reverse('manager_view_notification'),
+                            'icon': static('dist/img/AdminLTELogo.png')
+                        },
+                        'to': manager.admin.fcm_token
+                    }
+                    headers = {
+                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                        'Content-Type': 'application/json'
+                    }
+                    requests.post(url, data=json.dumps(body), headers=headers)
+                
+                # Save notification to database
+                notification = NotificationManager(
+                    manager=manager,
+                    message=message,
+                )
+                notification.save()
+                
+            return HttpResponse("True")
+        except Exception as e:
+            print(e)
+            return HttpResponse("False")
 
 
 def delete_manager(request, manager_id):

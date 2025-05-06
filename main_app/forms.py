@@ -83,76 +83,14 @@ class CustomUserForm(FormSettings):
 #         fields = CustomUserForm.Meta.fields + [
 #             'division', 'department', 'designation', 'team_lead', 'phone_number', 'emergency_contact'
 #         ]
-
 class EmployeeForm(CustomUserForm):
     def __init__(self, *args, **kwargs):
         super(EmployeeForm, self).__init__(*args, **kwargs)
 
-        self.fields['first_name'].required = True
-        self.fields['last_name'].required = True
-        self.fields['email'].required = True
-        self.fields['password'].required = True
-        self.fields['division'].required = True
-        self.fields['department'].required = True
-        self.fields['designation'].required = True
-        self.fields['address'].required = True
-        self.fields['phone_number'].required = True
-
-        self.fields['first_name'].error_messages.update({
-            'required': 'First name is required.'
-        })
-        self.fields['last_name'].error_messages.update({
-            'required': 'Last name is required.'
-        })
-        self.fields['email'].error_messages.update({
-            'required': 'Email address is required.',
-            'invalid': 'Enter a valid email address.'
-        })
-        self.fields['password'].error_messages.update({
-            'required': 'Password is required.'
-        })
-        self.fields['division'].error_messages.update({
-            'required': 'Division is required.'
-        })
-        self.fields['department'].error_messages.update({
-            'required': 'Department is required.'
-        })
-        self.fields['designation'].error_messages.update({
-            'required': 'Designation is required.'
-        })
-        self.fields['address'].error_messages.update({
-            'required': 'Address is required.'
-        })
-        self.fields['phone_number'].error_messages.update({
-            'required': 'Phone number is required.'
-        })
-
-    def save(self, commit=True):
-        employee = super().save(commit=False)
-        admin = employee.admin
-        admin.first_name = self.cleaned_data['first_name']
-        admin.last_name = self.cleaned_data['last_name']
-        admin.email = self.cleaned_data['email']
-        admin.gender = self.cleaned_data['gender']
-        admin.address = self.cleaned_data['address']
-        if self.cleaned_data.get('profile_pic'):
-            admin.profile_pic = self.cleaned_data['profile_pic']
-        password = self.cleaned_data.get('password')
-        if password:
-            admin.set_password(password)
-
-        if commit:
-            admin.save()
-            employee.admin = admin
-            employee.save()
-
-        return employee
-
     class Meta(CustomUserForm.Meta):
         model = Employee
-        fields = CustomUserForm.Meta.fields + [
-            'division', 'department', 'designation', 'team_lead', 'phone_number', 'emergency_contact'
-        ]
+        fields = CustomUserForm.Meta.fields + \
+            ['division', 'department']
 
 
 class AdminForm(CustomUserForm):
@@ -164,49 +102,49 @@ class AdminForm(CustomUserForm):
         fields = CustomUserForm.Meta.fields
 
 
-# class ManagerForm(CustomUserForm):
-#     def __init__(self, *args, **kwargs):
-#         super(ManagerForm, self).__init__(*args, **kwargs)
-
-#     class Meta(CustomUserForm.Meta):
-#         model = Manager
-#         fields = CustomUserForm.Meta.fields + \
-#             ['division' ]
-
 class ManagerForm(CustomUserForm):
     def __init__(self, *args, **kwargs):
         super(ManagerForm, self).__init__(*args, **kwargs)
 
-        self.fields['first_name'].required = True
-        self.fields['last_name'].required = True
-        self.fields['email'].required = True
-        self.fields['password'].required = True
-        self.fields['division'].required = True
-        self.fields['address'].required = True
-
-        self.fields['first_name'].error_messages.update({
-            'required': 'First name is required.'
-        })
-        self.fields['last_name'].error_messages.update({
-            'required': 'Last name is required.'
-        })
-        self.fields['email'].error_messages.update({
-            'required': 'Email address is required.',
-            'invalid': 'Enter a valid email address.'
-        })
-        self.fields['password'].error_messages.update({
-            'required': 'Password is required.'
-        })
-        self.fields['division'].error_messages.update({
-            'required': 'Division selection is required.'
-        })
-        self.fields['address'].error_messages.update({
-            'required': 'Address is required.'
-        })
-
     class Meta(CustomUserForm.Meta):
         model = Manager
-        fields = CustomUserForm.Meta.fields + ['division']
+        fields = CustomUserForm.Meta.fields + \
+            ['division' ]
+
+# class ManagerForm(CustomUserForm):
+#     def __init__(self, *args, **kwargs):
+#         super(ManagerForm, self).__init__(*args, **kwargs)
+
+#         self.fields['first_name'].required = True
+#         self.fields['last_name'].required = True
+#         self.fields['email'].required = True
+#         self.fields['password'].required = True
+#         self.fields['division'].required = True
+#         self.fields['address'].required = True
+
+#         self.fields['first_name'].error_messages.update({
+#             'required': 'First name is required.'
+#         })
+#         self.fields['last_name'].error_messages.update({
+#             'required': 'Last name is required.'
+#         })
+#         self.fields['email'].error_messages.update({
+#             'required': 'Email address is required.',
+#             'invalid': 'Enter a valid email address.'
+#         })
+#         self.fields['password'].error_messages.update({
+#             'required': 'Password is required.'
+#         })
+#         self.fields['division'].error_messages.update({
+#             'required': 'Division selection is required.'
+#         })
+#         self.fields['address'].error_messages.update({
+#             'required': 'Address is required.'
+#         })
+
+#     class Meta(CustomUserForm.Meta):
+#         model = Manager
+#         fields = CustomUserForm.Meta.fields + ['division']
 
 
 

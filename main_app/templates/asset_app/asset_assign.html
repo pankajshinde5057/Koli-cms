@@ -18,7 +18,7 @@
             <!-- Stats Cards -->
             <div class="row">
                 {% if request.user.user_type == '3' %}
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="card bg-primary text-white mb-4">
                             <div class="card-body">
                                 <h5 class="card-title">{{ total_assets }}</h5>
@@ -26,7 +26,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="card bg-success text-white mb-4">
                             <div class="card-body">
                                 <h5 class="card-title">{{ active_assets }}</h5>
@@ -34,14 +34,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card {% if open_issues > 0 %}bg-danger{% else %}bg-secondary{% endif %} text-white mb-4">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ open_issues }}</h5>
-                                <p class="card-text">Open Issues</p>
-                            </div>
-                        </div>
-                    </div>
+                    
                 {% elif request.user.user_type == '2' %}
                     <div class="col-md-4">
                         <div class="card bg-primary text-white mb-4">
