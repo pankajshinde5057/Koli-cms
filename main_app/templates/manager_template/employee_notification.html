@@ -11,6 +11,9 @@
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">{{page_title}}</h3>
+                        <button data-toggle="modal" data-target="#sendAllModal" class="btn btn-success float-right">
+                            <i class="fas fa-bullhorn"></i> Send to All Employees
+                        </button>
                     </div>
                     <!-- /.card-header -->
                     <div class="card-body">
@@ -42,7 +45,10 @@
                                             src="{{employee.profile_pic}}" alt="">
                                         {% endif %}
                                     </td>
-                                    <td><button data-toggle = "modal" data-target = "#myModal"class="btn btn-primary show_notification" value="{{employee.id}}">Send Notification</button>
+                                    <td>
+                                        <button data-toggle="modal" data-target="#myModal" class="btn btn-primary show_notification" value="{{employee.id}}">
+                                            <i class="fas fa-paper-plane"></i> Send Notification
+                                        </button>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -54,77 +60,138 @@
         </div>
     </div>
 </section>
-<div class = "modal fade" id = "myModal" tabindex = "-1" role = "dialog"
-   aria-labelledby = "myModalLabel" aria-hidden = "true">
-   
-   <div class = "modal-dialog">
-      <div class = "modal-content">
-         
-         <div class = "modal-header">Send Notification
-            <button type = "button" class = "close" data-dismiss = "modal" aria-hidden = "true">
+
+<!-- Modal for single employee notification -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+   <div class="modal-dialog">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h5 class="modal-title">Send Notification</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
                   &times;
             </button>
-           
-           
          </div>
-         
-         <div class = "modal-body">
+         <div class="modal-body">
             <div class="form-group">
-                <input type="text" id="message" class='form-control'>
-                <input type="hidden"  id="employee_id" class='form-control'>
+                <label for="message">Notification Message</label>
+                <textarea id="message" class='form-control' rows="5" placeholder="Enter notification message"></textarea>
+                <input type="hidden" id="employee_id" class='form-control'>
             </div>
          </div>
-         
-         <div class = "modal-footer">
-            <button type = "button" class = "btn btn-default" data-dismiss = "modal">
+         <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">
                Close
             </button>
-           
-            <button type = "button" id='send' class = "btn btn-success send_notification">
-               Send Notification
+            <button type="button" id='send' class="btn btn-primary send_notification">
+               <i class="fas fa-paper-plane"></i> Send Notification
             </button>
          </div>
-         
-      </div><!-- /.modal-content -->
-   </div><!-- /.modal-dialog -->
- 
-</div><!-- /.modal -->
+      </div>
+   </div>
+</div>
+
+<!-- Modal for all employees notification -->
+<div class="modal fade" id="sendAllModal" tabindex="-1" role="dialog" aria-labelledby="sendAllModalLabel" aria-hidden="true">
+   <div class="modal-dialog">
+      <div class="modal-content">
+         <div class="modal-header">
+            <h5 class="modal-title">Send Notification to All Employees</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                  &times;
+            </button>
+         </div>
+         <div class="modal-body">
+            <div class="form-group">
+                <label for="message_all">Notification Message</label>
+                <textarea id="message_all" class='form-control' rows="5" placeholder="Enter notification message for all employees"></textarea>
+                <small class="text-muted">This will be sent to all employees at once.</small>
+            </div>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+               Close
+            </button>
+            <button type="button" id='send_all' class="btn btn-success send_all_notification">
+               <i class="fas fa-bullhorn"></i> Send to All Employees
+            </button>
+         </div>
+      </div>
+   </div>
+</div>
+
 {% endblock content %}
+
 {% block custom_js %}
-  <script>
-      $(".show_notification").click(function(){
-          $("#employee_id").val($(this).val())
-      })
-      $(".send_notification").click(function(){
-          var id = $("#employee_id").val()
-          var message = $("#message").val()
-          console.log(message)
-          sendNotification(id,message);
-      })
-    function sendNotification(id,message){
-        $.ajax({
-            url: "{% url 'manager_send_employee_notification' %}",
-            type: 'POST',
-            data: {
-                id: id,
-                message:message
+<script>
+    $(document).ready(function() {
+        // For single employee notification
+        $(".show_notification").click(function(){
+            var employeeName = $(this).closest('tr').find('td:nth-child(2)').text();
+            $("#employee_id").val($(this).val());
+            $("#myModal .modal-title").text("Send Notification to " + employeeName);
+        });
+        
+        $(".send_notification").click(function(){
+            var id = $("#employee_id").val();
+            var message = $("#message").val();
+            
+            if (message.trim() === "") {
+                alert("Please enter a message");
+                return;
             }
-        }).done(function (response) {
-           
-               
-            if (response == 'True'){
-                alert("Notification Sent");
-                location.reload();
-              }else{
-                alert("Notification could not be saved. Please try again.");
-              }
-               
-           
-        }).fail(function (response) {
-            alert("Error in saving token")
-        })
- 
-    }
- 
-  </script>
+            
+            sendNotification(id, message, false);
+        });
+        
+        // For all employees notification
+        $(".send_all_notification").click(function(){
+            var message = $("#message_all").val();
+            
+            if (message.trim() === "") {
+                alert("Please enter a message");
+                return;
+            }
+            
+            if (!confirm("Are you sure you want to send this notification to ALL employees?")) {
+                return;
+            }
+            
+            sendNotification('all', message, true);
+        });
+        
+        function sendNotification(id, message, isBulk) {
+            var btn = isBulk ? $(".send_all_notification") : $(".send_notification");
+            var originalText = btn.html();
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+            
+            $.ajax({
+                url: "{% url 'manager_send_employee_notification' %}",
+                type: 'POST',
+                data: {
+                    id: id,
+                    message: message
+                },
+                success: function(response) {
+                    if (response == 'True') {
+                        alert("Notification sent successfully!");
+                        if (!isBulk) {
+                            $('#myModal').modal('hide');
+                        } else {
+                            $('#sendAllModal').modal('hide');
+                        }
+                        location.reload();
+                    } else {
+                        alert("Failed to send notification. Please try again.");
+                    }
+                },
+                error: function() {
+                    alert("An error occurred while sending the notification.");
+                },
+                complete: function() {
+                    btn.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+    });
+</script>
 {% endblock custom_js %}

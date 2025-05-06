@@ -939,34 +939,94 @@ def manager_feedback(request):
             messages.error(request, "Form has errors!")
     return render(request, "manager_template/manager_feedback.html", context)
  
+
+
 @csrf_exempt
 def manager_send_employee_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
-    # employee = get_object_or_404(Employee, team_lead_id=id)
-    employee = CustomUser.objects.filter(id = id).first()
-    print(id,message,employee)
+
     try:
         url = "https://fcm.googleapis.com/fcm/send"
-        body = {
-            'notification': {
-                'title': "OfficeOps",
-                'body': message,
-                'click_action': reverse('employee_view_notification'),
-                'icon': static('dist/img/AdminLTELogo.png')
-            },
-            'to': employee.fcm_token
+        headers = {
+            'Authorization': 'key=YOUR_FCM_SERVER_KEY',
+            'Content-Type': 'application/json'
         }
-        employee = Employee.objects.filter(admin = employee).first()
-        headers = {'Authorization':
-                   'key=dxHXv-hbaBoaO0OyQN0_W3:APA91bH4UU9a727PTFs2kQzSaB3O1UWzEMoWVVrKdNGj1cgBD4vPQHIhaWd_C6o9ocbpLOvR1-_stx52N96ywgex3IDByDpicjQ-hMRLqDJXxEVUFGM3huo',
-                   'Content-Type': 'application/json'}
-        data = requests.post(url, data=json.dumps(body), headers=headers)
-        notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
 
-        notification.save()
-        return HttpResponse("True")
+        if id == 'all':
+            employees = CustomUser.objects.filter(user_type=3)
+            success_count = 0
+            failed_count = 0
+
+            for employee_user in employees:
+                if not employee_user.fcm_token:
+                    print(f"Skipping user {employee_user.id} due to missing FCM token.")
+                    continue
+
+                employee = Employee.objects.filter(admin=employee_user).first()
+                if not employee:
+                    print(f"No Employee record found for user {employee_user.id}")
+                    continue
+
+                body = {
+                    'notification': {
+                        'title': "OfficeOps",
+                        'body': message,
+                        'click_action': reverse('employee_view_notification'),
+                        'icon': static('dist/img/AdminLTELogo.png')
+                    },
+                    'to': employee_user.fcm_token
+                }
+
+                print(f"Sending notification to user {employee_user.id} with body: {body}")
+
+                try:
+                    response = requests.post(url, data=json.dumps(body), headers=headers)
+                    print(f"Response for user {employee_user.id}: {response.status_code} - {response.text}")
+
+                    if response.status_code == 200:
+                        NotificationEmployee.objects.create(
+                            employee=employee,
+                            message=message,
+                            created_by=request.user if request.user.is_authenticated else None
+                        )
+                        success_count += 1
+                    else:
+                        print(f"Failed to send notification to user {employee_user.id}.")
+                        failed_count += 1
+                except Exception as e:
+                    print(f"Exception while sending to user {employee_user.id}: {str(e)}")
+                    failed_count += 1
+
+            print(f"Notifications sent successfully to {success_count} users. Failed for {failed_count} users.")
+            return HttpResponse("True") if success_count > 0 else HttpResponse("False")
+
+        else:
+            message = request.POST.get('message')
+            employee = CustomUser.objects.filter(id = id).first()
+            print(id,message,employee)
+            url = "https://fcm.googleapis.com/fcm/send"
+            body = {
+                'notification': {
+                    'title': "OfficeOps",
+                    'body': message,
+                    'click_action': reverse('employee_view_notification'),
+                    'icon': static('dist/img/AdminLTELogo.png')
+                },
+                'to': employee.fcm_token
+            }
+            employee = Employee.objects.filter(admin = employee).first()
+            headers = {'Authorization':
+                    'key=dxHXv-hbaBoaO0OyQN0_W3:APA91bH4UU9a727PTFs2kQzSaB3O1UWzEMoWVVrKdNGj1cgBD4vPQHIhaWd_C6o9ocbpLOvR1-_stx52N96ywgex3IDByDpicjQ-hMRLqDJXxEVUFGM3huo',
+                    'Content-Type': 'application/json'}
+            data = requests.post(url, data=json.dumps(body), headers=headers)
+            notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
+
+            notification.save()
+            return HttpResponse("True")
+            
     except Exception as e:
+        print(f"Error sending notification: {str(e)}")
         return HttpResponse("False")
    
    

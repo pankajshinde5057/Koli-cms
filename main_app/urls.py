@@ -53,10 +53,10 @@ urlpatterns = [
      path("manager/edit/employee/<int:employee_id>/", manager_views.edit_employee_by_manager, name='edit_employee_by_manager'),
      path("manager/delete/employee/<int:employee_id>/", manager_views.delete_employee_by_manager, name='delete_employee_by_manager'),
 
-     path("manager_notify_employee/", manager_views.manager_notify_employee,
-          name='manager_notify_employee'),
+     path("manager_notify_employee/", manager_views.manager_notify_employee, name='manager_notify_employee'),
+     path("manager_send_employee_notification/", manager_views.manager_send_employee_notification, name='manager_send_employee_notification'),
      
-     path("manager_employee_notify/", manager_views.manager_send_employee_notification, name="manager_send_employee_notification"),
+     # path("manager_employee_notify/", manager_views.manager_send_employee_notification, name="manager_send_employee_notification"),
 
      path("division/delete/<int:division_id>",
           ceo_views.delete_division, name='delete_division'),
