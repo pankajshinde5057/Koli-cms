@@ -14,6 +14,7 @@ from calendar import monthrange
 from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
+from django.contrib.auth.decorators import login_required
 
 
 def admin_home(request):
@@ -868,3 +869,35 @@ def generate_performance_report(request):
         'years': range(datetime.now().year, datetime.now().year - 6, -1),
     }
     return render(request, 'ceo_template/generate_report.html', context)
+
+
+@login_required
+def admin_view_attendance(request):
+    current_date = datetime.now()
+    current_year = current_date.year
+    current_month = current_date.month
+
+    years = [current_year + i for i in range(5)]
+    months = [
+        (f"{i:02}", datetime(current_year, i, 1).strftime('%B')) 
+        for i in range(1, 13)
+    ]
+
+    if hasattr(request.user, 'manager'):
+        manager = request.user.manager
+        departments = Department.objects.filter(division=manager.division)
+        employees = Employee.objects.filter(department__in=departments)
+    else:
+        departments = Department.objects.all()
+        employees = Employee.objects.all()
+
+    context = {
+        'departments': departments,
+        'employees': employees,
+        'page_title': 'View Attendance',
+        'months': months,
+        'years': years,
+        'current_year': current_year,
+        'current_month': current_month
+    }
+    return render(request, 'ceo_template/admin_view_attendance.html', context)
