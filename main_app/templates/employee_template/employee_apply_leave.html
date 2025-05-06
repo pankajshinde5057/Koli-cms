@@ -4,7 +4,6 @@
 {% block content %}
 <div class="container">
     <!-- Leave Application Form -->
-       
     <div class="card-body">
         {% include "main_app/form_template.html" with messages=messages form=form button_text="Submit Leave Request" %}
     </div>
@@ -53,12 +52,18 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#leaveDetailsModal{{ forloop.counter }}">
+                                <button type="button" class="btn btn-sm btn-info"
+                                        data-toggle="modal"
+                                        data-target="#leaveDetailsModal{{ forloop.counter }}"
+                                        onclick="markNotificationRead({{ leave.id }})">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                {% if leave.id in unread_ids %}
+                                    <i class="fas fa-circle text-danger" title="Unread" style="font-size: 8px; margin-left: 5px;"></i>
+                                {% endif %}
                                 
-                                <!-- Individual Modal for Each Leave Entry -->
-                                <div class="modal fade" id="leaveDetailsModal{{ forloop.counter }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                <!-- Modal -->
+                                <div class="modal fade leave-modal" id="leaveDetailsModal{{ forloop.counter }}" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content">
                                             <div class="modal-header bg-primary text-white">
@@ -119,6 +124,46 @@
     </div>
 </div>
 {% endblock %}
+
+{% block custom_js %}
+<script>
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith(name + '='))
+            ?.split('=')[1];
+        return cookieValue;
+    }
+
+    function markNotificationRead(notifId) {
+        fetch(`/notification/read/${notifId}/leave/employee/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                console.log(`Notification ${notifId} marked as read.`);
+            } else {
+                console.error(`Failed to mark notification ${notifId} as read.`);
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+        });
+    }
+
+    // Reload page when any modal with class `leave-modal` is closed
+    document.addEventListener('DOMContentLoaded', function () {
+        $('.leave-modal').on('hidden.bs.modal', function () {
+            location.reload();
+        });
+    });
+</script>
+{% endblock custom_js %}
 
 {% block styles %}
 <style>
