@@ -161,7 +161,9 @@
                     <i class="nav-icon fas fa-comment-alt"></i>
                     <p>
                         Employee Feedback
-                            
+                        {% if admin_employee_feedback_count > 0 %}
+                        <span class="right badge badge-danger">{{ admin_employee_feedback_count }}</span>
+                         {% endif %}
                         </p>
                     </a>
                 </li>
@@ -337,7 +339,7 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
+                {% comment %} <li class="nav-item">
                     {% url 'manager_take_attendance' as manager_take_attendance %}
                     <a href="{{manager_take_attendance}}" class="nav-link {% if manager_take_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-clipboard-check"></i>
@@ -346,13 +348,13 @@
 
                         </p>
                     </a>
-                </li>
+                </li> {% endcomment %}
                 <li class="nav-item">
                     {% url 'manager_update_attendance' as manager_update_attendance %}
                     <a href="{{manager_update_attendance}}" class="nav-link {% if manager_update_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-calendar-day"></i>
                         <p>
-                            View/Update Attendance
+                            View Attendance
 
                         </p>
                     </a>
@@ -363,7 +365,9 @@
                         <i class="nav-icon fas fa-bell"></i>
                         <p>
                            View Notifications
-
+                           {% if unread_manager_general_notification_count > 0 %}
+                           <span class="right badge badge-danger">{{ unread_manager_general_notification_count }}</span>
+                            {% endif %}
                         </p>
                     </a>
                 </li>
@@ -517,7 +521,9 @@
                         <i class="nav-icon fas fa-bell"></i>
                         <p>
                            View Notifications
-
+                           {% if unread_employee_general_notification_count > 0 %}
+                           <span class="right badge badge-danger">{{ unread_employee_general_notification_count }}</span>
+                            {% endif %}
                         </p>
                     </a>
                 </li>
@@ -528,7 +534,9 @@
                         <i class="nav-icon fas fa-plane-departure"></i>
                         <p>
                            Apply For Leave
-
+                           {% if unread_employee_leave_notification_count > 0 %}
+                           <span class="right badge badge-danger">{{ unread_employee_leave_notification_count }}</span>
+                            {% endif %}
                         </p>
                     </a>
                 </li>

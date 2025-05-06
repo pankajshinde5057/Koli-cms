@@ -32,15 +32,18 @@
                                   <td>{{feedback.feedback}}</td>
                                  
                                       
-                                      {% if feedback.reply == "" %}
-                                      <td>{{feedback.created_at}}</td>
-                                      <td><span  class='badge badge-warning'>Pending Response</span></td>
-                                           <td> <button data-toggle = "modal" data-target = "#reply_modal" value="{{feedback.id}}" class="btn btn-primary reply_open_modal">Reply</button>
-                                          {% else %}
-                                          <td>{{feedback.created_at}}</td>
-                                          <td>{{feedback.updated_at}}</td>
-                                            <td>{{feedback.reply}}</td>
-                                      {% endif %}
+                                {% if feedback.reply == "" %}
+                                <td>{{feedback.created_at}}</td>
+                                <td><span  class='badge badge-warning'>Pending Response</span></td>
+                                    <td> <button data-toggle = "modal" data-target = "#reply_modal" value="{{feedback.id}}" class="btn btn-primary reply_open_modal">Reply</button>
+                                    {% if feedback.id in unread_ids %}
+                                        <i class="fas fa-circle text-danger" title="Unread" style="font-size: 8px; margin-left: 5px;"></i>
+                                    {% endif %}
+                                    {% else %}
+                                    <td>{{feedback.created_at}}</td>
+                                    <td>{{feedback.updated_at}}</td>
+                                    <td>{{feedback.reply}}</td>
+                                {% endif %}
                                           
                                   </td>
                        

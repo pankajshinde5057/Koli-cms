@@ -204,11 +204,11 @@
                                         <div class="btn-group btn-group-sm">
                                             <form method="post" action="{% url 'approve_leave_request' leave.id %}" class="d-inline">
                                                 {% csrf_token %}
-                                                <button type="submit" class="btn btn-success" title="Approve">
+                                                <button type="submit" class="btn btn-success" title="Approve" onclick="markNotificationRead({{ leave.id }})">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                             </form>
-                                            <form method="post" action="{% url 'reject_leave_request' leave.id %}" class="d-inline">
+                                            <form method="post" action="{% url 'reject_leave_request' leave.id %}" class="d-inline" onclick="markNotificationRead({{ leave.id }})">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-danger" title="Reject">
                                                     <i class="fas fa-times"></i>
@@ -218,6 +218,9 @@
                                                     data-target="#messageModal-{{ leave.id }}" title="View Details">
                                                 <i class="fas fa-eye"></i>
                                             </button>
+                                            {% if leave.id in manager_unread_ids %}
+                                                <i class="fas fa-circle text-danger" title="Unread" style="font-size: 8px; margin-left: 5px;"></i>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -329,6 +332,9 @@
                                                 data-target="#assetModal-{{ asset.id }}">
                                             <i class="fas fa-handshake mr-1"></i> Process Request
                                         </button>
+                                        {% if not asset.is_read %}
+                                            <i class="fas fa-circle text-danger" title="Unread" style="font-size: 8px; margin-left: 5px;"></i>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% empty %}
@@ -504,6 +510,9 @@
                                                         data-toggle="modal" data-target="#historyLeaveModal-{{ leave.id }}">
                                                     <i class="fas fa-eye"></i> View
                                                 </button>
+                                        {% if issue.id in manager_unread_ids %}
+                                            <i class="fas fa-circle text-danger" title="Unread" style="font-size: 8px; margin-left: 5px;"></i>
+                                        {% endif %}
                                             </td>
                                         </tr>
                                     {% empty %}
@@ -1127,4 +1136,79 @@
         });
     });
 </script>
+{% endblock %}
+{% block custom_js %}
+<script>
+    function getCSRFToken() {
+        const name = 'csrftoken';
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith(name + '='))
+            ?.split('=')[1];
+        return cookieValue;
+    }
+
+    function markNotificationRead(notifId) {
+        fetch(`/notification/read/${notifId}/leave/manager/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                console.log(`Notification ${notifId} marked as read.`);
+            } else {
+                console.error(`Failed to mark notification ${notifId} as read.`);
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+        });
+    }
+
+    // Reload page when any modal with class `leave-modal` is closed
+    document.addEventListener('DOMContentLoaded', function () {
+        $('.leave-modal').on('hidden.bs.modal', function () {
+            location.reload();
+        });
+    });
+</script>
+{% endblock custom_js %}
+{% block styles %}
+<style>
+    .card-dark {
+        border-color: #343a40;
+    }
+    .card-dark .card-header {
+        border-bottom-color: #454d55;
+    }
+    .asset-card, .request-card {
+        border-left: 4px solid #4e73df;
+    }
+    .badge {
+        font-size: 85%;
+        font-weight: 500;
+        padding: 0.35em 0.5em;
+    }
+    .table th {
+        border-top: none;
+        background-color: #f8f9fa;
+    }
+    .img-circle {
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .modal-content {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    .modal-header {
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+    }
+    .select2-container--bootstrap4 .select2-selection--single {
+        height: calc(1.5em + 0.75rem + 2px) !important;
+    }
+</style>
 {% endblock %}

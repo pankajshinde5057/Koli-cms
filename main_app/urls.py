@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 
 from main_app.EditSalaryView import EditSalaryView
+from main_app.notification_badge import mark_notification_read
 
 from . import ceo_views, manager_views, employee_views, views
 
@@ -79,14 +80,13 @@ urlpatterns = [
      path("department/edit/<int:department_id>",
           ceo_views.edit_department, name='edit_department'),
      path('generate_performance_report',ceo_views.generate_performance_report,name='generate_performance_report'),
-     
+     path('api/attendance/clock/', ceo_views.admin_view_attendance),
 
 
      path('clock-in-out/', views.clock_in_out, name='clock_in_out'),
      path('break/', views.break_action, name='break_action'),
 
      path('api/attendance/clock/', views.AttendanceActionView.as_view(), name='clock_in_out_api'),
-     
 
      # Manager
      path("manager/home/", manager_views.manager_home, name='manager_home'),
@@ -120,6 +120,7 @@ urlpatterns = [
           name='approve_leave_request'),
      path('manager/leave-reject/<int:leave_id>/', manager_views.reject_leave_request,
           name='reject_leave_request'),
+     path('notification/read/<int:notification_id>/<str:type>/<str:role>/', mark_notification_read, name='mark_notification_read'),
 
      path('get_available_assets/', manager_views.get_available_assets, name='get_available_assets'),
      path('get_assigned_assets/', manager_views.get_assigned_assets, name='get_assigned_assets'),

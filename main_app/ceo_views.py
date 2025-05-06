@@ -14,6 +14,7 @@ from calendar import monthrange
 from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
+from django.contrib.auth.decorators import login_required
 
 
 def admin_home(request):
@@ -90,6 +91,8 @@ def add_employee(request):
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
             department = employee_form.cleaned_data.get('department')
+            designation = employee_form.cleaned_data.get('designation')
+            phone_number = employee_form.cleaned_data.get('phone_number')
             team_lead = employee_form.cleaned_data.get('team_lead')
             
             passport = request.FILES['profile_pic']
@@ -103,6 +106,8 @@ def add_employee(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
+                user.employee.phone_number = phone_number
+                user.employee.designation = designation
                 if team_lead:
                     user.employee.team_lead = team_lead
                 user.save()
@@ -210,6 +215,7 @@ def edit_manager(request, manager_id):
     context = {
         'form': form,
         'manager_id': manager_id,
+        "user_object" : manager,
         'page_title': 'Edit Manager'
     }
     if request.method == 'POST':
@@ -262,6 +268,7 @@ def edit_employee(request, employee_id):
     context = {
         'form': form,
         'employee_id': employee_id,
+        "user_object" : employee,
         'page_title': 'Edit Employee'
     }
     if request.method == 'POST':
@@ -295,7 +302,7 @@ def edit_employee(request, employee_id):
                 employee.department = department
                 user.save()
                 employee.save()
-                messages.success(request, "Successfully Updated")
+                messages.success(request, "Employee information updated successfully.")
                 return redirect(reverse('edit_employee', args=[employee_id]))
             except Exception as e:
                 messages.error(request, "Could Not Update " + str(e))
@@ -375,9 +382,18 @@ def check_email_availability(request):
 def employee_feedback_message(request):
     if request.method != 'POST':
         feedbacks = FeedbackEmployee.objects.all().order_by('-id')
+        unread_ids = list(
+            Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='employee feedback'
+            ).values_list('leave_or_notification_id', flat=True) 
+        )
+        print("EMPLOYEEE FEEDBAD",unread_ids)
         context = {
             'feedbacks': feedbacks,
-            'page_title': 'Employee Feedback Messages'
+            'page_title': 'Employee Feedback Messages',
+            'unread_ids':unread_ids
         }
         return render(request, 'ceo_template/employee_feedback_template.html', context)
     else:
@@ -387,6 +403,11 @@ def employee_feedback_message(request):
             reply = request.POST.get('reply')
             feedback.reply = reply
             feedback.save()
+            notify = Notification.objects.filter(user = request.user,role = "admin", is_read = False, leave_or_notification_id = feedback_id).first()
+            if notify:
+                notify.is_read = True
+                notify.save()
+                print("OKKKKKKKKKKKKKKK")
             return HttpResponse(True)
         except Exception as e:
             return HttpResponse(False)
@@ -1032,3 +1053,35 @@ def generate_performance_report(request):
         'years': range(datetime.now().year, datetime.now().year - 6, -1),
     }
     return render(request, 'ceo_template/generate_report.html', context)
+
+
+@login_required
+def admin_view_attendance(request):
+    current_date = datetime.now()
+    current_year = current_date.year
+    current_month = current_date.month
+
+    years = [current_year + i for i in range(5)]
+    months = [
+        (f"{i:02}", datetime(current_year, i, 1).strftime('%B')) 
+        for i in range(1, 13)
+    ]
+
+    if hasattr(request.user, 'manager'):
+        manager = request.user.manager
+        departments = Department.objects.filter(division=manager.division)
+        employees = Employee.objects.filter(department__in=departments)
+    else:
+        departments = Department.objects.all()
+        employees = Employee.objects.all()
+
+    context = {
+        'departments': departments,
+        'employees': employees,
+        'page_title': 'View Attendance',
+        'months': months,
+        'years': years,
+        'current_year': current_year,
+        'current_month': current_month
+    }
+    return render(request, 'ceo_template/admin_view_attendance.html', context)
