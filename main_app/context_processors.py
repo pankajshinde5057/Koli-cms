@@ -57,6 +57,13 @@ def unread_notification_count(request):
     else:
         general_count = 0
         leave_count = 0
+        employee_general_count = 0
+        manager_general_count = 0
+        admin_general_count = 0
+        admin_employee_feedback_count = 0
+        employee_leave_count = 0
+        manager_leave_count= 0
+        admin_leave_count= 0
 
     return {
         # 'unread_general_notification_count': general_count,

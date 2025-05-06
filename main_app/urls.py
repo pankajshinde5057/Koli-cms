@@ -3,7 +3,6 @@ from django.contrib.auth import views as auth_views
 
 from main_app.EditSalaryView import EditSalaryView
 from main_app.notification_badge import mark_notification_read
-
 from . import ceo_views, manager_views, employee_views, views
 
 
@@ -81,12 +80,14 @@ urlpatterns = [
           ceo_views.edit_department, name='edit_department'),
      path('generate_performance_report',ceo_views.generate_performance_report,name='generate_performance_report'),
      path('api/attendance/clock/', ceo_views.admin_view_attendance),
+     
 
 
      path('clock-in-out/', views.clock_in_out, name='clock_in_out'),
      path('break/', views.break_action, name='break_action'),
 
      path('api/attendance/clock/', views.AttendanceActionView.as_view(), name='clock_in_out_api'),
+     
 
      # Manager
      path("manager/home/", manager_views.manager_home, name='manager_home'),

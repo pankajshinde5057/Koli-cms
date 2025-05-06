@@ -5,8 +5,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-
-from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
 from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory
@@ -114,7 +112,7 @@ def manager_home(request):
             'leave': total_leave,
             'working_days': total_present + total_late,
         })
-    
+
     context = {
         'page_title': f"Manager Panel - {manager.admin.last_name} ({manager.division})",
         'departments': all_departments,
@@ -128,7 +126,6 @@ def manager_home(request):
         'total_department': all_departments.count(),
         'total_on_break' : total_on_break,
         'break_entries': break_entries,
-        'total_department': all_departments.count()
     }
     return render(request, 'manager_template/home_content.html', context)
 
@@ -204,7 +201,7 @@ def save_attendance(request):
                 employee = CustomUser.objects.filter(id = int(emp)).first()
             else:
                 employee = get_object_or_404(CustomUser, id=emp.get('id'))
-            print("employee.admin",employee.id)
+            print("employee.admin",employee)
             user = employee  # CustomUser linked
             # if half_full_day:
             status = 'present'
@@ -256,39 +253,28 @@ def save_attendance(request):
             # employee.save()
             
             if half_full_day == "full":
-                leave_status = "Full-Day"
                 total_work = 8*60*60
                 status = "present"
                 clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
                 clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             if half_full_day == "half":
                 total_work = 4*60*60
-                leave_status = "Half-Day"
-                print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",which_half)
+                
                 if which_half =="first":
                     # pass
                     status = "present"
-                    clock_in = datetime.combine(date_obj, time(9, 00, 0)) 
-                    clock_out = datetime.combine(date_obj, time(13, 00, 0))
+                    clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
+                    clock_out = datetime.combine(date_obj, time(18, 30, 0))
                 else:
                     status = "late"
-                    clock_in = datetime.combine(date_obj, time(14, 00, 0)) 
-                    clock_out = datetime.combine(date_obj, time(18, 00, 0)) 
-            employee = Employee.objects.get(admin = employee)
-            leave_record = LeaveReportEmployee.objects.create(
-                employee = employee,
-                leave_type = leave_status,
-                start_date = date_obj,
-                end_date = date_obj,
-                message = f"Added From {request.user}",
-                status = 1,
-                created_at = today,
-                updated_at = today
-            )
-            leave_record.save()
+                    clock_in = datetime.combine(date_obj, time(19, 30, 0)) 
+                    clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             print("clock_inclock_in>>>>>>>>>>>>>>>",clock_in)
             print("clock_inclock_in>>>>>>>>>>>>>>>",clock_out)
+            is_primary_record = 1
+            required_verfication = 0
             user_id = int(emp)
+            verified_by_id = user
             date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
             print("date_obj",date_obj)
             manager_id = request.user.id
@@ -349,32 +335,95 @@ def save_attendance(request):
 # from datetime import datetime
 
 
-from datetime import datetime
-
 def manager_update_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
     employees = Employee.objects.filter(department__in=departments)
-    current_date = datetime.now()
-    current_year = current_date.year
-    current_month = current_date.month
-    
-    years = [current_year + i for i in range(5)]  
-    months = [
-        (f"{i:02}", datetime(current_year, i, 1).strftime('%B')) 
-        for i in range(1, 13)
-    ]
     context = {
         'departments': departments,
         'employees': employees,
-        'page_title': 'View Attendance',
-        'months': months,
-        'years': years,
-        'current_year': current_year,
-        'current_month': current_month
+        'page_title': 'Update Attendance',
     }
+    
     return render(request, 'manager_template/manager_update_attendance.html', context)
 
+
+
+# For handling the AJAX updates
+# @csrf_exempt
+# def update_attendance(request):
+#     if request.method == 'POST':
+#         try:
+#             employee_ids = json.loads(request.POST.get('employee_ids', '[]'))
+#             date_str = request.POST.get('date')
+#             half_full_day = request.POST.get('half_full_day')  # 'half' or 'full'
+#             which_half = request.POST.get('which_half', '')  # 'first' or 'second'
+            
+#             if not employee_ids or not date_str:
+#                 return JsonResponse({"error": "Employee IDs and date are required"}, status=400)
+            
+#             try:
+#                 date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+#             except ValueError:
+#                 return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+            
+#             updated_count = 0
+#             for emp_id in employee_ids:
+#                 try:
+#                     # Calculate times based on attendance type
+#                     if half_full_day == 'full':
+#                         # Full day timing (9:00 AM to 6:00 PM)
+#                         status = 'present'
+#                         clock_in = datetime.combine(date_obj, time(9, 0))  # 9:00 AM
+#                         clock_out = datetime.combine(date_obj, time(18, 0))  # 6:00 PM
+#                         total_work = 9 * 60 * 60  # 9 hours in seconds
+#                     else:
+#                         # Half day timing
+#                         if which_half == 'first':
+#                             # First half (9:00 AM to 1:30 PM)
+#                             status = 'half_day_first'
+#                             clock_in = datetime.combine(date_obj, time(9, 0))
+#                             clock_out = datetime.combine(date_obj, time(13, 30))
+#                             total_work = 4.5 * 60 * 60  # 4.5 hours
+#                         else:
+#                             # Second half (1:30 PM to 6:00 PM)
+#                             status = 'half_day_second'
+#                             clock_in = datetime.combine(date_obj, time(13, 30))
+#                             clock_out = datetime.combine(date_obj, time(18, 0))
+#                             total_work = 4.5 * 60 * 60  # 4.5 hours
+                    
+#                     # Update or create the attendance record
+#                     record, created = AttendanceRecord.objects.update_or_create(
+#                         user_id=emp_id,
+#                         date=date_obj,
+#                         defaults={
+#                             'status': status,
+#                             'clock_in': clock_in,
+#                             'clock_out': clock_out,
+#                             'total_worked': total_work,
+#                             'is_primary_record': True,
+#                             'requires_verification': False,
+#                             'is_verified': True,
+#                             'verified_by': request.user,
+#                             'updated_at': timezone.now()
+#                         }
+#                     )
+#                     updated_count += 1
+                    
+#                 except Exception as e:
+#                     print(f"Error updating attendance for employee {emp_id}: {str(e)}")
+#                     continue
+            
+#             return JsonResponse({
+#                 "message": f"Attendance updated successfully for {updated_count} employees",
+#                 "updated_count": updated_count
+#             })
+            
+#         except Exception as e:
+#             return JsonResponse({"error": str(e)}, status=400)
+    
+#     return JsonResponse({"error": "Invalid request method"}, status=400)
+from django.forms.models import model_to_dict
 
 @csrf_exempt
 def update_attendance(request):
@@ -456,13 +505,16 @@ def update_attendance(request):
                 "message": f"Attendance updated successfully for {updated_count} employees",
                 "updated_count": updated_count
             })
-      
+            print(updated_count)
             
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
     
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
+from django.http import JsonResponse
+from datetime import datetime
+from .models import Employee, AttendanceRecord
 
 @csrf_exempt
 def get_employee_attendance(request):
@@ -471,49 +523,45 @@ def get_employee_attendance(request):
             employee_id = request.POST.get('employee_id')
             month = request.POST.get('month')
             year = request.POST.get('year')
-            week = request.POST.get('week')
 
-            if not employee_id:
-                return JsonResponse({"error": "Employee ID is required"}, status=400)
+            if not employee_id or not month or not year:
+                return JsonResponse({"error": "Employee ID, month, and year are required"}, status=400)
 
-            if not year:
-                return JsonResponse({"error": "Year is required"}, status=400)
-
+            # Fetch the employee
             employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
-            print("employee",employee)
-            # Base queryset
-            queryset = AttendanceRecord.objects.filter(user__employee=employee)
 
-            # Filter by year
-            queryset = queryset.filter(date__year=int(year))
+            # Filter attendance records for the given month and year
+            attendance_data = AttendanceRecord.objects.filter(
+                user__employee=employee,
+                date__year=int(year),
+                date__month=int(month)
+            ).order_by('date')
 
-            # Week filter
-            if week:
-                week = int(week)
-                # Calculate the start and end date of the given week
-                first_day_of_year = datetime(int(year), 1, 1)
-                start_of_week = first_day_of_year + timedelta(days=(week - 1) * 7)
-                end_of_week = start_of_week + timedelta(days=6)
+            # Get current year and dynamically generate a list of years and months
+            current_year = datetime.now().year
+            years = [str(current_year + i) for i in range(0, 5)]  # Next 5 years from current year
 
-                queryset = queryset.filter(date__range=(start_of_week, end_of_week))
+            # List of months
+            months = [
+                ("01", "January"), ("02", "February"), ("03", "March"), ("04", "April"),
+                ("05", "May"), ("06", "June"), ("07", "July"), ("08", "August"),
+                ("09", "September"), ("10", "October"), ("11", "November"), ("12", "December")
+            ]
 
-            # Month filter
-            elif month:
-                queryset = queryset.filter(date__month=int(month))
-
-            # Sort records
-            attendance_data = queryset.order_by('date')
-
-            attendance_list = []
-            for attendance in attendance_data:
-                attendance_list.append({
+            # Prepare the attendance list
+            attendance_list = [
+                {
                     "date": str(attendance.date),
                     "status": attendance.status,
                     "clock_in": str(attendance.clock_in) if attendance.clock_in else "",
                     "clock_out": str(attendance.clock_out) if attendance.clock_out else "",
                     "employee_name": f"{employee.admin.first_name} {employee.admin.last_name}",
                     "department": employee.department.name if employee.department else "",
-                })
+                    "year": year,
+                    "month": month,
+                }
+                for attendance in attendance_data
+            ]
 
             return JsonResponse(attendance_list, safe=False)
 
@@ -523,7 +571,6 @@ def get_employee_attendance(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
-
 
 
 
@@ -551,7 +598,7 @@ def manager_apply_leave(request):
             messages.error(request, "Form has errors!")
     return render(request, "manager_template/manager_apply_leave.html", context)
 
-
+from django.db.models import Count,Q
 
 def manage_employee_by_manager(request):
 
@@ -765,7 +812,7 @@ def add_employee_by_manager(request):
             division = employee_form.cleaned_data.get('division')
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
-            department = employee_form.cleaned_data.get('department')
+            department = manager.department  # The department of the manager
             passport = request.FILES['profile_pic']
             
             fs = FileSystemStorage()
@@ -780,7 +827,7 @@ def add_employee_by_manager(request):
                 user.address = address
                 user.employee.division = division
                 user.employee.department = department
-                user.employee.team_lead = manager  
+                user.employee.team_lead = manager  # Assign manager as the team lead
                 user.employee.phone_number = phone_number
                 user.employee.designation = designation
                 user.save()
@@ -903,7 +950,7 @@ def manager_send_employee_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
     # employee = get_object_or_404(Employee, team_lead_id=id)
-    employee = user= CustomUser.objects.filter(id = id).first()
+    employee = CustomUser.objects.filter(id = id).first()
     print(id,message,employee)
     try:
         url = "https://fcm.googleapis.com/fcm/send"
@@ -924,11 +971,8 @@ def manager_send_employee_notification(request):
         notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
 
         notification.save()
-        print("OK")
-        send_notification(user, message,"notification",notification.id,"employee")
         return HttpResponse("True")
     except Exception as e:
-        print(">>>>>>>>>>>>>>>>>>",str(e))
         return HttpResponse("False")
    
    
@@ -995,7 +1039,7 @@ def manager_fcmtoken(request):
 
 def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
-    notification_from_admin = NotificationManager.objects.filter(manager=manager)
+    notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
     pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
@@ -1006,27 +1050,14 @@ def manager_view_notification(request):
     resolved_asset_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
     asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
     asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
-    manager_unread_ids = list(
-        Notification.objects.filter(
-            user=request.user,
-            is_read=False,
-            notification_type__in=["leave", "notification"],
-            role="manager"
-        ).values_list('leave_or_notification_id', flat=True)
-    )
-    manager_unread_ids += list(Notification.objects.filter(
-        is_read = False,
-        notification_type = "asset issue",
-        role = "manager"
-    ).values_list("leave_or_notification_id",flat=True))
-    print("manager_unread_ids********************",manager_unread_ids)
+   
     context = {
         'pending_leave_requests': pending_leave_requests,
         'asset_notifications': asset_notifications,
         'asset_issue_notifications': asset_issue_notifications,
+        'notifications': notification_from_admin, 
         'page_title': "View Notifications",
-        'LOCATION_CHOICES': LOCATION_CHOICES,
-        "manager_unread_ids":manager_unread_ids
+        'LOCATION_CHOICES': LOCATION_CHOICES
     }
     
     # status_filter = request.GET.get('status', 'all')
@@ -1180,11 +1211,7 @@ def approve_assest_request(request, notification_id):
                 notification.approved = True
                 notification.save()
                 messages.success(request, "Asset request approved successfully.")
-                notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
-                if notify:
-                    notify.is_read = True
-                    notify.save()
-                    print("OKKKKKKKKKKKKKKKKK")
+
             except:
                 messages.error(request,"This Asset is not Found in Inventry")
 
@@ -1201,12 +1228,6 @@ def reject_assest_request(request, notification_id):
         notification.approved = False
         notification.save()
         messages.success(request, "Asset request rejected successfully.")
-        notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
-        if notify:
-            notify.is_read = True
-            notify.save()
-            print("OKKKKKKKKKKKKKKKKK")
-        notification.save()
     else:
         messages.info(request, "This request was already approved or rejected.")
 
@@ -1216,7 +1237,6 @@ def reject_assest_request(request, notification_id):
 def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
-        msg = "Please check the Leave Request"
         if leave_request.status == 0:
             if not leave_request.end_date:
                 leave_request.end_date = leave_request.start_date
@@ -1229,30 +1249,20 @@ def approve_leave_request(request, leave_id):
                 messages.success(request, "Half-Day leave approved.")
             else:
                 messages.success(request, "Full-Day leave approved.")
-            msg = "Leave request approved."
-            messages.success(request, "Leave request approved.")
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
-        print("LEAVE ID",leave_id,leave_request.employee.admin.id,user)
-        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
 def reject_leave_request(request, leave_id):
     if request.method == 'POST':
-        msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
-            msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
-        print("LEAVE ID",leave_id,leave_request.employee.admin.id,user)
-        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
@@ -1291,16 +1301,9 @@ def resolve_asset_issue(request,asset_issu_id):
     if request.method == "POST":
         issue_asset = get_object_or_404(AssetIssue,pk=asset_issu_id)
         issue_asset.status = request.POST.get('status')
-        print(">>>>>>>>>>>>>>>>>>>>>>FFFFFFFFFFFFFFF",issue_asset.status,asset_issu_id)
         issue_asset.notes = request.POST.get('resolution_notes')
         issue_asset.resolved_date = datetime.now()
         issue_asset.save()
-        if issue_asset.status == "resolved":
-            notify = Notification.objects.filter(leave_or_notification_id=asset_issu_id, role = "manager",notification_type = "asset issue").first()
-            if notify:
-                notify.is_read = True
-                notify.save()
-                print("OKKKKKKKKKKKKKKKKK")
         messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
     return redirect('manager_view_notification')
