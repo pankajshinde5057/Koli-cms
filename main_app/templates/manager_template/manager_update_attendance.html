@@ -182,8 +182,8 @@ $(document).ready(function () {
                                 <tr><th>Date</th><th>Status</th><th>Clock In</th><th>Clock Out</th></tr>
                              </thead><tbody>`;
                     response.forEach(r => {
-                        const inTime = r.clock_in ? r.clock_in.split(" ")[1].slice(0, 5) : '-';
-                        const outTime = r.clock_out ? r.clock_out.split(" ")[1].slice(0, 5) : '-';
+                        const inTime = r.clock_in ? formatTime(r.clock_in) : '-';
+                        const outTime = r.clock_out ? formatTime(r.clock_out) : '-';
                         html += `<tr><td>${r.date}</td><td>${r.status}</td><td>${inTime}</td><td>${outTime}</td></tr>`;
                     });
                     html += "</tbody></table>";
@@ -193,6 +193,13 @@ $(document).ready(function () {
                 $("#attendance_details").html(html);
             }
         });
+    }
+
+    // Function to format clock-in/clock-out time
+    function formatTime(dateTimeStr) {
+        if (!dateTimeStr) return '-';
+        const time = new Date(dateTimeStr);
+        return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 });
 </script>
