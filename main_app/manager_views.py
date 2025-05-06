@@ -1033,6 +1033,8 @@ def manager_fcmtoken(request):
 
 
 def manager_view_notification(request):
+    manager = get_object_or_404(Manager, admin=request.user)
+    notifications = NotificationManager.objects.filter(manager=manager).order_by('-id')
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
     asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
@@ -1041,11 +1043,11 @@ def manager_view_notification(request):
         'pending_leave_requests': pending_leave_requests,
         'asset_notifications': asset_notifications,
         'asset_issue_notifications': asset_issue_notifications,
+        'notifications': notifications, 
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES
     }
-    
-    return render(request, "manager_template/manager_view_notification.html",context)
+    return render(request, "manager_template/manager_view_notification.html", context)
 
 
 def approve_assest_request(request, notification_id):

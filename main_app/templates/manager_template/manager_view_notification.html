@@ -7,6 +7,123 @@
 {% block content %}
 <section class="content">
     <div class="container-fluid">
+        <!-- Message Notifications Card -->
+        <div class="card card-dark mb-4 shadow-lg">
+            <div class="card-header bg-gradient-dark">
+                <h3 class="card-title">
+                    <i class="fas fa-envelope mr-2"></i>
+                    <strong>Message Notifications</strong>
+                </h3>
+                <div class="card-tools">
+                    <span class="badge badge-light">{{ notifications.count }} Unread</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 10%">#</th>
+                                <th style="width: 20%">Date</th>
+                                <th style="width: 50%">Message</th>
+                                <th style="width: 20%">From</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for notification in notifications %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ notification.created_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        {{ notification.message|truncatechars:60 }}
+                                        {% if notification.message|length > 60 %}
+                                        <a href="#" data-toggle="modal" data-target="#messageModal-{{ notification.id }}">Read more</a>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if notification.created_by %}
+                                            {{ notification.created_by.get_full_name }}
+                                            (
+                                            {% if notification.created_by.user_type|add:0 == 1 %}
+                                                Admin
+                                            {% elif notification.created_by.user_type|add:0 == 2 %}
+                                                Manager
+                                            {% elif notification.created_by.user_type|add:0 == 3 %}
+                                                CEO
+                                            {% else %}
+                                                Unknown Type: {{ notification.created_by.user_type }}
+                                            {% endif %}
+                                            )
+                                        {% else %}
+                                            System
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                
+                                <!-- Message Modal -->
+                                <div class="modal fade" id="messageModal-{{ notification.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-dark text-white">
+                                                <h5 class="modal-title">Notification Details</h5>
+                                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><strong>Date:</strong> {{ notification.created_at|date:"M d, Y H:i" }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p><strong>From:</strong> 
+                                                            {% if notification.created_by %}
+                                                                {{ notification.created_by.get_full_name }}
+                                                                (
+                                                                {% if notification.created_by.user_type|add:0 == 1 %}
+                                                                    Admin
+                                                                {% elif notification.created_by.user_type|add:0 == 2 %}
+                                                                    Manager
+                                                                {% elif notification.created_by.user_type|add:0 == 3 %}
+                                                                    CEO
+                                                                {% else %}
+                                                                    Unknown Type: {{ notification.created_by.user_type }}
+                                                                {% endif %}
+                                                                )
+                                                            {% else %}
+                                                                System
+                                                            {% endif %}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Full Message:</label>
+                                                    <div class="p-3 bg-light rounded">
+                                                        {{ notification.message }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
+                                        <h5 class="text-muted">No message notifications</h5>
+                                        <p class="small">You're all caught up!</p>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Leave Requests Card -->
         <div class="card card-dark mb-4 shadow-lg">
             <div class="card-header bg-gradient-dark">
