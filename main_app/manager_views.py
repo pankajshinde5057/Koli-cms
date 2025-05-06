@@ -1039,7 +1039,7 @@ def manager_fcmtoken(request):
 
 def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
-    notification_from_admin = NotificationManager.objects.filter(manager=manager)
+    notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
     pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
@@ -1055,7 +1055,7 @@ def manager_view_notification(request):
         'pending_leave_requests': pending_leave_requests,
         'asset_notifications': asset_notifications,
         'asset_issue_notifications': asset_issue_notifications,
-        'notifications': notifications, 
+        'notifications': notification_from_admin, 
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES
     }
