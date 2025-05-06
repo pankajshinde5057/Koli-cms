@@ -53,7 +53,8 @@ class CustomUser(AbstractUser):
 
 class Admin(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='admin')
-
+    def __str__(self):
+        return self.admin.first_name+ " " + self.admin.last_name
 
 
 class Division(models.Model):
@@ -161,7 +162,7 @@ class NotificationEmployee(models.Model):
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    created_by = models.ForeignKey(CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
 
 class EmployeeSalary(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
@@ -171,7 +172,17 @@ class EmployeeSalary(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-
+class Notification(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    role = models.CharField(max_length=56)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    notification_type = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    leave_or_notification_id = models.IntegerField()
+    def __str__(self):
+        return f"Notification for {self.user} - {self.notification_type} - {self.role}"
+    
 
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [

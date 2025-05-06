@@ -1,4 +1,4 @@
-from .models import CustomUser, AttendanceRecord
+from .models import CustomUser, AttendanceRecord, Notification
 from django.utils import timezone
 from django.contrib.auth.models import AnonymousUser
 from zoneinfo import ZoneInfo
@@ -41,3 +41,31 @@ def clock_times(request):
         pass
 
     return context
+
+def unread_notification_count(request):
+    if request.user.is_authenticated:
+        employee_general_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='notification',role = "employee").count()
+        manager_general_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='notification',role = "manager").count()
+        admin_general_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='notification',role = "admin").count()
+        admin_employee_feedback_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='employee feedback',role = "admin").count()
+        employee_leave_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='leave',role = "employee").count()
+        manager_leave_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='leave',role = "manager").count()
+        admin_leave_count = Notification.objects.filter(user=request.user, is_read=False, notification_type='leave',role = "admin").count()
+        print("general_countgeneral_count>>",employee_general_count,"manager_general_count>>>",manager_general_count,"admin_general_count>>>>>>",admin_general_count,request.user)
+        print("employee_leave_count>>>",employee_leave_count,"manager_leave_count>>>",manager_leave_count,"admin_leave_count>>>>>",admin_leave_count,request.user)
+        print("admin_employee_feedback_count>>",admin_employee_feedback_count)
+    else:
+        general_count = 0
+        leave_count = 0
+
+    return {
+        # 'unread_general_notification_count': general_count,
+        'unread_employee_general_notification_count': employee_general_count,
+        'unread_manager_general_notification_count': manager_general_count,
+        'admin_employee_feedback_count':admin_employee_feedback_count,
+        'admin_general_count':admin_general_count,
+        # 'unread_leave_notification_count': leave_count,
+        'unread_employee_leave_notification_count': employee_leave_count,
+        'unread_manager_leave_notification_count': manager_leave_count,
+        'admin_leave_count':admin_leave_count
+    }

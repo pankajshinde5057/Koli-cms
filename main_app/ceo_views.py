@@ -361,9 +361,18 @@ def check_email_availability(request):
 def employee_feedback_message(request):
     if request.method != 'POST':
         feedbacks = FeedbackEmployee.objects.all().order_by('-id')
+        unread_ids = list(
+            Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='employee feedback'
+            ).values_list('leave_or_notification_id', flat=True) 
+        )
+        print("EMPLOYEEE FEEDBAD",unread_ids)
         context = {
             'feedbacks': feedbacks,
-            'page_title': 'Employee Feedback Messages'
+            'page_title': 'Employee Feedback Messages',
+            'unread_ids':unread_ids
         }
         return render(request, 'ceo_template/employee_feedback_template.html', context)
     else:
@@ -373,6 +382,11 @@ def employee_feedback_message(request):
             reply = request.POST.get('reply')
             feedback.reply = reply
             feedback.save()
+            notify = Notification.objects.filter(user = request.user,role = "admin", is_read = False, leave_or_notification_id = feedback_id).first()
+            if notify:
+                notify.is_read = True
+                notify.save()
+                print("OKKKKKKKKKKKKKKK")
             return HttpResponse(True)
         except Exception as e:
             return HttpResponse(False)

@@ -5,6 +5,8 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
+
+from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
 from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory
@@ -73,7 +75,7 @@ def manager_home(request):
             'leave': total_leave,
             'working_days': total_present + total_late
         })
-
+    
     context = {
         'page_title': f"Manager Panel - {manager.admin.last_name} ({manager.division})",
         'departments': all_departments,
@@ -84,7 +86,7 @@ def manager_home(request):
         'total_employees': employees.count(),
         'total_attendance': filtered_records.count(),
         'total_leave': sum(item['leave'] for item in time_history_data),
-        'total_department': all_departments.count(),
+        'total_department': all_departments.count()
     }
     return render(request, 'manager_template/home_content.html', context)
 
@@ -686,7 +688,7 @@ def manager_send_employee_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
     # employee = get_object_or_404(Employee, team_lead_id=id)
-    employee = CustomUser.objects.filter(id = id).first()
+    employee = user= CustomUser.objects.filter(id = id).first()
     print(id,message,employee)
     try:
         url = "https://fcm.googleapis.com/fcm/send"
@@ -707,8 +709,11 @@ def manager_send_employee_notification(request):
         notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
 
         notification.save()
+        print("OK")
+        send_notification(user, message,"notification",notification.id,"employee")
         return HttpResponse("True")
     except Exception as e:
+        print(">>>>>>>>>>>>>>>>>>",str(e))
         return HttpResponse("False")
    
    
@@ -778,13 +783,27 @@ def manager_view_notification(request):
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
     asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
-   
+    manager_unread_ids = list(
+        Notification.objects.filter(
+            user=request.user,
+            is_read=False,
+            notification_type__in=["leave", "notification"],
+            role="manager"
+        ).values_list('leave_or_notification_id', flat=True)
+    )
+    manager_unread_ids += list(Notification.objects.filter(
+        is_read = False,
+        notification_type = "asset issue",
+        role = "manager"
+    ).values_list("leave_or_notification_id",flat=True))
+    print("manager_unread_ids********************",manager_unread_ids)
     context = {
         'pending_leave_requests': pending_leave_requests,
         'asset_notifications': asset_notifications,
         'asset_issue_notifications': asset_issue_notifications,
         'page_title': "View Notifications",
-        'LOCATION_CHOICES': LOCATION_CHOICES
+        'LOCATION_CHOICES': LOCATION_CHOICES,
+        "manager_unread_ids":manager_unread_ids
     }
     
     return render(request, "manager_template/manager_view_notification.html",context)
@@ -813,7 +832,11 @@ def approve_assest_request(request, notification_id):
                 notification.approved = True
                 notification.save()
                 messages.success(request, "Asset request approved successfully.")
-
+                notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
+                if notify:
+                    notify.is_read = True
+                    notify.save()
+                    print("OKKKKKKKKKKKKKKKKK")
             except:
                 messages.error(request,"This Asset is not Found in Inventry")
 
@@ -830,6 +853,12 @@ def reject_assest_request(request, notification_id):
         notification.approved = False
         notification.save()
         messages.success(request, "Asset request rejected successfully.")
+        notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
+        if notify:
+            notify.is_read = True
+            notify.save()
+            print("OKKKKKKKKKKKKKKKKK")
+        notification.save()
     else:
         messages.info(request, "This request was already approved or rejected.")
 
@@ -839,24 +868,34 @@ def reject_assest_request(request, notification_id):
 def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
+        msg = "Please check the Leave Request"
         if leave_request.status == 0:
             leave_request.status = 1
             leave_request.save()
+            msg = "Leave request approved."
             messages.success(request, "Leave request approved.")
         else:
             messages.info(request, "This leave request has already been processed.")
+        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
+        print("LEAVE ID",leave_id,leave_request.employee.admin.id,user)
+        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
 def reject_leave_request(request, leave_id):
     if request.method == 'POST':
+        msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
+            msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
         else:
             messages.info(request, "This leave request has already been processed.")
+        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
+        print("LEAVE ID",leave_id,leave_request.employee.admin.id,user)
+        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
@@ -895,9 +934,16 @@ def resolve_asset_issue(request,asset_issu_id):
     if request.method == "POST":
         issue_asset = get_object_or_404(AssetIssue,pk=asset_issu_id)
         issue_asset.status = request.POST.get('status')
+        print(">>>>>>>>>>>>>>>>>>>>>>FFFFFFFFFFFFFFF",issue_asset.status,asset_issu_id)
         issue_asset.notes = request.POST.get('resolution_notes')
         issue_asset.resolved_date = datetime.now()
         issue_asset.save()
+        if issue_asset.status == "resolved":
+            notify = Notification.objects.filter(leave_or_notification_id=asset_issu_id, role = "manager",notification_type = "asset issue").first()
+            if notify:
+                notify.is_read = True
+                notify.save()
+                print("OKKKKKKKKKKKKKKKKK")
         messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
     return redirect('manager_view_notification')

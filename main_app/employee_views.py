@@ -10,6 +10,8 @@ from django.utils import timezone
 from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
+
+from main_app.notification_badge import mark_notification_read, send_notification
 from .forms import *
 from .models import *
 from django.db.models import Sum, F, DurationField, ExpressionWrapper
@@ -416,10 +418,19 @@ def employee_home(request):
 def employee_apply_leave(request):
     form = LeaveReportEmployeeForm(request.POST or None)
     employee = get_object_or_404(Employee, admin_id=request.user.id)
+    print(">>>>>>>>>>>>>>>>>>>>request.user.id",request.user.id,employee.team_lead,employee.team_lead.admin.id)
+    unread_ids = list(
+            Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='leave'
+            ).values_list('leave_or_notification_id', flat=True) 
+        )
     context = {
         'form': form,
-        'leave_history': LeaveReportEmployee.objects.filter(employee=employee),
-        'page_title': 'Apply for leave'
+        'leave_history': LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at'),
+        'page_title': 'Apply for leave',
+        'unread_ids': unread_ids
     }
     if request.method == 'POST':
         if form.is_valid():
@@ -429,11 +440,14 @@ def employee_apply_leave(request):
                 obj.save()
                 messages.success(
                     request, "Application for leave has been submitted for review")
+                user = CustomUser.objects.get(id = employee.team_lead.admin.id)
+                send_notification(user, "Leave Appplied from ","notification",obj.id,"manager")
                 return redirect(reverse('employee_apply_leave'))
             except Exception:
                 messages.error(request, "Could not submit")
         else:
             messages.error(request, "Form has errors!")
+
     return render(request, "employee_template/employee_apply_leave.html", context)
 
 
@@ -454,6 +468,9 @@ def employee_feedback(request):
                 obj.save()
                 messages.success(
                     request, "Feedback submitted for review")
+                user = CustomUser.objects.get(id = employee.team_lead.admin.id)
+                print("****************", employee.admin.id, employee.team_lead.admin.id,employee.team_lead.admin)
+                send_notification(user, f"Feedback submitted for review for {obj.id}","employee feedback",obj.id,"admin")
                 return redirect(reverse('employee_feedback'))
             except Exception:
                 messages.error(request, "Could not Submit!")
@@ -575,12 +592,20 @@ def employee_view_salary(request):
 
 
 def employee_view_notification(request):
-    employee = get_object_or_404(Employee, admin=request.user)
-    notifications = NotificationEmployee.objects.filter(employee=employee).order_by('-id')
-    context = {
-        'notifications': notifications,
-        'page_title': "View Notifications"
-    }
+    try:
+        print("HIIII")
+        employee = get_object_or_404(Employee, admin=request.user)
+        print("employee",employee)
+        notifications = NotificationEmployee.objects.filter(employee=employee).order_by('-id')
+        print("notifications",notifications)
+        context = {
+            'notifications': notifications,
+            'page_title': "View Notifications"
+        }
+        # print("HIIIII")
+        mark_notification_read(request, 0,"notification","employee")
+    except Exception as e:
+        print("ERRROR",str(e))
     return render(request, "employee_template/employee_view_notification.html", context)
 
 
