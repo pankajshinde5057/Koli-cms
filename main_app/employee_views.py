@@ -413,6 +413,16 @@ def employee_apply_leave(request):
                 notification_type='leave'
             ).values_list('leave_or_notification_id', flat=True) 
         )
+    unread_ids = []
+    notification_ids = Notification.objects.filter(
+    user=request.user,
+    role="employee",
+    is_read=False,
+    notification_type="leave"
+    ).values_list('leave_or_notification_id', flat=True)
+
+    # Convert to list if needed
+    unread_ids = list(notification_ids)
     context = {
         'form': form,
         'leave_history': LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at'),
@@ -447,6 +457,7 @@ def employee_feedback(request):
         'page_title': 'Employee Feedback'
 
     }
+    mark_notification_read(request, 0,"feedback","employee")
     if request.method == 'POST':
         if form.is_valid():
             try:
