@@ -342,7 +342,7 @@ def manager_update_attendance(request):
     context = {
         'departments': departments,
         'employees': employees,
-        'page_title': 'Update Attendance',
+        'page_title': 'View Attendance',
     }
     
     return render(request, 'manager_template/manager_update_attendance.html', context)
@@ -512,10 +512,6 @@ def update_attendance(request):
     
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
-from django.http import JsonResponse
-from datetime import datetime
-from .models import Employee, AttendanceRecord
-
 @csrf_exempt
 def get_employee_attendance(request):
     if request.method == 'POST':
@@ -523,45 +519,49 @@ def get_employee_attendance(request):
             employee_id = request.POST.get('employee_id')
             month = request.POST.get('month')
             year = request.POST.get('year')
+            week = request.POST.get('week')
+            from_date = request.POST.get('from_date')
+            to_date = request.POST.get('to_date')
 
-            if not employee_id or not month or not year:
-                return JsonResponse({"error": "Employee ID, month, and year are required"}, status=400)
+            if not employee_id:
+                return JsonResponse({"error": "Employee ID is required"}, status=400)
+            if not year:
+                return JsonResponse({"error": "Year is required"}, status=400)
 
-            # Fetch the employee
             employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
+            queryset = AttendanceRecord.objects.filter(user__employee=employee)
 
-            # Filter attendance records for the given month and year
-            attendance_data = AttendanceRecord.objects.filter(
-                user__employee=employee,
-                date__year=int(year),
-                date__month=int(month)
-            ).order_by('date')
+            # Always filter by year
+            queryset = queryset.filter(date__year=int(year))
 
-            # Get current year and dynamically generate a list of years and months
-            current_year = datetime.now().year
-            years = [str(current_year + i) for i in range(0, 5)]  # Next 5 years from current year
+            # Date range filter takes priority
+            if from_date and to_date:
+                from_date = datetime.strptime(from_date, '%Y-%m-%d')
+                to_date = datetime.strptime(to_date, '%Y-%m-%d')
+                queryset = queryset.filter(date__range=(from_date, to_date))
 
-            # List of months
-            months = [
-                ("01", "January"), ("02", "February"), ("03", "March"), ("04", "April"),
-                ("05", "May"), ("06", "June"), ("07", "July"), ("08", "August"),
-                ("09", "September"), ("10", "October"), ("11", "November"), ("12", "December")
-            ]
+            # Week filter
+            elif week:
+                week = int(week)
+                first_day_of_year = datetime(int(year), 1, 1)
+                start_of_week = first_day_of_year + timedelta(weeks=week - 1)
+                end_of_week = start_of_week + timedelta(days=6)
+                queryset = queryset.filter(date__range=(start_of_week, end_of_week))
 
-            # Prepare the attendance list
-            attendance_list = [
-                {
-                    "date": str(attendance.date),
-                    "status": attendance.status,
-                    "clock_in": str(attendance.clock_in) if attendance.clock_in else "",
-                    "clock_out": str(attendance.clock_out) if attendance.clock_out else "",
-                    "employee_name": f"{employee.admin.first_name} {employee.admin.last_name}",
-                    "department": employee.department.name if employee.department else "",
-                    "year": year,
-                    "month": month,
-                }
-                for attendance in attendance_data
-            ]
+            # Month filter
+            elif month:
+                queryset = queryset.filter(date__month=int(month))
+
+            attendance_data = queryset.order_by('date')
+
+            attendance_list = [{
+                "date": str(record.date),
+                "status": record.status,
+                "clock_in": str(record.clock_in) if record.clock_in else "",
+                "clock_out": str(record.clock_out) if record.clock_out else "",
+                "employee_name": f"{employee.admin.first_name} {employee.admin.last_name}",
+                "department": employee.department.name if employee.department else "",
+            } for record in attendance_data]
 
             return JsonResponse(attendance_list, safe=False)
 
@@ -571,6 +571,7 @@ def get_employee_attendance(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
+
 
 
 
