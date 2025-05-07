@@ -5,81 +5,193 @@
 
 {% block custom_css %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<style>
+    .filter-card {
+        background-color: #f8fafc;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .results-card {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .select2-container--default .select2-selection--single {
+        height: 44px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+    }
+    
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 42px;
+    }
+    
+    .btn-primary {
+        background-color: #4f46e5;
+        border-color: #4f46e5;
+        height: 44px;
+    }
+    
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .present {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    
+    .absent {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .late {
+        background-color: #fef9c3;
+        color: #854d0e;
+    }
+    
+    .halfday {
+        background-color: #e0f2fe;
+        color: #075985;
+    }
+    
+    .attendance-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .attendance-table thead th {
+        background-color: #f8fafc;
+        border: none;
+        padding: 12px 16px;
+        font-weight: 600;
+        color: #64748b;
+    }
+    
+    .attendance-table tbody td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    
+    .attendance-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .summary-card {
+        background-color: #f8fafc;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    
+    .summary-item {
+        display: flex;
+        align-items: center;
+        margin-right: 20px;
+    }
+    
+    .summary-count {
+        font-weight: 600;
+        margin-left: 8px;
+    }
+    
+    .date-range {
+        color: #64748b;
+        font-size: 14px;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <section class="content">
     <div class="container-fluid">
-        <!-- Department and Employee Selection -->
-        <div class="card card-primary">
-            <div class="card-header">
-                <h3 class="card-title">{{ page_title }}</h3>
-            </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label>Department</label>
-                    <select name="department" class="form-control" id="department">
-                        <option value="">----</option>
-                        {% for department in departments %}
-                        <option value="{{ department.id }}">{{ department.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Employee</label>
-                    <select name="employee" class="form-control" id="employee">
-                        <option value="">----</option>
-                        {% for employee in employees %}
-                        <option value="{{ employee.employee_id }}">{{ employee.admin.first_name }} {{ employee.admin.last_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card filter-card mb-4">
+                    <div class="card-body">
+                        <h4 class="mb-4">View Attendance</h4>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Department</label>
+                                <select class="form-control select2" id="department">
+                                    <option value="">All Departments</option>
+                                    {% for department in departments %}
+                                    <option value="{{ department.id }}">{{ department.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Employee</label>
+                                <select class="form-control select2" id="employee">
+                                    <option value="">All Employees</option>
+                                    {% for employee in employees %}
+                                    <option value="{{ employee.employee_id }}" data-department="{{ employee.department.id }}">{{ employee.admin.get_full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
 
-                <!-- ✅ View Attendance Button moved inside the card-body -->
-                <div class="form-group mt-3">
-                    <button class="btn btn-primary btn-block" id="open_view_attendance">
-                        <i class="fas fa-eye"></i> View Attendance for Selected Employee
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Attendance Display Section -->
-        <div class="card card-primary mt-4" id="attendance_section" style="display: none;">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0">View Attendance</h4>
-                <div class="btn-group ml-auto">
-                    <button type="button" id="this_week" class="btn btn-warning">This Week</button>
-                    <button type="button" id="this_month" class="btn btn-info">This Month</button>
-                    <button type="button" id="this_year" class="btn btn-success">This Year</button>
-                    <button type="button" id="filter_btn" class="btn btn-primary">Filter</button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row mb-2">
-                    <div class="col-md-6">
-                        <label>Select Month:</label>
-                        <select id="month" class="form-control select2">
-                            <option value="">-- Month --</option>
-                            {% for m in months %}
-                            <option value="{{ m.0 }}">{{ m.1 }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label>Select Year:</label>
-                        <select id="year" class="form-control select2">
-                            <option value="">-- Year --</option>
-                            {% for y in years %}
-                            <option value="{{ y }}">{{ y }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Time Period</label>
+                                <select class="form-control" id="time_period">
+                                    <option value="week">This Week</option>
+                                    <option value="month" selected>This Month</option>
+                                    <option value="year">This Year</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3 custom-date" style="display:none;">
+                                <label class="form-label">From Date</label>
+                                <input type="date" class="form-control" id="from_date">
+                            </div>
+                            <div class="col-md-4 mb-3 custom-date" style="display:none;">
+                                <label class="form-label">To Date</label>
+                                <input type="date" class="form-control" id="to_date">
+                            </div>
+                            <div class="col-md-4 mb-3 d-flex align-items-end">
+                                <button id="view_attendance" class="btn btn-primary w-100">
+                                    <i class="fas fa-filter mr-2"></i>Filter Results
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button type="button" id="view_attendance" class="btn btn-success btn-block">
-                    <i class="fas fa-calendar-check"></i> View Attendance
-                </button>
-                <div id="attendance_details" class="mt-4"></div>
+
+                <div class="card results-card" id="attendance_results" style="display:none;">
+                    <div class="card-body">
+                        <h4 class="mb-4">Attendance Records</h4>
+                        
+                        <div class="d-flex flex-wrap mb-4" id="attendance_summary"></div>
+                        
+                        <div class="table-responsive">
+                            <table class="table attendance-table" id="attendance_table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Day</th>
+                                        <th>Status</th>
+                                        <th>Clock In</th>
+                                        <th>Clock Out</th>
+                                        <th>Hours</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendance_data">
+                                    <!-- Filled by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mt-3 date-range" id="date_range"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -87,119 +199,228 @@
 {% endblock %}
 
 {% block custom_js %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 <script>
-$(document).ready(function () {
-    $("#department, #employee, #month, #year").select2({ width: '100%' });
-
-    // Show attendance section
-    $("#open_view_attendance").click(function () {
-        const department = $("#department").val();
-        const employeeId = $("#employee").val();
-    
-        if (!department || !employeeId) {
-            alert("Please select both department and employee.");
-            return;
-        }
-    
-        $("#attendance_section").slideDown();
-    });
-    
-
-    // View or Filter button clicked
-    $("#view_attendance, #filter_btn").click(function () {
-        // Allow manual month/year selection
-        $("#month, #year").prop('disabled', false);
-        const employeeId = $("#employee").val();
-        const month = $("#month").val();
-        const year = $("#year").val();
-
-        if (!employeeId || (!month && !year)) {
-            alert("Please select employee and at least month or year.");
-            return;
-        }
-
-        fetchAttendanceData(employeeId, month, year, null);
+$(document).ready(function() {
+    // Initialize Select2
+    $('.select2').select2({
+        width: '100%',
+        placeholder: $(this).find('option[value=""]').text()
     });
 
-    // Quick filter: This Week, Month, Year
-    $("#this_week, #this_month, #this_year").click(function () {
-        const today = new Date();
-        const employeeId = $("#employee").val();
-        let month = null, year = today.getFullYear(), week = null;
-
-        if (!employeeId) {
-            alert("Please select an employee.");
-            return;
+    // Department change handler to filter employees
+    $('#department').change(function() {
+        const departmentId = $(this).val();
+        const $employeeSelect = $('#employee');
+        
+        // Show all options first
+        $employeeSelect.find('option').show();
+        
+        if (departmentId) {
+            // Hide employees not in the selected department, except the "All Employees" option
+            $employeeSelect.find('option[value!=""]').each(function() {
+                const employeeDept = $(this).data('department');
+                if (employeeDept != departmentId) {
+                    $(this).hide();
+                }
+            });
         }
-
-        if (this.id === "this_week") {
-            week = getWeekNumber(today);
-        } else if (this.id === "this_month") {
-            month = today.getMonth() + 1;
-        }
-
-        // Disable and reset month/year
-        $("#month, #year").val('').trigger('change').prop('disabled', true);
-
-        fetchAttendanceData(employeeId, month, year, week);
+        
+        // Reset selection and update Select2
+        $employeeSelect.val('').trigger('change');
+        $employeeSelect.select2();
     });
 
-    // Automatically re-enable dropdowns when clicked
-    $("#month, #year").on("select2:opening", function () {
-        $(this).prop("disabled", false);
+    // Toggle custom date range fields
+    $('#time_period').change(function() {
+        if ($(this).val() === 'custom') {
+            $('.custom-date').show();
+        } else {
+            $('.custom-date').hide();
+        }
     });
 
-    // Week number logic
-    function getWeekNumber(d) {
-        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        let dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    }
+    // View Attendance button click handler
+    $('#view_attendance').click(function() {
+        const employeeId = $('#employee').val();
+        const departmentId = $('#department').val();
+        const timePeriod = $('#time_period').val();
+        
+        let year = moment().format('YYYY');
+        let month = null;
+        let week = null;
+        let fromDate = null;
+        let toDate = null;
 
-    // AJAX call
-    function fetchAttendanceData(employeeId, month, year, week) {
+        if (timePeriod === 'custom') {
+            fromDate = $('#from_date').val();
+            toDate = $('#to_date').val();
+            
+            if (!fromDate || !toDate) {
+                alert('Please select both From and To dates');
+                return;
+            }
+            
+            year = moment(fromDate).format('YYYY');
+        } else {
+            if (timePeriod === 'week') {
+                fromDate = moment().startOf('week').add(1, 'days').format('YYYY-MM-DD');
+                toDate = moment().endOf('week').add(1, 'days').format('YYYY-MM-DD');
+            }
+            else if (timePeriod === 'month') {
+                month = moment().format('MM');
+            }
+        }
+
+        fetchAttendanceData(employeeId, departmentId, year, month, week, fromDate, toDate);
+    });
+
+    // Fetch attendance data via AJAX
+    function fetchAttendanceData(employeeId, departmentId, year, month, week, fromDate, toDate) {
+        const data = {
+            employee_id: employeeId,
+            department_id: departmentId,
+            year: year,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        };
+
+        if (month) data.month = month;
+        if (week) data.week = week;
+        if (fromDate && toDate) {
+            data.from_date = fromDate;
+            data.to_date = toDate;
+        }
+
         $.ajax({
             url: "{% url 'get_employee_attendance' %}",
             type: "POST",
-            data: {
-                employee_id: employeeId,
-                month: month,
-                year: year,
-                week: week,
-                csrfmiddlewaretoken: '{{ csrf_token }}',
+            data: data,
+            beforeSend: function() {
+                $('#attendance_results').hide();
+                $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading attendance data...</p></td></tr>');
             },
-            success: function (response) {
-                let html = "";
-                if (response.length > 0) {
-                    const emp = response[0];
-                    html += `<div><strong>Employee:</strong> ${emp.employee_name} | <strong>Department:</strong> ${emp.department}</div>`;
-                    html += `<table class="table table-bordered mt-2"><thead>
-                                <tr><th>Date</th><th>Status</th><th>Clock In</th><th>Clock Out</th></tr>
-                             </thead><tbody>`;
-                    response.forEach(r => {
-                        const inTime = r.clock_in ? formatTime(r.clock_in) : '-';
-                        const outTime = r.clock_out ? formatTime(r.clock_out) : '-';
-                        html += `<tr><td>${r.date}</td><td>${r.status}</td><td>${inTime}</td><td>${outTime}</td></tr>`;
-                    });
-                    html += "</tbody></table>";
+            success: function(response) {
+                if (response.error) {
+                    $('#attendance_data').html(`<tr><td colspan="6" class="text-center py-4 text-danger">${response.error}</td></tr>`);
+                    $('#attendance_results').show();
+                } else if (response.length > 0) {
+                    renderAttendanceTable(response);
+                    $('#attendance_results').show();
                 } else {
-                    html = "<p>No attendance records found.</p>";
+                    $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4">No attendance records found for the selected criteria.</td></tr>');
+                    $('#attendance_results').show();
                 }
-                $("#attendance_details").html(html);
+            },
+            error: function(xhr, status, error) {
+                $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load attendance data. Please try again.</td></tr>');
+                $('#attendance_results').show();
+                console.error("Error:", error);
             }
         });
     }
 
-    // Function to format clock-in/clock-out time
-    function formatTime(dateTimeStr) {
-        if (!dateTimeStr) return '-';
-        const time = new Date(dateTimeStr);
-        return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Render attendance table
+    function renderAttendanceTable(data) {
+        let tableHtml = '';
+        let presentCount = 0;
+        let absentCount = 0;
+        let lateCount = 0;
+        let halfDayCount = 0;
+
+        data.forEach(r => {
+            const date = new Date(r.date);
+            const day = date.toLocaleDateString([], { weekday: 'short' });
+            const inTime = r.clock_in ? formatTime(r.clock_in) : '-';
+            const outTime = r.clock_out ? formatTime(r.clock_out) : '-';
+            const hours = calculateHours(r.clock_in, r.clock_out);
+            const statusClass = getStatusClass(r.status.toLowerCase());
+
+            // Count status types
+            if (r.status.toLowerCase().includes('present')) presentCount++;
+            if (r.status.toLowerCase().includes('absent')) absentCount++;
+            if (r.status.toLowerCase().includes('late')) lateCount++;
+            if (r.status.toLowerCase().includes('half')) halfDayCount++;
+
+            tableHtml += `
+                <tr>
+                    <td>${r.date}</td>
+                    <td>${day}</td>
+                    <td><span class="status-badge ${statusClass}">${r.status}</span></td>
+                    <td>${inTime}</td>
+                    <td>${outTime}</td>
+                    <td>${hours}</td>
+                </tr>
+            `;
+        });
+
+        $('#attendance_data').html(tableHtml);
+        
+        // Update summary
+        const summaryHtml = `
+            <div class="summary-item">
+                <span class="status-badge present">Present</span>
+                <span class="summary-count">${presentCount}</span>
+            </div>
+            <div class="summary-item">
+                <span class="status-badge absent">Absent</span>
+                <span class="summary-count">${absentCount}</span>
+            </div>
+            <div class="summary-item">
+                <span class="status-badge late">Late</span>
+                <span class="summary-count">${lateCount}</span>
+            </div>
+            <div class="summary-item">
+                <span class="status-badge halfday">Half Day</span>
+                <span class="summary-count">${halfDayCount}</span>
+            </div>
+        `;
+        $('#attendance_summary').html(summaryHtml);
+        
+        // Update date range display
+        const timePeriod = $('#time_period').val();
+        let dateRangeText = '';
+        
+        if (timePeriod === 'custom') {
+            dateRangeText = `Showing records from ${$('#from_date').val()} to ${$('#to_date').val()}`;
+        } else {
+            const today = new Date();
+            
+            if (timePeriod === 'week') {
+                const start = moment().startOf('week').add(1, 'days').format('MMM D');
+                const end = moment().endOf('week').add(1, 'days').format('MMM D, YYYY');
+                dateRangeText = `Showing this week (${start} - ${end})`;
+            } 
+            else if (timePeriod === 'month') {
+                dateRangeText = `Showing ${today.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`;
+            }
+            else if (timePeriod === 'year') {
+                dateRangeText = `Showing ${today.getFullYear()}`;
+            }
+        }
+        
+        $('#date_range').text(dateRangeText);
+    }
+
+    // Format time (HH:mm)
+    function formatTime(dateTime) {
+        return moment(dateTime).format('HH:mm');
+    }
+
+    // Calculate working hours
+    function calculateHours(clockIn, clockOut) {
+        if (!clockIn || !clockOut) return '-';
+        const diff = moment(clockOut).diff(moment(clockIn), 'hours', true);
+        return diff.toFixed(1) + 'h';
+    }
+
+    // Get status badge class
+    function getStatusClass(status) {
+        if (status.includes('present')) return 'present';
+        if (status.includes('absent')) return 'absent';
+        if (status.includes('late')) return 'late';
+        if (status.includes('half')) return 'halfday';
+        return '';
     }
 });
 </script>
