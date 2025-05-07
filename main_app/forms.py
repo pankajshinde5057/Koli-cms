@@ -21,7 +21,7 @@ class CustomUserForm(FormSettings):
     widget = {
         'password': forms.PasswordInput(),
     }
-    profile_pic = forms.ImageField()
+    profile_pic = forms.ImageField(required=False)
 
     def __init__(self, *args, **kwargs):
         super(CustomUserForm, self).__init__(*args, **kwargs)
@@ -109,7 +109,7 @@ class ManagerForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Manager
         fields = CustomUserForm.Meta.fields + \
-            ['division' ]
+            ['division', 'department']
 
 # class ManagerForm(CustomUserForm):
 #     def __init__(self, *args, **kwargs):

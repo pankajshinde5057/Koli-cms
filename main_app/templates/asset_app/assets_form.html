@@ -33,25 +33,25 @@
                         {{ form.asset_name|as_crispy_field }}
                         {{ form.asset_brand|as_crispy_field }}
                         {{ form.asset_condition|as_crispy_field }}
-
-                        <h5 class="text-primary mt-4 mb-4"><i class="fas fa-user-tie mr-2"></i>Created By</h5>
-                        {% if current_user.user_type == "1" or current_user.is_superuser %}
-                            <div class="form-group">
-                                <label for="manager">Select Manager</label>
-                                <select class="form-control" id="manager" name="manager">
-                                    <option value="">Select Manager</option>
-                                    {% for manager in allManager %}
-                                        <option value="{{ manager.id }}">{{ manager.get_full_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        {% elif current_user.user_type == "2" %}
-                            <div class="form-group">
-                                <input type="text" class="form-control" value="{{ current_user.get_full_name }}" disabled>
-                                <input type="hidden" name="manager" value="{{ current_user.id }}">
-                            </div>
+                        {% if request.user.user_type == "2" %}
+                            <h5 class="text-primary mt-4 mb-4"><i class="fas fa-user-tie mr-2"></i>Created By</h5>
+                            {% if current_user.user_type == "1" or current_user.is_superuser %}
+                                <div class="form-group">
+                                    <label for="manager">Select Manager</label>
+                                    <select class="form-control" id="manager" name="manager">
+                                        <option value="">Select Manager</option>
+                                        {% for manager in allManager %}
+                                            <option value="{{ manager.id }}">{{ manager.get_full_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            {% elif current_user.user_type == "2" %}
+                                <div class="form-group">
+                                    <input type="text" class="form-control" value="{{ current_user.get_full_name }}" disabled>
+                                    <input type="hidden" name="manager" value="{{ current_user.id }}">
+                                </div>
+                            {% endif %}
                         {% endif %}
-
                         <h5 class="text-primary mt-4 mb-4"><i class="fas fa-image mr-2"></i>Media</h5>
                         {{ form.asset_image|as_crispy_field }}
                     </div>
