@@ -448,6 +448,7 @@ def employee_feedback(request):
         'page_title': 'Employee Feedback'
 
     }
+    mark_notification_read(request, 0,"feedback","employee")
     if request.method == 'POST':
         if form.is_valid():
             try:
