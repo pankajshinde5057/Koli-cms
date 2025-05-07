@@ -406,7 +406,6 @@ def employee_home(request):
 def employee_apply_leave(request):
     form = LeaveReportEmployeeForm(request.POST or None)
     employee = get_object_or_404(Employee, admin_id=request.user.id)
-    print(">>>>>>>>>>>>>>>>>>>>request.user.id",request.user.id,employee.team_lead,employee.team_lead.admin.id)
     unread_ids = list(
             Notification.objects.filter(
                 user=request.user,
