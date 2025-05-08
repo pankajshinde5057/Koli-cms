@@ -361,3 +361,8 @@ class AttendanceSummary(models.Model):
     
     def __str__(self):
         return f"{self.user} - {self.month}/{self.year} Summary"
+    
+class Holiday(models.Model):
+    name = models.CharField(max_length=100)
+    date = models.DateField(unique=True)
+    # Any other fields you need

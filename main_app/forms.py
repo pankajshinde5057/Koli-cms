@@ -109,7 +109,7 @@ class ManagerForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Manager
         fields = CustomUserForm.Meta.fields + \
-            ['division' ]
+            ['division', 'department']
 
 # class ManagerForm(CustomUserForm):
 #     def __init__(self, *args, **kwargs):
