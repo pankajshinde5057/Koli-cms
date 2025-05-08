@@ -1,4 +1,5 @@
 import json
+import pytz
 import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -195,13 +196,22 @@ def clock_in_out(request):
         else:
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
+            # Convert to IST
+            ist = pytz.timezone('Asia/Kolkata')
+            ist_time = now.astimezone(ist)
 
-            late_time = datetime.combine(now.date(), time(9, 15), tzinfo=now.tzinfo)
-            half_day_time = datetime.combine(now.date(), time(13, 0), tzinfo=now.tzinfo)  # 1:00 PM
+            # Create 9:15 AM and 1:00 PM on the same IST date
+            late_time = ist.localize(datetime.combine(ist_time.date(), time(9, 15)))
+            half_day_time = ist.localize(datetime.combine(ist_time.date(), time(13, 0)))  # 1:00 PM
 
-            if now > half_day_time:
+            print("Current IST Time:", ist_time)
+            print("Late Time Threshold:", late_time)
+            print("Half Day Threshold:", half_day_time)
+
+            # Compare
+            if ist_time > half_day_time:
                 status = 'half_day'
-            elif now > late_time:
+            elif ist_time > late_time:
                 status = 'late'
             else:
                 status = 'present'

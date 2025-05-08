@@ -216,7 +216,7 @@ class AssetsCreateView(LoginRequiredMixin, CreateView):
         asset = form.save(commit=False)
 
         # if user is type 2 (Manager)
-        if self.request.user.user_type == "2":
+        if self.request.user.user_type in ["1","2"]:
             asset.manager = self.request.user
 
         asset.save()

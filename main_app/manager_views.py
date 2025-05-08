@@ -5,6 +5,8 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
+
+from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
 from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory
@@ -103,7 +105,11 @@ def manager_home(request):
                 'break_end': localtime(b.break_end).strftime('%H:%M') if b.break_end else 'Ongoing',
                 'break_duration': duration,
             })
-
+            # print("break_entries:>>>>",break_entries)
+            # After the loop that appends to break_entries
+        if break_entries:
+            break_entries = sorted(break_entries, key=lambda x: x['break_start'], reverse=True)
+        print("break_entries:>>>>",break_entries)
         time_history_data.append({
             'employee_name': employee.get_full_name(),
             'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
@@ -201,7 +207,6 @@ def save_attendance(request):
                 employee = CustomUser.objects.filter(id = int(emp)).first()
             else:
                 employee = get_object_or_404(CustomUser, id=emp.get('id'))
-            print("employee.admin",employee)
             user = employee  # CustomUser linked
             # if half_full_day:
             status = 'present'
@@ -253,30 +258,37 @@ def save_attendance(request):
             # employee.save()
             
             if half_full_day == "full":
+                leave_status = "Full-Day"
                 total_work = 8*60*60
                 status = "present"
                 clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
                 clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
             if half_full_day == "half":
                 total_work = 4*60*60
-                
+                leave_status = "Half-Day"
                 if which_half =="first":
                     # pass
                     status = "present"
-                    clock_in = datetime.combine(date_obj, time(14, 30, 0)) 
-                    clock_out = datetime.combine(date_obj, time(18, 30, 0))
+                    clock_in = datetime.combine(date_obj, time(9, 00, 0)) 
+                    clock_out = datetime.combine(date_obj, time(13, 00, 0))
                 else:
                     status = "late"
-                    clock_in = datetime.combine(date_obj, time(19, 30, 0)) 
-                    clock_out = datetime.combine(date_obj, time(23, 30, 0)) 
-            print("clock_inclock_in>>>>>>>>>>>>>>>",clock_in)
-            print("clock_inclock_in>>>>>>>>>>>>>>>",clock_out)
-            is_primary_record = 1
-            required_verfication = 0
+                    clock_in = datetime.combine(date_obj, time(14, 00, 0)) 
+                    clock_out = datetime.combine(date_obj, time(18, 00, 0)) 
+            employee = Employee.objects.get(admin = employee)
+            leave_record = LeaveReportEmployee.objects.create(
+                employee = employee,
+                leave_type = leave_status,
+                start_date = date_obj,
+                end_date = date_obj,
+                message = f"Added From {request.user}",
+                status = 1,
+                created_at = today,
+                updated_at = today
+            )
+            leave_record.save()
             user_id = int(emp)
-            verified_by_id = user
             date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
-            print("date_obj",date_obj)
             manager_id = request.user.id
             attendance = AttendanceRecord.objects.create(
                 date=date_obj,
@@ -576,28 +588,35 @@ def get_employee_attendance(request):
 
 
 def manager_apply_leave(request):
-    form = LeaveReportManagerForm(request.POST or None)
-    manager = get_object_or_404(Manager, admin_id=request.user.id)
-    context = {
-        'form': form,
-        'leave_history': LeaveReportManager.objects.filter(manager=manager),
-        'page_title': 'Apply for Leave'
-    }   
-    if request.method == 'POST':
-        if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.manager = manager
-                obj.save()
-                messages.success(
-                    request, "Application for leave has been submitted for review")
-                return redirect(reverse('manager_apply_leave'))
-            except Exception:
-                messages.error(request, "Could not apply!")
-        else:
-            messages.error(request, "Form has errors!")
-    return render(request, "manager_template/manager_apply_leave.html", context)
-
+    try:
+        form = LeaveReportManagerForm(request.POST or None)
+        manager = get_object_or_404(Manager, admin_id=request.user.id)
+        
+        context = {
+            'form': form,
+            'leave_history': LeaveReportManager.objects.filter(manager=manager),
+            'page_title': 'Apply for Leave'
+        }   
+        if request.method == 'POST':
+            if form.is_valid():
+                try:
+                    obj = form.save(commit=False)
+                    obj.manager = manager
+                    obj.save()
+                    # print("obj.admin.idobj.admin.id?>>>>>>>>>>>>",obj.manager.admin_name.id,type(obj.admin.id))
+                    messages.success(
+                        request, "Application for leave has been submitted for review")
+                    user = CustomUser.objects.get(id = obj.manager.id)
+                    send_notification(user, "Leave Appplied from ","notification",obj.id,"admin")
+                    return redirect(reverse('manager_apply_leave'))
+                except Exception as e:
+                    print("ERROR",str(e))
+                    messages.error(request, "Could not apply!")
+            else:
+                messages.error(request, "Form has errors!")
+        return render(request, "manager_template/manager_apply_leave.html", context)
+    except Exception as e:
+        print("ERROR:>>>>>>>>>>>>>>>>>>>>",str(e))
 from django.db.models import Count,Q
 
 def manage_employee_by_manager(request):
@@ -605,7 +624,6 @@ def manage_employee_by_manager(request):
     # manager instanccce
     manager = get_object_or_404(Manager, admin=request.user)
     search_ = request.GET.get("search",'').strip()
-    print(search_)
 
     # get employees with asset count
     employees = Employee.objects.filter(team_lead=manager).annotate(
@@ -613,7 +631,8 @@ def manage_employee_by_manager(request):
     ).select_related('admin', 'department', 'division','team_lead')
 
     location_choices = dict(LOCATION_CHOICES)
-   
+    if search_ != None:
+        employees = Employee.objects.filter(admin__first_name__icontains = search_)
     context = {
         'employees': employees,
         'page_title': 'Manage Employees',
@@ -621,7 +640,7 @@ def manage_employee_by_manager(request):
     }
 
     if not employees:
-            messages.warning(request, "No employees found for your team.")
+            messages.warning(request, "No employees found")
 
     return render(request, 'manager_template/manage_employee_by_manager.html', context)
 
@@ -711,7 +730,6 @@ def assign_assets(request):
         assets = Assets.objects.filter(
             id__in=asset_ids, 
             is_asset_issued=False,
-            manager=request.user 
         )
 
         if not assets.exists():
@@ -758,7 +776,6 @@ def remove_asset_assignment(request):
         # Verify the asset belongs to this manager before removal
         asset = Assets.objects.get(
             id=asset_id,
-            manager=request.user
         )
         
         issuance = AssetsIssuance.objects.select_for_update().get(
@@ -812,25 +829,37 @@ def add_employee_by_manager(request):
             division = employee_form.cleaned_data.get('division')
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
-            department = manager.department  # The department of the manager
-            passport = request.FILES['profile_pic']
-            
-            fs = FileSystemStorage()
-            filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+            department = employee_form.cleaned_data.get('department')
+
+            passport_url = None
+
+            if 'profile_pic' in request.FILES:
+                passport = request.FILES['profile_pic']
+                fs = FileSystemStorage()
+                filename = fs.save(passport.name, passport)
+                passport_url = fs.url(filename)
 
             try:
                 # Create the user (employee)
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                    email=email, 
+                    password=password, 
+                    user_type=3, 
+                    first_name=first_name, 
+                    last_name=last_name, 
+                    profile_pic=passport_url if passport_url else ""
+                )
                 user.gender = gender
                 user.address = address
-                user.employee.division = division
-                user.employee.department = department
-                user.employee.team_lead = manager  # Assign manager as the team lead
-                user.employee.phone_number = phone_number
-                user.employee.designation = designation
                 user.save()
+
+                employee = user.employee
+                employee.division = division
+                employee.department = department
+                employee.team_lead = manager  # Assign manager as the team lead
+                employee.phone_number = phone_number
+                employee.designation = designation
+                employee.save()
 
                 messages.success(request, "Successfully Added Employee")
                 return redirect(reverse('manage_employee_by_manager'))  # Redirect to employee management page
@@ -919,6 +948,11 @@ def delete_employee_by_manager(request, employee_id):
 
     # Delete the employee
     employee.delete()
+
+    user = employee.admin
+    if user:
+        user.delete()
+
     messages.success(request, "Employee deleted successfully.")
     return redirect(reverse('manage_employee_by_manager'))
 
@@ -950,7 +984,7 @@ def manager_send_employee_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
     # employee = get_object_or_404(Employee, team_lead_id=id)
-    employee = CustomUser.objects.filter(id = id).first()
+    employee = user= CustomUser.objects.filter(id = id).first()
     print(id,message,employee)
     try:
         url = "https://fcm.googleapis.com/fcm/send"
@@ -971,8 +1005,10 @@ def manager_send_employee_notification(request):
         notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
 
         notification.save()
+        send_notification(user, message,"notification",notification.id,"employee")
         return HttpResponse("True")
     except Exception as e:
+        print(">>>>>>>>>>>>>>>>>>",str(e))
         return HttpResponse("False")
    
    
@@ -1043,22 +1079,32 @@ def manager_view_notification(request):
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
     pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
+    # manager_unread_ids = []
+    # query = Notification.objects.filter(user = request.user, role = "manager", is_read= False, notification_type = "notification")
+    notification_ids = Notification.objects.filter(
+        user=request.user,
+        role="manager",
+        is_read=False,
+        notification_type="notification"
+    ).values_list('leave_or_notification_id', flat=True)
 
+    # Convert to list if needed
+    manager_unread_ids = list(notification_ids)
     # this is foor histoory
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
     asset_notification_history = Notify_Manager.objects.filter(manager=request.user, approved__isnull=False).order_by('-timestamp')
     resolved_asset_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
-    asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
-    asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
-   
-    context = {
-        'pending_leave_requests': pending_leave_requests,
-        'asset_notifications': asset_notifications,
-        'asset_issue_notifications': asset_issue_notifications,
-        'notifications': notification_from_admin, 
-        'page_title': "View Notifications",
-        'LOCATION_CHOICES': LOCATION_CHOICES
-    }
+    # asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
+    # asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
+    
+    # context = {
+    #     'pending_leave_requests': pending_leave_requests,
+    #     'asset_notifications': asset_notifications,
+    #     'asset_issue_notifications': asset_issue_notifications,
+    #     'notifications': notification_from_admin, 
+    #     'page_title': "View Notifications",
+    #     'LOCATION_CHOICES': LOCATION_CHOICES
+    # }
     
     # status_filter = request.GET.get('status', 'all')
     # date_from = request.GET.get('date_from')
@@ -1073,15 +1119,16 @@ def manager_view_notification(request):
     # if date_to:
     #     leave_history = leave_history.filter(updated_at__lte=date_to)
 
+    notification_from_admin_paginator = Paginator(notification_from_admin,3)
     leave_paginator = Paginator(leave_history, 3)  # Show 3 items per page
     asset_notification_paginator = Paginator(asset_notification_history, 3)
     resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
 
     page_number = request.GET.get('page')
+    notification_from_admin_obj = notification_from_admin_paginator.get_page(page_number)
     leave_page_obj = leave_paginator.get_page(page_number)
     asset_notification_page_obj = asset_notification_paginator.get_page(page_number)
     resolved_issues_page_obj = resolved_issues_paginator.get_page(page_number)
-    
     context = {
         'notification_from_admin' : notification_from_admin,
         'pending_leave_requests': pending_leave_requests,
@@ -1089,6 +1136,7 @@ def manager_view_notification(request):
         'asset_issue_notifications': pending_asset_issues,
         'pending_issue': pending_asset_issues.filter(status='pending'),
         'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
+        'notification_from_admin_obj' : notification_from_admin_obj,
 
         # this is for historyy
         'leave_page_obj': leave_page_obj,
@@ -1101,6 +1149,7 @@ def manager_view_notification(request):
         # 'date_to': date_to or '',
 
         'page_title': "View Notifications",
+        'manager_unread_ids': manager_unread_ids,
         'LOCATION_CHOICES': LOCATION_CHOICES,
     }
 
@@ -1211,7 +1260,10 @@ def approve_assest_request(request, notification_id):
                 notification.approved = True
                 notification.save()
                 messages.success(request, "Asset request approved successfully.")
-
+                notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
+                if notify:
+                    notify.is_read = True
+                    notify.save()
             except:
                 messages.error(request,"This Asset is not Found in Inventry")
 
@@ -1228,6 +1280,11 @@ def reject_assest_request(request, notification_id):
         notification.approved = False
         notification.save()
         messages.success(request, "Asset request rejected successfully.")
+        notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
+        if notify:
+            notify.is_read = True
+            notify.save()
+        notification.save()
     else:
         messages.info(request, "This request was already approved or rejected.")
 
@@ -1237,6 +1294,7 @@ def reject_assest_request(request, notification_id):
 def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
+        msg = "Please check the Leave Request"
         if leave_request.status == 0:
             if not leave_request.end_date:
                 leave_request.end_date = leave_request.start_date
@@ -1249,20 +1307,27 @@ def approve_leave_request(request, leave_id):
                 messages.success(request, "Half-Day leave approved.")
             else:
                 messages.success(request, "Full-Day leave approved.")
+            msg = "Leave request approved."
         else:
             messages.info(request, "This leave request has already been processed.")
+        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
+        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
 def reject_leave_request(request, leave_id):
     if request.method == 'POST':
+        msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
+            msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
         else:
             messages.info(request, "This leave request has already been processed.")
+        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
+        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
@@ -1304,6 +1369,11 @@ def resolve_asset_issue(request,asset_issu_id):
         issue_asset.notes = request.POST.get('resolution_notes')
         issue_asset.resolved_date = datetime.now()
         issue_asset.save()
+        if issue_asset.status == "resolved":
+            notify = Notification.objects.filter(leave_or_notification_id=asset_issu_id, role = "manager",notification_type = "asset issue").first()
+            if notify:
+                notify.is_read = True
+                notify.save()
         messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
     return redirect('manager_view_notification')

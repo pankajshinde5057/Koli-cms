@@ -19,6 +19,12 @@ from django.db.models import Q
 
 
 
+LOCATION_CHOICES = (
+    ("Main Room" , "Main Room"),
+    ("Meeting Room", "Meeting Room"),
+    ("Main Office", "Main Office"),
+)
+
 def admin_home(request):
     total_manager = Manager.objects.all().count()
     total_employees = Employee.objects.all().count()
@@ -58,17 +64,36 @@ def add_manager(request):
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password')
             division = form.cleaned_data.get('division')
-            passport = request.FILES.get('profile_pic')
-            fs = FileSystemStorage()
-            filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+            department = form.cleaned_data.get('department')
+
+            passport_url = None
+
+            if 'profile_pic' in request.FILES:
+                passport = request.FILES['profile_pic']
+                fs = FileSystemStorage()
+                filename = fs.save(passport.name, passport)
+                passport_url = fs.url(filename)
+
             try:
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=2, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                    email=email, 
+                    password=password, 
+                    user_type=2,
+                    first_name=first_name, 
+                    last_name=last_name, 
+                    profile_pic=passport_url if passport_url else ""
+                )
+
                 user.gender = gender
                 user.address = address
-                user.manager.division = division
                 user.save()
+                print(user,"*"*20)
+                
+                manager = user.manager
+                manager.division = division
+                manager.department = department
+                manager.save()
+                
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_manager'))
 
@@ -97,22 +122,39 @@ def add_employee(request):
             phone_number = employee_form.cleaned_data.get('phone_number')
             team_lead = employee_form.cleaned_data.get('team_lead')
             
-            passport = request.FILES['profile_pic']
-            fs = FileSystemStorage()
-            filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+            passport_url = None
+            
+            if 'profile_pic' in request.FILES:
+                passport = request.FILES['profile_pic']
+                fs = FileSystemStorage()
+                filename = fs.save(passport.name, passport)
+                passport_url = fs.url(filename)
+
             try:
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                    email=email, 
+                    password=password, 
+                    user_type=3, 
+                    first_name=first_name, 
+                    last_name=last_name, 
+                    profile_pic=passport_url if passport_url else ""
+                )
+
                 user.gender = gender
                 user.address = address
-                user.employee.division = division
-                user.employee.department = department
-                user.employee.phone_number = phone_number
-                user.employee.designation = designation
-                if team_lead:
-                    user.employee.team_lead = team_lead
                 user.save()
+
+                employee = user.employee
+                employee.division = division
+                employee.department = department
+                employee.phone_number = phone_number
+                employee.designation = designation
+                
+                if team_lead:
+                    employee.team_lead = team_lead
+                
+                employee.save()
+
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('add_employee'))
             except Exception as e:
@@ -184,10 +226,13 @@ def manage_manager(request):
 def manage_employee(request):
     employees = CustomUser.objects.filter(user_type=3).select_related('employee')
     valid_employees = [emp for emp in employees if hasattr(emp, 'employee') and emp.employee.id]
-
+    
+    location_choices = dict(LOCATION_CHOICES)
+    
     context = {
         'employees': valid_employees,
-        'page_title': 'Manage Employees'
+        'page_title': 'Manage Employees',
+        'location_choices': location_choices,
     }
     return render(request, "ceo_template/manage_employee.html", context)
 
@@ -256,8 +301,8 @@ def edit_manager(request, manager_id):
         else:
             messages.error(request, "Please fil form properly")
     else:
-        user = CustomUser.objects.get(id=manager_id)
-        manager = Manager.objects.get(id=user.id)
+        # manager = Manager.objects.get(id=user.id)
+        # user = CustomUser.objects.get(id=manager.admin_id)
         return render(request, "ceo_template/edit_manager_template.html", context)
     
     return render(request, "ceo_template/edit_manager_template.html", context)
@@ -286,12 +331,17 @@ def edit_employee(request, employee_id):
             department = form.cleaned_data.get('department')
             passport = request.FILES.get('profile_pic') or None
             try:
+                # Get the related CustomUser instance
                 user = CustomUser.objects.get(id=employee.admin.id)
+
+                # If a new passport image is uploaded, update the profile_pic
                 if passport != None:
                     fs = FileSystemStorage()
                     filename = fs.save(passport.name, passport)
                     passport_url = fs.url(filename)
                     user.profile_pic = passport_url
+
+                # Update the CustomUser fields
                 user.username = username
                 user.email = email
                 if password != None:
@@ -300,10 +350,14 @@ def edit_employee(request, employee_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
+                # Save the CustomUser instance
+                user.save()
+
+                # Update the Employee model fields
                 employee.division = division
                 employee.department = department
-                user.save()
                 employee.save()
+
                 messages.success(request, "Employee information updated successfully.")
                 return redirect(reverse('edit_employee', args=[employee_id]))
             except Exception as e:
