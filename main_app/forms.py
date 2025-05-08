@@ -176,7 +176,20 @@ class LeaveReportManagerForm(FormSettings):
         model = LeaveReportManager
         fields = ['date', 'message']
         widgets = {
-            'date': DateInput(attrs={'type': 'date'}),
+            'date': forms.DateInput(
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control',   # Ensures proper Bootstrap styling
+                    'placeholder': 'Select a date',
+                }
+            ),
+            'message': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Enter your message',
+                    'rows': 3
+                }
+            )
         }
 
 
