@@ -10,14 +10,16 @@
                 <div class="card card-secondary">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex">
-                            <div class="input-group input-group-sm mr-2" style="width: 250px;">
-                                <input type="text" name="search" id="searchInput" class="form-control" placeholder="Search employees...">
-                                <div class="input-group-append">
-                                    <button class="btn btn-primary" type="submit">
-                                        <i class="fas fa-search"></i>
-                                    </button>
+                            <form method="get" action="">
+                                <div class="input-group input-group-sm mr-2" style="width: 250px;">
+                                    <input type="text" name="search" id="searchInput" class="form-control" placeholder="Search employees...">
+                                    <div class="input-group-append">
+                                        <button class="btn btn-primary" type="submit">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            </form>
                             <a href="{% url 'add_employee_by_manager' %}" class="btn btn-sm btn-dark">
                                 <i class="fas fa-plus mr-1"></i> Add Employee
                             </a>

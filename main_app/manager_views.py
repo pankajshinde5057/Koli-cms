@@ -625,7 +625,6 @@ def manage_employee_by_manager(request):
     # manager instanccce
     manager = get_object_or_404(Manager, admin=request.user)
     search_ = request.GET.get("search",'').strip()
-    print(search_)
 
     # get employees with asset count
     employees = Employee.objects.filter(team_lead=manager).annotate(
@@ -633,7 +632,8 @@ def manage_employee_by_manager(request):
     ).select_related('admin', 'department', 'division','team_lead')
 
     location_choices = dict(LOCATION_CHOICES)
-   
+    if search_ != None:
+        employees = Employee.objects.filter(admin__first_name__icontains = search_)
     context = {
         'employees': employees,
         'page_title': 'Manage Employees',
@@ -641,7 +641,7 @@ def manage_employee_by_manager(request):
     }
 
     if not employees:
-            messages.warning(request, "No employees found for your team.")
+            messages.warning(request, "No employees found")
 
     return render(request, 'manager_template/manage_employee_by_manager.html', context)
 
@@ -731,7 +731,6 @@ def assign_assets(request):
         assets = Assets.objects.filter(
             id__in=asset_ids, 
             is_asset_issued=False,
-            manager=request.user 
         )
 
         if not assets.exists():
@@ -778,7 +777,6 @@ def remove_asset_assignment(request):
         # Verify the asset belongs to this manager before removal
         asset = Assets.objects.get(
             id=asset_id,
-            manager=request.user
         )
         
         issuance = AssetsIssuance.objects.select_for_update().get(
@@ -832,25 +830,37 @@ def add_employee_by_manager(request):
             division = employee_form.cleaned_data.get('division')
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
-            department = manager.department  # The department of the manager
-            passport = request.FILES['profile_pic']
-            
-            fs = FileSystemStorage()
-            filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+            department = employee_form.cleaned_data.get('department')
+
+            passport_url = None
+
+            if 'profile_pic' in request.FILES:
+                passport = request.FILES['profile_pic']
+                fs = FileSystemStorage()
+                filename = fs.save(passport.name, passport)
+                passport_url = fs.url(filename)
 
             try:
                 # Create the user (employee)
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=3, first_name=first_name, last_name=last_name, profile_pic=passport_url)
+                    email=email, 
+                    password=password, 
+                    user_type=3, 
+                    first_name=first_name, 
+                    last_name=last_name, 
+                    profile_pic=passport_url if passport_url else ""
+                )
                 user.gender = gender
                 user.address = address
-                user.employee.division = division
-                user.employee.department = department
-                user.employee.team_lead = manager  # Assign manager as the team lead
-                user.employee.phone_number = phone_number
-                user.employee.designation = designation
                 user.save()
+
+                employee = user.employee
+                employee.division = division
+                employee.department = department
+                employee.team_lead = manager  # Assign manager as the team lead
+                employee.phone_number = phone_number
+                employee.designation = designation
+                employee.save()
 
                 messages.success(request, "Successfully Added Employee")
                 return redirect(reverse('manage_employee_by_manager'))  # Redirect to employee management page
@@ -939,6 +949,11 @@ def delete_employee_by_manager(request, employee_id):
 
     # Delete the employee
     employee.delete()
+
+    user = employee.admin
+    if user:
+        user.delete()
+
     messages.success(request, "Employee deleted successfully.")
     return redirect(reverse('manage_employee_by_manager'))
 
@@ -1105,11 +1120,13 @@ def manager_view_notification(request):
     # if date_to:
     #     leave_history = leave_history.filter(updated_at__lte=date_to)
 
+    notification_from_admin_paginator = Paginator(notification_from_admin,3)
     leave_paginator = Paginator(leave_history, 3)  # Show 3 items per page
     asset_notification_paginator = Paginator(asset_notification_history, 3)
     resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
 
     page_number = request.GET.get('page')
+    notification_from_admin_obj = notification_from_admin_paginator.get_page(page_number)
     leave_page_obj = leave_paginator.get_page(page_number)
     asset_notification_page_obj = asset_notification_paginator.get_page(page_number)
     resolved_issues_page_obj = resolved_issues_paginator.get_page(page_number)
@@ -1120,6 +1137,7 @@ def manager_view_notification(request):
         'asset_issue_notifications': pending_asset_issues,
         'pending_issue': pending_asset_issues.filter(status='pending'),
         'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
+        'notification_from_admin_obj' : notification_from_admin_obj,
 
         # this is for historyy
         'leave_page_obj': leave_page_obj,
