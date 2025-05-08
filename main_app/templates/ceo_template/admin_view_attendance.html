@@ -5,41 +5,97 @@
 
 {% block custom_css %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 <style>
+    :root {
+        --primary-color:rgb(70, 120, 229);
+        --primary-hover:rgb(56, 83, 202);
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --info-color: #3b82f6;
+        --light-bg: #f8fafc;
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
     .filter-card {
-        background-color: #f8fafc;
+        background-color: white;
         border: none;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+    }
+    
+    .filter-card:hover {
+        box-shadow: var(--card-hover-shadow);
     }
     
     .results-card {
+        background-color: white;
         border: none;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+    
+    .card-header {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 1rem 1.5rem;
     }
     
     .select2-container--default .select2-selection--single {
-        height: 44px;
+        height: 48px;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+    
+    .select2-container--default .select2-selection--single:hover {
+        border-color: var(--primary-color);
     }
     
     .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 42px;
+        height: 46px;
     }
     
     .btn-primary {
-        background-color: #4f46e5;
-        border-color: #4f46e5;
-        height: 44px;
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        height: 48px;
+        border-radius: 8px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        border-color: var(--primary-hover);
+        transform: translateY(-2px);
+    }
+    
+    .btn-primary:active {
+        transform: translateY(0);
     }
     
     .status-badge {
-        padding: 5px 10px;
-        border-radius: 12px;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
+        text-transform: capitalize;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
     
     .present {
@@ -53,58 +109,316 @@
     }
     
     .late {
-        background-color: #fef9c3;
-        color: #854d0e;
+        background-color: #fef3c7;
+        color: #92400e;
     }
     
     .halfday {
-        background-color: #e0f2fe;
-        color: #075985;
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .holiday {
+        background-color: #ede9fe;
+        color: #5b21b6;
     }
     
     .attendance-table {
         border-collapse: separate;
         border-spacing: 0;
+        width: 100%;
     }
     
     .attendance-table thead th {
         background-color: #f8fafc;
         border: none;
-        padding: 12px 16px;
+        padding: 14px 20px;
         font-weight: 600;
         color: #64748b;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
     }
     
     .attendance-table tbody td {
-        padding: 12px 16px;
+        padding: 14px 20px;
         border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
     }
     
     .attendance-table tbody tr:last-child td {
         border-bottom: none;
     }
     
-    .summary-card {
+    .attendance-table tbody tr:hover td {
         background-color: #f8fafc;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 20px;
+    }
+    
+    .summary-card {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
     }
     
     .summary-item {
+        background-color: white;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: var(--card-shadow);
         display: flex;
         align-items: center;
-        margin-right: 20px;
+        gap: 12px;
+        min-width: 160px;
+        transition: all 0.3s;
+    }
+    
+    .summary-item:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--card-hover-shadow);
     }
     
     .summary-count {
-        font-weight: 600;
-        margin-left: 8px;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: #1e293b;
+    }
+    
+    .summary-label {
+        font-size: 0.875rem;
+        color: #64748b;
     }
     
     .date-range {
         color: #64748b;
-        font-size: 14px;
+        font-size: 0.875rem;
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Date input styles */
+    .date-input-wrapper {
+        position: relative;
+    }
+    
+    .date-input-wrapper i {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #64748b;
+    }
+    
+    .flatpickr-input[readonly] {
+        background-color: white;
+        cursor: pointer;
+        height: 48px;
+        border-radius: 8px;
+    }
+    
+    .flatpickr-day.selected {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    /* Loading animation */
+    .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 0;
+    }
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s ease-in-out infinite;
+        margin-bottom: 16px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        color: #cbd5e1;
+        margin-bottom: 16px;
+    }
+    
+    .empty-state p {
+        color: #64748b;
+        font-size: 1rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .summary-item {
+            flex: 1 1 100%;
+        }
+        
+        .attendance-table thead {
+            display: none;
+        }
+        
+        .attendance-table tbody tr {
+            display: block;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .attendance-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .attendance-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            margin-right: 16px;
+            flex: 1;
+        }
+        
+        .attendance-table tbody td span {
+            flex: 2;
+            text-align: right;
+        }
+    }
+    
+    /* Pulse animation for new records */
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+    }
+    
+    .new-record {
+        position: relative;
+    }
+    
+    .new-record::after {
+        content: "New";
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: var(--danger-color);
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 10px;
+        animation: pulse 2s infinite;
+    }
+    
+    /* Progress bar for attendance */
+    .progress-container {
+        width: 100%;
+        background-color: #e2e8f0;
+        border-radius: 10px;
+        margin: 20px 0;
+        height: 10px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        border-radius: 10px;
+        background-color: var(--primary-color);
+        transition: width 0.5s ease;
+    }
+    
+    /* Tooltip styles */
+    [data-tooltip] {
+        position: relative;
+        cursor: pointer;
+    }
+    
+    [data-tooltip]:hover::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #1e293b;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 100;
+        margin-bottom: 8px;
+    }
+    
+    [data-tooltip]:hover::after {
+        content: "";
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px;
+        border-style: solid;
+        border-color: #1e293b transparent transparent transparent;
+        margin-bottom: 3px;
+    }
+
+    /* Print-specific styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printable-area, #printable-area * {
+            visibility: visible;
+        }
+        #printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .card-header {
+            background-color: #4a6baf !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .attendance-table {
+            width: 100% !important;
+            font-size: 12px !important;
+        }
+        .attendance-table th {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .status-badge {
+            padding: 3px 6px !important;
+            font-size: 10px !important;
+        }
     }
 </style>
 {% endblock %}
@@ -114,34 +428,53 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <div class="card filter-card mb-4">
+                <div class="card filter-card mb-4 animate__animated animate__fadeIn">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i>&nbsp; &nbsp;Filter Attendance Records for Managers and Employees</h3>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-4">View Attendance</h4>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Department</label>
                                 <select class="form-control select2" id="department">
-                                    <option value="">All Departments</option>
+                                    <option value="">-- Select Department --</option>
+                                    <option value="all">All Departments</option>
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
+                           
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Employee</label>
                                 <select class="form-control select2" id="employee">
-                                    <option value="">All Employees</option>
+                                    <option value="">-- Select Employee --</option>
+                                    <option value="all">All Employees</option>
                                     {% for employee in employees %}
-                                    <option value="{{ employee.employee_id }}" data-department="{{ employee.department.id }}">{{ employee.admin.get_full_name }}</option>
+                                    <option value="{{ employee.employee_id }}" data-department="{{ employee.department.id }}">
+                                        {{ employee.admin.get_full_name }} ({{ employee.department.name }})
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
                         </div>
-
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Manager</label>
+                            <select class="form-control select2" id="manager">
+                                <option value="">-- Select Manager --</option>
+                                <option value="all">All Managers</option>
+                                {% if managers %}
+                                    {% for manager in managers %}
+                                    <option value="{{ manager.id }}">{{ manager.admin.get_full_name }}</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Time Period</label>
                                 <select class="form-control" id="time_period">
+                                    
                                     <option value="week">This Week</option>
                                     <option value="month" selected>This Month</option>
                                     <option value="year">This Year</option>
@@ -150,31 +483,65 @@
                             </div>
                             <div class="col-md-4 mb-3 custom-date" style="display:none;">
                                 <label class="form-label">From Date</label>
-                                <input type="date" class="form-control" id="from_date">
+                                <div class="date-input-wrapper">
+                                    <input type="text" class="form-control flatpickr-input" id="from_date" readonly placeholder="Select start date">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3 custom-date" style="display:none;">
                                 <label class="form-label">To Date</label>
-                                <input type="date" class="form-control" id="to_date">
+                                <div class="date-input-wrapper">
+                                    <input type="text" class="form-control flatpickr-input" id="to_date" readonly placeholder="Select end date">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3 d-flex align-items-end">
                                 <button id="view_attendance" class="btn btn-primary w-100">
-                                    <i class="fas fa-filter mr-2"></i>Filter Results
+                                   <i class="fas fa-search"></i> View Attendance 
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card results-card" id="attendance_results" style="display:none;">
+                <div class="card results-card animate__animated animate__fadeIn" id="attendance_results" style="display:none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>Attendance Records</h3>
+                        <div class="actions">
+                            <button class="btn btn-sm btn-outline-light" id="print_btn" data-tooltip="Print Records">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" id="export_btn" data-tooltip="Export to Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-4">Attendance Records</h4>
+                        <div class="employee-info-container mb-4 d-flex justify-content-between align-items-start">
+                            <div class="employee-details">
+                                <b><div class="employee-name h4 mb-1" id="employee_name"></div></b>
+                                <div class="employee-department text-muted">
+                                    <i class="fas fa-building mr-1"></i>
+                                    <span id="employee_department"></span>
+                                </div>
+                            </div>
+                            <div class="date-range text-muted">
+                                <i class="fas fa-calendar-week mr-1"></i>
+                                <span id="date_range"></span>
+                            </div>
+                        </div>
                         
-                        <div class="d-flex flex-wrap mb-4" id="attendance_summary"></div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="attendance_progress"></div>
+                        </div>
                         
-                        <div class="table-responsive">
+                        <div class="summary-card" id="attendance_summary"></div>
+                        
+                        <div class="table-responsive" id="printable-area">
                             <table class="table attendance-table" id="attendance_table">
                                 <thead>
                                     <tr>
+                                        <th>User Type</th>
                                         <th>Date</th>
                                         <th>Day</th>
                                         <th>Status</th>
@@ -189,7 +556,10 @@
                             </table>
                         </div>
                         
-                        <div class="mt-3 date-range" id="date_range"></div>
+                        <div class="empty-state" id="empty_state" style="display: none;">
+                            <i class="fas fa-calendar-times"></i>
+                            <p>No attendance records found for the selected criteria</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -201,227 +571,402 @@
 {% block custom_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-$(document).ready(function() {
-    // Initialize Select2
-    $('.select2').select2({
-        width: '100%',
-        placeholder: $(this).find('option[value=""]').text()
-    });
+    $(document).ready(function() {
+        // Initialize Select2
+        $('.select2').select2({
+            width: '100%',
+            placeholder: function() {
+                return $(this).data('placeholder') || 'Select an option';
+            }
+        });
 
-    // Department change handler to filter employees
-    $('#department').change(function() {
-        const departmentId = $(this).val();
-        const $employeeSelect = $('#employee');
-        
-        // Show all options first
-        $employeeSelect.find('option').show();
-        
-        if (departmentId) {
-            // Hide employees not in the selected department, except the "All Employees" option
-            $employeeSelect.find('option[value!=""]').each(function() {
-                const employeeDept = $(this).data('department');
-                if (employeeDept != departmentId) {
-                    $(this).hide();
-                }
-            });
-        }
-        
-        // Reset selection and update Select2
-        $employeeSelect.val('').trigger('change');
-        $employeeSelect.select2();
-    });
+        // Initialize date pickers
+        const fromDatePicker = flatpickr("#from_date", {
+            dateFormat: "Y-m-d",
+            defaultDate: "today",
+            maxDate: "today"
+        });
 
-    // Toggle custom date range fields
-    $('#time_period').change(function() {
-        if ($(this).val() === 'custom') {
-            $('.custom-date').show();
-        } else {
-            $('.custom-date').hide();
-        }
-    });
+        const toDatePicker = flatpickr("#to_date", {
+            dateFormat: "Y-m-d",
+            defaultDate: "today",
+            maxDate: "today"
+        });
 
-    // View Attendance button click handler
-    $('#view_attendance').click(function() {
-        const employeeId = $('#employee').val();
-        const departmentId = $('#department').val();
-        const timePeriod = $('#time_period').val();
-        
-        let year = moment().format('YYYY');
-        let month = null;
-        let week = null;
-        let fromDate = null;
-        let toDate = null;
+        // Toggle custom date range fields
+        $('#time_period').change(function() {
+            if ($(this).val() === 'custom') {
+                $('.custom-date').show();
+            } else {
+                $('.custom-date').hide();
+            }
+        });
 
-        if (timePeriod === 'custom') {
-            fromDate = $('#from_date').val();
-            toDate = $('#to_date').val();
+        // Department change handler
+        $('#department').change(function() {
+            const departmentId = $(this).val();
+            const $employeeSelect = $('#employee');
             
-            if (!fromDate || !toDate) {
-                alert('Please select both From and To dates');
+            $employeeSelect.empty().append('<option value="">Select Employee</option>');
+            
+            if (departmentId && departmentId !== 'all') {
+                // Filter employees by department
+                const filteredEmployees = allEmployees.filter(emp => emp.department_id == departmentId);
+                filteredEmployees.forEach(emp => {
+                    $employeeSelect.append($('<option>', {
+                        value: emp.id,
+                        text: emp.name
+                    }));
+                });
+            } else if (departmentId === 'all') {
+                // Show all employees
+                allEmployees.forEach(emp => {
+                    $employeeSelect.append($('<option>', {
+                        value: emp.id,
+                        text: `${emp.name} (${emp.department_name})`
+                    }));
+                });
+            }
+            
+            $employeeSelect.trigger('change');
+        });
+
+        // View Attendance button handler
+        $('#view_attendance').click(function() {
+            const employeeId = $('#employee').val();
+            const departmentId = $('#department').val();
+            const managerId = $('#manager').val();
+            const timePeriod = $('#time_period').val();
+            
+            // Validate at least one filter is selected
+            if (!employeeId && !departmentId && !managerId) {
+                showAlert('Please select at least one filter (employee, department, or manager)', 'warning');
                 return;
             }
             
-            year = moment(fromDate).format('YYYY');
-        } else {
-            if (timePeriod === 'week') {
-                fromDate = moment().startOf('week').add(1, 'days').format('YYYY-MM-DD');
-                toDate = moment().endOf('week').add(1, 'days').format('YYYY-MM-DD');
-            }
-            else if (timePeriod === 'month') {
-                month = moment().format('MM');
-            }
-        }
+            // Prepare data for AJAX request
+            const data = {
+                employee_id: employeeId || '',
+                department_id: departmentId || '',
+                manager_id: managerId || '',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            };
 
-        fetchAttendanceData(employeeId, departmentId, year, month, week, fromDate, toDate);
-    });
-
-    // Fetch attendance data via AJAX
-    function fetchAttendanceData(employeeId, departmentId, year, month, week, fromDate, toDate) {
-        const data = {
-            employee_id: employeeId,
-            department_id: departmentId,
-            year: year,
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        };
-
-        if (month) data.month = month;
-        if (week) data.week = week;
-        if (fromDate && toDate) {
-            data.from_date = fromDate;
-            data.to_date = toDate;
-        }
-
-        $.ajax({
-            url: "{% url 'get_employee_attendance' %}",
-            type: "POST",
-            data: data,
-            beforeSend: function() {
-                $('#attendance_results').hide();
-                $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading attendance data...</p></td></tr>');
-            },
-            success: function(response) {
-                if (response.error) {
-                    $('#attendance_data').html(`<tr><td colspan="6" class="text-center py-4 text-danger">${response.error}</td></tr>`);
-                    $('#attendance_results').show();
-                } else if (response.length > 0) {
-                    renderAttendanceTable(response);
-                    $('#attendance_results').show();
-                } else {
-                    $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4">No attendance records found for the selected criteria.</td></tr>');
-                    $('#attendance_results').show();
-                }
-            },
-            error: function(xhr, status, error) {
-                $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load attendance data. Please try again.</td></tr>');
-                $('#attendance_results').show();
-                console.error("Error:", error);
-            }
-        });
-    }
-
-    // Render attendance table
-    function renderAttendanceTable(data) {
-        let tableHtml = '';
-        let presentCount = 0;
-        let absentCount = 0;
-        let lateCount = 0;
-        let halfDayCount = 0;
-
-        data.forEach(r => {
-            const date = new Date(r.date);
-            const day = date.toLocaleDateString([], { weekday: 'short' });
-            const inTime = r.clock_in ? formatTime(r.clock_in) : '-';
-            const outTime = r.clock_out ? formatTime(r.clock_out) : '-';
-            const hours = calculateHours(r.clock_in, r.clock_out);
-            const statusClass = getStatusClass(r.status.toLowerCase());
-
-            // Count status types
-            if (r.status.toLowerCase().includes('present')) presentCount++;
-            if (r.status.toLowerCase().includes('absent')) absentCount++;
-            if (r.status.toLowerCase().includes('late')) lateCount++;
-            if (r.status.toLowerCase().includes('half')) halfDayCount++;
-
-            tableHtml += `
-                <tr>
-                    <td>${r.date}</td>
-                    <td>${day}</td>
-                    <td><span class="status-badge ${statusClass}">${r.status}</span></td>
-                    <td>${inTime}</td>
-                    <td>${outTime}</td>
-                    <td>${hours}</td>
-                </tr>
-            `;
-        });
-
-        $('#attendance_data').html(tableHtml);
-        
-        // Update summary
-        const summaryHtml = `
-            <div class="summary-item">
-                <span class="status-badge present">Present</span>
-                <span class="summary-count">${presentCount}</span>
-            </div>
-            <div class="summary-item">
-                <span class="status-badge absent">Absent</span>
-                <span class="summary-count">${absentCount}</span>
-            </div>
-            <div class="summary-item">
-                <span class="status-badge late">Late</span>
-                <span class="summary-count">${lateCount}</span>
-            </div>
-            <div class="summary-item">
-                <span class="status-badge halfday">Half Day</span>
-                <span class="summary-count">${halfDayCount}</span>
-            </div>
-        `;
-        $('#attendance_summary').html(summaryHtml);
-        
-        // Update date range display
-        const timePeriod = $('#time_period').val();
-        let dateRangeText = '';
-        
-        if (timePeriod === 'custom') {
-            dateRangeText = `Showing records from ${$('#from_date').val()} to ${$('#to_date').val()}`;
-        } else {
-            const today = new Date();
+            // Get current date for year/month calculations
+            const currentDate = moment();
             
-            if (timePeriod === 'week') {
-                const start = moment().startOf('week').add(1, 'days').format('MMM D');
-                const end = moment().endOf('week').add(1, 'days').format('MMM D, YYYY');
-                dateRangeText = `Showing this week (${start} - ${end})`;
-            } 
-            else if (timePeriod === 'month') {
-                dateRangeText = `Showing ${today.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`;
+            // Handle time period filters
+            if (timePeriod === 'custom') {
+                const fromDate = $('#from_date').val();
+                const toDate = $('#to_date').val();
+                
+                if (!fromDate || !toDate) {
+                    showAlert('Please select both From and To dates', 'warning');
+                    return;
+                }
+                
+                if (moment(toDate).isBefore(fromDate)) {
+                    showAlert('To Date must be after From Date', 'warning');
+                    return;
+                }
+                
+                data.from_date = fromDate;
+                data.to_date = toDate;
+                data.year = moment(fromDate).year();
+            } else {
+                data.year = currentDate.year();
+                
+                if (timePeriod === 'today') {
+                    const today = currentDate.format('YYYY-MM-DD');
+                    data.from_date = today;
+                    data.to_date = today;
+                } else if (timePeriod === 'week') {
+                    data.week = currentDate.week();
+                    data.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
+                    data.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
+                } else if (timePeriod === 'month') {
+                    data.month = currentDate.format('MM');
+                    data.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
+                    data.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
+                } else if (timePeriod === 'year') {
+                    data.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
+                    data.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
+                }
             }
-            else if (timePeriod === 'year') {
-                dateRangeText = `Showing ${today.getFullYear()}`;
-            }
+
+            fetchAttendanceData(data);
+        });
+
+        // Print button handler - Updated print functionality
+        $('#print_btn').click(function() {
+            // Get the HTML content to print
+            const printContent = $('#printable-area').html();
+            const employeeName = $('#employee_name').text();
+            const employeeDepartment = $('#employee_department').text();
+            const dateRange = $('#date_range').text();
+            
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank');
+            
+            // Write the print content to the new window
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Attendance Records</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { color: #333; text-align: center; margin-bottom: 10px; }
+                        .print-header { text-align: center; margin-bottom: 20px; }
+                        .print-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th { background-color: #f2f2f2; text-align: left; padding: 8px; border: 1px solid #ddd; }
+                        td { padding: 8px; border: 1px solid #ddd; }
+                        .status-badge { padding: 3px 6px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+                        .present { background-color: #dcfce7; color: #166534; }
+                        .absent { background-color: #fee2e2; color: #991b1b; }
+                        .late { background-color: #fef3c7; color: #92400e; }
+                        .halfday { background-color: #dbeafe; color: #1e40af; }
+                        .holiday { background-color: #ede9fe; color: #5b21b6; }
+                        .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-header">
+                        <h1>Attendance Records</h1>
+                        <div class="print-info">
+                            <div><strong>Employee:</strong> ${employeeName}</div>
+                            <div><strong>Department:</strong> ${employeeDepartment}</div>
+                            <div><strong>Period:</strong> ${dateRange}</div>
+                        </div>
+                    </div>
+                    ${printContent}
+                    <div class="footer">
+                        Printed on ${new Date().toLocaleString()}
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            
+            // Wait for content to load before printing
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+        });
+
+        // Export to Excel button handler
+        $('#export_btn').click(function() {
+            // Get the table element
+            const table = document.getElementById('attendance_table');
+            
+            // Create a workbook with one worksheet
+            const wb = XLSX.utils.table_to_book(table, {sheet: "Attendance Records"});
+            
+            // Generate current date for filename
+            const dateStr = moment().format('YYYY-MM-DD');
+            
+            // Export the workbook
+            XLSX.writeFile(wb, `Attendance_Records_${dateStr}.xlsx`);
+        });
+
+        // Fetch attendance data
+        function fetchAttendanceData(data) {
+            $.ajax({
+                url: "{% url 'get_manager_and_employee_attendance' %}",
+                type: "POST",
+                data: data,
+                beforeSend: function() {
+                    $('#attendance_results').hide();
+                    $('#empty_state').hide();
+                    $('#attendance_data').html(`
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="loading-spinner">
+                                    <div class="spinner"></div>
+                                    <p>Loading attendance data...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `);
+                },
+                success: function(response) {
+                    if (response.error) {
+                        showAlert(response.error, 'error');
+                    } else if (response.length > 0) {
+                        renderAttendanceTable(response);
+                        $('#attendance_results').show();
+                    } else {
+                        $('#empty_state').show();
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = "Failed to load attendance data";
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    showAlert(errorMsg, 'error');
+                }
+            });
         }
-        
-        $('#date_range').text(dateRangeText);
-    }
 
-    // Format time (HH:mm)
-    function formatTime(dateTime) {
-        return moment(dateTime).format('HH:mm');
-    }
+        // Render attendance table
+        function renderAttendanceTable(data) {
+            let tableHtml = '';
+            let presentCount = 0, absentCount = 0, lateCount = 0, halfDayCount = 0, holidayCount = 0;
 
-    // Calculate working hours
-    function calculateHours(clockIn, clockOut) {
-        if (!clockIn || !clockOut) return '-';
-        const diff = moment(clockOut).diff(moment(clockIn), 'hours', true);
-        return diff.toFixed(1) + 'h';
-    }
+            data.forEach(record => {
+                // Count status types
+                const status = record.status.toLowerCase();
+                if (status.includes('present')) presentCount++;
+                else if (status.includes('absent')) absentCount++;
+                else if (status.includes('late')) lateCount++;
+                else if (status.includes('half')) halfDayCount++;
+                else if (status.includes('holiday')) holidayCount++;
 
-    // Get status badge class
-    function getStatusClass(status) {
-        if (status.includes('present')) return 'present';
-        if (status.includes('absent')) return 'absent';
-        if (status.includes('late')) return 'late';
-        if (status.includes('half')) return 'halfday';
-        return '';
-    }
-});
+                // Format data
+                const date = moment(record.date).format('YYYY-MM-DD');
+                const day = moment(record.date).format('ddd');
+                const inTime = record.clock_in ? moment(record.clock_in).format('HH:mm') : '-';
+                const outTime = record.clock_out ? moment(record.clock_out).format('HH:mm') : '-';
+                const hours = calculateHours(record.clock_in, record.clock_out);
+                const statusClass = getStatusClass(status);
+                const statusIcon = getStatusIcon(status);
+
+                tableHtml += `
+                    <tr>
+                        <td><span class="badge ${record.user_type === 'Manager' ? 'bg-primary' : 'bg-secondary'}">${record.user_type}</span></td>
+
+                        <td>${date}</td>
+                        <td>${day}</td>
+                        <td><span class="status-badge ${statusClass}">${statusIcon}${record.status}</span></td>
+                        <td>${inTime}</td>
+                        <td>${outTime}</td>
+                        <td>${hours}</td>
+                    </tr>
+                `;
+            });
+
+            $('#attendance_data').html(tableHtml);
+            updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount);
+            
+            // Update employee name and date range
+            const fromDate = data[0]?.date ? moment(data[0].date).format('MMM D, YYYY') : '';
+            const toDate = data[data.length - 1]?.date ? moment(data[data.length - 1].date).format('MMM D, YYYY') : '';
+            $('#employee_name').text(data[0]?.name || 'Multiple Employees');
+            $('#employee_department').text(data[0]?.department || 'Multiple Departments');
+            $('#date_range').text(`${fromDate} - ${toDate}`);
+        }
+
+        // Helper functions
+        function calculateHours(clockIn, clockOut) {
+            if (!clockIn || !clockOut) return '-';
+            const diff = moment(clockOut).diff(moment(clockIn), 'minutes');
+            return `${Math.floor(diff / 60)}h ${diff % 60}m`;
+        }
+
+        function getStatusClass(status) {
+            if (status.includes('present')) return 'present';
+            if (status.includes('absent')) return 'absent';
+            if (status.includes('late')) return 'late';
+            if (status.includes('half')) return 'halfday';
+            if (status.includes('holiday')) return 'holiday';
+            return '';
+        }
+
+        function getStatusIcon(status) {
+            if (status.includes('present')) return '<i class="fas fa-check-circle mr-1"></i>';
+            if (status.includes('absent')) return '<i class="fas fa-times-circle mr-1"></i>';
+            if (status.includes('late')) return '<i class="fas fa-clock mr-1"></i>';
+            if (status.includes('half')) return '<i class="fas fa-adjust mr-1"></i>';
+            if (status.includes('holiday')) return '<i class="fas fa-umbrella-beach mr-1"></i>';
+            return '';
+        }
+
+        function updateSummaryCards(present, absent, late, halfDay, holiday) {
+            const total = present + absent + late + halfDay + holiday;
+            const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+            
+            $('#attendance_summary').html(`
+                <div class="summary-item">
+                    <div>
+                        <div class="summary-count">${present}</div>
+                        <div class="summary-label">Present</div>
+                    </div>
+                    <div class="status-badge present"><i class="fas fa-check"></i></div>
+                </div>
+                <div class="summary-item">
+                    <div>
+                        <div class="summary-count">${absent}</div>
+                        <div class="summary-label">Absent</div>
+                    </div>
+                    <div class="status-badge absent"><i class="fas fa-times"></i></div>
+                </div>
+                <div class="summary-item">
+                    <div>
+                        <div class="summary-count">${late}</div>
+                        <div class="summary-label">Late</div>
+                    </div>
+                    <div class="status-badge late"><i class="fas fa-clock"></i></div>
+                </div>
+                <div class="summary-item">
+                    <div>
+                        <div class="summary-count">${halfDay}</div>
+                        <div class="summary-label">Half Day</div>
+                    </div>
+                    <div class="status-badge halfday"><i class="fas fa-adjust"></i></div>
+                </div>
+                <div class="summary-item">
+                    <div>
+                        <div class="summary-count">${holiday}</div>
+                        <div class="summary-label">Holidays</div>
+                    </div>
+                    <div class="status-badge holiday"><i class="fas fa-umbrella-beach"></i></div>
+                </div>
+                <div class="summary-item">
+                    <div>
+                        <div class="summary-count">${percentage}%</div>
+                        <div class="summary-label">Attendance</div>
+                    </div>
+                    <div><i class="fas fa-chart-line text-primary"></i></div>
+                </div>
+            `);
+            
+            $('#attendance_progress').css('width', `${percentage}%`);
+        }
+
+        function showAlert(message, type) {
+            const alertClass = type === 'error' ? 'danger' : type;
+            const alertHtml = `
+                <div class="alert alert-${alertClass} alert-dismissible fade show">
+                    <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                </div>
+            `;
+            $('.container-fluid').prepend(alertHtml);
+            setTimeout(() => $('.alert').alert('close'), 5000);
+        }
+
+        // Initialize employee data
+        const allEmployees = [
+            {% for employee in employees %}
+            {
+                id: "{{ employee.employee_id }}",
+                name: "{{ employee.admin.get_full_name }}",
+                department_id: "{{ employee.department.id }}",
+                department_name: "{{ employee.department.name }}"
+            },
+            {% endfor %}
+        ];
+
+        // Set default dates
+        $('#from_date').val(moment().format('YYYY-MM-DD'));
+        $('#to_date').val(moment().format('YYYY-MM-DD'));
+    });
 </script>
 {% endblock %}
