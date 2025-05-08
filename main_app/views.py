@@ -202,20 +202,21 @@ def clock_in_out(request):
 
             # Create 9:15 AM and 1:00 PM on the same IST date
             late_time = ist.localize(datetime.combine(ist_time.date(), time(9, 15)))
+            late_time_ist = ist.localize(datetime.combine(ist_time.date(), time(9, 15)))
             half_day_time = ist.localize(datetime.combine(ist_time.date(), time(13, 0)))  # 1:00 PM
 
             print("Current IST Time:", ist_time)
             print("Late Time Threshold:", late_time)
             print("Half Day Threshold:", half_day_time)
-
+            leave_status = ""
             # Compare
             if ist_time > half_day_time:
-                status = 'half_day'
+                leave_status = 'half_day'
             elif ist_time > late_time:
                 status = 'late'
             else:
                 status = 'present'
-
+            print("statusstatus>>>>>>>>>>>>>>>",status)
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
                 date = now.date(),
@@ -231,7 +232,19 @@ def clock_in_out(request):
                 activity_type='clock_in',
                 related_record=new_record
             )
-
+            # if leave_status:
+            #     user = CustomUser.objects.filter(id = request.user.id).first()
+            #     employee = Employee.objects.filter(admin= user)
+            #     LeaveReportEmployee.objects.create(
+            #         employee = employee,
+            #         leave_type = leave_status,
+            #         start_date =late_time_ist, 
+            #         end_date = now,
+            #         message = "leave from late login",
+            #         status = 1,
+            #         created_at = datetime.now(),
+            #         updated_at = datetime.now()
+            #     )
         return JsonResponse({'status': 'success'})
     return redirect('home')
 
