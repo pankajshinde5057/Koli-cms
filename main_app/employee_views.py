@@ -451,8 +451,13 @@ def employee_apply_leave(request):
 def employee_feedback(request):
     form = FeedbackEmployeeForm(request.POST or None)
     employee = get_object_or_404(Employee, admin_id=request.user.id)
+    feedbacks_list = FeedbackEmployee.objects.filter(employee=employee).order_by('-created_at')
+    paginator = Paginator(feedbacks_list, 5)  # 5 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     context = {
         'form': form,
+        'page_obj': page_obj, 
         'feedbacks': FeedbackEmployee.objects.filter(employee=employee),
         'page_title': 'Employee Feedback'
 
