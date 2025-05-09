@@ -89,7 +89,7 @@ urlpatterns = [
      path('break/', views.break_action, name='break_action'),
 
      path('api/attendance/clock/', views.AttendanceActionView.as_view(), name='clock_in_out_api'),
-     
+     path("get_employee_attendance_by_admin/", ceo_views.get_manager_and_employee_attendance, name='get_manager_and_employee_attendance'),
 
      # Manager
      path("manager/home/", manager_views.manager_home, name='manager_home'),

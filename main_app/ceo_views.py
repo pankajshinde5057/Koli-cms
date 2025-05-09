@@ -18,6 +18,9 @@ from django.contrib.auth.decorators import login_required
 from asset_app.models import AssetIssue
 from django.db.models import Avg,Count,Q,F,Max
 from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
+from django.utils.timezone import localdate
+
+
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -1128,18 +1131,21 @@ def admin_view_attendance(request):
         (f"{i:02}", datetime(current_year, i, 1).strftime('%B')) 
         for i in range(1, 13)
     ]
-
+    managers = None
     if hasattr(request.user, 'manager'):
         manager = request.user.manager
         departments = Department.objects.filter(division=manager.division)
         employees = Employee.objects.filter(department__in=departments)
+        managers = Manager.objects.all()
     else:
         departments = Department.objects.all()
         employees = Employee.objects.all()
+        managers = Manager.objects.all()
 
     context = {
         'departments': departments,
         'employees': employees,
+        'managers': managers,
         'page_title': 'View Attendance',
         'months': months,
         'years': years,
@@ -1148,27 +1154,6 @@ def admin_view_attendance(request):
     }
     return render(request, 'ceo_template/admin_view_attendance.html', context)
 
-def format_timedelta(delta):
-    if not isinstance(delta, timedelta):
-        return "0 days"
-
-    days = delta.days
-    seconds = delta.seconds
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    seconds = seconds % 60
-
-    parts = []
-    if days > 0:
-        parts.append(f"{days} day{'s' if days != 1 else ''}")
-    if hours > 0:
-        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
-    if minutes > 0:
-        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
-    if seconds > 0 or not parts:
-        parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
-    
-    return ' '.join(parts)
 
 @login_required
 def admin_asset_issue_history(request):
@@ -1201,3 +1186,179 @@ def admin_asset_issue_history(request):
     }
     
     return render(request, 'ceo_template/admin_view_asset_issue_history.html', context)
+ 
+
+
+
+@csrf_exempt
+def get_manager_and_employee_attendance(request):
+    if request.method == 'POST':
+        try:
+            from django.db.models import Case, When, Value, CharField
+            from datetime import timedelta, time
+            
+            # Get all filter parameters
+            employee_id = request.POST.get('employee_id')
+            department_id = request.POST.get('department_id')
+            manager_id = request.POST.get('manager_id')
+            month = request.POST.get('month')
+            year = request.POST.get('year', timezone.now().year)  # Default to current year
+            week = request.POST.get('week')
+            from_date = request.POST.get('from_date')
+            to_date = request.POST.get('to_date')
+
+            # Determine date range
+            if from_date and to_date:
+                start_date = datetime.strptime(from_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(to_date, '%Y-%m-%d').date()
+            elif week and year:
+                week = int(week)
+                year = int(year)
+                first_day_of_year = datetime(year, 1, 1).date()
+                start_date = first_day_of_year + timedelta(weeks=week - 1)
+                end_date = start_date + timedelta(days=6)
+            elif month and year:
+                year = int(year)
+                month = int(month)
+                start_date = date(year, month, 1)
+                end_date = date(year, month + 1, 1) - timedelta(days=1) if month < 12 else date(year, 12, 31)
+            else:
+                # Default to current month if no range specified
+                today = localdate()
+                start_date = today.replace(day=1)
+                end_date = today
+
+            # Get all users we need to report on
+            users = CustomUser.objects.all()
+            
+            if employee_id:
+                employee = Employee.objects.get(employee_id=employee_id)
+                users = users.filter(employee=employee)
+            elif department_id and department_id != 'all':
+                users = users.filter(
+                    Q(employee__department_id=department_id) |
+                    Q(manager__department_id=department_id)
+                )
+            
+            if manager_id and manager_id != 'all':
+                users = users.filter(
+                    id__in=Manager.objects.filter(id=manager_id).values_list('admin_id', flat=True)
+                )
+
+            # Get all holidays in the date range
+            holidays = Holiday.objects.filter(
+                date__gte=start_date,
+                date__lte=end_date
+            ).values_list('date', flat=True)
+
+            # Get all attendance records in the date range
+            attendance_records = AttendanceRecord.objects.filter(
+                user__in=users,
+                date__gte=start_date,
+                date__lte=end_date
+            ).order_by('date')
+
+            # Generate all dates in the range
+            date_range = []
+            current_date = start_date
+            while current_date <= end_date:
+                date_range.append(current_date)
+                current_date += timedelta(days=1)
+
+            attendance_list = []
+            for user in users:
+                # Determine if user is employee or manager
+                if hasattr(user, 'employee'):
+                    person = user.employee
+                    name = f"{user.first_name} {user.last_name}"
+                    department = person.department.name if person.department else ""
+                    user_type = "Employee"
+                elif hasattr(user, 'manager'):
+                    person = user.manager
+                    name = f"{user.first_name} {user.last_name}"
+                    department = person.department.name if person.department else ""
+                    user_type = "Manager"
+                else:
+                    continue
+
+                for day in date_range:
+                    # Check if it's a Sunday or 2nd/4th Saturday
+                    is_sunday = day.weekday() == 6
+                    is_saturday = day.weekday() == 5
+                    is_holiday = day in holidays
+                    
+                    # Check if it's 2nd or 4th Saturday
+                    if is_saturday:
+                        week_of_month = (day.day - 1) // 7 + 1
+                        is_2nd_or_4th_saturday = week_of_month in [2, 4]
+                    else:
+                        is_2nd_or_4th_saturday = False
+                    
+                    # Determine if it's a holiday/weekend
+                    if is_sunday or is_2nd_or_4th_saturday or is_holiday:
+                        status = "holiday"
+                        attendance_list.append({
+                            "date": str(day),
+                            "name": name,
+                            "department": department,
+                            "user_type": user_type,
+                            "status": status,
+                            "clock_in": "",
+                            "clock_out": ""
+                        })
+                        continue
+
+                    # Find attendance record for this user/day
+                    record = next((r for r in attendance_records if r.user_id == user.id and r.date == day), None)
+
+                    if record:
+                        # Determine status based on clock-in time
+                        clock_in_time = record.clock_in.time() if record.clock_in else None
+                        
+                        if clock_in_time:
+                            late_time = time(9, 15)  # 9:15 AM
+                            half_day_time = time(13, 0)  # 1:00 PM
+                            
+                            if clock_in_time > half_day_time:
+                                status = "present, half day, late"
+                            elif clock_in_time > late_time:
+                                status = "present, late"
+                            else:
+                                status = "present"
+                        else:
+                            status = record.status
+                            
+                        attendance_list.append({
+                            "date": str(day),
+                            "status": status,
+                            "clock_in": str(record.clock_in) if record.clock_in else "",
+                            "clock_out": str(record.clock_out) if record.clock_out else "",
+                            "name": name,
+                            "department": department,
+                            "user_type": user_type,
+                        })
+                    else:
+                        # Check if it's a regular Saturday (not 2nd or 4th)
+                        if is_saturday:
+                            status = "weekend"
+                        else:
+                            status = "absent"
+                            
+                        attendance_list.append({
+                            "date": str(day),
+                            "name": name,
+                            "department": department,
+                            "user_type": user_type,
+                            "status": status,
+                            "clock_in": "",
+                            "clock_out": ""
+                        })
+
+            return JsonResponse(attendance_list, safe=False)
+
+        except Employee.DoesNotExist:
+            return JsonResponse({"error": "Employee not found"}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"error": "Invalid request method"}, status=400)

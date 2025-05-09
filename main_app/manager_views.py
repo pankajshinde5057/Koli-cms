@@ -571,7 +571,7 @@ def get_employee_attendance(request):
                 "status": record.status,
                 "clock_in": str(record.clock_in) if record.clock_in else "",
                 "clock_out": str(record.clock_out) if record.clock_out else "",
-                "employee_name": f"{employee.admin.first_name} {employee.admin.last_name}",
+                "name": f"{employee.admin.first_name} {employee.admin.last_name}",
                 "department": employee.department.name if employee.department else "",
             } for record in attendance_data]
 
@@ -583,7 +583,6 @@ def get_employee_attendance(request):
             return JsonResponse({"error": str(e)}, status=400)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
-
 
 
 
