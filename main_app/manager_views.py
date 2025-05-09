@@ -1080,6 +1080,9 @@ def manager_view_notification(request):
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
     pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
+    
+    all_resolved_recurring = AssetIssue.objects.filter(status='resolved',is_recurring=True).order_by('-resolved_date')[:5]
+    
     # manager_unread_ids = []
     # query = Notification.objects.filter(user = request.user, role = "manager", is_read= False, notification_type = "notification")
     notification_ids = Notification.objects.filter(
@@ -1138,6 +1141,7 @@ def manager_view_notification(request):
         'pending_issue': pending_asset_issues.filter(status='pending'),
         'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
         'notification_from_admin_obj' : notification_from_admin_obj,
+        'all_resolved_recurring' : all_resolved_recurring,
 
         # this is for historyy
         'leave_page_obj': leave_page_obj,
@@ -1367,9 +1371,12 @@ def resolve_asset_issue(request,asset_issu_id):
     if request.method == "POST":
         issue_asset = get_object_or_404(AssetIssue,pk=asset_issu_id)
         issue_asset.status = request.POST.get('status')
-        issue_asset.notes = request.POST.get('resolution_notes')
+        issue_asset.notes = request.POST.get('notes')
+        issue_asset.resolution_method = request.POST.get('resolution_method')
+        issue_asset.is_recurring = request.POST.get('is_recurring') == "on"
         issue_asset.resolved_date = datetime.now()
         issue_asset.save()
+
         if issue_asset.status == "resolved":
             notify = Notification.objects.filter(leave_or_notification_id=asset_issu_id, role = "manager",notification_type = "asset issue").first()
             if notify:

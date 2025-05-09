@@ -228,6 +228,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    {% url "admin_asset_issue_history" as admin_asset_issue_history %}
+                    <a href="{{admin_asset_issue_history}}" class="nav-link {% if admin_asset_issue_history == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-history"></i>
+                        <p>Asset Issue History</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     {% url 'asset_app:assetscategory-create' as assets_category %}
                     <a href="{{assets_category}}" class="nav-link {% if assets_category == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-list-alt"></i>

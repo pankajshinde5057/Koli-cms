@@ -114,6 +114,9 @@
                                         <li class="nav-item">
                                             <a class="nav-link" data-toggle="tab" href="#history">History</a>
                                         </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" data-toggle="tab" href="#maintenance">Maintenance History</a>
+                                        </li>
                                     {% endif %}
                                 </ul>
                             </div>
@@ -240,7 +243,7 @@
                                         </div>
                                     </div>
 
-                                   <!-- History Tab -->
+                                   <!-- Issueance History Tab -->
                                     {% if request.user.user_type != '3' %}
                                         <div class="tab-pane fade" id="history">
                                             <div class="timeline timeline-inverse">
@@ -349,6 +352,90 @@
                                             </div>
                                         </div>
                                     {% endif %}
+
+                                    <!-- Maintenance History Tab -->
+                                    <div class="tab-pane" id="maintenance">
+                                        <div class="card card-primary card-outline">
+                                            <div class="card-header">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-tools mr-2"></i>
+                                                    Maintenance History
+                                                    <span class="badge badge-light ml-2">{{ issue_count }} total</span>
+                                                    {% if recurring_count > 0 %}
+                                                    <span class="badge badge-warning ml-1">{{ recurring_count }} recurring</span>
+                                                    {% endif %}
+                                                </h5>
+                                            </div>
+                                            <div class="card-body">
+                                                {% if issue_history %}
+                                                <div class="timeline">
+                                                    {% for issue in issue_history %}
+                                                    <div class="time-label">
+                                                        <span class="bg-{% if issue.status == 'resolved' %}success{% else %}danger{% endif %}">
+                                                            {{ issue.reported_date|date:"M d, Y" }}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <i class="fas fa-{% if issue.status == 'resolved' %}check-circle bg-success{% else %}exclamation-triangle bg-warning{% endif %}"></i>
+                                                        <div class="timeline-item">
+                                                            <span class="time">
+                                                                <i class="far fa-clock"></i>
+                                                                {% if issue.status == 'resolved' %}
+                                                                    Resolved in {{ issue.time_taken.days }} days
+                                                                {% else %}
+                                                                    {{ issue.get_status_display }}
+                                                                {% endif %}
+                                                            </span>
+                                                            <h3 class="timeline-header">
+                                                                <a href="#">{{ issue.get_issue_type_display }}</a>
+                                                                {% if issue.is_recurring %}
+                                                                <span class="badge badge-warning ml-2">Recurring</span>
+                                                                {% endif %}
+                                                            </h3>
+                                                            <div class="timeline-body">
+                                                                <div class="row">
+                                                                    <div class="col-md-6">
+                                                                        <strong><i class="fas fa-user"></i> Reported By:</strong>
+                                                                        {{ issue.reported_by.get_full_name }}
+                                                                    </div>
+                                                                    <div class="col-md-6">
+                                                                        <strong><i class="fas fa-calendar"></i> Reported On:</strong>
+                                                                        {{ issue.reported_date|date:"M d, Y H:i" }}
+                                                                    </div>
+                                                                </div>
+                                                                <div class="mt-2">
+                                                                    <strong>Description:</strong>
+                                                                    <p>{{ issue.description }}</p>
+                                                                </div>
+                                                                {% if issue.resolution_method %}
+                                                                <div class="alert alert-success mt-2">
+                                                                    <strong>Resolution:</strong>
+                                                                    <p>{{ issue.resolution_method }}</p>
+                                                                    {% if issue.resolved_by %}
+                                                                    <small class="text-muted">
+                                                                        Resolved by {{ issue.resolved_by.get_full_name }} on {{ issue.resolved_date|date:"M d, Y" }}
+                                                                    </small>
+                                                                    {% endif %}
+                                                                </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                    <div>
+                                                        <i class="fas fa-clock bg-gray"></i>
+                                                    </div>
+                                                </div>
+                                                {% else %}
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle mr-2"></i>
+                                                    No maintenance issues recorded for this asset.
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

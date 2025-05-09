@@ -15,7 +15,9 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 from django.contrib.auth.decorators import login_required
-
+from asset_app.models import AssetIssue
+from django.db.models import Avg,Count,Q,F,Max
+from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -836,15 +838,21 @@ def send_selected_manager_notification(request):
 
 def delete_manager(request, manager_id):
     manager = get_object_or_404(CustomUser, manager__id=manager_id)
-    manager.delete()
-    messages.success(request, "Manager deleted successfully!")
+    try:
+        manager.delete()
+        messages.success(request, "Manager deleted successfully!")
+    except Exception as e:
+        messages.error(request,"Sorry, failed to delete manager.")
     return redirect(reverse('manage_manager'))
 
 
 def delete_employee(request, employee_id):
     employee = get_object_or_404(CustomUser, employee__id=employee_id)
-    employee.delete()
-    messages.success(request, "Employee deleted successfully!")
+    try:
+        employee.delete()
+        messages.success(request, "Employee deleted successfully!")
+    except Exception:
+        messages.error(request,"Sorry, failed to delete employee.")
     return redirect(reverse('manage_employee'))
 
 
@@ -1139,3 +1147,57 @@ def admin_view_attendance(request):
         'current_month': current_month
     }
     return render(request, 'ceo_template/admin_view_attendance.html', context)
+
+def format_timedelta(delta):
+    if not isinstance(delta, timedelta):
+        return "0 days"
+
+    days = delta.days
+    seconds = delta.seconds
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days} day{'s' if days != 1 else ''}")
+    if hours > 0:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes > 0:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    if seconds > 0 or not parts:
+        parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
+    
+    return ' '.join(parts)
+
+@login_required
+def admin_asset_issue_history(request):
+    search_query = request.GET.get('search', '')
+    page = request.GET.get('page', 1)
+    
+    resolved_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
+    
+    if search_query:
+        resolved_issues = resolved_issues.filter(
+            Q(asset__asset_name__icontains=search_query) |
+            Q(issue_type__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(resolution_method__icontains=search_query)
+        )
+    
+    paginator = Paginator(resolved_issues, 3)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'total_resolved_count': resolved_issues.count(),  
+        'recurring_count': resolved_issues.filter(is_recurring=True).count(),
+    }
+    
+    return render(request, 'ceo_template/admin_view_asset_issue_history.html', context)
