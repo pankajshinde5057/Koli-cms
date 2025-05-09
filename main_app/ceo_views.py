@@ -15,7 +15,10 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from asset_app.models import AssetIssue
+from django.db.models import Avg,Count,Q,F,Max
+from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
+from django.utils.timezone import localdate
 
 
 
@@ -838,15 +841,21 @@ def send_selected_manager_notification(request):
 
 def delete_manager(request, manager_id):
     manager = get_object_or_404(CustomUser, manager__id=manager_id)
-    manager.delete()
-    messages.success(request, "Manager deleted successfully!")
+    try:
+        manager.delete()
+        messages.success(request, "Manager deleted successfully!")
+    except Exception as e:
+        messages.error(request,"Sorry, failed to delete manager.")
     return redirect(reverse('manage_manager'))
 
 
 def delete_employee(request, employee_id):
     employee = get_object_or_404(CustomUser, employee__id=employee_id)
-    employee.delete()
-    messages.success(request, "Employee deleted successfully!")
+    try:
+        employee.delete()
+        messages.success(request, "Employee deleted successfully!")
+    except Exception:
+        messages.error(request,"Sorry, failed to delete employee.")
     return redirect(reverse('manage_employee'))
 
 
@@ -1145,14 +1154,41 @@ def admin_view_attendance(request):
     }
     return render(request, 'ceo_template/admin_view_attendance.html', context)
 
-from django.utils.timezone import localdate
+
+@login_required
+def admin_asset_issue_history(request):
+    search_query = request.GET.get('search', '')
+    page = request.GET.get('page', 1)
+    
+    resolved_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
+    
+    if search_query:
+        resolved_issues = resolved_issues.filter(
+            Q(asset__asset_name__icontains=search_query) |
+            Q(issue_type__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(resolution_method__icontains=search_query)
+        )
+    
+    paginator = Paginator(resolved_issues, 3)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'total_resolved_count': resolved_issues.count(),  
+        'recurring_count': resolved_issues.filter(is_recurring=True).count(),
+    }
+    
+    return render(request, 'ceo_template/admin_view_asset_issue_history.html', context)
  
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.utils.timezone import localdate
-from django.db.models import Q
-from datetime import datetime, timedelta, date, time
+
 
 @csrf_exempt
 def get_manager_and_employee_attendance(request):

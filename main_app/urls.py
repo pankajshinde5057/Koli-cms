@@ -80,6 +80,8 @@ urlpatterns = [
           ceo_views.edit_department, name='edit_department'),
      path('generate_performance_report',ceo_views.generate_performance_report,name='generate_performance_report'),
      path('api/attendance/clock/', ceo_views.admin_view_attendance),
+
+     path('admin_asset_issue_history/',ceo_views.admin_asset_issue_history,name="admin_asset_issue_history"),
      
 
 

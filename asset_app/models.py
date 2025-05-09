@@ -156,9 +156,27 @@ class AssetIssue(models.Model):
     resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='resolved_issues',null=True, blank=True)
     resolved_date = models.DateTimeField(null=True, blank=True)
 
+    resolution_method = models.TextField(blank=True, null=True, help_text="How the issue was resolved")
+    time_taken = models.DurationField(null=True, blank=True, help_text="Time taken to resolve the issue")
+    is_recurring = models.BooleanField(default=False, help_text="Does this issue occur frequently?")
+    recurrence_notes = models.TextField(blank=True, null=True, help_text="Notes about recurring issues")
+
     @property
     def is_resolved(self):
         return self.status == 'resolved'
+    
+    @property
+    def days_to_resolve(self):
+        if self.resolved_date and self.reported_date:
+            return (self.resolved_date - self.reported_date).days
+        return None
+    
+    def save(self, *args, **kwargs):
+        if self.status == 'resolved':
+            self.resolved_date = timezone.now()
+            if self.reported_date:
+                self.time_taken = self.resolved_date - self.reported_date
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.asset}-{self.get_issue_type_display()} - {self.get_status_display()}"

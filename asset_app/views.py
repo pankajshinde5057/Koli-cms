@@ -110,9 +110,17 @@ class AssetsDetailView(DetailView):
             asset=asset,
         ).order_by('-date_assigned')
 
+        # Add issue history
+        issue_history = AssetIssue.objects.filter(
+            asset=asset
+        ).order_by('-reported_date').select_related('reported_by', 'resolved_by')
+
         context.update({
             'current_issuance': current_issuance,
             'historical_issuances': historical_issuances,
+            'issue_history': issue_history,
+            'recurring_count': issue_history.filter(is_recurring=True).count(),
+            'issue_count': issue_history.count(),
             'now': timezone.now() 
         })
         return context
@@ -324,6 +332,8 @@ class MyAssetView(LoginRequiredMixin, ListView):
             asset_id_ = request.POST.get("asset_id")
             issue_type_ = request.POST.get("issue_type")
             description_ = request.POST.get("description")
+            is_recurring_ = request.POST.get("is_recurring", False) 
+            recurrence_notes_ = request.POST.get("recurrence_notes")
 
             if asset_id_ and issue_type_ and description_:
                 asset = Assets.objects.filter(id=asset_id_).first()
@@ -339,11 +349,15 @@ class MyAssetView(LoginRequiredMixin, ListView):
                     messages.warning(request, "An unresolved issue of this type already exists for this asset!")
                     return redirect('asset_app:my-assets')
                 
+                is_recurring_bool = is_recurring_ == 'on'
+                
                 new_asset = AssetIssue.objects.create(
                     asset=asset,
                     reported_by=self.request.user,
                     issue_type=issue_type_,
                     description=description_,
+                    is_recurring = is_recurring_bool,
+                    recurrence_notes= recurrence_notes_ if recurrence_notes_ else "",
                 )
                 new_asset.save()
                 messages.success(request, "Issue Reported Successfully")
