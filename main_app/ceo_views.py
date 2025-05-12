@@ -15,7 +15,7 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 from django.contrib.auth.decorators import login_required
-from asset_app.models import AssetIssue
+from asset_app.models import AssetIssue,Assets
 from django.db.models import Avg,Count,Q,F,Max
 from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 from django.utils.timezone import localdate
@@ -36,6 +36,15 @@ def admin_home(request):
     total_division = Division.objects.all().count()
     attendance_list = AttendanceRecord.objects.filter(department__in=departments)
     total_attendance = attendance_list.count()
+    
+    total_assets = Assets.objects.all().count()
+    active_assets = Assets.objects.filter(is_asset_issued=True).count()
+    inactive_assets = Assets.objects.filter(is_asset_issued=False).count()
+
+    resolved_issues = AssetIssue.objects.filter(status='resolved')
+    total_resolved = resolved_issues.count()
+    recurring_issues = resolved_issues.filter(is_recurring=True).count()
+
     attendance_list = []
     department_list = []
     for department in departments:
@@ -49,7 +58,12 @@ def admin_home(request):
         'total_division': total_division,
         'total_department': total_department,
         'department_list': department_list,
-        'attendance_list': attendance_list
+        'attendance_list': attendance_list,
+        'total_assets': total_assets,
+        'active_assets': active_assets,
+        'inactive_assets': inactive_assets,
+        'total_resolved_issues': total_resolved,
+        'recurring_issues': recurring_issues,
 
     }
     return render(request, 'ceo_template/home_content.html', context)
@@ -227,16 +241,30 @@ def manage_manager(request):
 
 
 def manage_employee(request):
-    employees = CustomUser.objects.filter(user_type=3).select_related('employee')
-    valid_employees = [emp for emp in employees if hasattr(emp, 'employee') and emp.employee.id]
+    search_ = request.GET.get("search", '').strip()
+    employees = CustomUser.objects.filter(user_type=3).annotate(
+        asset_count=Count('assetsissuance'),
+    ).select_related('employee', 'employee__department', 'employee__division', 'employee__team_lead')
+    
+    if search_:
+        employees = employees.filter(
+            Q(first_name__icontains=search_) |
+            Q(last_name__icontains=search_)
+        )
     
     location_choices = dict(LOCATION_CHOICES)
+    
+    valid_employees = [user for user in employees if hasattr(user, 'employee')]
     
     context = {
         'employees': valid_employees,
         'page_title': 'Manage Employees',
         'location_choices': location_choices,
     }
+    
+    if not valid_employees:
+        messages.warning(request, "No employees found")
+    
     return render(request, "ceo_template/manage_employee.html", context)
 
 

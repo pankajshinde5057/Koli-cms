@@ -1,9 +1,89 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
 {% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+
+  /* Gradient Backgrounds */
+  .bg-gradient-primary {
+      background: linear-gradient(135deg, #667eea 0%,rgb(64, 11, 117) 100%) !important;
+  }
+  .bg-gradient-success {
+      background: linear-gradient(135deg,rgb(14, 121, 73) 0%,rgb(12, 107, 166) 100%) !important;
+  }
+  .bg-gradient-info {
+      background: linear-gradient(135deg,rgb(60, 86, 130) 0%,rgb(30, 40, 11) 100%) !important;
+  }
+  .bg-gradient-warning {
+      background: linear-gradient(135deg,rgb(104, 91, 49) 0%,rgb(163, 159, 16) 100%) !important;
+  }
+  .bg-pattern-1 {
+      background: linear-gradient(135deg,rgb(29, 85, 134) 0%,rgb(230, 98, 28) 100%) !important;
+  }
+  .bg-pattern-2 {
+      background: linear-gradient(135deg,rgb(187, 34, 204) 0%,rgb(24, 192, 49) 100%) !important;
+  }
+  .row{
+    color: black !important;
+  }
+  
+  /* Icon Circle */
+  .icon-circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+  }
+  
+  .bg-white-20 {
+      background-color: rgba(255,255,255,0.2);
+  }
+  
+  /* Card Hover Effects */
+  .card {
+      transition: all 0.3s ease;
+      border-radius: 10px;
+      overflow: hidden;
+  }
+  
+  .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
+  
+  /* Badges */
+  .badge {
+      font-weight: 500;
+      padding: 5px 10px;
+      border-radius: 20px;
+  }
+  
+  /* Buttons */
+  .btn {
+      border-radius: 8px;
+      padding: 10px 15px;
+      font-weight: 500;
+      transition: all 0.3s;
+  }
+  
+  .btn:hover {
+      transform: translateY(-2px);
+  }
+  
+  /* Card Header */
+  .card-header {
+      border-radius: 10px 10px 0 0 !important;
+  }
+</style>
+{% endblock custom_css %}
+
 {% block content %}
 <section class="content">
-    <div class="container-fluid">
+    {% comment %} <div class="container-fluid">
         <!-- Small boxes (Stat box) -->
         <div class="row">
             <div class="col-lg-3 col-6">
@@ -67,7 +147,67 @@
                 </div>
             </div>
             <!-- ./col -->
+            <!-- Asset Statistics Card -->
+            <div class="col-lg-3 col-6">
+              <div class="small-box bg-gradient-secondary">
+                  <div class="inner">
+                      <h3>{{ total_assets }}</h3>
+                      <p class="lead">Total Assets</p>
+                      
+                      <div class="asset-stats mt-3">
+                          <div class="stat-item">
+                              <span class="stat-label">Active : </span>
+                              <span class="stat-value">{{ active_assets }}</span>
+                          </div>
+                          <div class="stat-item mt-2">
+                              <span class="stat-label">Inactive : </span>
+                              <span class="stat-value">{{ inactive_assets }}</span>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="icon">
+                      <i class="fas fa-boxes"></i>
+                  </div>
+                  <a href="{% url 'asset_app:assets-list' %}" class="small-box-footer">
+                      Manage Assets <i class="fas fa-chevron-right ml-1"></i>
+                  </a>
+              </div>
+            </div>
+
+            <!-- Asset Management Cards -->
+        <div class="row">
+        <!-- Total Assets Card -->
+        <div class="col-lg-3 col-6">
+            <div class="info-box">
+                <span class="info-box-icon bg-primary"><i class="fas fa-boxes"></i></span>
+                <div class="info-box-content">
+                    <span class="info-box-text">Total Assets</span>
+                    <span class="info-box-number">{{ total_assets }}</span>
+                    <div class="asset-status mt-2">
+                        <span class="badge bg-success">{{ active_assets }} Active</span>
+                        <span class="badge bg-secondary ml-1">{{ inactive_assets }} Available</span>
+                    </div>
+                </div>
+            </div>
         </div>
+        
+        <!-- Maintenance History Card -->
+        <div class="col-lg-3 col-6">
+            <div class="info-box">
+                <span class="info-box-icon bg-warning"><i class="fas fa-tools"></i></span>
+                <div class="info-box-content">
+                    <span class="info-box-text">Maintenance History</span>
+                    <span class="info-box-number">{{ total_resolved_issues }}</span>
+                    <div class="asset-status mt-2">
+                        <span class="badge bg-danger">{{ recurring_issues }} Recurring</span>
+                        <a href="{% url 'admin_asset_issue_history' %}" class="small ml-2">View Details</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+          
+      </div>
         <!-- /.row -->
         <!-- Main row 
         
@@ -112,7 +252,185 @@
       -->
         
       <!-- /.row (main row) -->
-    </div><!-- /.container-fluid -->
+    </div><!-- /.container-fluid --> {% endcomment %}
+
+      <div class="container-fluid">
+
+    
+        <!-- Key Metrics Row - Colorful Cards -->
+        <div class="row">
+            <!-- Employee Card -->
+            <div class="col-md-3 mb-4">
+                <div class="card bg-gradient-primary text-white h-100 shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase mb-1">Total Employees</h6>
+                                <h2 class="mb-0">{{ total_employees }}</h2>
+                            </div>
+                            <div class="icon-circle bg-white-20">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'manage_employee' %}" class="text-white text-decoration-none small">
+                                View all <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Manager Card -->
+            <div class="col-md-3 mb-4">
+                <div class="card bg-gradient-success text-white h-100 shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase mb-1">Total Managers</h6>
+                                <h2 class="mb-0">{{ total_manager }}</h2>
+                            </div>
+                            <div class="icon-circle bg-white-20">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'manage_manager' %}" class="text-white text-decoration-none small">
+                                View all <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Division Card -->
+            <div class="col-md-3 mb-4">
+                <div class="card bg-gradient-info text-white h-100 shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase mb-1">Total Divisions</h6>
+                                <h2 class="mb-0">{{ total_division }}</h2>
+                            </div>
+                            <div class="icon-circle bg-white-20">
+                                <i class="fas fa-sitemap"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'manage_division' %}" class="text-white text-decoration-none small">
+                                View all <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Department Card -->
+            <div class="col-md-3 mb-4">
+                <div class="card bg-gradient-warning text-white h-100 shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase mb-1">Total Departments</h6>
+                                <h2 class="mb-0">{{ total_department }}</h2>
+                            </div>
+                            <div class="icon-circle bg-white-20">
+                                <i class="fas fa-building"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'manage_department' %}" class="text-white text-decoration-none small">
+                                View all <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Asset Management Section -->
+        <div class="row">
+            <!-- Asset Summary -->
+            <div class="col-lg-8 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0 text-dark">Asset Management</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Total Assets -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card bg-pattern-1 text-white h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="mr-3">
+                                                <i class="fas fa-boxes fa-2x"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">Total Assets</h6>
+                                                <h3 class="mb-2">{{ total_assets }}</h3>
+                                                <div class="d-flex">
+                                                    <span class="badge bg-white text-primary mr-2">{{ active_assets }} Active</span>
+                                                    <span class="badge bg-white text-secondary">{{ inactive_assets }} Inactive</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <a href="{% url 'asset_app:assets-list' %}" class="stretched-link"></a>
+                                    </div>
+                                </div>
+                            </div>
+    
+                            <!-- Maintenance -->
+                            <div class="col-md-6 mb-4">
+                                <div class="card bg-pattern-2 text-white h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            <div class="mr-3">
+                                                <i class="fas fa-tools fa-2x"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">Maintenance History</h6>
+                                                <h3 class="mb-2">{{ total_resolved_issues }}</h3>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge bg-white text-danger mr-2">{{ recurring_issues }} Recurring</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <a href="{% url 'admin_asset_issue_history' %}" class="stretched-link"></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Quick Actions -->
+            <div class="col-lg-4 mb-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0 text-dark">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <a href="{% url 'add_employee' %}" class="btn btn-primary btn-block text-left mb-3">
+                            <i class="fas fa-user-plus mr-2"></i> Add New Employee
+                        </a>
+                        <a href="{% url 'asset_app:assets-list' %}" class="btn btn-success btn-block text-left mb-3">
+                            <i class="fas fa-box-open mr-2"></i> View Assets
+                        </a>
+                        <a href="{% url 'generate_performance_report' %}" class="btn btn-info btn-block text-left mb-3">
+                            <i class="fas fa-file-alt mr-2"></i> Generate Reports
+                        </a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+  
+
+  
+  
 </section>
 {% endblock content %}
 
