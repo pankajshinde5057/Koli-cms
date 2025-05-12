@@ -1109,29 +1109,22 @@ def manager_view_notification(request):
     #     'LOCATION_CHOICES': LOCATION_CHOICES
     # }
     
-    # status_filter = request.GET.get('status', 'all')
-    # date_from = request.GET.get('date_from')
-    # date_to = request.GET.get('date_to')
-
-    # # Apply filters to leave history
-    # if status_filter != 'all':
-    #     leave_history = leave_history.filter(status=1 if status_filter == 'approved' else 2)
-    
-    # if date_from:
-    #     leave_history = leave_history.filter(updated_at__gte=date_from)
-    # if date_to:
-    #     leave_history = leave_history.filter(updated_at__lte=date_to)
 
     notification_from_admin_paginator = Paginator(notification_from_admin,3)
     leave_paginator = Paginator(leave_history, 3)  # Show 3 items per page
     asset_notification_paginator = Paginator(asset_notification_history, 3)
     resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
 
-    page_number = request.GET.get('page')
-    notification_from_admin_obj = notification_from_admin_paginator.get_page(page_number)
-    leave_page_obj = leave_paginator.get_page(page_number)
-    asset_notification_page_obj = asset_notification_paginator.get_page(page_number)
-    resolved_issues_page_obj = resolved_issues_paginator.get_page(page_number)
+    notification_page_number = request.GET.get('notification_page')
+    leave_page_number = request.GET.get('leave_page')
+    asset_notification_page_number = request.GET.get('asset_notification_page')
+    resolved_issues_page_number = request.GET.get('resolved_issues_page')
+
+    notification_from_admin_obj = notification_from_admin_paginator.get_page(notification_page_number)
+    leave_page_obj = leave_paginator.get_page(leave_page_number)
+    asset_notification_page_obj = asset_notification_paginator.get_page(asset_notification_page_number)
+    resolved_issues_page_obj = resolved_issues_paginator.get_page(resolved_issues_page_number)
+    
     context = {
         'notification_from_admin' : notification_from_admin,
         'pending_leave_requests': pending_leave_requests,
@@ -1146,11 +1139,6 @@ def manager_view_notification(request):
         'leave_page_obj': leave_page_obj,
         'asset_notification_page_obj': asset_notification_page_obj,
         'resolved_issues_page_obj': resolved_issues_page_obj,
-
-        # # Filter values for template
-        # 'status_filter': status_filter,
-        # 'date_from': date_from or '',
-        # 'date_to': date_to or '',
 
         'page_title': "View Notifications",
         'manager_unread_ids': manager_unread_ids,

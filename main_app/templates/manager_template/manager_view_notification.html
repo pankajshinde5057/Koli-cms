@@ -153,19 +153,19 @@
                 </div>
             </div>
             
-            <!-- Pagination -->
+            <!-- Pagination for notification_from_admin_obj -->
             {% if notification_from_admin_obj.paginator.num_pages > 1 %}
                 <div class="card-footer">
                     <nav aria-label="Notifications pagination">
                         <ul class="pagination justify-content-center mb-0">
                             {% if notification_from_admin_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1" aria-label="First">
+                                    <a class="page-link" href="?notification_page=1" aria-label="First">
                                         <span aria-hidden="true">&laquo;&laquo;</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ notification_from_admin_obj.previous_page_number }}" aria-label="Previous">
+                                    <a class="page-link" href="?notification_page={{ notification_from_admin_obj.previous_page_number }}" aria-label="Previous">
                                         <span aria-hidden="true">&laquo;</span>
                                     </a>
                                 </li>
@@ -178,19 +178,19 @@
                                     </li>
                                 {% elif num > notification_from_admin_obj.number|add:'-3' and num < notification_from_admin_obj.number|add:'3' %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        <a class="page-link" href="?notification_page={{ num }}">{{ num }}</a>
                                     </li>
                                 {% endif %}
                             {% endfor %}
                             
                             {% if notification_from_admin_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ notification_from_admin_obj.next_page_number }}" aria-label="Next">
+                                    <a class="page-link" href="?notification_page={{ notification_from_admin_obj.next_page_number }}" aria-label="Next">
                                         <span aria-hidden="true">&raquo;</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ notification_from_admin_obj.paginator.num_pages }}" aria-label="Last">
+                                    <a class="page-link" href="?notification_page={{ notification_from_admin_obj.paginator.num_pages }}" aria-label="Last">
                                         <span aria-hidden="true">&raquo;&raquo;</span>
                                     </a>
                                 </li>
@@ -220,8 +220,9 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th style="width: 25%">Employee</th>
-                                <th style="width: 15%">Leave Date</th>
+                                <th style="width: 20%">Employee</th>
+                                <th style="width: 10%">Leave Date</th>
+                                <th style="width: 10%">Leave Type</th>
                                 <th style="width: 40%">Message</th>
                                 <th style="width: 20%">Actions</th>
                             </tr>
@@ -241,6 +242,10 @@
                                         <span class="badge badge-info">
                                             {{ leave.start_date|date:"M d, Y" }}
                                         </span>
+                                    </td>
+                                    <td>
+                                        {{leave.leave_type}}
+                                        {% if leave.leave_type == "Half-Day" %}<small>{{leave.half_day_type}}</small>{% endif %}
                                     </td>
                                     <td>
                                         <div class="message-preview">
@@ -317,7 +322,7 @@
                                 </div>
                             {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4">
                                         <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
                                         <h5 class="text-muted">No pending leave requests</h5>
                                         <p class="small">All leave requests have been processed</p>
@@ -577,13 +582,14 @@
                             </table>
                         </div>
                     </div>
+                    <!-- Pagination for Leave History -->
                     {% if leave_page_obj.paginator.num_pages > 1 %}
                         <div class="card-footer">
                             <nav aria-label="Leave History Pagination">
                                 <ul class="pagination justify-content-center mb-0">
                                     {% if leave_page_obj.has_previous %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ leave_page_obj.previous_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
+                                            <a class="page-link" href="?leave_page={{ leave_page_obj.previous_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
                                                 <span aria-hidden="true">&laquo;</span>
                                             </a>
                                         </li>
@@ -594,14 +600,14 @@
                                             <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
                                         {% elif num > leave_page_obj.number|add:'-3' and num < leave_page_obj.number|add:'3' %}
                                             <li class="page-item">
-                                                <a class="page-link" href="?page={{ num }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                                                <a class="page-link" href="?leave_page={{ num }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
                                             </li>
                                         {% endif %}
                                     {% endfor %}
                                     
                                     {% if leave_page_obj.has_next %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ leave_page_obj.next_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
+                                            <a class="page-link" href="?leave_page={{ leave_page_obj.next_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
                                                 <span aria-hidden="true">&raquo;</span>
                                             </a>
                                         </li>
@@ -671,13 +677,14 @@
                             </table>
                         </div>
                     </div>
+                    <!-- Pagination for Asset Request Notification History -->
                     {% if asset_notification_page_obj.paginator.num_pages > 1 %}
                         <div class="card-footer">
                             <nav aria-label="Asset Request Notification History Pagination">
                                 <ul class="pagination justify-content-center mb-0">
                                     {% if asset_notification_page_obj.has_previous %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ asset_notification_page_obj.previous_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
+                                            <a class="page-link" href="?asset_notification_page={{ asset_notification_page_obj.previous_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
                                                 <span aria-hidden="true">&laquo;</span>
                                             </a>
                                         </li>
@@ -688,14 +695,14 @@
                                             <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
                                         {% elif num > asset_notification_page_obj.number|add:'-3' and num < asset_notification_page_obj.number|add:'3' %}
                                             <li class="page-item">
-                                                <a class="page-link" href="?page={{ num }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                                                <a class="page-link" href="?asset_notification_page={{ num }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
                                             </li>
                                         {% endif %}
                                     {% endfor %}
                                     
                                     {% if asset_notification_page_obj.has_next %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ asset_notification_page_obj.next_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
+                                            <a class="page-link" href="?asset_notification_page={{ asset_notification_page_obj.next_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
                                                 <span aria-hidden="true">&raquo;</span>
                                             </a>
                                         </li>
@@ -769,13 +776,14 @@
                     </table>
                 </div>
             </div>
+            <!-- Pagination for Resolved Asset Issue History -->
             {% if resolved_issues_page_obj.paginator.num_pages > 1 %}
                 <div class="card-footer">
                     <nav aria-label="Resolved Asset Issues History Pagination">
                         <ul class="pagination justify-content-center mb-0">
                             {% if resolved_issues_page_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ resolved_issues_page_obj.previous_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
+                                    <a class="page-link" href="?resolved_issues_page={{ resolved_issues_page_obj.previous_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Previous">
                                         <span aria-hidden="true">&laquo;</span>
                                     </a>
                                 </li>
@@ -786,14 +794,14 @@
                                     <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
                                 {% elif num > resolved_issues_page_obj.number|add:'-3' and num < resolved_issues_page_obj.number|add:'3' %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
+                                        <a class="page-link" href="?resolved_issues_page={{ num }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">{{ num }}</a>
                                     </li>
                                 {% endif %}
                             {% endfor %}
                             
                             {% if resolved_issues_page_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ resolved_issues_page_obj.next_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
+                                    <a class="page-link" href="?resolved_issues_page={{ resolved_issues_page_obj.next_page_number }}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}" aria-label="Next">
                                         <span aria-hidden="true">&raquo;</span>
                                     </a>
                                 </li>
