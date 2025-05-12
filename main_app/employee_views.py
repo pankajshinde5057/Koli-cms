@@ -70,9 +70,12 @@ def employee_home(request):
         detailed_time_entries.append({
             'type': 'clock_in',
             'date': record.date,
+            'start_time': record.clock_in,  
+            'end_time': record.clock_out if record.clock_out else None,
             'time': record.clock_in,
             'record': record,
-            'status': 'Clocked In' if not record.clock_out else 'Clocked Out'
+            'status': 'Clocked In' if not record.clock_out else 'Clocked Out',
+            'duration': record.clock_out - record.clock_in if record.clock_out else None
         })
         
         # Add all break entries for this record
@@ -81,11 +84,12 @@ def employee_home(request):
             detailed_time_entries.append({
                 'type': 'break',
                 'date': record.date,
-                'time': brk.break_start,
-                'end_time': brk.break_end,
+                'start_time': brk.break_start,  
+                'end_time': brk.break_end,     
+                'time': brk.break_start,        
                 'duration': brk.duration,
                 'record': record,
-                'status': 'Break Start' if not brk.break_end else 'Break End'
+                'status': 'Break End' if brk.break_end else 'Break Start'
             })
         
         # Add clock out entry if exists
@@ -93,9 +97,12 @@ def employee_home(request):
             detailed_time_entries.append({
                 'type': 'clock_out',
                 'date': record.date,
-                'time': record.clock_out,
+                'start_time': record.clock_in,   
+                'end_time': record.clock_out,     
+                'time': record.clock_out,         
                 'record': record,
-                'status': 'Clocked Out'
+                'status': 'Clocked Out',
+                'duration': record.clock_out - record.clock_in
             })
     
     detailed_time_entries.sort(key=lambda x: (x['date'], x['time']), reverse=True)

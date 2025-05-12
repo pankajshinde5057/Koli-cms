@@ -194,7 +194,7 @@
 										<tr>
 											<th>Date</th>
 											<th>Type</th>
-											<th>Time</th>
+											<th>Start Time</th>
 											<th>End Time</th>
 											<th>Duration</th>
 											<th>Status</th>
@@ -210,10 +210,10 @@
 												{% elif entry.type == 'clock_out' %}
 													<span class="badge bg-secondary">Clock Out</span>
 												{% else %}
-													<span class="badge bg-info">Break</span>
+													<span class="badge bg-warning">Break</span>
 												{% endif %}
 											</td>
-											<td>{{ entry.time|time:"h:i:s A" }}</td>
+											<td>{{ entry.start_time|time:"h:i:s A" }}</td>
 											<td>
 												{% if entry.end_time %}
 													{{ entry.end_time|time:"h:i:s A" }}
@@ -233,6 +233,7 @@
 													{% if entry.status == 'Clocked In' %}bg-success
 													{% elif entry.status == 'Clocked Out' %}bg-secondary
 													{% elif entry.status == 'Break Start' %}bg-warning
+													{% elif entry.status == 'Break End' %}bg-warning
 													{% else %}bg-info
 													{% endif %}">
 													{{ entry.status }}
