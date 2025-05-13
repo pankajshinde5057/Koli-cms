@@ -83,8 +83,9 @@ urlpatterns = [
 
      path('admin_asset_issue_history/',ceo_views.admin_asset_issue_history,name="admin_asset_issue_history"),
      
-
-
+     path('save_holidays/', ceo_views.save_holidays, name='save_holidays'),
+     path('delete_holiday/', ceo_views.delete_holiday, name='delete_holiday'),
+     path('get_holidays/', ceo_views.get_holidays, name='get_holidays'),
      path('clock-in-out/', views.clock_in_out, name='clock_in_out'),
      path('break/', views.break_action, name='break_action'),
 
@@ -108,8 +109,11 @@ urlpatterns = [
      path("manager/attendance/update-data/", manager_views.update_attendance,
      name='update_attendance'),
      path("manager/fcmtoken/", manager_views.manager_fcmtoken, name='manager_fcmtoken'),
+     path("manager/view_asset/notification/", manager_views.manager_asset_view_notification,
+          name="manager_asset_view_notification"),
      path("manager/view/notification/", manager_views.manager_view_notification,
           name="manager_view_notification"),
+
      path("manager/salary/add/", manager_views.manager_add_salary, name='manager_add_salary'),
      path("manager/salary/edit/", EditSalaryView.as_view(),
           name='edit_employee_salary'),

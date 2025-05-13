@@ -442,6 +442,20 @@
                         <p>All Assets List</p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    {% url 'manager_asset_view_notification' as manager_asset_view_notification %}
+                    <a href="{{ manager_asset_view_notification }}" class="nav-link {% if manager_asset_view_notification == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-bell"></i>
+                        <p>
+                            Asset Notifications
+                            {% if unread_asset_notification_count > 0 %}
+                            <span class="right badge badge-danger">
+                                {{ unread_asset_notification_count }}
+                            </span>
+                            {% endif %}
+                        </p>
+                    </a>
+                </li>
 
                 <li class="nav-item">
                     {% url 'asset_app:not-assign-asset-list' as not_assign_asset_list %}
