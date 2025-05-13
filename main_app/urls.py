@@ -104,6 +104,7 @@ urlpatterns = [
      path("manager/attendance/update/", manager_views.manager_update_attendance, name='manager_update_attendance'),
       
      path("manager/get_employees/", manager_views.get_employees, name='get_employees'),
+     path("manager/get_managers/", manager_views.get_managers, name='get_managers'),
      path("manager/attendance/fetch/", manager_views.get_employee_attendance, name='get_employee_attendance'),
      path("manager/attendance/save/", manager_views.save_attendance, name='save_attendance'),
      path("manager/attendance/update-data/", manager_views.update_attendance,
