@@ -169,6 +169,28 @@ def get_employees(request):
 
 
 @csrf_exempt
+def get_managers(request):
+    print("sd fsdf","*"*20)
+    department_id = request.POST.get('department')
+    print(department_id,"*"*20)
+    try:
+        if department_id == 'all':
+            managers = Manager.objects.all()
+        else:
+            department = get_object_or_404(Department, id=department_id)
+            managers = Manager.objects.filter(department=department)
+        manager_data = []
+        for manager in managers:
+            data = {
+                "id": manager.admin.id,
+                "name": manager.admin.last_name + " " + manager.admin.first_name
+            }
+            manager_data.append(data)
+        return JsonResponse(json.dumps(manager_data), content_type='application/json', safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
 def save_attendance(request):
     employee_data = request.POST.get('employee_ids')
     date_str = request.POST.get('date')
@@ -1077,7 +1099,7 @@ def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
     notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
-    pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
+    pending_asset_notifications = Notify_Manager.objects.filter( approved__isnull=True).order_by('-timestamp')
     pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
     
     all_resolved_recurring = AssetIssue.objects.filter(status='resolved',is_recurring=True).order_by('-resolved_date')[:5]
@@ -1232,7 +1254,7 @@ def send_selected_employee_notification_by_manager(request):
 def approve_assest_request(request, notification_id):
     if request.method == 'POST':
         asset_location_  = request.POST.get("asset_location" , "Main Room")
-        notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
+        notification = get_object_or_404(Notify_Manager, id=notification_id)
 
         if notification.approved is None or notification.approved is False:
             asset = notification.asset
@@ -1245,10 +1267,9 @@ def approve_assest_request(request, notification_id):
                 )
             
                 my_asset = Assets.objects.get(id=asset.id)
+                my_asset.manager = request.user
                 my_asset.is_asset_issued = True
                 my_asset.save()
-                print(my_asset.is_asset_issued)
-
                 notification.approved = True
                 notification.save()
                 messages.success(request, "Asset request approved successfully.")
@@ -1267,7 +1288,7 @@ def approve_assest_request(request, notification_id):
 
 
 def reject_assest_request(request, notification_id):
-    notification = get_object_or_404(Notify_Manager, id=notification_id, manager=request.user)
+    notification = get_object_or_404(Notify_Manager, id=notification_id)
     if notification.approved is None or notification.approved is False:
         notification.approved = False
         notification.save()

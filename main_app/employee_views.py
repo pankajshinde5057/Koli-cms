@@ -219,6 +219,13 @@ def employee_home(request):
         attendance_record__user=request.user
     ).count()
 
+    # Breaks taken today
+    todays_breaks = Break.objects.filter(
+        attendance_record__date=today,
+        attendance_record__user=request.user
+    ).count()
+
+
     # Calculate working days in month (excluding weekends and holidays)
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
@@ -391,7 +398,8 @@ def employee_home(request):
             'half_days': half_days,
             'absent_days': absent_days,
             'attendance_percentage': attendance_percentage,
-            'total_breaks_today': total_breaks_in_month
+            'total_breaks_in_month': total_breaks_in_month,
+            'todays_total_breaks' : todays_breaks,
         },
         'detailed_time_entries': paginated_entries,
         'daily_view': daily_view,
