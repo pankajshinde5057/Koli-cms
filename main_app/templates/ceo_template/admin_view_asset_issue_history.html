@@ -1,0 +1,156 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}Asset Issue Maintenance History{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Summary Cards (Responsive Grid) -->
+        <div class="row">
+            <div class="col-12 col-sm-6 col-md-6 mb-3">
+                <div class="info-box bg-info h-100">
+                    <span class="info-box-icon"><i class="fas fa-bug"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Total Resolved</span>
+                        <span class="info-box-number">{{ total_resolved_count }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12 col-sm-6 col-md-6 mb-3">
+                <div class="info-box bg-warning h-100">
+                    <span class="info-box-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Recurring Issues</span>
+                        <span class="info-box-number">{{ recurring_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <!-- Above the table -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </div>
+                <!-- Search Card -->
+                <form method="get" class="form-inline">
+                    <input type="text" name="search" class="form-control mr-2" 
+                        placeholder="Search issues..." value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+
+            <!-- Responsive Table Container -->
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 5%">No</th>
+                                <th style="width: 15%">Asset</th>
+                                <th style="width: 12%">Issue Type</th>
+                                <th style="width: 15%">Reported</th>
+                                <th style="width: 15%">Resolved</th>
+                                <th style="width: 10%">Duration</th>
+                                <th style="width: 18%">Resolution</th>
+                                <th style="width: 5%">Recurring</th>
+                                <th style="width: 5%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for issue in page_obj %}
+                            <tr>
+                                <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                <td>{{ issue.asset.asset_name|default:"N/A" }}<br>
+                                <small>{{issue.asset.asset_serial_number}}</small>
+                                </td>
+                                <td>
+                                    <span class="badge badge-pill bg-{{ issue.get_badge_color }}">
+                                        {{ issue.get_issue_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ issue.reported_date|date:"M d, Y" }}</td>
+                                <td>{{ issue.resolved_date|date:"M d, Y" }}</td>
+                                <td><small>{{ issue.time_taken|humanize_duration }}</small></td>
+                                <td class="text-truncate" style="max-width: 200px;" title="{{ issue.resolution_method|default:'-' }}">
+                                    {{ issue.resolution_method|truncatechars:20|default:"-" }}
+                                </td>
+                                <td class="text-center">
+                                    {% if issue.is_recurring %}
+                                        <span class="badge bg-success rounded-pill">✓</span>
+                                    {% else %}
+                                        <span class="badge bg-info rounded-pill">✗</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        <a href="{% url 'asset_app:assets-detail' issue.asset.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-4">No resolved issues found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Pagination controls -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-4">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1&search={{ search_query }}" aria-label="First">
+                                <span aria-hidden="true">««</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}" aria-label="Previous">
+                                <span aria-hidden="true">«</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item"><a class="page-link" href="?page={{ num }}&search={{ search_query }}">{{ num }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ search_query }}" aria-label="Next">
+                                <span aria-hidden="true">»</span>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&search={{ search_query }}" aria-label="Last">
+                                <span aria-hidden="true">»»</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block custom_js %}
+<script>
+   
+</script>
+{% endblock %}

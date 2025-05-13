@@ -5,41 +5,97 @@
 
 {% block custom_css %}
 <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 <style>
+    :root {
+        --primary-color:rgb(70, 120, 229);
+        --primary-hover:rgb(56, 83, 202);
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --warning-color: #f59e0b;
+        --info-color: #3b82f6;
+        --light-bg: #f8fafc;
+        --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
     .filter-card {
-        background-color: #f8fafc;
+        background-color: white;
         border: none;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        transition: all 0.3s ease;
+    }
+    
+    .filter-card:hover {
+        box-shadow: var(--card-hover-shadow);
     }
     
     .results-card {
+        background-color: white;
         border: none;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+    
+    .card-header {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 1rem 1.5rem;
     }
     
     .select2-container--default .select2-selection--single {
-        height: 44px;
+        height: 48px;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+    
+    .select2-container--default .select2-selection--single:hover {
+        border-color: var(--primary-color);
     }
     
     .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 42px;
+        height: 46px;
     }
     
     .btn-primary {
-        background-color: #4f46e5;
-        border-color: #4f46e5;
-        height: 44px;
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        height: 48px;
+        border-radius: 8px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--primary-hover);
+        border-color: var(--primary-hover);
+        transform: translateY(-2px);
+    }
+    
+    .btn-primary:active {
+        transform: translateY(0);
     }
     
     .status-badge {
-        padding: 5px 10px;
-        border-radius: 12px;
+        padding: 6px 12px;
+        border-radius: 20px;
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 600;
+        text-transform: capitalize;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
     
     .present {
@@ -53,58 +109,331 @@
     }
     
     .late {
-        background-color: #fef9c3;
-        color: #854d0e;
+        background-color: #fef3c7;
+        color: #92400e;
     }
     
     .halfday {
-        background-color: #e0f2fe;
-        color: #075985;
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .holiday {
+        background-color: #ede9fe;
+        color: #5b21b6;
     }
     
     .attendance-table {
         border-collapse: separate;
         border-spacing: 0;
+        width: 100%;
     }
     
     .attendance-table thead th {
         background-color: #f8fafc;
         border: none;
-        padding: 12px 16px;
+        padding: 14px 20px;
         font-weight: 600;
         color: #64748b;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        position: sticky;
+        top: 0;
     }
     
     .attendance-table tbody td {
-        padding: 12px 16px;
+        padding: 14px 20px;
         border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
     }
     
     .attendance-table tbody tr:last-child td {
         border-bottom: none;
     }
     
-    .summary-card {
+    .attendance-table tbody tr:hover td {
         background-color: #f8fafc;
-        border-radius: 8px;
-        padding: 16px;
-        margin-bottom: 20px;
+    }
+    
+    .summary-card {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
     }
     
     .summary-item {
+        background-color: white;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: var(--card-shadow);
         display: flex;
         align-items: center;
-        margin-right: 20px;
+        gap: 12px;
+        min-width: 160px;
+        transition: all 0.3s;
+    }
+    
+    .summary-item:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--card-hover-shadow);
     }
     
     .summary-count {
-        font-weight: 600;
-        margin-left: 8px;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: #1e293b;
+    }
+    
+    .summary-label {
+        font-size: 0.875rem;
+        color: #64748b;
     }
     
     .date-range {
         color: #64748b;
-        font-size: 14px;
+        font-size: 0.875rem;
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Date input styles */
+    .date-input-wrapper {
+        position: relative;
+    }
+    
+    .date-input-wrapper i {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #64748b;
+    }
+    
+    .flatpickr-input[readonly] {
+        background-color: white;
+        cursor: pointer;
+        height: 48px;
+        border-radius: 8px;
+    }
+    
+    .flatpickr-day.selected {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    /* Loading animation */
+    .loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 0;
+    }
+    
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s ease-in-out infinite;
+        margin-bottom: 16px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        color: #cbd5e1;
+        margin-bottom: 16px;
+    }
+    
+    .empty-state p {
+        color: #64748b;
+        font-size: 1rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .summary-item {
+            flex: 1 1 100%;
+        }
+        
+        .attendance-table thead {
+            display: none;
+        }
+        
+        .attendance-table tbody tr {
+            display: block;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .attendance-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .attendance-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            margin-right: 16px;
+            flex: 1;
+        }
+        
+        .attendance-table tbody td span {
+            flex: 2;
+            text-align: right;
+        }
+    }
+    
+    /* Pulse animation for new records */
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+    }
+    
+    .new-record {
+        position: relative;
+    }
+    
+    .new-record::after {
+        content: "New";
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background-color: var(--danger-color);
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 10px;
+        animation: pulse 2s infinite;
+    }
+    
+    /* Progress bar for attendance */
+    .progress-container {
+        width: 100%;
+        background-color: #e2e8f0;
+        border-radius: 10px;
+        margin: 20px 0;
+        height: 10px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        border-radius: 10px;
+        background-color: var(--primary-color);
+        transition: width 0.5s ease;
+    }
+    
+    /* Tooltip styles */
+    [data-tooltip] {
+        position: relative;
+        cursor: pointer;
+    }
+    
+    [data-tooltip]:hover::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #1e293b;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 100;
+        margin-bottom: 8px;
+    }
+    
+    [data-tooltip]:hover::after {
+        content: "";
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 5px;
+        border-style: solid;
+        border-color: #1e293b transparent transparent transparent;
+        margin-bottom: 3px;
+    }
+
+    /* Print-specific styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printable-area, #printable-area * {
+            visibility: visible;
+        }
+        #printable-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .card-header {
+            background-color: #4a6baf !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .attendance-table {
+            width: 100% !important;
+            font-size: 12px !important;
+        }
+        .attendance-table th {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .status-badge {
+            padding: 3px 6px !important;
+            font-size: 10px !important;
+        }
+    }
+
+    /* Pagination styles */
+    .pagination-container {
+        margin-top: 20px;
+    }
+    .pagination {
+        justify-content: center;
+    }
+    .page-item.active .page-link {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    .page-link {
+        color: var(--primary-color);
     }
 </style>
 {% endblock %}
@@ -114,30 +443,37 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <div class="card filter-card mb-4">
+                <div class="card filter-card mb-4 animate__animated animate__fadeIn">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i>&nbsp; &nbsp;Filter Attendance Records for Managers and Employees</h3>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-4">View Attendance</h4>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Department</label>
                                 <select class="form-control select2" id="department">
-                                    <option value="">All Departments</option>
+                                    <option value="">-- Select Department --</option>
+                                    <option value="all">All Departments</option>
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
+                            
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Employee</label>
                                 <select class="form-control select2" id="employee">
-                                    <option value="">All Employees</option>
+                                    <option value="">-- Select Employee --</option>
+                                    <option value="all">All Employees</option>
                                     {% for employee in employees %}
-                                    <option value="{{ employee.employee_id }}" data-department="{{ employee.department.id }}">{{ employee.admin.get_full_name }}</option>
+                                    <option value="{{ employee.employee_id }}" data-department="{{ employee.department.id }}">
+                                        {{ employee.admin.get_full_name }} ({{ employee.department.name }})
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
                         </div>
-
+                        
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Time Period</label>
@@ -150,31 +486,66 @@
                             </div>
                             <div class="col-md-4 mb-3 custom-date" style="display:none;">
                                 <label class="form-label">From Date</label>
-                                <input type="date" class="form-control" id="from_date">
+                                <div class="date-input-wrapper">
+                                    <input type="text" class="form-control flatpickr-input" id="from_date" readonly placeholder="Select start date">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3 custom-date" style="display:none;">
                                 <label class="form-label">To Date</label>
-                                <input type="date" class="form-control" id="to_date">
+                                <div class="date-input-wrapper">
+                                    <input type="text" class="form-control flatpickr-input" id="to_date" readonly placeholder="Select end date">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
                             </div>
                             <div class="col-md-4 mb-3 d-flex align-items-end">
                                 <button id="view_attendance" class="btn btn-primary w-100">
-                                    <i class="fas fa-filter mr-2"></i>Filter Results
+                                   <i class="fas fa-search"></i> View Attendance 
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card results-card" id="attendance_results" style="display:none;">
+                <div class="card results-card animate__animated animate__fadeIn" id="attendance_results" style="display:none;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>Attendance Records</h3>
+                        <div class="actions">
+                            <button class="btn btn-sm btn-outline-light" id="print_btn" data-tooltip="Print Records">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" id="export_btn" data-tooltip="Export to Excel">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-body">
-                        <h4 class="mb-4">Attendance Records</h4>
+                        <div class="employee-info-container mb-4 d-flex justify-content-between align-items-start">
+                            <div class="employee-details">
+                                <b><div class="employee-name h4 mb-1" id="employee_name"></div></b>
+                                <div class="employee-department text-muted">
+                                    <i class="fas fa-building mr-1"></i>
+                                    <span id="employee_department"></span>
+                                </div>
+                            </div>
+                            <div class="date-range text-muted">
+                                <i class="fas fa-calendar-week mr-1"></i>
+                                <span id="date_range"></span>
+                            </div>
+                        </div>
                         
-                        <div class="d-flex flex-wrap mb-4" id="attendance_summary"></div>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="attendance_progress"></div>
+                        </div>
                         
-                        <div class="table-responsive">
+                        <div class="summary-card" id="attendance_summary"></div>
+                        
+                        <div class="table-responsive" id="printable-area">
                             <table class="table attendance-table" id="attendance_table">
                                 <thead>
                                     <tr>
+                                        <th>Name</th>
+                                        <th>Department</th>
                                         <th>Date</th>
                                         <th>Day</th>
                                         <th>Status</th>
@@ -189,7 +560,13 @@
                             </table>
                         </div>
                         
-                        <div class="mt-3 date-range" id="date_range"></div>
+                        <div class="empty-state" id="empty_state" style="display: none;">
+                            <i class="fas fa-calendar-times"></i>
+                            <p>No attendance records found for the selected criteria</p>
+                        </div>
+
+                        <!-- Pagination container -->
+                        <div class="pagination-container" id="pagination_container"></div>
                     </div>
                 </div>
             </div>
@@ -201,36 +578,34 @@
 {% block custom_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 $(document).ready(function() {
     // Initialize Select2
     $('.select2').select2({
         width: '100%',
-        placeholder: $(this).find('option[value=""]').text()
+        placeholder: function() {
+            return $(this).data('placeholder') || 'Select an option';
+        }
     });
 
-    // Department change handler to filter employees
-    $('#department').change(function() {
-        const departmentId = $(this).val();
-        const $employeeSelect = $('#employee');
-        
-        // Show all options first
-        $employeeSelect.find('option').show();
-        
-        if (departmentId) {
-            // Hide employees not in the selected department, except the "All Employees" option
-            $employeeSelect.find('option[value!=""]').each(function() {
-                const employeeDept = $(this).data('department');
-                if (employeeDept != departmentId) {
-                    $(this).hide();
-                }
-            });
-        }
-        
-        // Reset selection and update Select2
-        $employeeSelect.val('').trigger('change');
-        $employeeSelect.select2();
+    // Initialize date pickers
+    const fromDatePicker = flatpickr("#from_date", {
+        dateFormat: "Y-m-d",
+        defaultDate: "today",
+        maxDate: "today"
     });
+
+    const toDatePicker = flatpickr("#to_date", {
+        dateFormat: "Y-m-d",
+        defaultDate: "today",
+        maxDate: "today"
+    });
+
+    // Set default dates
+    $('#from_date').val(moment().format('YYYY-MM-DD'));
+    $('#to_date').val(moment().format('YYYY-MM-DD'));
 
     // Toggle custom date range fields
     $('#time_period').change(function() {
@@ -241,187 +616,590 @@ $(document).ready(function() {
         }
     });
 
-    // View Attendance button click handler
-    $('#view_attendance').click(function() {
-        const employeeId = $('#employee').val();
-        const departmentId = $('#department').val();
-        const timePeriod = $('#time_period').val();
-        
-        let year = moment().format('YYYY');
-        let month = null;
-        let week = null;
-        let fromDate = null;
-        let toDate = null;
+    // Initialize employee data
+    const allEmployees = [
+        {% for employee in employees %}
+        {
+            id: "{{ employee.employee_id }}",
+            name: "{{ employee.admin.get_full_name }}",
+            department_id: "{{ employee.department.id }}",
+            department_name: "{{ employee.department.name }}"
+        },
+        {% endfor %}
+    ];
 
-        if (timePeriod === 'custom') {
-            fromDate = $('#from_date').val();
-            toDate = $('#to_date').val();
-            
-            if (!fromDate || !toDate) {
-                alert('Please select both From and To dates');
-                return;
+    // Department change handler
+    // Department change handler - Modified version
+$('#department').change(function() {
+    const departmentId = $(this).val();
+    const $employeeSelect = $('#employee');
+    const $managerSelect = $('#manager');
+    
+    // Reset employee and manager dropdowns
+    $employeeSelect.empty().append('<option value="">-- Select Employee --</option>');
+    $managerSelect.empty().append('<option value="">-- Select Manager --</option>');
+    
+    // Disable employee dropdown until department is selected
+    $employeeSelect.prop('disabled', !departmentId);
+    
+    // Disable manager dropdown until HR department is selected
+    $managerSelect.prop('disabled', true);
+    
+    if (departmentId && departmentId !== 'all') {
+        // Enable employee dropdown
+        $employeeSelect.prop('disabled', false);
+        $employeeSelect.append('<option value="all">All Employees</option>');
+        
+        // Filter employees by department
+        allEmployees.forEach(emp => {
+            if (emp.department_id == departmentId) {
+                $employeeSelect.append($('<option>', {
+                    value: emp.id,
+                    text: `${emp.name} (${emp.department_name})`,
+                    'data-department': emp.department_name
+                }));
             }
-            
-            year = moment(fromDate).format('YYYY');
+        });
+        
+        // Check if selected department is HR to enable manager dropdown
+        const selectedDept = $('#department option:selected').text().toLowerCase();
+        if (selectedDept.includes('hr')) {
+            $managerSelect.prop('disabled', false);
+            $managerSelect.append('<option value="all">All Managers</option>');
+            {% if managers %}
+                {% for manager in managers %}
+                $managerSelect.append($('<option>', {
+                    value: "{{ manager.id }}",
+                    text: "{{ manager.admin.get_full_name }}"
+                }));
+                {% endfor %}
+            {% endif %}
+        }
+    } else if (departmentId === 'all') {
+        // Enable employee dropdown when "All Departments" is selected
+        $employeeSelect.prop('disabled', false);
+        $employeeSelect.append('<option value="all">All Employees</option>');
+        
+        // Show all employees
+        allEmployees.forEach(emp => {
+            $employeeSelect.append($('<option>', {
+                value: emp.id,
+                text: `${emp.name} (${emp.department_name})`,
+                'data-department': emp.department_name
+            }));
+        });
+    }
+});
+
+// Initialize with disabled dropdowns
+$(document).ready(function() {
+    $('#employee').prop('disabled', true);
+    $('#manager').prop('disabled', true);
+    
+    // Rest of your existing document.ready code...
+});
+
+    // Store current filter data for pagination
+    let currentFilterData = {};
+
+    // View Attendance button handler
+   // View Attendance button handler
+// View Attendance button handler with validation
+$('#view_attendance').click(function() {
+    const employeeId = $('#employee').val();
+    const departmentId = $('#department').val();
+    const managerId = $('#manager').val();
+    const timePeriod = $('#time_period').val();
+    
+    // Basic validation - at least one filter must be selected
+    if (!employeeId && !departmentId && !managerId) {
+        showAlert('Please select at least one filter (Department, Employee, or Manager)', 'warning');
+        return;
+    }
+
+    // Get selected employee details
+    const selectedOption = $('#employee option:selected');
+    let employeeName, employeeDepartment;
+    
+    if (employeeId === 'all') {
+        if (departmentId === 'all') {
+            employeeName = 'All Employees';
+            employeeDepartment = 'All Departments';
         } else {
-            if (timePeriod === 'week') {
-                fromDate = moment().startOf('week').add(1, 'days').format('YYYY-MM-DD');
-                toDate = moment().endOf('week').add(1, 'days').format('YYYY-MM-DD');
+            employeeName = 'All Employees in Department';
+            employeeDepartment = $('#department option:selected').text();
+        }
+    } else {
+        employeeName = selectedOption.text().split(' (')[0] || 'Selected Employees';
+        employeeDepartment = selectedOption.data('department') || $('#department option:selected').text();
+    }
+    
+    // Update employee info display
+    $('#employee_name').text(employeeName);
+    $('#employee_department').text(employeeDepartment);
+
+    // Prepare data for AJAX request
+    const data = {
+        employee_id: employeeId === 'all' ? '' : employeeId,
+        department_id: departmentId === 'all' ? '' : departmentId,
+        manager_id: managerId === 'all' ? '' : managerId,
+        page: 1,
+        csrfmiddlewaretoken: '{{ csrf_token }}'
+    };
+
+    // Store current filter data with ALL parameters
+    currentFilterData = {
+        employee_id: data.employee_id,
+        department_id: data.department_id,
+        manager_id: data.manager_id,
+        time_period: timePeriod,
+        from_date: $('#from_date').val(),
+        to_date: $('#to_date').val(),
+        csrfmiddlewaretoken: '{{ csrf_token }}'
+    };
+
+    // Get current date for year/month calculations
+    const currentDate = moment();
+    
+    // Handle time period filters with validation
+    if (timePeriod === 'custom') {
+        const fromDate = $('#from_date').val();
+        const toDate = $('#to_date').val();
+        
+        // Validate custom date range
+        if (!fromDate || !toDate) {
+            showAlert('Please select both From and To dates', 'warning');
+            return;
+        }
+        
+        if (moment(toDate).isBefore(fromDate)) {
+            showAlert('To Date must be after From Date', 'warning');
+            return;
+        }
+        
+        const maxDateRange = 365; // Maximum allowed date range in days
+        if (moment(toDate).diff(moment(fromDate), 'days') > maxDateRange) {
+            showAlert(`Date range cannot exceed ${maxDateRange} days`, 'warning');
+            return;
+        }
+        
+        data.from_date = fromDate;
+        data.to_date = toDate;
+        data.year = moment(fromDate).year();
+        currentFilterData.from_date = fromDate;
+        currentFilterData.to_date = toDate;
+        currentFilterData.year = moment(fromDate).year();
+    } else {
+        data.year = currentDate.year();
+        currentFilterData.year = currentDate.year();
+        
+        if (timePeriod === 'week') {
+            data.week = currentDate.week();
+            data.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
+            data.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
+            currentFilterData.week = currentDate.week();
+            currentFilterData.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
+            currentFilterData.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
+        } else if (timePeriod === 'month') {
+            data.month = currentDate.format('MM');
+            data.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
+            data.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
+            currentFilterData.month = currentDate.format('MM');
+            currentFilterData.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
+            currentFilterData.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
+        } else if (timePeriod === 'year') {
+            data.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
+            data.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
+            currentFilterData.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
+            currentFilterData.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
+        }
+    }
+
+    fetchAttendanceData(data);
+});
+
+// Enhanced fetchAttendanceData with better error handling
+function fetchAttendanceData(data) {
+    // Validate data before sending
+    if (!data || (!data.employee_id && !data.department_id && !data.manager_id)) {
+        showAlert('Invalid filter parameters', 'error');
+        return;
+    }
+
+    $.ajax({
+        url: "{% url 'get_employee_attendance' %}",
+        type: "POST",
+        data: data,
+        beforeSend: function() {
+            $('#attendance_results').show();
+            $('#empty_state').hide();
+            $('#attendance_data').html(`
+                <tr>
+                    <td colspan="9" class="text-center py-4">
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Loading attendance data...</p>
+                        </div>
+                    </td>
+                </tr>
+            `);
+        },
+        success: function(response) {
+            try {
+                if (!response) {
+                    throw new Error('Empty response from server');
+                }
+                
+                if (response.error) {
+                    showAlert(response.error, 'error');
+                    $('#empty_state').show();
+                    $('#attendance_data').html('');
+                    return;
+                }
+                
+                if (!response.data) {
+                    throw new Error('Invalid data format in response');
+                }
+                
+                if (response.data.length > 0) {
+                    renderAttendanceTable(response.data, response.pagination || {});
+                    $('#empty_state').hide();
+                } else {
+                    $('#attendance_data').html('');
+                    $('#empty_state').show();
+                }
+            } catch (e) {
+                console.error('Error processing response:', e);
+                showAlert('Error processing attendance data', 'error');
+                $('#empty_state').show();
+                $('#attendance_data').html('');
             }
-            else if (timePeriod === 'month') {
-                month = moment().format('MM');
+        },
+        error: function(xhr, status, error) {
+            let errorMsg = "Failed to load attendance data";
+            try {
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                } else if (xhr.statusText) {
+                    errorMsg = `${xhr.status}: ${xhr.statusText}`;
+                }
+            } catch (e) {
+                console.error('Error parsing error response:', e);
             }
+            showAlert(errorMsg, 'error');
+            $('#empty_state').show();
+            $('#attendance_data').html('');
+        }
+    });
+}
+
+// Enhanced renderAttendanceTable with data validation
+function renderAttendanceTable(data, pagination) {
+    // Validate input data
+    if (!Array.isArray(data)) {
+        console.error('Invalid data format for attendance table');
+        showAlert('Invalid attendance data format', 'error');
+        return;
+    }
+
+    let tableHtml = '';
+    let presentCount = 0, absentCount = 0, lateCount = 0, halfDayCount = 0, holidayCount = 0;
+    
+    // Validate each record before processing
+    data.forEach(record => {
+        if (!record || typeof record !== 'object') {
+            console.warn('Invalid record skipped:', record);
+            return;
         }
 
-        fetchAttendanceData(employeeId, departmentId, year, month, week, fromDate, toDate);
+        // Validate required fields
+        if (!record.status || !record.date) {
+            console.warn('Record missing required fields:', record);
+            return;
+        }
+
+        // Count status types with validation
+        const status = String(record.status).toLowerCase();
+        if (status.includes('present')) presentCount++;
+        else if (status.includes('absent')) absentCount++;
+        else if (status.includes('late')) lateCount++;
+        else if (status.includes('half')) halfDayCount++;
+        else if (status.includes('holiday')) holidayCount++;
+
+        // Format data with validation
+        let date, day;
+        try {
+            date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+            day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+        } catch (e) {
+            console.warn('Invalid date format:', record.date);
+            date = 'Invalid Date';
+            day = 'Invalid Day';
+        }
+
+        const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
+        const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+        const hours = calculateHours(record.clock_in, record.clock_out);
+        const statusClass = getStatusClass(status);
+        const statusIcon = getStatusIcon(status);
+
+        // Validate name and department
+        const name = record.name ? String(record.name) : 'Unknown';
+        const department = record.department ? String(record.department) : 'Unknown';
+        const userType = record.user_type ? String(record.user_type) : 'Unknown';
+
+        tableHtml += `
+            <tr>
+                <td>${escapeHtml(name)}</td>
+                <td>${escapeHtml(department)}</td>
+                <td>${date}</td>
+                <td>${day}</td>
+                <td><span class="status-badge ${statusClass}">${statusIcon}${escapeHtml(record.status)}</span></td>
+                <td>${inTime}</td>
+                <td>${outTime}</td>
+                <td>${hours}</td>
+            </tr>
+        `;
     });
 
-    // Fetch attendance data via AJAX
-    function fetchAttendanceData(employeeId, departmentId, year, month, week, fromDate, toDate) {
-        const data = {
-            employee_id: employeeId,
-            department_id: departmentId,
-            year: year,
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        };
-
-        if (month) data.month = month;
-        if (week) data.week = week;
-        if (fromDate && toDate) {
-            data.from_date = fromDate;
-            data.to_date = toDate;
+    $('#attendance_data').html(tableHtml);
+    updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount);
+    
+    // Update date range display with validation
+    if (data.length > 0) {
+        try {
+            const fromDate = data[0].date ? (moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date') : '';
+            const toDate = data[data.length - 1].date ? (moment(data[data.length - 1].date).isValid() ? moment(data[data.length - 1].date).format('MMM D, YYYY') : 'Invalid Date') : '';
+            $('#date_range').text(`${fromDate} - ${toDate}`);
+        } catch (e) {
+            console.error('Error formatting date range:', e);
+            $('#date_range').text('Date range unavailable');
         }
-
-        $.ajax({
-            url: "{% url 'get_employee_attendance' %}",
-            type: "POST",
-            data: data,
-            beforeSend: function() {
-                $('#attendance_results').hide();
-                $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading attendance data...</p></td></tr>');
-            },
-            success: function(response) {
-                if (response.error) {
-                    $('#attendance_data').html(`<tr><td colspan="6" class="text-center py-4 text-danger">${response.error}</td></tr>`);
-                    $('#attendance_results').show();
-                } else if (response.length > 0) {
-                    renderAttendanceTable(response);
-                    $('#attendance_results').show();
-                } else {
-                    $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4">No attendance records found for the selected criteria.</td></tr>');
-                    $('#attendance_results').show();
-                }
-            },
-            error: function(xhr, status, error) {
-                $('#attendance_data').html('<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load attendance data. Please try again.</td></tr>');
-                $('#attendance_results').show();
-                console.error("Error:", error);
-            }
-        });
+    } else {
+        $('#date_range').text('No date range');
     }
+    
+    // Render pagination with validation
+    renderPagination(pagination);
+}
 
-    // Render attendance table
-    function renderAttendanceTable(data) {
-        let tableHtml = '';
-        let presentCount = 0;
-        let absentCount = 0;
-        let lateCount = 0;
-        let halfDayCount = 0;
-
-        data.forEach(r => {
-            const date = new Date(r.date);
-            const day = date.toLocaleDateString([], { weekday: 'short' });
-            const inTime = r.clock_in ? formatTime(r.clock_in) : '-';
-            const outTime = r.clock_out ? formatTime(r.clock_out) : '-';
-            const hours = calculateHours(r.clock_in, r.clock_out);
-            const statusClass = getStatusClass(r.status.toLowerCase());
-
-            // Count status types
-            if (r.status.toLowerCase().includes('present')) presentCount++;
-            if (r.status.toLowerCase().includes('absent')) absentCount++;
-            if (r.status.toLowerCase().includes('late')) lateCount++;
-            if (r.status.toLowerCase().includes('half')) halfDayCount++;
-
-            tableHtml += `
-                <tr>
-                    <td>${r.date}</td>
-                    <td>${day}</td>
-                    <td><span class="status-badge ${statusClass}">${r.status}</span></td>
-                    <td>${inTime}</td>
-                    <td>${outTime}</td>
-                    <td>${hours}</td>
-                </tr>
-            `;
-        });
-
-        $('#attendance_data').html(tableHtml);
+// Helper function to escape HTML
+function escapeHtml(unsafe) {
+    if (typeof unsafe !== 'string') return unsafe;
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+    
+    // Render pagination controls
+    function renderPagination(pagination) {
+        const $paginationContainer = $('#pagination_container');
+        $paginationContainer.empty();
         
-        // Update summary
-        const summaryHtml = `
-            <div class="summary-item">
-                <span class="status-badge present">Present</span>
-                <span class="summary-count">${presentCount}</span>
-            </div>
-            <div class="summary-item">
-                <span class="status-badge absent">Absent</span>
-                <span class="summary-count">${absentCount}</span>
-            </div>
-            <div class="summary-item">
-                <span class="status-badge late">Late</span>
-                <span class="summary-count">${lateCount}</span>
-            </div>
-            <div class="summary-item">
-                <span class="status-badge halfday">Half Day</span>
-                <span class="summary-count">${halfDayCount}</span>
-            </div>
+        if (!pagination || pagination.total_pages <= 1) {
+            $paginationContainer.hide();
+            return;
+        }
+        
+        $paginationContainer.show();
+        
+        let paginationHtml = `
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
         `;
-        $('#attendance_summary').html(summaryHtml);
+    
+        // Previous button
+        if (pagination.has_previous) {
+            paginationHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+            `;
+        }
+    
+        // Page numbers
+        const startPage = Math.max(1, pagination.current_page - 2);
+        const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
         
-        // Update date range display
-        const timePeriod = $('#time_period').val();
-        let dateRangeText = '';
-        
-        if (timePeriod === 'custom') {
-            dateRangeText = `Showing records from ${$('#from_date').val()} to ${$('#to_date').val()}`;
-        } else {
-            const today = new Date();
-            
-            if (timePeriod === 'week') {
-                const start = moment().startOf('week').add(1, 'days').format('MMM D');
-                const end = moment().endOf('week').add(1, 'days').format('MMM D, YYYY');
-                dateRangeText = `Showing this week (${start} - ${end})`;
-            } 
-            else if (timePeriod === 'month') {
-                dateRangeText = `Showing ${today.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`;
-            }
-            else if (timePeriod === 'year') {
-                dateRangeText = `Showing ${today.getFullYear()}`;
+        if (startPage > 1) {
+            paginationHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="1">1</a>
+                </li>
+            `;
+            if (startPage > 2) {
+                paginationHtml += `
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                `;
             }
         }
         
-        $('#date_range').text(dateRangeText);
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === pagination.current_page ? 'active' : '';
+            paginationHtml += `
+                <li class="page-item ${active}">
+                    <a class="page-link" href="#" data-page="${i}">${i}</a>
+                </li>
+            `;
+        }
+        
+        if (endPage < pagination.total_pages) {
+            if (endPage < pagination.total_pages - 1) {
+                paginationHtml += `
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                `;
+            }
+            paginationHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${pagination.total_pages}">${pagination.total_pages}</a>
+                </li>
+            `;
+        }
+    
+        // Next button
+        if (pagination.has_next) {
+            paginationHtml += `
+                <li class="page-item">
+                    <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            `;
+        }
+    
+        paginationHtml += `
+                </ul>
+            </nav>
+        `;
+    
+        $paginationContainer.html(paginationHtml);
     }
-
-    // Format time (HH:mm)
-    function formatTime(dateTime) {
-        return moment(dateTime).format('HH:mm');
+    
+    // Handle pagination clicks
+   // Handle pagination clicks
+$(document).on('click', '.page-link', function(e) {
+    e.preventDefault();
+    const page = $(this).data('page');
+    if (!page) return;
+    
+    // Create a new data object with ALL filter parameters plus the new page number
+    const data = {
+        ...currentFilterData,
+        page: page
+    };
+    
+    // Make sure we include year/month/week if they exist
+    if (currentFilterData.time_period === 'week') {
+        data.week = currentFilterData.week;
+    } else if (currentFilterData.time_period === 'month') {
+        data.month = currentFilterData.month;
     }
-
-    // Calculate working hours
+    
+    fetchAttendanceData(data);
+    
+    // Smooth scroll to top of results
+    $('html, body').animate({
+        scrollTop: $("#attendance_results").offset().top - 20
+    }, 300);
+});
+    // Helper functions
     function calculateHours(clockIn, clockOut) {
         if (!clockIn || !clockOut) return '-';
-        const diff = moment(clockOut).diff(moment(clockIn), 'hours', true);
-        return diff.toFixed(1) + 'h';
+        const diff = moment(clockOut).diff(moment(clockIn), 'minutes');
+        return `${Math.floor(diff / 60)}h ${diff % 60}m`;
     }
 
-    // Get status badge class
     function getStatusClass(status) {
         if (status.includes('present')) return 'present';
         if (status.includes('absent')) return 'absent';
         if (status.includes('late')) return 'late';
         if (status.includes('half')) return 'halfday';
+        if (status.includes('holiday')) return 'holiday';
         return '';
+    }
+
+    function getStatusIcon(status) {
+        if (status.includes('present')) return '<i class="fas fa-check-circle mr-1"></i>';
+        if (status.includes('absent')) return '<i class="fas fa-times-circle mr-1"></i>';
+        if (status.includes('late')) return '<i class="fas fa-clock mr-1"></i>';
+        if (status.includes('half')) return '<i class="fas fa-adjust mr-1"></i>';
+        if (status.includes('holiday')) return '<i class="fas fa-umbrella-beach mr-1"></i>';
+        return '';
+    }
+
+    function updateSummaryCards(present, absent, late, halfDay, holiday) {
+        const total = present + absent + late + halfDay + holiday;
+        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+        
+        $('#attendance_summary').html(`
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${present}</div>
+                    <div class="summary-label">Present</div>
+                </div>
+                <div class="status-badge present"><i class="fas fa-check"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${absent}</div>
+                    <div class="summary-label">Absent</div>
+                </div>
+                <div class="status-badge absent"><i class="fas fa-times"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${late}</div>
+                    <div class="summary-label">Late</div>
+                </div>
+                <div class="status-badge late"><i class="fas fa-clock"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${halfDay}</div>
+                    <div class="summary-label">Half Day</div>
+                </div>
+                <div class="status-badge halfday"><i class="fas fa-adjust"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${holiday}</div>
+                    <div class="summary-label">Holidays</div>
+                </div>
+                <div class="status-badge holiday"><i class="fas fa-umbrella-beach"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${percentage}%</div>
+                    <div class="summary-label">Attendance</div>
+                </div>
+                <div><i class="fas fa-chart-line text-primary"></i></div>
+            </div>
+        `);
+        
+        $('#attendance_progress').css('width', `${percentage}%`);
+    }
+
+    function showAlert(message, type) {
+        const alertClass = type === 'error' ? 'danger' : type;
+        const alertHtml = `
+            <div class="alert alert-${alertClass} alert-dismissible fade show">
+                <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+        `;
+        $('.container-fluid').prepend(alertHtml);
+        setTimeout(() => $('.alert').alert('close'), 5000);
     }
 });
 </script>
 {% endblock %}
+

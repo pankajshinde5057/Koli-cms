@@ -50,6 +50,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         const form = document.getElementById("manager-form");
 
+        // Handle required field highlighting
         form.addEventListener("submit", function (e) {
             // Remove previous client-side asterisks
             document.querySelectorAll('.required-asterisk').forEach(el => el.remove());
@@ -77,7 +78,18 @@
             if (hasEmptyRequired) {
                 // Scroll to top or first error (optional)
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                e.preventDefault();  // Prevent form submission
             }
+        });
+
+        // Automatically open calendar when clicking on date input
+        document.querySelectorAll("input[type='date']").forEach(function(input) {
+            input.addEventListener("click", function () {
+                if (this.showPicker) {
+                    this.showPicker();  // Supported in modern browsers
+                }
+            });
         });
     });
 </script>
+

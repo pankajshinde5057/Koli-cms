@@ -15,6 +15,11 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 from django.contrib.auth.decorators import login_required
+from asset_app.models import AssetIssue,Assets
+from django.db.models import Avg,Count,Q,F,Max
+from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
+from django.utils.timezone import localdate
+
 
 
 LOCATION_CHOICES = (
@@ -31,6 +36,15 @@ def admin_home(request):
     total_division = Division.objects.all().count()
     attendance_list = AttendanceRecord.objects.filter(department__in=departments)
     total_attendance = attendance_list.count()
+    
+    total_assets = Assets.objects.all().count()
+    active_assets = Assets.objects.filter(is_asset_issued=True).count()
+    inactive_assets = Assets.objects.filter(is_asset_issued=False).count()
+
+    resolved_issues = AssetIssue.objects.filter(status='resolved')
+    total_resolved = resolved_issues.count()
+    recurring_issues = resolved_issues.filter(is_recurring=True).count()
+    holidays = Holiday.objects.all().order_by('date')
     attendance_list = []
     department_list = []
     for department in departments:
@@ -44,7 +58,13 @@ def admin_home(request):
         'total_division': total_division,
         'total_department': total_department,
         'department_list': department_list,
-        'attendance_list': attendance_list
+        'attendance_list': attendance_list,
+        'total_assets': total_assets,
+        'active_assets': active_assets,
+        'inactive_assets': inactive_assets,
+        'total_resolved_issues': total_resolved,
+        'recurring_issues': recurring_issues,
+        'holidays': holidays,
 
     }
     return render(request, 'ceo_template/home_content.html', context)
@@ -93,7 +113,7 @@ def add_manager(request):
                 manager.save()
                 
                 messages.success(request, "Successfully Added")
-                return redirect(reverse('add_manager'))
+                return redirect(reverse('manage_manager'))
 
             except Exception as e:
                 messages.error(request, "Could Not Add " + str(e))
@@ -154,7 +174,7 @@ def add_employee(request):
                 employee.save()
 
                 messages.success(request, "Successfully Added")
-                return redirect(reverse('add_employee'))
+                return redirect(reverse('manage_employee'))
             except Exception as e:
                 messages.error(request, "Could Not Add: " + str(e))
         else:
@@ -177,7 +197,7 @@ def add_division(request):
                 division.name = name
                 division.save()
                 messages.success(request, "Successfully Added")
-                return redirect(reverse('add_division'))
+                return redirect(reverse('manage_division'))
             except:
                 messages.error(request, "Could Not Add")
         else:
@@ -201,7 +221,7 @@ def add_department(request):
                 department.division = division
                 department.save()
                 messages.success(request, "Successfully Added")
-                return redirect(reverse('add_department'))
+                return redirect(reverse('manage_department'))
 
             except Exception as e:
                 messages.error(request, "Could Not Add " + str(e))
@@ -222,16 +242,30 @@ def manage_manager(request):
 
 
 def manage_employee(request):
-    employees = CustomUser.objects.filter(user_type=3).select_related('employee')
-    valid_employees = [emp for emp in employees if hasattr(emp, 'employee') and emp.employee.id]
+    search_ = request.GET.get("search", '').strip()
+    employees = CustomUser.objects.filter(user_type=3).annotate(
+        asset_count=Count('assetsissuance'),
+    ).select_related('employee', 'employee__department', 'employee__division', 'employee__team_lead')
+    
+    if search_:
+        employees = employees.filter(
+            Q(first_name__icontains=search_) |
+            Q(last_name__icontains=search_)
+        )
     
     location_choices = dict(LOCATION_CHOICES)
+    
+    valid_employees = [user for user in employees if hasattr(user, 'employee')]
     
     context = {
         'employees': valid_employees,
         'page_title': 'Manage Employees',
         'location_choices': location_choices,
     }
+    
+    if not valid_employees:
+        messages.warning(request, "No employees found")
+    
     return render(request, "ceo_template/manage_employee.html", context)
 
 
@@ -836,15 +870,21 @@ def send_selected_manager_notification(request):
 
 def delete_manager(request, manager_id):
     manager = get_object_or_404(CustomUser, manager__id=manager_id)
-    manager.delete()
-    messages.success(request, "Manager deleted successfully!")
+    try:
+        manager.delete()
+        messages.success(request, "Manager deleted successfully!")
+    except Exception as e:
+        messages.error(request,"Sorry, failed to delete manager.")
     return redirect(reverse('manage_manager'))
 
 
 def delete_employee(request, employee_id):
     employee = get_object_or_404(CustomUser, employee__id=employee_id)
-    employee.delete()
-    messages.success(request, "Employee deleted successfully!")
+    try:
+        employee.delete()
+        messages.success(request, "Employee deleted successfully!")
+    except Exception:
+        messages.error(request,"Sorry, failed to delete employee.")
     return redirect(reverse('manage_employee'))
 
 
@@ -1120,18 +1160,21 @@ def admin_view_attendance(request):
         (f"{i:02}", datetime(current_year, i, 1).strftime('%B')) 
         for i in range(1, 13)
     ]
-
+    managers = None
     if hasattr(request.user, 'manager'):
         manager = request.user.manager
         departments = Department.objects.filter(division=manager.division)
         employees = Employee.objects.filter(department__in=departments)
+        managers = Manager.objects.all()
     else:
         departments = Department.objects.all()
         employees = Employee.objects.all()
+        managers = Manager.objects.all()
 
     context = {
         'departments': departments,
         'employees': employees,
+        'managers': managers,
         'page_title': 'View Attendance',
         'months': months,
         'years': years,
@@ -1139,3 +1182,387 @@ def admin_view_attendance(request):
         'current_month': current_month
     }
     return render(request, 'ceo_template/admin_view_attendance.html', context)
+
+
+@login_required
+def admin_asset_issue_history(request):
+    search_query = request.GET.get('search', '')
+    page = request.GET.get('page', 1)
+    
+    resolved_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
+    
+    if search_query:
+        resolved_issues = resolved_issues.filter(
+            Q(asset__asset_name__icontains=search_query) |
+            Q(issue_type__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(resolution_method__icontains=search_query)
+        )
+    
+    paginator = Paginator(resolved_issues, 3)
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'total_resolved_count': resolved_issues.count(),  
+        'recurring_count': resolved_issues.filter(is_recurring=True).count(),
+    }
+    
+    return render(request, 'ceo_template/admin_view_asset_issue_history.html', context)
+ 
+
+
+
+
+from datetime import datetime, timedelta
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+from .models import AttendanceRecord, Holiday, Employee, Manager
+
+@csrf_exempt
+def get_manager_and_employee_attendance(request):
+    if request.method == 'POST':
+        try:
+            employee_id = request.POST.get('employee_id')
+            department_id = request.POST.get('department_id')
+            manager_id = request.POST.get('manager_id')
+            month = request.POST.get('month')
+            year = request.POST.get('year')
+            week = request.POST.get('week')
+            from_date = request.POST.get('from_date')
+            to_date = request.POST.get('to_date')
+            page = int(request.POST.get('page', 1))
+            per_page = 5
+
+            if not year and not (from_date and to_date):
+                return JsonResponse({"error": "Year or date range is required"}, status=400)
+
+            queryset = AttendanceRecord.objects.select_related(
+                'user__employee',
+                'user__manager',
+                'user__employee__department',
+                'user__manager__department'
+            ).all()
+
+            if employee_id and employee_id != 'all':
+                try:
+                    employee = Employee.objects.get(employee_id=employee_id)
+                    queryset = queryset.filter(user__employee=employee)
+                except Employee.DoesNotExist:
+                    return JsonResponse({"error": "Employee not found"}, status=400)
+
+            if department_id and department_id != 'all':
+                queryset = queryset.filter(
+                    Q(user__employee__department_id=department_id) |
+                    Q(user__manager__department_id=department_id)
+                )
+
+            if manager_id and manager_id != 'all':
+                try:
+                    manager = None
+                    if hasattr(Manager, 'manager_id'):
+                        manager = Manager.objects.filter(manager_id=manager_id).first()
+                    if not manager and hasattr(Manager, 'admin_id'):
+                        manager = Manager.objects.filter(admin_id=manager_id).first()
+                    if not manager:
+                        manager = Manager.objects.filter(id=manager_id).first()
+
+                    if not manager:
+                        return JsonResponse({"error": "Manager not found"}, status=400)
+
+                    queryset = queryset.filter(
+                        Q(user__manager=manager) |
+                        Q(user__employee__department=manager.department)
+                    )
+                except Exception as e:
+                    return JsonResponse({"error": f"Manager lookup error: {str(e)}"}, status=400)
+
+            # Date filtering
+            holiday_dates = set()
+            filtered_dates = None
+
+            if from_date and to_date:
+                try:
+                    from_date = datetime.strptime(from_date, '%Y-%m-%d').date()
+                    to_date = datetime.strptime(to_date, '%Y-%m-%d').date()
+                    queryset = queryset.filter(date__range=(from_date, to_date))
+                    holiday_dates = set(Holiday.objects.filter(
+                        date__range=(from_date, to_date)
+                    ).values_list('date', flat=True))
+                    filtered_dates = (from_date, to_date)
+                except ValueError:
+                    return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+            else:
+                if year:
+                    queryset = queryset.filter(date__year=int(year))
+                    holiday_dates = set(Holiday.objects.filter(
+                        date__year=int(year)
+                    ).values_list('date', flat=True))
+
+                    if week:
+                        try:
+                            week = int(week)
+                            first_day_of_year = datetime(int(year), 1, 1).date()
+                            start_of_week = first_day_of_year + timedelta(weeks=week - 1)
+                            end_of_week = start_of_week + timedelta(days=6)
+                            queryset = queryset.filter(date__range=(start_of_week, end_of_week))
+                            holiday_dates = set(Holiday.objects.filter(
+                                date__range=(start_of_week, end_of_week)
+                            ).values_list('date', flat=True))
+                            filtered_dates = (start_of_week, end_of_week)
+                        except ValueError:
+                            return JsonResponse({"error": "Invalid week number"}, status=400)
+
+                    elif month:
+                        try:
+                            month = int(month)
+                            queryset = queryset.filter(date__month=month)
+                            holiday_dates = set(Holiday.objects.filter(
+                                date__year=int(year),
+                                date__month=month
+                            ).values_list('date', flat=True))
+                            filtered_dates = (datetime(int(year), month, 1).date(),)
+                        except ValueError:
+                            return JsonResponse({"error": "Invalid month number"}, status=400)
+
+            queryset = queryset.order_by('-date')
+
+            attendance_list = []
+            # Track attendance dates
+            attendance_dates = set(queryset.values_list('date', flat=True))
+
+            # Add attendance records
+            for record in queryset:
+                if hasattr(record.user, 'employee'):
+                    user = record.user.employee
+                    name = f"{user.admin.first_name} {user.admin.last_name}"
+                    department = user.department.name if user.department else ""
+                    user_type = "Employee"
+                    user_id = user.employee_id
+                elif hasattr(record.user, 'manager'):
+                    user = record.user.manager
+                    name = f"{user.admin.first_name} {user.admin.last_name}"
+                    department = user.department.name if user.department else ""
+                    user_type = "Manager"
+                    user_id = getattr(user, 'manager_id', None) or getattr(user, 'admin_id', None) or str(user.id)
+                else:
+                    continue
+
+                status = "Holiday" if record.date in holiday_dates else record.status
+
+                attendance_list.append({
+                    "date": record.date.isoformat(),
+                    "day": record.date.strftime('%a'),
+                    "status": status,
+                    "clock_in": record.clock_in.isoformat() if record.clock_in else None,
+                    "clock_out": record.clock_out.isoformat() if record.clock_out else None,
+                    "hours": str(record.total_worked).split('.')[0] if record.total_worked else "0h 0m",
+                    "name": name,
+                    "department": department,
+                    "user_type": user_type,
+                    "user_id": user_id,
+                })
+
+            # Add holiday records without attendance entries
+            missing_holiday_dates = holiday_dates - attendance_dates
+            for holiday_date in missing_holiday_dates:
+                attendance_list.append({
+                    "date": holiday_date.isoformat(),
+                    "day": holiday_date.strftime('%a'),
+                    "status": "Holiday",
+                    "clock_in": None,
+                    "clock_out": None,
+                    "hours": "0h 0m",
+                    "name": "",
+                    "department": "",
+                    "user_type": "",
+                    "user_id": "",
+                })
+
+            # Sort all attendance by date descending
+            attendance_list = sorted(attendance_list, key=lambda x: x['date'], reverse=True)
+
+            # Paginate the final attendance list
+            paginator = Paginator(attendance_list, per_page)
+            try:
+                page_obj = paginator.page(page)
+            except:
+                return JsonResponse({"error": "Invalid page number"}, status=400)
+
+            # Pagination data
+            pagination_data = {
+                "current_page": page_obj.number,
+                "total_pages": paginator.num_pages,
+                "total_records": paginator.count,
+                "has_previous": page_obj.has_previous(),
+                "has_next": page_obj.has_next(),
+                "previous_page": page_obj.previous_page_number() if page_obj.has_previous() else None,
+                "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
+                "start_index": page_obj.start_index(),
+                "end_index": page_obj.end_index(),
+            }
+
+            return JsonResponse({
+                "data": page_obj.object_list,
+                "pagination": pagination_data,
+                "stats": {
+                    "holidays": len(holiday_dates),
+                }
+            }, safe=False)
+
+        except Exception as e:
+            return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
+
+
+
+@csrf_exempt
+def save_holidays(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            holidays_data = data.get('holidays', [])
+            saved_holidays = []
+            errors = []
+            
+            # First validate all holidays before saving any
+            for holiday_data in holidays_data:
+                date_str = holiday_data.get('date')
+                name = holiday_data.get('name')
+                holiday_id = holiday_data.get('id')
+                
+                if not date_str or not name:
+                    errors.append(f"Missing date or name for holiday")
+                    continue
+                    
+                try:
+                    date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    
+                    # Check if this date already exists (for new holidays)
+                    if not holiday_id:
+                        if Holiday.objects.filter(date=date).exists():
+                            errors.append(f"A holiday already exists for {date_str}")
+                            continue
+                    
+                except ValueError:
+                    errors.append(f"Invalid date format for {date_str}")
+                    continue
+            
+            if errors:
+                return JsonResponse({
+                    'success': False,
+                    'error': "Validation errors",
+                    'details': errors
+                }, status=400)
+            
+            # Now save all holidays if validation passed
+            for holiday_data in holidays_data:
+                date_str = holiday_data.get('date')
+                name = holiday_data.get('name')
+                holiday_id = holiday_data.get('id')
+                
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                
+                if holiday_id:
+                    # Update existing holiday
+                    try:
+                        holiday = Holiday.objects.get(id=holiday_id)
+                        holiday.date = date
+                        holiday.name = name
+                        holiday.save()
+                    except Holiday.DoesNotExist:
+                        continue
+                else:
+                    # Create new holiday
+                    holiday = Holiday.objects.create(
+                        date=date,
+                        name=name
+                    )
+                
+                saved_holidays.append({
+                    'id': holiday.id,
+                    'date': holiday.date.strftime('%Y-%m-%d'),
+                    'name': holiday.name
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'holidays': saved_holidays
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    }, status=400)
+
+
+@login_required
+@csrf_exempt
+def delete_holiday(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            holiday_id = data.get('id')
+            
+            if not holiday_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Missing holiday ID'
+                }, status=400)
+                
+            holiday = Holiday.objects.get(id=holiday_id)
+            holiday.delete()
+            return JsonResponse({'success': True})
+            
+        except Holiday.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'Holiday not found'
+            }, status=404)
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    }, status=405)
+    
+@csrf_exempt
+def get_holidays(request):
+    if request.method == 'GET':
+        holidays = Holiday.objects.all().order_by('date')
+        holidays_data = [
+            {
+                'id': holiday.id,
+                'date': holiday.date.strftime('%Y-%m-%d'),
+                'name': holiday.name
+            }
+            for holiday in holidays
+        ]
+        
+        return JsonResponse({
+            'success': True,
+            'holidays': holidays_data
+        })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Invalid request method'
+    }, status=400)

@@ -22,9 +22,10 @@ def employee_view_notification(request):
     return render(request, 'employee/notifications.html', {
         'notifications': notifications
     })
+
+
 @csrf_exempt
 def mark_notification_read(request, notification_id,type,role):
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",request, notification_id,type,role)
     
     if request.method == 'POST':
         if type == "leave":

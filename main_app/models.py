@@ -115,8 +115,14 @@ class LeaveReportEmployee(models.Model):
         ('Half-Day','Half-Day'),
         ('Full-Day','Full-Day')
     )
+    HALF_DAY_CHOICES = (
+        ('First Half', 'First Half'),
+        ('Second Half', 'Second Half')
+    )
+    
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
     leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
+    half_day_type = models.CharField(max_length=100, choices=HALF_DAY_CHOICES, blank=True, null=True)
     start_date = models.DateField(blank=True, null=True, default=None)
     end_date = models.DateField(blank=True,null=True)
     message = models.TextField()
@@ -124,6 +130,16 @@ class LeaveReportEmployee(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def clean(self):
+        super().clean()
+        if self.leave_type == 'Half-Day' and not self.half_day_type:
+            raise ValidationError("Please specify whether it's First Half or Second Half for Half-Day leaves.")
+        if self.leave_type == 'Full-Day' and self.half_day_type:
+            self.half_day_type = None  # Clear half_day_type if it's a full-day leave
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 class LeaveReportManager(models.Model):
     manager = models.ForeignKey(Manager, on_delete=models.CASCADE)
@@ -361,3 +377,16 @@ class AttendanceSummary(models.Model):
     
     def __str__(self):
         return f"{self.user} - {self.month}/{self.year} Summary"
+    
+class Holiday(models.Model):
+    date = models.DateField()
+    name = models.CharField(max_length=100)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date']
+        verbose_name_plural = 'Holidays'
+
+    def __str__(self):
+        return f"{self.name} ({self.date})"

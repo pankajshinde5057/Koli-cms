@@ -212,8 +212,31 @@
                                                                 </select>
                                                             </div>
                                                             <div class="form-group">
-                                                                <label>Description</label>
-                                                                <textarea name="description" class="form-control" rows="4" placeholder="Please describe the issue in detail..." required></textarea>
+                                                                <label class="font-weight-bold">Description*</label>
+                                                                <textarea name="description" class="form-control" rows="4" 
+                                                                    placeholder="Be specific about:
+- What happened
+- When it started
+- Error messages (if any)" 
+                                                                    required></textarea>
+                                                            </div>
+                                                            <!-- Recurring Issue Section -->
+                                                            <div class="form-group border-top pt-3">
+                                                                <div class="custom-control custom-checkbox">
+                                                                    <input type="checkbox" class="custom-control-input" 
+                                                                        id="recurringCheck{{ issuance.id }}" name="is_recurring">
+                                                                    <label class="custom-control-label" for="recurringCheck{{ issuance.id }}">
+                                                                        This is a recurring issue
+                                                                    </label>
+                                                                    <small class="form-text text-muted">
+                                                                        Check if you've experienced this same problem before
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-group recurrence-notes" style="display:none;">
+                                                                <label>Recurrence Details</label>
+                                                                <textarea name="recurrence_notes" class="form-control" rows="2"
+                                                                    placeholder="How often does this happen? When was the first occurrence?"></textarea>
                                                             </div>
                                                         </div>
                                                         <div class="modal-footer">
@@ -295,3 +318,16 @@
     </div>
 </div>
 {% endblock %}
+
+
+{% block custom_js %}
+<script>
+    // Show/hide recurrence notes field dynamically
+    $(document).ready(function(){
+        // Event delegation for dynamically created elements
+        $(document).on('change', '[id^="recurringCheck"]', function(){
+            $(this).closest('.modal-body').find('.recurrence-notes').toggle(this.checked);
+        });
+    });
+</script>
+{% endblock custom_js %}

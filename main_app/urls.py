@@ -80,14 +80,17 @@ urlpatterns = [
           ceo_views.edit_department, name='edit_department'),
      path('generate_performance_report',ceo_views.generate_performance_report,name='generate_performance_report'),
      path('api/attendance/clock/', ceo_views.admin_view_attendance),
+
+     path('admin_asset_issue_history/',ceo_views.admin_asset_issue_history,name="admin_asset_issue_history"),
      
-
-
+     path('save_holidays/', ceo_views.save_holidays, name='save_holidays'),
+     path('delete_holiday/', ceo_views.delete_holiday, name='delete_holiday'),
+     path('get_holidays/', ceo_views.get_holidays, name='get_holidays'),
      path('clock-in-out/', views.clock_in_out, name='clock_in_out'),
      path('break/', views.break_action, name='break_action'),
 
      path('api/attendance/clock/', views.AttendanceActionView.as_view(), name='clock_in_out_api'),
-     
+     path("get_employee_attendance_by_admin/", ceo_views.get_manager_and_employee_attendance, name='get_manager_and_employee_attendance'),
 
      # Manager
      path("manager/home/", manager_views.manager_home, name='manager_home'),
@@ -101,13 +104,17 @@ urlpatterns = [
      path("manager/attendance/update/", manager_views.manager_update_attendance, name='manager_update_attendance'),
       
      path("manager/get_employees/", manager_views.get_employees, name='get_employees'),
+     path("manager/get_managers/", manager_views.get_managers, name='get_managers'),
      path("manager/attendance/fetch/", manager_views.get_employee_attendance, name='get_employee_attendance'),
      path("manager/attendance/save/", manager_views.save_attendance, name='save_attendance'),
      path("manager/attendance/update-data/", manager_views.update_attendance,
      name='update_attendance'),
      path("manager/fcmtoken/", manager_views.manager_fcmtoken, name='manager_fcmtoken'),
+     path("manager/view_asset/notification/", manager_views.manager_asset_view_notification,
+          name="manager_asset_view_notification"),
      path("manager/view/notification/", manager_views.manager_view_notification,
           name="manager_view_notification"),
+
      path("manager/salary/add/", manager_views.manager_add_salary, name='manager_add_salary'),
      path("manager/salary/edit/", EditSalaryView.as_view(),
           name='edit_employee_salary'),
