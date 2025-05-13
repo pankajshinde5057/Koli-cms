@@ -70,9 +70,12 @@ def employee_home(request):
         detailed_time_entries.append({
             'type': 'clock_in',
             'date': record.date,
+            'start_time': record.clock_in,  
+            'end_time': record.clock_out if record.clock_out else None,
             'time': record.clock_in,
             'record': record,
-            'status': 'Clocked In' if not record.clock_out else 'Clocked Out'
+            'status': 'Clocked In' if not record.clock_out else 'Clocked Out',
+            'duration': record.clock_out - record.clock_in if record.clock_out else None
         })
         
         # Add all break entries for this record
@@ -81,11 +84,12 @@ def employee_home(request):
             detailed_time_entries.append({
                 'type': 'break',
                 'date': record.date,
-                'time': brk.break_start,
-                'end_time': brk.break_end,
+                'start_time': brk.break_start,  
+                'end_time': brk.break_end,     
+                'time': brk.break_start,        
                 'duration': brk.duration,
                 'record': record,
-                'status': 'Break Start' if not brk.break_end else 'Break End'
+                'status': 'Break End' if brk.break_end else 'Break Start'
             })
         
         # Add clock out entry if exists
@@ -93,9 +97,12 @@ def employee_home(request):
             detailed_time_entries.append({
                 'type': 'clock_out',
                 'date': record.date,
-                'time': record.clock_out,
+                'start_time': record.clock_in,   
+                'end_time': record.clock_out,     
+                'time': record.clock_out,         
                 'record': record,
-                'status': 'Clocked Out'
+                'status': 'Clocked Out',
+                'duration': record.clock_out - record.clock_in
             })
     
     detailed_time_entries.sort(key=lambda x: (x['date'], x['time']), reverse=True)
@@ -211,6 +218,13 @@ def employee_home(request):
         attendance_record__date__year=current_year,
         attendance_record__user=request.user
     ).count()
+
+    # Breaks taken today
+    todays_breaks = Break.objects.filter(
+        attendance_record__date=today,
+        attendance_record__user=request.user
+    ).count()
+
 
     # Calculate working days in month (excluding weekends and holidays)
     days_in_month = monthrange(current_year, current_month)[1]
@@ -384,7 +398,8 @@ def employee_home(request):
             'half_days': half_days,
             'absent_days': absent_days,
             'attendance_percentage': attendance_percentage,
-            'total_breaks_today': total_breaks_in_month
+            'total_breaks_in_month': total_breaks_in_month,
+            'todays_total_breaks' : todays_breaks,
         },
         'detailed_time_entries': paginated_entries,
         'daily_view': daily_view,
@@ -404,7 +419,6 @@ def employee_home(request):
 
 
 def employee_apply_leave(request):
-    form = LeaveReportEmployeeForm(request.POST or None)
     employee = get_object_or_404(Employee, admin_id=request.user.id)
     unread_ids = list(
             Notification.objects.filter(
@@ -424,26 +438,56 @@ def employee_apply_leave(request):
     # Convert to list if needed
     unread_ids = list(notification_ids)
     context = {
-        'form': form,
         'leave_history': LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at'),
         'page_title': 'Apply for leave',
         'unread_ids': unread_ids
     }
     if request.method == 'POST':
-        if form.is_valid():
-            try:
-                obj = form.save(commit=False)
-                obj.employee = employee
-                obj.save()
-                messages.success(
-                    request, "Application for leave has been submitted for review")
-                user = CustomUser.objects.get(id = employee.team_lead.admin.id)
-                send_notification(user, "Leave Appplied from ","notification",obj.id,"manager")
+        leave_type_ = request.POST.get('leave_type')
+        half_day_type_ = request.POST.get('half_day_type')
+        start_date_ = request.POST.get('start_date')
+        end_date_ = request.POST.get('end_date')
+        message_ = request.POST.get('message')
+
+        existing_leaves = LeaveReportEmployee.objects.filter(
+            employee=employee,
+            start_date__lte=end_date_,
+            end_date__gte=start_date_,
+            status=1  # Only check approved leaves
+        ).exists()
+
+        if existing_leaves:
+            messages.error(request, "You already have approved leave for these dates")
+            return redirect(reverse('employee_apply_leave'))
+        
+        try:
+            start_date = date.fromisoformat(start_date_)
+            end_date = date.fromisoformat(end_date_)
+            if end_date < start_date:
+                messages.error(request, "End date cannot be before start date")
                 return redirect(reverse('employee_apply_leave'))
-            except Exception:
-                messages.error(request, "Could not submit")
-        else:
-            messages.error(request, "Form has errors!")
+        except ValueError:
+            messages.error(request, "Invalid date format")
+            return redirect(reverse('employee_apply_leave'))
+       
+        try:
+            obj = LeaveReportEmployee.objects.create(
+                employee = employee,
+                leave_type = leave_type_,
+                half_day_type = half_day_type_ if half_day_type_ else None,
+                start_date = start_date_,
+                end_date = end_date_,
+                message = message_
+            )
+            messages.success(request, "Application for leave has been submitted for review")
+            user = CustomUser.objects.get(id = employee.team_lead.admin.id)
+            send_notification(user, "Leave Appplied from ","notification",obj.id,"manager")
+            return redirect(reverse('employee_apply_leave'))
+        except Exception as e:
+            messages.error(request, f"Error submitting leave: {str(e)}")
+            return redirect(reverse('employee_apply_leave'))
+
+
 
     return render(request, "employee_template/employee_apply_leave.html", context)
 

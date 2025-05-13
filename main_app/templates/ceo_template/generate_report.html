@@ -46,6 +46,14 @@
           </div>
 
           <div class="form-group">
+            <label for="manager">Manager(s)</label>
+            <select name="manager" id="manager" class="form-control select2-multiple" multiple="multiple">
+              <!-- Filled dynamically by JS -->
+            </select>
+            <small class="form-text text-muted">Leave empty to select all managers</small>
+          </div>
+
+          <div class="form-group">
             <label for="month">Month</label>
             <select name="month" class="form-control">
               {% for num, name in months %}
@@ -84,7 +92,7 @@
           allowClear: true
       });
 
-      // Department change handler
+      // Department change handler for employees
       $('#department').change(function() {
           const deptId = $(this).val();
           if (deptId) {
@@ -108,10 +116,33 @@
           }
       });
 
+      // Department change handler for managers
+      $("#department").change(function(){
+        const deptId = $(this).val();
+        if (deptId) {
+          $.ajax({
+            url : '{% url "get_managers" %}',
+            type : "POST",
+            data : {
+              'department' : deptId,
+              'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success : function(response) {
+              const managers = JSON.parse(response);
+              $('#manager').empty();
+              managers.forEach(mag => {
+                $("#manager").append(`<option value="${mag.id}">${mag.name}</option>`);
+              })
+            }
+          })
+        }
+      })
+
       // Form submission validation
       $('form').submit(function(e) {
           const department = $('#department').val();
           const employees = $('#employee').val();
+          const managers = $('#manager').val();
           const month = $('select[name="month"]').val();
           const year = $('select[name="year"]').val();
           
@@ -124,6 +155,13 @@
           
           // Validate at least one filter is selected (department or employee)
           if (!department && (!employees || employees.length === 0)) {
+              alert('Please select at least one filter (Department or Employee)');
+              e.preventDefault();
+              return false;
+          }
+
+          // Validate at least one filter is selected (department or employee)
+          if (!department && (!managers || managers.length === 0)) {
               alert('Please select at least one filter (Department or Employee)');
               e.preventDefault();
               return false;

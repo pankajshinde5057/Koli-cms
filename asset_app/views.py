@@ -433,9 +433,10 @@ class AssetClaimView(LoginRequiredMixin, View):
             claimed_assets = AssetsIssuance.objects.filter(asset_assignee=request.user)   
            
             pending_requests = Notify_Manager.objects.filter(
+                employee=user,
                 asset__in=unclaimed_assets,
                 manager__isnull=False,
-                 approved__isnull=True
+                approved__isnull=True
             ).values_list('asset_id', flat=True)
 
             return render(request, template_name, {
