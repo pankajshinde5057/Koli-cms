@@ -379,6 +379,14 @@ class AttendanceSummary(models.Model):
         return f"{self.user} - {self.month}/{self.year} Summary"
     
 class Holiday(models.Model):
+    date = models.DateField()
     name = models.CharField(max_length=100)
-    date = models.DateField(unique=True)
-    # Any other fields you need
+    created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date']
+        verbose_name_plural = 'Holidays'
+
+    def __str__(self):
+        return f"{self.name} ({self.date})"

@@ -546,65 +546,148 @@ def update_attendance(request):
     
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
+from datetime import datetime, timedelta
+from django.core.paginator import Paginator, EmptyPage
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import AttendanceRecord, Employee, Holiday
+
 @csrf_exempt
 def get_employee_attendance(request):
     if request.method == 'POST':
         try:
             employee_id = request.POST.get('employee_id')
+            department_id = request.POST.get('department_id')
             month = request.POST.get('month')
             year = request.POST.get('year')
             week = request.POST.get('week')
             from_date = request.POST.get('from_date')
             to_date = request.POST.get('to_date')
+            page = int(request.POST.get('page', 1))
+            per_page = int(request.POST.get('per_page', 5))
 
-            if not employee_id:
-                return JsonResponse({"error": "Employee ID is required"}, status=400)
-            if not year:
-                return JsonResponse({"error": "Year is required"}, status=400)
+            if not year and not (from_date and to_date):
+                return JsonResponse({"error": "Year or date range is required"}, status=400)
 
-            employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
-            queryset = AttendanceRecord.objects.filter(user__employee=employee)
+            # Build queryset
+            if employee_id and employee_id != 'all':
+                employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
+                queryset = AttendanceRecord.objects.filter(user__employee=employee)
+            elif department_id and department_id != 'all':
+                queryset = AttendanceRecord.objects.filter(
+                    user__employee__department_id=department_id
+                ).select_related('user__employee__admin', 'user__employee__department')
+            else:
+                queryset = AttendanceRecord.objects.all().select_related(
+                    'user__employee__admin', 'user__employee__department'
+                )
 
             # Always filter by year
-            queryset = queryset.filter(date__year=int(year))
+            if year:
+                queryset = queryset.filter(date__year=int(year))
 
-            # Date range filter takes priority
+            holiday_dates = set()
+            filtered_dates = None
+
+            # Priority: Date range > Week > Month
             if from_date and to_date:
-                from_date = datetime.strptime(from_date, '%Y-%m-%d')
-                to_date = datetime.strptime(to_date, '%Y-%m-%d')
+                from_date = datetime.strptime(from_date, '%Y-%m-%d').date()
+                to_date = datetime.strptime(to_date, '%Y-%m-%d').date()
                 queryset = queryset.filter(date__range=(from_date, to_date))
+                holiday_dates = set(Holiday.objects.filter(
+                    date__range=(from_date, to_date)
+                ).values_list('date', flat=True))
+                filtered_dates = (from_date, to_date)
 
-            # Week filter
-            elif week:
+            elif week and week.isdigit():
                 week = int(week)
-                first_day_of_year = datetime(int(year), 1, 1)
+                first_day_of_year = datetime(int(year), 1, 1).date()
                 start_of_week = first_day_of_year + timedelta(weeks=week - 1)
                 end_of_week = start_of_week + timedelta(days=6)
                 queryset = queryset.filter(date__range=(start_of_week, end_of_week))
+                holiday_dates = set(Holiday.objects.filter(
+                    date__range=(start_of_week, end_of_week)
+                ).values_list('date', flat=True))
+                filtered_dates = (start_of_week, end_of_week)
 
-            # Month filter
-            elif month:
+            elif month and month.isdigit():
                 queryset = queryset.filter(date__month=int(month))
+                holiday_dates = set(Holiday.objects.filter(
+                    date__year=int(year),
+                    date__month=int(month)
+                ).values_list('date', flat=True))
+                start_date = datetime(int(year), int(month), 1).date()
+                end_date = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+                filtered_dates = (start_date, end_date)
 
-            attendance_data = queryset.order_by('date')
+            # Collect attendance records
+            attendance_list = []
+            attendance_dates = set()
 
-            attendance_list = [{
-                "date": str(record.date),
-                "status": record.status,
-                "clock_in": str(record.clock_in) if record.clock_in else "",
-                "clock_out": str(record.clock_out) if record.clock_out else "",
-                "name": f"{employee.admin.first_name} {employee.admin.last_name}",
-                "department": employee.department.name if employee.department else "",
-            } for record in attendance_data]
+            for record in queryset.order_by('-date'):
+                employee = record.user.employee
+                attendance_dates.add(record.date)
+                status = "Holiday" if record.date in holiday_dates else record.status
+                attendance_list.append({
+                    "date": record.date.isoformat(),
+                    "status": status,
+                    "clock_in": record.clock_in.isoformat() if record.clock_in else None,
+                    "clock_out": record.clock_out.isoformat() if record.clock_out else None,
+                    "name": f"{employee.admin.first_name} {employee.admin.last_name}",
+                    "department": employee.department.name if employee.department else "",
+                    "employee_id": employee.employee_id,
+                })
 
-            return JsonResponse(attendance_list, safe=False)
+            # Add missing holidays with no attendance record
+            if filtered_dates:
+                from_date, to_date = filtered_dates
+                missing_holiday_dates = holiday_dates - attendance_dates
+                for holiday_date in missing_holiday_dates:
+                    attendance_list.append({
+                        "date": holiday_date.isoformat(),
+                        "status": "Holiday",
+                        "clock_in": None,
+                        "clock_out": None,
+                        "name": "",
+                        "department": "",
+                        "employee_id": "",
+                    })
+
+            # Final sort and pagination (important fix)
+            attendance_list = sorted(attendance_list, key=lambda x: x['date'], reverse=True)
+            paginator = Paginator(attendance_list, per_page)
+            try:
+                page_obj = paginator.page(page)
+            except EmptyPage:
+                page_obj = paginator.page(paginator.num_pages)
+
+            return JsonResponse({
+                "data": list(page_obj),
+                "pagination": {
+                    "total_items": paginator.count,
+                    "total_pages": paginator.num_pages,
+                    "current_page": page_obj.number,
+                    "has_next": page_obj.has_next(),
+                    "has_previous": page_obj.has_previous(),
+                    "next_page_number": page_obj.next_page_number() if page_obj.has_next() else None,
+                    "previous_page_number": page_obj.previous_page_number() if page_obj.has_previous() else None,
+                    "per_page": per_page,
+                },
+                "stats": {
+                    "holidays": len(holiday_dates),
+                }
+            })
 
         except Employee.DoesNotExist:
-            return JsonResponse({"error": "Employee not found"}, status=400)
-        except Exception as e:
+            return JsonResponse({"error": "Employee not found"}, status=404)
+        except ValueError as e:
             return JsonResponse({"error": str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": f"An error occurred: {str(e)}"}, status=500)
 
-    return JsonResponse({"error": "Invalid request method"}, status=400)
+    return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
 
 
 
@@ -1099,10 +1182,10 @@ def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
     notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
-    pending_asset_notifications = Notify_Manager.objects.filter( approved__isnull=True).order_by('-timestamp')
+    pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
     pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
     
-    all_resolved_recurring = AssetIssue.objects.filter(status='resolved',is_recurring=True).order_by('-resolved_date')[:5]
+    # all_resolved_recurring = AssetIssue.objects.filter(status='resolved',is_recurring=True).order_by('-resolved_date')[:5]
     
     # manager_unread_ids = []
     # query = Notification.objects.filter(user = request.user, role = "manager", is_read= False, notification_type = "notification")
@@ -1117,8 +1200,8 @@ def manager_view_notification(request):
     manager_unread_ids = list(notification_ids)
     # this is foor histoory
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
-    asset_notification_history = Notify_Manager.objects.filter(manager=request.user, approved__isnull=False).order_by('-timestamp')
-    resolved_asset_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
+    # asset_notification_history = Notify_Manager.objects.filter(manager=request.user, approved__isnull=False).order_by('-timestamp')
+    # resolved_asset_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
     # asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
     # asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
     
@@ -1134,8 +1217,8 @@ def manager_view_notification(request):
 
     notification_from_admin_paginator = Paginator(notification_from_admin,3)
     leave_paginator = Paginator(leave_history, 3)  # Show 3 items per page
-    asset_notification_paginator = Paginator(asset_notification_history, 3)
-    resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
+    # asset_notification_paginator = Paginator(asset_notification_history, 3)
+    # resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
 
     notification_page_number = request.GET.get('notification_page')
     leave_page_number = request.GET.get('leave_page')
@@ -1144,23 +1227,28 @@ def manager_view_notification(request):
 
     notification_from_admin_obj = notification_from_admin_paginator.get_page(notification_page_number)
     leave_page_obj = leave_paginator.get_page(leave_page_number)
-    asset_notification_page_obj = asset_notification_paginator.get_page(asset_notification_page_number)
-    resolved_issues_page_obj = resolved_issues_paginator.get_page(resolved_issues_page_number)
+    # asset_notification_page_obj = asset_notification_paginator.get_page(asset_notification_page_number)
+    # resolved_issues_page_obj = resolved_issues_paginator.get_page(resolved_issues_page_number)
     
     context = {
         'notification_from_admin' : notification_from_admin,
         'pending_leave_requests': pending_leave_requests,
-        'asset_notifications': pending_asset_notifications,
-        'asset_issue_notifications': pending_asset_issues,
-        'pending_issue': pending_asset_issues.filter(status='pending'),
-        'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
+        # 'asset_notifications': pending_asset_notifications,
+        # 'asset_issue_notifications': pending_asset_issues,
+        # 'pending_issue': pending_asset_issues.filter(status='pending'),
+        # 'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
         'notification_from_admin_obj' : notification_from_admin_obj,
-        'all_resolved_recurring' : all_resolved_recurring,
+        # 'all_resolved_recurring' : all_resolved_recurring,
 
         # this is for historyy
         'leave_page_obj': leave_page_obj,
-        'asset_notification_page_obj': asset_notification_page_obj,
-        'resolved_issues_page_obj': resolved_issues_page_obj,
+        # 'asset_notification_page_obj': asset_notification_page_obj,
+        # 'resolved_issues_page_obj': resolved_issues_page_obj,
+
+        # # Filter values for template
+        # 'status_filter': status_filter,
+        # 'date_from': date_from or '',
+        # 'date_to': date_to or '',
 
         'page_title': "View Notifications",
         'manager_unread_ids': manager_unread_ids,
@@ -1168,6 +1256,60 @@ def manager_view_notification(request):
     }
 
     return render(request, "manager_template/manager_view_notification.html", context)
+
+
+
+def manager_asset_view_notification(request):
+    manager = get_object_or_404(Manager, admin=request.user)
+
+    # Recently resolved recurring asset issues
+    all_resolved_recurring = AssetIssue.objects.filter(
+        status='resolved',
+        is_recurring=True
+    ).order_by('-resolved_date')[:5]
+
+    # Asset claim notifications pending approval
+    pending_asset_notifications = Notify_Manager.objects.filter(
+        manager=request.user,
+        approved__isnull=True
+    ).order_by('-timestamp')
+
+    # Asset issues with pending or in-progress status
+    pending_asset_issues = AssetIssue.objects.filter(
+        status__in=['pending', 'in_progress']
+    ).order_by('-reported_date')
+
+    # Pagination for asset claim notifications
+    asset_notification_paginator = Paginator(pending_asset_notifications, 5)
+    asset_notification_page_obj = asset_notification_paginator.get_page(request.GET.get('asset_page'))
+
+    # Pagination for resolved recurring issues
+    resolved_issues_paginator = Paginator(all_resolved_recurring, 5)
+    resolved_issues_page_obj = resolved_issues_paginator.get_page(request.GET.get('resolved_page'))
+
+    # IDs of unread notifications for potential frontend use
+    manager_unread_ids = pending_asset_notifications.values_list('id', flat=True)
+
+    # Count of unread asset-related notifications
+    unread_asset_notification_count = pending_asset_notifications.count() + pending_asset_issues.count()
+
+    context = {
+        'asset_notifications': pending_asset_notifications,
+        'asset_issue_notifications': pending_asset_issues,
+        'pending_issue': pending_asset_issues.filter(status='pending'),
+        'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
+        'all_resolved_recurring': all_resolved_recurring,
+        'asset_notification_page_obj': asset_notification_page_obj,
+        'resolved_issues_page_obj': resolved_issues_page_obj,
+        'page_title': "Asset Notifications",
+        'manager_unread_ids': manager_unread_ids,
+        'LOCATION_CHOICES': LOCATION_CHOICES,
+        'unread_asset_notification_count': unread_asset_notification_count,
+        'unread_asset_request_count': pending_asset_notifications.count(),
+        'unread_asset_issue_count': pending_asset_issues.count(),
+    }
+
+    return render(request, "manager_template/manager_asset_view_notification.html", context)
 
 
 @csrf_exempt
@@ -1283,7 +1425,7 @@ def approve_assest_request(request, notification_id):
         else:
             messages.info(request, "This request was already approved.")
 
-    return redirect('manager_view_notification')
+    return redirect('manager_asset_view_notification')
 
 
 
@@ -1301,7 +1443,7 @@ def reject_assest_request(request, notification_id):
     else:
         messages.info(request, "This request was already approved or rejected.")
 
-    return redirect('manager_view_notification')
+    return redirect('manager_asset_view_notification')
 
 
 def approve_leave_request(request, leave_id):
@@ -1392,7 +1534,7 @@ def resolve_asset_issue(request,asset_issu_id):
                 notify.save()
         messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
-    return redirect('manager_view_notification')
+    return redirect('manager_asset_view_notification')
 
 
 @csrf_exempt
