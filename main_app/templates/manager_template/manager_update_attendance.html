@@ -713,7 +713,7 @@ $('#view_attendance').click(function() {
     
     // Basic validation - at least one filter must be selected
     if (!employeeId && !departmentId && !managerId) {
-        showAlert('Please select at least one filter (Department, Employee, or Manager)', 'warning');
+        showAlert('Please select at least one filter (Department, Employee)', 'warning');
         return;
     }
 
@@ -944,9 +944,9 @@ function renderAttendanceTable(data, pagination) {
         const statusIcon = getStatusIcon(status);
 
         // Validate name and department
-        const name = record.name ? String(record.name) : 'Unknown';
-        const department = record.department ? String(record.department) : 'Unknown';
-        const userType = record.user_type ? String(record.user_type) : 'Unknown';
+        const name = record.name ? String(record.name) : '-';
+        const department = record.department ? String(record.department) : '-';
+        const userType = record.user_type ? String(record.user_type) : '-';
 
         tableHtml += `
             <tr>

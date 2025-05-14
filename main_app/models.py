@@ -142,7 +142,19 @@ class LeaveReportEmployee(models.Model):
         super().save(*args, **kwargs)
 
 class LeaveReportManager(models.Model):
+    LEAVE_TYPE = (
+        ('Half-Day','Half-Day'),
+        ('Full-Day','Full-Day')
+    )
+    HALF_DAY_CHOICES = (
+        ('First Half', 'First Half'),
+        ('Second Half', 'Second Half')
+    )
     manager = models.ForeignKey(Manager, on_delete=models.CASCADE)
+    leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
+    half_day_type = models.CharField(max_length=100, choices=HALF_DAY_CHOICES, blank=True, null=True)
+    start_date = models.DateField(blank=True, null=True, default=None)
+    end_date = models.DateField(blank=True,null=True)
     date = models.CharField(max_length=60)
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
@@ -379,8 +391,16 @@ class AttendanceSummary(models.Model):
         return f"{self.user} - {self.month}/{self.year} Summary"
     
 class Holiday(models.Model):
+    HOLIDAY_TYPES = [
+        ('public', 'Public Holiday'),
+        ('company', 'Company Holiday'),
+        ('observance', 'Observance'),
+        ('seasonal', 'Seasonal'),
+    ]
+    
     date = models.DateField()
     name = models.CharField(max_length=100)
+    type = models.CharField(max_length=20, choices=HOLIDAY_TYPES, default='public')
     created_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -19,7 +19,7 @@ from asset_app.models import AssetIssue,Assets
 from django.db.models import Avg,Count,Q,F,Max
 from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 from django.utils.timezone import localdate
-
+from main_app.notification_badge import send_notification
 
 
 LOCATION_CHOICES = (
@@ -1358,6 +1358,10 @@ def get_manager_and_employee_attendance(request):
 
                 status = "Holiday" if record.date in holiday_dates else record.status
 
+                # Append admin usertype when the holiday is set
+                if status == "Holiday":
+                    user_type = "Admin" if user_type == "Manager" else user_type
+
                 attendance_list.append({
                     "date": record.date.isoformat(),
                     "day": record.date.strftime('%a'),
@@ -1383,7 +1387,7 @@ def get_manager_and_employee_attendance(request):
                     "hours": "0h 0m",
                     "name": "",
                     "department": "",
-                    "user_type": "",
+                    "user_type": "Admin",  # User type is 'Admin' for holidays
                     "user_id": "",
                 })
 
@@ -1420,6 +1424,7 @@ def get_manager_and_employee_attendance(request):
 
         except Exception as e:
             return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
+
 
 
 
@@ -1514,8 +1519,7 @@ def save_holidays(request):
 def delete_holiday(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            holiday_id = data.get('id')
+            holiday_id = request.POST.get('id')
             
             if not holiday_id:
                 return JsonResponse({
@@ -1525,7 +1529,20 @@ def delete_holiday(request):
                 
             holiday = Holiday.objects.get(id=holiday_id)
             holiday.delete()
-            return JsonResponse({'success': True})
+            
+            # Return updated holidays list
+            holidays = Holiday.objects.all().order_by('date')
+            holidays_data = [{
+                'id': h.id,
+                'date': h.date.strftime('%Y-%m-%d'),
+                'name': h.name,
+                'type': h.type
+            } for h in holidays]
+            
+            return JsonResponse({
+                'success': True,
+                'holidays': holidays_data
+            })
             
         except Holiday.DoesNotExist:
             return JsonResponse({
@@ -1566,3 +1583,74 @@ def get_holidays(request):
         'success': False,
         'error': 'Invalid request method'
     }, status=400)
+    
+def admin_view_notification(request):
+    pending_leave_requests = LeaveReportManager.objects.filter(
+        status=0
+    ).order_by('-created_at')
+
+    notification_ids = Notification.objects.filter(
+        user=request.user,
+        role="manager",
+        is_read=False,
+        notification_type="notification"
+    ).values_list('leave_or_notification_id', flat=True)
+
+    manager_unread_ids = list(notification_ids)
+    leave_history = LeaveReportManager.objects.filter(
+        status__in=[1, 2]
+    ).order_by('-updated_at')
+
+    # Pagination for each section
+    page_number = request.GET.get('page')
+    leave_paginator = Paginator(leave_history, 3)
+    leave_page_obj = leave_paginator.get_page(page_number)
+
+    context = {
+        'pending_leave_requests': pending_leave_requests,
+        'leave_page_obj': leave_page_obj,
+        'manager_unread_ids': manager_unread_ids,
+        'LOCATION_CHOICES': LOCATION_CHOICES,
+        'page_title': "View Notifications",
+    }
+
+    return render(request, "ceo_template/admin_view_notification.html", context)
+
+def approve_manager_leave_request(request, leave_id):
+    if request.method == 'POST':
+        leave_request = get_object_or_404(LeaveReportManager, id=leave_id)
+        msg = "Please check the Leave Request"
+        if leave_request.status == 0:
+            if not leave_request.end_date:
+                leave_request.end_date = leave_request.start_date
+                leave_request.save()
+
+            leave_request.status = 1
+            leave_request.save()
+
+            if leave_request.leave_type == 'Half-Day':
+                messages.success(request, "Half-Day leave approved.")
+            else:
+                messages.success(request, "Full-Day leave approved.")
+            msg = "Leave request approved."
+        else:
+            messages.info(request, "This leave request has already been processed.")
+        user = CustomUser.objects.get(id = leave_request.manager.admin.id)
+        send_notification(user, msg,"leave",leave_id,"manager")
+    return redirect('admin_view_notification')
+
+
+def reject_manager_leave_request(request, leave_id):
+    if request.method == 'POST':
+        msg = "Please check the Leave Request"
+        leave_request = get_object_or_404(LeaveReportManager, id=leave_id)
+        if leave_request.status == 0:
+            leave_request.status = 2
+            leave_request.save()
+            msg = "Leave request rejected."
+            messages.warning(request, "Leave request rejected.")
+        else:
+            messages.info(request, "This leave request has already been processed.")
+        user = CustomUser.objects.get(id = leave_request.manager.admin.id)
+        send_notification(user, msg,"leave",leave_id,"manager")
+    return redirect('admin_view_notification')

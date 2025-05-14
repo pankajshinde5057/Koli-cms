@@ -1182,81 +1182,40 @@ def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
     notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
-    pending_asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True).order_by('-timestamp')
-    pending_asset_issues = AssetIssue.objects.filter(status__in=['pending', 'in_progress']).order_by('-reported_date')
     
-    # all_resolved_recurring = AssetIssue.objects.filter(status='resolved',is_recurring=True).order_by('-resolved_date')[:5]
-    
-    # manager_unread_ids = []
-    # query = Notification.objects.filter(user = request.user, role = "manager", is_read= False, notification_type = "notification")
+    # Get unread notification IDs
     notification_ids = Notification.objects.filter(
         user=request.user,
         role="manager",
         is_read=False,
         notification_type="notification"
     ).values_list('leave_or_notification_id', flat=True)
-
-    # Convert to list if needed
     manager_unread_ids = list(notification_ids)
-    # this is foor histoory
+    
+    # Leave history
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
-    # asset_notification_history = Notify_Manager.objects.filter(manager=request.user, approved__isnull=False).order_by('-timestamp')
-    # resolved_asset_issues = AssetIssue.objects.filter(status='resolved').order_by('-resolved_date')
-    # asset_notifications = Notify_Manager.objects.filter(manager=request.user, approved__isnull=True)
-    # asset_issue_notifications = AssetIssue.objects.exclude(status='resolved').order_by('-reported_date')
     
-    # context = {
-    #     'pending_leave_requests': pending_leave_requests,
-    #     'asset_notifications': asset_notifications,
-    #     'asset_issue_notifications': asset_issue_notifications,
-    #     'notifications': notification_from_admin, 
-    #     'page_title': "View Notifications",
-    #     'LOCATION_CHOICES': LOCATION_CHOICES
-    # }
-    
-
-    notification_from_admin_paginator = Paginator(notification_from_admin,3)
-    leave_paginator = Paginator(leave_history, 3)  # Show 3 items per page
-    # asset_notification_paginator = Paginator(asset_notification_history, 3)
-    # resolved_issues_paginator = Paginator(resolved_asset_issues, 3)
+    # Pagination
+    notification_from_admin_paginator = Paginator(notification_from_admin, 3)
+    leave_paginator = Paginator(leave_history, 3)
 
     notification_page_number = request.GET.get('notification_page')
     leave_page_number = request.GET.get('leave_page')
-    asset_notification_page_number = request.GET.get('asset_notification_page')
-    resolved_issues_page_number = request.GET.get('resolved_issues_page')
 
     notification_from_admin_obj = notification_from_admin_paginator.get_page(notification_page_number)
     leave_page_obj = leave_paginator.get_page(leave_page_number)
-    # asset_notification_page_obj = asset_notification_paginator.get_page(asset_notification_page_number)
-    # resolved_issues_page_obj = resolved_issues_paginator.get_page(resolved_issues_page_number)
     
     context = {
-        'notification_from_admin' : notification_from_admin,
+        'notification_from_admin': notification_from_admin,
         'pending_leave_requests': pending_leave_requests,
-        # 'asset_notifications': pending_asset_notifications,
-        # 'asset_issue_notifications': pending_asset_issues,
-        # 'pending_issue': pending_asset_issues.filter(status='pending'),
-        # 'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
-        'notification_from_admin_obj' : notification_from_admin_obj,
-        # 'all_resolved_recurring' : all_resolved_recurring,
-
-        # this is for historyy
+        'notification_from_admin_obj': notification_from_admin_obj,
         'leave_page_obj': leave_page_obj,
-        # 'asset_notification_page_obj': asset_notification_page_obj,
-        # 'resolved_issues_page_obj': resolved_issues_page_obj,
-
-        # # Filter values for template
-        # 'status_filter': status_filter,
-        # 'date_from': date_from or '',
-        # 'date_to': date_to or '',
-
         'page_title': "View Notifications",
         'manager_unread_ids': manager_unread_ids,
         'LOCATION_CHOICES': LOCATION_CHOICES,
     }
 
     return render(request, "manager_template/manager_view_notification.html", context)
-
 
 
 def manager_asset_view_notification(request):
