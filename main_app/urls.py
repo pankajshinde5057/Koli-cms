@@ -130,10 +130,14 @@ urlpatterns = [
           name='reject_leave_request'),
      path('notification/read/<int:notification_id>/<str:type>/<str:role>/', mark_notification_read, name='mark_notification_read'),
 
+
+     path('get_asset_categories/', manager_views.get_asset_categories, name='get_asset_categories'),
      path('get_available_assets/', manager_views.get_available_assets, name='get_available_assets'),
      path('get_assigned_assets/', manager_views.get_assigned_assets, name='get_assigned_assets'),
      path('assign_assets/', manager_views.assign_assets, name='assign_assets'),
      path('remove_asset_assignment/', manager_views.remove_asset_assignment, name='remove_asset_assignment'),
+     path('remove_selected_asset_assignment/', manager_views.remove_selected_asset_assignment, name='remove_selected_asset_assignment'),
+     path('remove_all_asset_assignment/', manager_views.remove_all_asset_assignment, name='remove_all_asset_assignment'),
      
      path('resolve_asset_issue/<int:asset_issu_id>/', manager_views.resolve_asset_issue, name='resolve_asset_issue'),
 

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404,HttpResponse
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
-
+from django.template.loader import render_to_string
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -33,7 +33,7 @@ class AssetsListView(ListView):
     model = Assets
     template_name = 'asset_app/home.html'
     context_object_name = 'assets'
-    paginate_by = 25
+    paginate_by = 5
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -91,7 +91,16 @@ class AssetsListView(ListView):
         
         return context
 
-    
+    def get(self, request, *args, **kwargs):
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(self.template_name , context , request=request)
+            return HttpResponse(html)
+        
+        return self.render_to_response(context)
+
 class AssetsDetailView(DetailView):
     model = Assets
     template_name = 'asset_app/asset_detail.html'
@@ -297,7 +306,7 @@ class AssetAssignView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 class MyAssetView(LoginRequiredMixin, ListView):
     template_name = 'asset_app/asset_assign.html'
     context_object_name = 'asset_issuances'
-    paginate_by = 10
+    paginate_by = 5
 
     def get_queryset(self):
         user = self.request.user
@@ -311,7 +320,7 @@ class MyAssetView(LoginRequiredMixin, ListView):
             ).select_related('asset', 'asset_assignee').order_by('-date_issued')
         
         else:
-            return AssetsIssuance.objects.all()
+            return AssetsIssuance.objects.all().order_by('-date_issued')
         
    
     def get_context_data(self, **kwargs):
@@ -326,6 +335,15 @@ class MyAssetView(LoginRequiredMixin, ListView):
         
         return context
     
+    def get(self, request, *args, **kwargs):
+        self.object_list = self.get_queryset()
+        context = self.get_context_data()
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(self.template_name, context, request=request)
+            return HttpResponse(html)
+
+        return self.render_to_response(context)
 
     def post(self,request,*args,**kwargs):
         if request.method == "POST":
@@ -374,6 +392,7 @@ class MyAssetView(LoginRequiredMixin, ListView):
 class AssetNotAssignListView(LoginRequiredMixin, View):
     login_url = reverse_lazy("login_page")
     template_name = 'asset_app/not_assigned_asset_list.html'
+    paginate_by = 10
     
     def handle_no_permission(self):
         messages.warning(self.request, "Please log in to access this page.")
@@ -382,9 +401,16 @@ class AssetNotAssignListView(LoginRequiredMixin, View):
     def get(self, request):
         user = request.user
         not_assign_assets = Assets.objects.filter(is_asset_issued=False)
+
+        # pagination
+        paginator = Paginator(not_assign_assets, self.paginate_by)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
         if user.user_type in ['1','2']:
             return render(request, self.template_name, {
-                'assets': not_assign_assets,
+                'assets': page_obj,
+                'page_obj': page_obj,
                 'page_title': 'Not Assigned Asset List',
             })
         else:
@@ -394,11 +420,18 @@ class AssetNotAssignListView(LoginRequiredMixin, View):
                 approved__isnull=True
             ).values_list('asset_id', flat=True)
 
-            return render(request, self.template_name, {
-                'assets': not_assign_assets,
+            context = {
+                'assets': page_obj,
+                'page_obj': page_obj,
                 'pending_requests': list(pending_requests),
                 'page_title': 'Not Assigned Asset List',
-            })
+            }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(self.template_name, context, request=request)
+            return HttpResponse(html)
+
+        return render(request, self.template_name, context)
         
 
 class AssetClaimView(LoginRequiredMixin, View):
