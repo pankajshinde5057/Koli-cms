@@ -132,6 +132,15 @@ $(document).ready(function() {
             }
         });
     });
+    
+    // Automatically open calendar when clicking on date input
+    document.querySelectorAll("input[type='date']").forEach(function(input) {
+        input.addEventListener("click", function () {
+            if (this.showPicker) {
+                this.showPicker();  // Supported in modern browsers
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

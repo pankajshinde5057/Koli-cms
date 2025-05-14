@@ -24,8 +24,8 @@ from django.core.paginator import Paginator
 from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from datetime import datetime
-
-
+from django.template.loader import render_to_string
+from asset_app.models import AssetCategory
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -105,11 +105,21 @@ def manager_home(request):
                 'break_end': localtime(b.break_end).strftime('%H:%M') if b.break_end else 'Ongoing',
                 'break_duration': duration,
             })
-            # print("break_entries:>>>>",break_entries)
-            # After the loop that appends to break_entries
+
+        # Paginate break entries
+        paginator = Paginator(break_entries, 10)  
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        # After the loop that appends to break_entries
         if break_entries:
             break_entries = sorted(break_entries, key=lambda x: x['break_start'], reverse=True)
-        print("break_entries:>>>>",break_entries)
+            
+            # Apply pagination to sorted entries
+            paginator = Paginator(break_entries, 10)
+            page_obj = paginator.get_page(page_number)
+            break_entries = page_obj.object_list
+        
         time_history_data.append({
             'employee_name': employee.get_full_name(),
             'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
@@ -132,7 +142,12 @@ def manager_home(request):
         'total_department': all_departments.count(),
         'total_on_break' : total_on_break,
         'break_entries': break_entries,
+        'page_obj': page_obj,
     }
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string('manager_template/home_content.html', context, request=request)
+        return HttpResponse(html)
+
     return render(request, 'manager_template/home_content.html', context)
 
 def manager_take_attendance(request):
@@ -750,11 +765,33 @@ def manage_employee_by_manager(request):
     return render(request, 'manager_template/manage_employee_by_manager.html', context)
 
 @require_GET
+def get_asset_categories(request):
+    try:
+        categories = AssetCategory.objects.all()
+        categories_data = [{'id': category.id, 'name': category.category} for category in categories]
+        return JsonResponse({'success': True, 'categories': categories_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@require_GET
 def get_available_assets(request):
     try:
+        category_id_ = request.GET.get('category_id','')
+        search_ = request.GET.get('search','')
+
         available_assets = Assets.objects.filter(
             is_asset_issued=False,
         ).select_related('asset_category')
+
+        if category_id_:
+            available_assets = available_assets.filter(asset_category_id=category_id_)
+        
+        if search_:
+            available_assets = available_assets.filter(
+                Q(asset_name__icontains=search_) |
+                Q(asset_serial_number__icontains=search_) |
+                Q(asset_brand__icontains=search_)
+            )
 
         assets_data = [{
             'id': asset.id,
@@ -783,7 +820,6 @@ def get_available_assets(request):
                     'asset_brand': asset.asset_brand,
                     'status': "Available"
                 })
-        print(bundle_assets)
         
         return JsonResponse({'assets': assets_data,'bundle_assets': bundle_assets, 'success': True})
     except Exception as e:
@@ -913,6 +949,98 @@ def remove_asset_assignment(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
+
+@csrf_exempt
+@require_POST
+def remove_selected_asset_assignment(request):
+    try:
+        data = json.loads(request.body)
+        assets = data.get('assets',[])
+
+        if not assets:
+            return JsonResponse({"success":False , 'error' : 'No Assets Selected for Return'})
+
+        returned_count = 0
+
+        for asset in assets:
+            issuance_id = asset.get('issuance_id')
+            asset_id = asset.get('asset_id')
+
+            asset = Assets.objects.get(id=asset_id)
+            issuance = AssetsIssuance.objects.select_for_update().get(
+                id=issuance_id,
+                asset=asset
+            )
+            asset.return_date = timezone.now()
+            asset.is_asset_issued = False
+            asset.save()
+
+            AssetAssignmentHistory.objects.create(
+                asset=asset,
+                assignee=issuance.asset_assignee,
+                date_assigned=issuance.date_issued,
+                date_returned=timezone.now(),
+                location=issuance.asset_location,
+                manager=request.user
+            )
+
+            issuance.delete()
+            returned_count += 1
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully returned {returned_count} asset(s)'
+        })
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@csrf_exempt
+@require_POST
+def remove_all_asset_assignment(request):
+    try:
+        data = json.loads(request.body)
+        employee_id = data.get('employee_id')
+
+        if not employee_id:
+            return JsonResponse({'success': False, 'error': 'Employee ID is required'})
+
+        employee = Employee.objects.get(admin_id=employee_id)
+        issuances = AssetsIssuance.objects.filter(asset_assignee=employee.admin).select_related('asset')
+
+        if not issuances.exists():
+            return JsonResponse({'success': False, 'error': 'No assets assigned to this employee'})
+
+        returned_count = 0
+
+        for issuance in issuances:
+            asset = issuance.asset
+            asset.return_date = timezone.now()
+            asset.is_asset_issued = False
+            asset.save()
+
+            AssetAssignmentHistory.objects.create(
+                asset=asset,
+                assignee=issuance.asset_assignee,
+                date_assigned=issuance.date_issued,
+                date_returned=timezone.now(),
+                location=issuance.asset_location,
+                manager=request.user
+            )
+
+            issuance.delete()
+            returned_count += 1
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully returned {returned_count} asset(s)'
+        })
+    except Employee.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Employee not found'})
+    
+    except Exception as e:
+        return JsonResponse({'success' : False,'error' : str(e)})
 
 
 def add_employee_by_manager(request):
@@ -1050,11 +1178,30 @@ def delete_employee_by_manager(request, employee_id):
     if employee.team_lead != request.user.manager:
         messages.error(request, "You do not have permission to delete this employee.")
         return redirect('manage_employee_by_manager')
+   
+    issuances = AssetsIssuance.objects.filter(asset_assignee=employee.admin)
+    if issuances.exists():
+        for issuance in issuances:
+            asset = issuance.asset
+            asset.is_asset_issued = False
+            asset.return_date = timezone.now()
+            asset.save()
+
+            AssetAssignmentHistory.objects.create(
+                asset=asset,
+                assignee=issuance.asset_assignee,
+                manager=request.user,
+                date_assigned=issuance.date_issued,
+                date_returned=timezone.now(),
+                location=issuance.asset_location,
+                notes="Automatically returned due to employee deletion"
+            )
+            # delete issuance record
+            issuance.delete()
 
     # Delete the employee
-    employee.delete()
-
     user = employee.admin
+    employee.delete()
     if user:
         user.delete()
 
@@ -1065,9 +1212,13 @@ def delete_employee_by_manager(request, employee_id):
 def manager_feedback(request):
     form = FeedbackManagerForm(request.POST or None)
     manager = get_object_or_404(Manager, admin_id=request.user.id)
+    feedbacks_list = FeedbackManager.objects.filter(manager=manager).order_by('-created_at')
+    paginator = Paginator(feedbacks_list, 5)  # 5 items per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     context = {
         'form': form,
-        'feedbacks': FeedbackManager.objects.filter(manager=manager),
+        'page_obj': page_obj,
         'page_title': 'Add Feedback'
     }
     if request.method == 'POST':

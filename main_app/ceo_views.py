@@ -15,7 +15,7 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 from django.contrib.auth.decorators import login_required
-from asset_app.models import AssetIssue,Assets
+from asset_app.models import AssetIssue,Assets,AssetsIssuance,AssetAssignmentHistory
 from django.db.models import Avg,Count,Q,F,Max
 from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 from django.utils.timezone import localdate
@@ -881,6 +881,28 @@ def delete_manager(request, manager_id):
 def delete_employee(request, employee_id):
     employee = get_object_or_404(CustomUser, employee__id=employee_id)
     try:
+        issuances = AssetsIssuance.objects.filter(asset_assignee=employee)
+        if issuances.exists():
+            for issuance in issuances:
+                asset = issuance.asset
+                asset.is_asset_issued = False
+                asset.return_date = timezone.now()
+                asset.save()
+
+                # Log the return in AssetAssignmentHistory
+                AssetAssignmentHistory.objects.create(
+                    asset=asset,
+                    assignee=employee,
+                    manager=request.user,
+                    date_assigned=issuance.date_issued,
+                    date_returned=timezone.now(),
+                    location=issuance.asset_location,
+                    notes="Automatically returned due to employee deletion by admin"
+                )
+
+                # Delete the issuance record
+                issuance.delete()
+
         employee.delete()
         messages.success(request, "Employee deleted successfully!")
     except Exception:

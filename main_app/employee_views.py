@@ -18,6 +18,9 @@ from datetime import timedelta
 from asset_app.models import Notify_Manager,AssetIssue
 from django.utils.timezone import localtime, make_aware
 from datetime import timedelta, datetime, time
+from django.core.paginator import Paginator
+from datetime import date
+from django.template.loader import render_to_string
 
 def employee_home(request):
     today = timezone.now().date()
@@ -418,30 +421,22 @@ def employee_home(request):
     return render(request, 'employee_template/home_content.html', context)
 
 
+
 def employee_apply_leave(request):
     employee = get_object_or_404(Employee, admin_id=request.user.id)
-    unread_ids = list(
-            Notification.objects.filter(
-                user=request.user,
-                is_read=False,
-                notification_type='leave'
-            ).values_list('leave_or_notification_id', flat=True) 
-        )
-    unread_ids = []
-    notification_ids = Notification.objects.filter(
-    user=request.user,
-    role="employee",
-    is_read=False,
-    notification_type="leave"
+    unread_ids = Notification.objects.filter(
+        user=request.user,
+        role="employee",
+        is_read=False,
+        notification_type="leave"
     ).values_list('leave_or_notification_id', flat=True)
 
-    # Convert to list if needed
-    unread_ids = list(notification_ids)
-    context = {
-        'leave_history': LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at'),
-        'page_title': 'Apply for leave',
-        'unread_ids': unread_ids
-    }
+    leave_list = LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at')
+    paginator = Paginator(leave_list, 5)  # Show 5 leave records per page
+
+    page_number = request.GET.get('page')
+    leave_page = paginator.get_page(page_number)
+
     if request.method == 'POST':
         leave_type_ = request.POST.get('leave_type')
         half_day_type_ = request.POST.get('half_day_type')
@@ -449,47 +444,62 @@ def employee_apply_leave(request):
         end_date_ = request.POST.get('end_date')
         message_ = request.POST.get('message')
 
+        if not all([leave_type_, start_date_, message_]):
+            messages.error(request, "All fields are required")
+            return redirect(reverse('employee_apply_leave'))
+
         existing_leaves = LeaveReportEmployee.objects.filter(
             employee=employee,
-            start_date__lte=end_date_,
+            start_date__lte=end_date_ if end_date_ else start_date_,
             end_date__gte=start_date_,
-            status=1  # Only check approved leaves
+            status__in=[0, 1]
         ).exists()
 
         if existing_leaves:
-            messages.error(request, "You already have approved leave for these dates")
+            messages.error(request, "You already applied or have approved leave for these dates.")
             return redirect(reverse('employee_apply_leave'))
-        
+
         try:
             start_date = date.fromisoformat(start_date_)
-            end_date = date.fromisoformat(end_date_)
+            end_date = date.fromisoformat(end_date_ if end_date_ else start_date_)
             if end_date < start_date:
-                messages.error(request, "End date cannot be before start date")
+                messages.error(request, "End date cannot be before start date.")
                 return redirect(reverse('employee_apply_leave'))
         except ValueError:
-            messages.error(request, "Invalid date format")
+            messages.error(request, "Invalid date format.")
             return redirect(reverse('employee_apply_leave'))
-       
+
         try:
             obj = LeaveReportEmployee.objects.create(
-                employee = employee,
-                leave_type = leave_type_,
-                half_day_type = half_day_type_ if half_day_type_ else None,
-                start_date = start_date_,
-                end_date = end_date_,
-                message = message_
+                employee=employee,
+                leave_type=leave_type_,
+                half_day_type=half_day_type_ if half_day_type_ else None,
+                start_date=start_date_,
+                end_date=end_date_ if end_date_ else start_date_,
+                message=message_
             )
-            messages.success(request, "Application for leave has been submitted for review")
-            user = CustomUser.objects.get(id = employee.team_lead.admin.id)
-            send_notification(user, "Leave Appplied from ","notification",obj.id,"manager")
+            messages.success(request, "Your leave request has been submitted.")
+            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
+            send_notification(user, "Leave Applied", "notification", obj.id, "manager")
             return redirect(reverse('employee_apply_leave'))
         except Exception as e:
             messages.error(request, f"Error submitting leave: {str(e)}")
             return redirect(reverse('employee_apply_leave'))
 
-
+    context = {
+        'leave_page': leave_page,
+        'unread_ids': list(unread_ids),
+        'page_title': 'Apply for Leave',
+    }
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Just render part of the existing template using a specific block
+        html = render_to_string("employee_template/employee_apply_leave.html", context, request=request)
+        # Extract only the inner HTML of #leave-history-container
+        # (We'll handle this in JS by selecting it from the rendered template)
+        return HttpResponse(html)
 
     return render(request, "employee_template/employee_apply_leave.html", context)
+
 
 
 def employee_feedback(request):
@@ -516,7 +526,6 @@ def employee_feedback(request):
                 messages.success(
                     request, "Feedback submitted for review")
                 user = CustomUser.objects.get(id = employee.team_lead.admin.id)
-                print("****************", employee.admin.id, employee.team_lead.admin.id,employee.team_lead.admin)
                 send_notification(user, f"Feedback submitted for review for {obj.id}","employee feedback",obj.id,"admin")
                 return redirect(reverse('employee_feedback'))
             except Exception:
@@ -667,15 +676,36 @@ def employee_requests(request):
         employee = Employee.objects.get(admin=request.user)
     except Employee.DoesNotExist:
         messages.error(request, "Employee not found.")
-    
+        employee = None
+
+    # Leave Requests Pagination
     leave_requests = LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at')
+    leave_paginator = Paginator(leave_requests, 5)  
+    leave_page_number = request.GET.get('leave_page')
+    leave_requests_page = leave_paginator.get_page(leave_page_number)
+
+    # Asset Claims Pagination
     asset_claims = Notify_Manager.objects.filter(employee=request.user).order_by('-timestamp')
-    asset_issues = AssetIssue.objects.filter(reported_by=request.user).order_by("reported_date")
+    asset_paginator = Paginator(asset_claims, 5) 
+    asset_page_number = request.GET.get('asset_page')
+    asset_claims_page = asset_paginator.get_page(asset_page_number)
+
+    # Asset Issues Pagination
+    asset_issues = AssetIssue.objects.filter(reported_by=request.user).order_by('reported_date')
+    issue_paginator = Paginator(asset_issues, 5)  
+    issue_page_number = request.GET.get('issue_page')
+    asset_issues_page = issue_paginator.get_page(issue_page_number)
+
     context = {
-        'leave_requests': leave_requests,
-        'asset_claims': asset_claims,
-        'asset_issues': asset_issues,
+        'leave_requests': leave_requests_page,
+        'asset_claims': asset_claims_page,
+        'asset_issues': asset_issues_page,
         'page_title': 'My Requests'
     }
 
-    return render(request, 'employee_template/employee_requests.html',context)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        # Render the entire template but client-side JS will extract relevant parts
+        html = render_to_string('employee_template/employee_requests.html', context, request=request)
+        return HttpResponse(html)
+
+    return render(request, 'employee_template/employee_requests.html', context)
