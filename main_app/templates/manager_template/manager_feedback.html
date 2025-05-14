@@ -11,43 +11,75 @@
                 <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{page_title}}</h3>
                     </div>
 
                     {% include "main_app/form_template.html" with messages=messages  form=form button_text="Submit Feedback"%}
                 </div>
                 <!-- /.card -->
-<div class="card card-primary">
-    <div class="card-header"><h3 class="card-title">{{page_title}}</h3>
-    </div>
-   <div class="table p-2">
-
-       <table class="table table-bordered">
-           <tr>
-               <th>ID</th>
-               <th>Feedback</th>
-               <th>Reply</th>
-            <th>Created At</th>
-        </tr>
-        {% for feedback in feedbacks %}
-        <tr>
-            <td>{{forloop.counter}}</td>
-            <td>{{feedback.feedback}}</td>
-              <td>
-                  
-                  {% if feedback.reply == "" %}
-                      <p class="badge badge-warning">No Response Yet</p>
-                      {% else %}
-                      {{feedback.reply}}
-                  {% endif %}
-                      
-              </td>
-              <td>{{feedback.created_at}}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-    </div>
+                <div class="card card-primary">
+                    <div class="card-header">
+                        <h3 class="card-title">{{page_title}}</h3>
+                    </div>
+                    <div class="table p-2">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>ID</th>
+                                <th>Feedback</th>
+                                <th>Reply</th>
+                                <th>Created At</th>
+                            </tr>
+                            {% for feedback in page_obj %}
+                            <tr>
+                                <td>{{forloop.counter0|add:page_obj.start_index}}</td>
+                                <td>{{feedback.feedback}}</td>
+                                <td>
+                                    
+                                    {% if feedback.reply == "" %}
+                                        <p class="badge badge-warning">No Response Yet</p>
+                                        {% else %}
+                                        {{feedback.reply}}
+                                    {% endif %}
+                                        
+                                </td>
+                                <td>{{feedback.created_at}}</td>
+                                </tr>
+                                {% endfor %}
+                        </table>
+                        <!-- Pagination -->
+                        {% if page_obj.paginator.num_pages > 1 %}
+                            <nav aria-label="Feedback pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}#feedback-section">&laquo;</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}#feedback-section">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}#feedback-section">&raquo;</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            <div class="text-center text-muted small">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
