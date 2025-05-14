@@ -76,87 +76,119 @@ def clock_times(request):
 #         'unread_manager_leave_notification_count': manager_leave_count,
 #         'admin_leave_count':admin_leave_count
 #     }
-    
-def unread_notification_count(request):
-    if not request.user.is_authenticated:
-        return {
-            'unread_employee_general_notification_count': 0,
-            'unread_manager_general_notification_count': 0,
-            'admin_employee_feedback_count': 0,
-            'admin_general_count': 0,
-            'unread_employee_leave_notification_count': 0,
-            'unread_manager_leave_notification_count': 0,
-            'admin_leave_count': 0
-        }
 
+from .models import Notification
+
+def admin_notification_count(request):
     context = {
-        'unread_employee_general_notification_count': 0,
-        'unread_manager_general_notification_count': 0,
-        'admin_employee_feedback_count': 0,
-        'admin_general_count': 0,
-        'unread_employee_leave_notification_count': 0,
-        'unread_manager_leave_notification_count': 0,
-        'admin_leave_count': 0
+        'unread_admin_manager_leave_count': 0,
+        'unread_admin_general_count': 0,
+        'total_admin_notifications': 0,
     }
-
-    try:
-      
-        general_notifications = Notification.objects.filter(
-            user=request.user,
-            is_read=False
-        ).exclude(
-            notification_type__in=['asset_request', 'asset_issue']
+    
+    if request.user.is_authenticated and request.user.is_superuser:
+        # Count of unread manager leave applications for admin
+        context['unread_admin_manager_leave_count'] = Notification.objects.filter(
+            is_read=False,
+            notification_type='leave',
+            role='manager'  # notifications from managers
+        ).count()
+        
+        # Count of general notifications for admin
+        context['unread_admin_general_count'] = Notification.objects.filter(
+            is_read=False,
+            notification_type='notification',
+            role='admin'  # notifications meant for admin
+        ).count()
+        
+        # Total admin notifications count
+        context['total_admin_notifications'] = (
+            context['unread_admin_manager_leave_count'] + 
+            context['unread_admin_general_count']
         )
-
-        # Employee counts
-        if hasattr(request.user, 'employee'):
-            context.update({
-                'unread_employee_general_notification_count': general_notifications.filter(
-                    role="employee",
-                    notification_type="notification"
-                ).count(),
-                'unread_employee_leave_notification_count': general_notifications.filter(
-                    role="employee",
-                    notification_type="leave"
-                ).count()
-            })
-
-        # Manager counts
-        elif hasattr(request.user, 'manager'):
-            context.update({
-                'unread_manager_general_notification_count': general_notifications.filter(
-                    role="manager",
-                    notification_type="notification"
-                ).count(),
-                'unread_manager_leave_notification_count': general_notifications.filter(
-                    role="manager",
-                    notification_type="leave"
-                ).count()
-            })
-
-        # Admin counts
-        elif hasattr(request.user, 'admin'):
-            context.update({
-                'admin_general_count': general_notifications.filter(
-                    role="admin",
-                    notification_type="notification"
-                ).count(),
-                'admin_employee_feedback_count': general_notifications.filter(
-                    role="admin",
-                    notification_type="employee feedback"
-                ).count(),
-                'admin_leave_count': general_notifications.filter(
-                    role="admin",
-                    notification_type="leave"
-                ).count()
-            })
-
-    except Exception as e:
-        # Log error but don't break the site
-        import logging
-        logging.error(f"Error in unread_notification_count context processor: {str(e)}")
     
     return context
+    
+# def unread_notification_count(request):
+#     if not request.user.is_authenticated:
+#         return {
+#             'unread_employee_general_notification_count': 0,
+#             'unread_manager_general_notification_count': 0,
+#             'admin_employee_feedback_count': 0,
+#             'admin_general_count': 0,
+#             'unread_employee_leave_notification_count': 0,
+#             'unread_manager_leave_notification_count': 0,
+#             'admin_leave_count': 0
+#         }
+    
+#     context = {
+#         'unread_employee_general_notification_count': 0,
+#         'unread_manager_general_notification_count': 0,
+#         'admin_employee_feedback_count': 0,
+#         'admin_general_count': 0,
+#         'unread_employee_leave_notification_count': 0,
+#         'unread_manager_leave_notification_count': 0,
+#         'admin_leave_count': 0
+#     }
+
+#     try:
+      
+#         general_notifications = Notification.objects.filter(
+#             user=request.user,
+#             is_read=False
+#         ).exclude(
+#             notification_type__in=['asset_request', 'asset_issue']
+#         )
+
+#         # Employee counts
+#         if hasattr(request.user, 'employee'):
+#             context.update({
+#                 'unread_employee_general_notification_count': general_notifications.filter(
+#                     role="employee",
+#                     notification_type="notification"
+#                 ).count(),
+#                 'unread_employee_leave_notification_count': general_notifications.filter(
+#                     role="employee",
+#                     notification_type="leave"
+#                 ).count()
+#             })
+
+#         # Manager counts
+#         elif hasattr(request.user, 'manager'):
+#             context.update({
+#                 'unread_manager_general_notification_count': general_notifications.filter(
+#                     role="manager",
+#                     notification_type="notification"
+#                 ).count(),
+#                 'unread_manager_leave_notification_count': general_notifications.filter(
+#                     role="manager",
+#                     notification_type="leave"
+#                 ).count()
+#             })
+
+#         # Admin counts
+#         elif hasattr(request.user, 'admin'):
+#             context.update({
+#                 'admin_general_count': general_notifications.filter(
+#                     role="admin",
+#                     notification_type="notification"
+#                 ).count(),
+#                 'admin_employee_feedback_count': general_notifications.filter(
+#                     role="admin",
+#                     notification_type="employee feedback"
+#                 ).count(),
+#                 'admin_leave_count': general_notifications.filter(
+#                     role="admin",
+#                     notification_type="leave"
+#                 ).count()
+#             })
+
+#     except Exception as e:
+#         # Log error but don't break the site
+#         import logging
+#         logging.error(f"Error in unread_notification_count context processor: {str(e)}")
+    
+#     return context
 
 
 

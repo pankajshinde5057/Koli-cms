@@ -151,9 +151,23 @@
                                 View Attendance
                             </p>
                         </a>
-                    </li>  
+                    </li> 
+                    
+                    <li class="nav-item">
+                        {% url 'admin_view_notification' as admin_view_notification %}
+                        <a href="{{admin_view_notification}}" class="nav-link {% if admin_view_notification == request.path %} active {% endif %}">
+                            <i class="nav-icon fas fa-bell"></i>
+                            <p>
+                               View Notifications
+                               {% if unread_admin_manager_leave_count > 0 %}
+                               <span class="right badge badge-danger">{{ unread_admin_manager_leave_count }}</span>
+                                {% endif %}
+                            </p>
+                        </a>
+                    </li>
+
             
-            
+                    
                     <li class="nav-item">
                 {% url 'employee_feedback_message' as employee_feedback_message %}
 

@@ -507,14 +507,14 @@ class AssetClaimView(LoginRequiredMixin, View):
                     'notification': {
                         'title': "KoliInfoTech - Asset Request",
                         'body': manager_message,
-                        'click_action': reverse('manager_view_notification'),
+                        'click_action': reverse('manager_asset_view_notification'),
                         'icon': static('dist/img/AdminLTELogo.png')
                     },
                     'to': manager.fcm_token
                 }
 
                 headers = {
-                    'Authorization': 'key=YOUR_FIREBASE_SERVER_KEY', 
+                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB', 
                     'Content-Type': 'application/json'
                 }
 
