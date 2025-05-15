@@ -95,6 +95,13 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center">
+                                    {% if leave.employee.profile_pic %}
+                                            <img src="{{ leave.employee.profile_pic.url }}" class="img-circle mr-3" width="40" height="40" alt="User Image">
+                                            {% else %}
+                                            <div class="img-circle mr-3 bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                <i class="fas fa-user text-white"></i>
+                                            </div>
+                                            {% endif %}
                                     <div>
                                         <strong>{{ leave.manager }}</strong><br>
                                         <small class="text-muted">{{ leave.manager.department }}</small>
@@ -103,9 +110,10 @@
                             </td>
                             <td>
                                 <span class="badge badge-info">
-                                    {{ leave.date }}
+                                   <small>{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</small>
                                 </span>
                             </td>
+                            
                             <td>
                                 <div class="message-preview">
                                     {{ leave.message|truncatechars:60 }}

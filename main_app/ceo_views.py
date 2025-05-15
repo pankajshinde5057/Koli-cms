@@ -279,10 +279,23 @@ def manage_division(request):
     return render(request, "ceo_template/manage_division.html", context)
 
 
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
 def manage_department(request):
-    departments = Department.objects.all()
+    department_list = Department.objects.all()
+    page = request.GET.get('page', 1)  
+    
+    paginator = Paginator(department_list, 2)  
+    
+    try:
+        departments = paginator.page(page)
+    except PageNotAnInteger:
+        departments = paginator.page(1)
+    except EmptyPage:
+        departments = paginator.page(paginator.num_pages)
+    
     context = {
-        'departments': departments,
+        'departments': departments,  # Note: This is the paginated object
         'page_title': 'Manage Departments'
     }
     return render(request, "ceo_template/manage_department.html", context)
@@ -1638,7 +1651,7 @@ def admin_view_notification(request):
 
     return render(request, "ceo_template/admin_view_notification.html", context)
 
-def approve_manager_leave_request(request, leave_id):
+def approve_admin_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportManager, id=leave_id)
         msg = "Please check the Leave Request"
@@ -1662,7 +1675,7 @@ def approve_manager_leave_request(request, leave_id):
     return redirect('admin_view_notification')
 
 
-def reject_manager_leave_request(request, leave_id):
+def reject_admin_leave_request(request, leave_id):
     if request.method == 'POST':
         msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportManager, id=leave_id)

@@ -159,8 +159,8 @@
                             <i class="nav-icon fas fa-bell"></i>
                             <p>
                                View Notifications
-                               {% if unread_admin_manager_leave_count > 0 %}
-                               <span class="right badge badge-danger">{{ unread_admin_manager_leave_count }}</span>
+                               {% if unread_admin_manager_leave_count  > 0 %}
+                               <span class="right badge badge-danger">{{ unread_admin_manager_leave_count  }}</span>
                                 {% endif %}
                             </p>
                         </a>
@@ -456,6 +456,7 @@
                         <p>All Assets List</p>
                     </a>
                 </li>
+                
                 <li class="nav-item">
                     {% url 'manager_asset_view_notification' as manager_asset_view_notification %}
                     <a href="{{ manager_asset_view_notification }}" class="nav-link {% if manager_asset_view_notification == request.path %} active {% endif %}">
@@ -463,9 +464,7 @@
                         <p>
                             Asset Notifications
                             {% if unread_asset_notification_count > 0 %}
-                            <span class="right badge badge-danger">
-                                {{ unread_asset_notification_count }}
-                            </span>
+                            <span class="right badge badge-danger">{{ unread_asset_notification_count }}</span>
                             {% endif %}
                         </p>
                     </a>
