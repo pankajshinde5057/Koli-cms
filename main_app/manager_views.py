@@ -5,7 +5,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-
+from django.db.models import Count,Q
 from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
@@ -704,40 +704,87 @@ def get_employee_attendance(request):
 
 
 
-
-
-
 def manager_apply_leave(request):
-    try:
-        form = LeaveReportManagerForm(request.POST or None)
-        manager = get_object_or_404(Manager, admin_id=request.user.id)
-        
-        context = {
-            'form': form,
-            'leave_history': LeaveReportManager.objects.filter(manager=manager),
-            'page_title': 'Apply for Leave'
-        }   
-        if request.method == 'POST':
-            if form.is_valid():
-                try:
-                    obj = form.save(commit=False)
-                    obj.manager = manager
-                    obj.save()
-                    # print("obj.admin.idobj.admin.id?>>>>>>>>>>>>",obj.manager.admin_name.id,type(obj.admin.id))
-                    messages.success(
-                        request, "Application for leave has been submitted for review")
-                    user = CustomUser.objects.get(id = obj.manager.id)
-                    send_notification(user, "Leave Appplied from ","notification",obj.id,"admin")
-                    return redirect(reverse('manager_apply_leave'))
-                except Exception as e:
-                    print("ERROR",str(e))
-                    messages.error(request, "Could not apply!")
-            else:
-                messages.error(request, "Form has errors!")
-        return render(request, "manager_template/manager_apply_leave.html", context)
-    except Exception as e:
-        print("ERROR:>>>>>>>>>>>>>>>>>>>>",str(e))
-from django.db.models import Count,Q
+    manager = get_object_or_404(Manager, admin_id=request.user.id)
+    unread_ids = Notification.objects.filter(
+        user=request.user,
+        role="manager",
+        is_read=False,
+        notification_type="leave"
+    ).values_list('leave_or_notification_id', flat=True)
+
+    leave_list = LeaveReportManager.objects.filter(manager=manager).order_by('-created_at')
+    paginator = Paginator(leave_list, 5)  
+
+    page_number = request.GET.get('page')
+    leave_page = paginator.get_page(page_number)
+
+    if request.method == 'POST':
+        leave_type_ = request.POST.get('leave_type')
+        half_day_type_ = request.POST.get('half_day_type')
+        start_date_ = request.POST.get('start_date')
+        end_date_ = request.POST.get('end_date')
+        message_ = request.POST.get('message')
+        print(leave_type_, half_day_type_, start_date_, end_date_, message_)
+
+        if not all([leave_type_, start_date_, message_]):
+            messages.error(request, "All fields are required")
+            return redirect(reverse('manager_apply_leave'))
+
+        existing_leaves = LeaveReportManager.objects.filter(
+            manager=manager,
+            start_date__lte=end_date_ if end_date_ else start_date_,
+            end_date__gte=start_date_,
+            status__in=[0, 1]
+        ).exists()
+
+        if existing_leaves:
+            messages.error(request, "You already applied or have approved leave for these dates.")
+            return redirect(reverse('manager_apply_leave'))
+
+        try:
+            start_date = date.fromisoformat(start_date_)
+            end_date = date.fromisoformat(end_date_ if end_date_ else start_date_)
+            if end_date < start_date:
+                messages.error(request, "End date cannot be before start date.")
+                return redirect(reverse('manager_apply_leave'))  
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect(reverse('manager_apply_leave'))
+
+        try:
+            obj = LeaveReportManager.objects.create(
+                manager=manager,
+                leave_type=leave_type_,
+                half_day_type=half_day_type_ if half_day_type_ else None,
+                start_date=start_date_,
+                end_date=end_date_ if end_date_ else start_date_,
+                message=message_
+            )
+            messages.success(request, "Your leave request has been submitted.")
+            admin_users = CustomUser.objects.filter(is_superuser=True)
+            if admin_users.exists():
+                for admin_user in admin_users:
+                    send_notification(admin_user, "Leave Applied", "notification", obj.id, "manager")
+            
+            return redirect(reverse('manager_apply_leave'))
+        except Exception as e:
+            messages.error(request, f"Error submitting leave: {str(e)}")
+            return redirect(reverse('manager_apply_leave'))
+
+    context = {
+        'leave_page': leave_page,
+        'unread_ids': list(unread_ids),
+        'page_title': 'Apply for Leave',
+    }
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string("manager_template/manager_apply_leave.html", context, request=request)
+        return HttpResponse(html)
+
+    return render(request, "manager_template/manager_apply_leave.html", context)
+
+
 
 def manage_employee_by_manager(request):
 
@@ -1331,42 +1378,45 @@ def manager_fcmtoken(request):
 
 def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
-    notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
-    pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
-    
-    # Get unread notification IDs
-    notification_ids = Notification.objects.filter(
+
+    # Get all unread notifications for manager
+    unread_notifications = Notification.objects.filter(
         user=request.user,
         role="manager",
-        is_read=False,
-        notification_type="notification"
-    ).values_list('leave_or_notification_id', flat=True)
-    manager_unread_ids = list(notification_ids)
-    
-    # Leave history
+        is_read=False
+    ).order_by('-timestamp')
+
+    # Separate types
+    leave_notifications = unread_notifications.filter(notification_type="leave")
+    general_notifications = unread_notifications.filter(notification_type="notification")
+
+    # Pending and history
+    pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
-    
+
+    # Mark as read
+    unread_notifications.update(is_read=True)
+
     # Pagination
-    notification_from_admin_paginator = Paginator(notification_from_admin, 3)
+    leave_notification_paginator = Paginator(leave_notifications, 3)
+    general_notification_paginator = Paginator(general_notifications, 3)
     leave_paginator = Paginator(leave_history, 3)
 
-    notification_page_number = request.GET.get('notification_page')
+    leave_notification_page = request.GET.get('leave_notification_page')
+    general_notification_page = request.GET.get('general_notification_page')
     leave_page_number = request.GET.get('leave_page')
 
-    notification_from_admin_obj = notification_from_admin_paginator.get_page(notification_page_number)
-    leave_page_obj = leave_paginator.get_page(leave_page_number)
-    
     context = {
-        'notification_from_admin': notification_from_admin,
+        'leave_notifications': leave_notification_paginator.get_page(leave_notification_page),
+        'general_notifications': general_notification_paginator.get_page(general_notification_page),
         'pending_leave_requests': pending_leave_requests,
-        'notification_from_admin_obj': notification_from_admin_obj,
-        'leave_page_obj': leave_page_obj,
+        'leave_history': leave_paginator.get_page(leave_page_number),
         'page_title': "View Notifications",
-        'manager_unread_ids': manager_unread_ids,
         'LOCATION_CHOICES': LOCATION_CHOICES,
     }
 
     return render(request, "manager_template/manager_view_notification.html", context)
+
 
 
 def manager_asset_view_notification(request):
@@ -1573,26 +1623,59 @@ def approve_leave_request(request, leave_id):
             else:
                 messages.success(request, "Full-Day leave approved.")
             msg = "Leave request approved."
+            
+            # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+            
+            # Also create notification for manager (optional)
+            Notification.objects.create(
+                user=request.user,
+                message=f"You approved leave for {leave_request.employee.admin.username}",
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="manager"
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
-        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
-
 
 def reject_leave_request(request, leave_id):
     if request.method == 'POST':
-        msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
+        msg = "Please check the Leave Request"
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
             msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
+            
+            # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+            
+            # Also create notification for manager (optional)
+            Notification.objects.create(
+                user=request.user,
+                message=f"You rejected leave for {leave_request.employee.admin.username}",
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="manager"
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
-        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 

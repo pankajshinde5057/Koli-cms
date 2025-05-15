@@ -443,6 +443,10 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
+                 <div id="filter-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
+                    <strong>Warning!</strong> Please select at least one filter (Department, Employee)
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                </div>
                 <div class="card filter-card mb-4 animate__animated animate__fadeIn">
                     <div class="card-header">
                         <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i>&nbsp; &nbsp;Filter Attendance Records for Managers and Employees</h3>
@@ -703,40 +707,67 @@ $(document).ready(function() {
     let currentFilterData = {};
 
     // View Attendance button handler
-   // View Attendance button handler
-// View Attendance button handler with validation
-$('#view_attendance').click(function() {
-    const employeeId = $('#employee').val();
-    const departmentId = $('#department').val();
-    const managerId = $('#manager').val();
-    const timePeriod = $('#time_period').val();
-    
-    // Basic validation - at least one filter must be selected
-    if (!employeeId && !departmentId && !managerId) {
-        showAlert('Please select at least one filter (Department, Employee)', 'warning');
-        return;
-    }
-
-    // Get selected employee details
-    const selectedOption = $('#employee option:selected');
-    let employeeName, employeeDepartment;
-    
-    if (employeeId === 'all') {
-        if (departmentId === 'all') {
-            employeeName = 'All Employees';
-            employeeDepartment = 'All Departments';
-        } else {
-            employeeName = 'All Employees in Department';
-            employeeDepartment = $('#department option:selected').text();
+   $('#view_attendance').click(function() {
+        const employeeId = $('#employee').val();
+        const departmentId = $('#department').val();
+        const managerId = $('#manager').val();
+        const timePeriod = $('#time_period').val();
+        
+        // Hide any previous error messages
+        $('#filter-error').hide();
+        
+        // Basic validation - at least one filter must be selected
+        if (!employeeId && !departmentId && !managerId) {
+            $('#filter-error').show();
+            return;
         }
-    } else {
-        employeeName = selectedOption.text().split(' (')[0] || 'Selected Employees';
-        employeeDepartment = selectedOption.data('department') || $('#department option:selected').text();
-    }
-    
-    // Update employee info display
-    $('#employee_name').text(employeeName);
-    $('#employee_department').text(employeeDepartment);
+
+        // Get selected employee or manager details
+        let selectedName, selectedDepartment, isManager = false;
+        
+        if (managerId && managerId !== 'all') {
+            // Manager is selected
+            const selectedManager = $('#manager option:selected');
+            selectedName = selectedManager.text();
+            selectedDepartment = selectedManager.data('department') || 'HR';
+            isManager = true;
+        } else if (employeeId && employeeId !== 'all') {
+            // Employee is selected
+            const selectedEmployee = $('#employee option:selected');
+            selectedName = selectedEmployee.text().split(' (')[0] || 'Selected Employee';
+            selectedDepartment = selectedEmployee.data('department') || $('#department option:selected').text();
+        } else if (employeeId === 'all') {
+            // All employees selected
+            if (departmentId === 'all') {
+                selectedName = 'All Employees';
+                selectedDepartment = 'All Departments';
+            } else {
+                selectedName = 'All Employees in Department';
+                selectedDepartment = $('#department option:selected').text();
+            }
+        } else if (managerId === 'all') {
+            // All managers selected
+            selectedName = 'All Managers';
+            selectedDepartment = 'HR';
+            isManager = true;
+        } else {
+            // Department only selected
+            selectedName = 'All Employees';
+            selectedDepartment = $('#department option:selected').text();
+        }
+        
+        // Update display based on whether it's a manager or employee
+        if (isManager) {
+            $('#employee_details').hide();
+            $('#manager_details').show();
+            $('#manager_name').text(selectedName);
+            $('#manager_department').text(selectedDepartment);
+        } else {
+            $('#manager_details').hide();
+            $('#employee_details').show();
+            $('#employee_name').text(selectedName);
+            $('#employee_department').text(selectedDepartment);
+        }
 
     // Prepare data for AJAX request
     const data = {
