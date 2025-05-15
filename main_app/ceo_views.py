@@ -232,18 +232,34 @@ def add_department(request):
 
 
 def manage_manager(request):
+    manager_list = CustomUser.objects.filter(user_type=2)
     
-    allManager = CustomUser.objects.filter(user_type=2)
+    paginator = Paginator(manager_list, 5)
+    page_number = request.GET.get('page', 1)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     context = {
-        'allManager': allManager,
+        'allManager': page_obj.object_list, 
+        'page_obj': page_obj,            
         'page_title': 'Manage Manager'
     }
     return render(request, "ceo_template/manage_manager.html", context)
 
 
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+
 def manage_employee(request):
     search_ = request.GET.get("search", '').strip()
-    employees = CustomUser.objects.filter(user_type=3).annotate(
+    employees = CustomUser.objects.filter(
+        user_type=3,
+        employee__isnull=False
+    ).annotate(
         asset_count=Count('assetsissuance'),
     ).select_related('employee', 'employee__department', 'employee__division', 'employee__team_lead')
     
@@ -253,19 +269,22 @@ def manage_employee(request):
             Q(last_name__icontains=search_)
         )
     
+    paginator = Paginator(employees, 10)
+    page_number = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     location_choices = dict(LOCATION_CHOICES)
-    
-    valid_employees = [user for user in employees if hasattr(user, 'employee')]
-    
     context = {
-        'employees': valid_employees,
+        'employees': page_obj.object_list,  
+        'page_obj': page_obj,         
         'page_title': 'Manage Employees',
         'location_choices': location_choices,
     }
-    
-    if not valid_employees:
-        messages.warning(request, "No employees found")
-    
     return render(request, "ceo_template/manage_employee.html", context)
 
 
