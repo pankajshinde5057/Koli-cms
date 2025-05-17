@@ -880,6 +880,8 @@ def admin_notify_manager(request):
 @login_required
 def admin_notify_employee(request):
     employee_list = CustomUser.objects.filter(user_type=3).order_by('last_name', 'first_name')
+    # employee_list = Employee.objects.all()
+    print("employee_list=====",employee_list)
     page = request.GET.get('page', 1)
     paginator = Paginator(employee_list, 10)  
     

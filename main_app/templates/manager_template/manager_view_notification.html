@@ -15,10 +15,6 @@
         }
         .card-title {
             font-weight: 600;
-            background: linear-gradient(45deg, #343a40, #495057);
-        }
-        .card-title {
-            font-weight: 600;
         }
         .badge {
             font-size: 85%;
@@ -32,10 +28,6 @@
         }
         .table-hover tbody tr:hover {
             background-color: rgba(78, 115, 223, 0.05);
-            font-weight: 600;
-        }
-        .table-hover tbody tr:hover {
-            background-color: rgba(78, 115, 223, 0.05);
         }
         .img-circle {
             border-radius: 50%;
@@ -44,7 +36,6 @@
         .modal-content {
             border: none;
             border-radius: 0.5rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
         }
         .modal-header {
@@ -63,29 +54,6 @@
         .page-link {
             color: #4e73df;
         }
-        /* Status Badges */
-        .badge-pending {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .badge-in-progress {
-            background-color: #17a2b8;
-            color: white;
-        }
-        .badge-resolved {
-            background-color: #28a745;
-            color: white;
-        }
-        .badge-rejected {
-            background-color: #dc3545;
-            color: white;
-        }
-        /* Unread dot */
-        .unread-dot {
-            font-size: 8px;
-            margin-left: 5px;
-            margin-top: 15px;
-            color: #dc3545;
         /* Status Badges */
         .badge-pending {
             background-color: #ffc107;
@@ -131,7 +99,6 @@
         <!-- Admin Notifications Card -->
         <div class="card card-dark mb-4 shadow-lg">
             <div class="card-header">
-            <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-bell mr-2"></i>
                     <strong>Notifications from Admin</strong>
@@ -170,8 +137,6 @@
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content shadow-lg">
                                             <div class="modal-header bg-gradient-primary text-white">
-                                        <div class="modal-content shadow-lg">
-                                            <div class="modal-header bg-gradient-primary text-white">
                                                 <p class="modal-title">Notification from Admin</p>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                     <span aria-hidden="true">&times;</span>
@@ -193,7 +158,6 @@
                                                 </div>
                                             </div>
                                             <div class="modal-footer bg-light">
-                                            <div class="modal-footer bg-light">
                                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">
                                                     <i class="fas fa-times mr-1"></i> Close
                                                 </button>
@@ -204,11 +168,6 @@
                             {% empty %}
                                 <tr>
                                     <td colspan="3" class="text-center py-4">
-                                        <div class="empty-state">
-                                            <i class="fas fa-bell-slash fa-2x text-muted mb-3"></i>
-                                            <h5 class="text-muted">No notifications from admin</h5>
-                                            <p class="small">You have no notifications at this time</p>
-                                        </div>
                                         <div class="empty-state">
                                             <i class="fas fa-bell-slash fa-2x text-muted mb-3"></i>
                                             <h5 class="text-muted">No notifications from admin</h5>
@@ -275,7 +234,6 @@
 
         <!-- Leave Requests Card -->
         <div class="card card-dark mb-4 shadow-lg">
-            <div class="card-header">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-calendar-alt mr-2"></i>
@@ -347,7 +305,6 @@
                                             </button>
                                             {% if leave.id in manager_unread_ids %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
-                                                <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -359,22 +316,12 @@
                                         <div class="modal-content shadow-lg">
                                             <div class="modal-header bg-gradient-primary text-white">
                                                 <p class="modal-title">Leave Request by: <strong>{{ leave.employee.get_full_name }}</strong></p>
-                                        <div class="modal-content shadow-lg">
-                                            <div class="modal-header bg-gradient-primary text-white">
-                                                <p class="modal-title">Leave Request by: <strong>{{ leave.employee.get_full_name }}</strong></p>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                     <span aria-hidden="true">&times;</span>
                                                 </button>
                                             </div>
                                             <div class="modal-body">
                                                 <div class="row mb-3">
-                                                    <div class="col-md-6">
-                                                        <p><strong>Start Date:</strong><br>
-                                                        {{ leave.start_date|date:"M d, Y" }}</p>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <p><strong>End Date:</strong><br>
-                                                        {{ leave.end_date|date:"M d, Y" }}</p>
                                                     <div class="col-md-6">
                                                         <p><strong>Start Date:</strong><br>
                                                         {{ leave.start_date|date:"M d, Y" }}</p>
@@ -392,11 +339,9 @@
                                                 </div>
                                             </div>
                                             <div class="modal-footer bg-light">
-                                            <div class="modal-footer bg-light">
                                                 <form method="post" action="{% url 'approve_leave_request' leave.id %}" class="d-inline">
                                                     {% csrf_token %}
                                                     <button type="submit" class="btn btn-success">
-                                                        <i class="fas fa-check-circle mr-1"></i> Approve
                                                         <i class="fas fa-check-circle mr-1"></i> Approve
                                                     </button>
                                                 </form>
@@ -404,12 +349,8 @@
                                                     {% csrf_token %}
                                                     <button type="submit" class="btn btn-danger">
                                                         <i class="fas fa-times-circle mr-1"></i> Reject
-                                                        <i class="fas fa-times-circle mr-1"></i> Reject
                                                     </button>
                                                 </form>
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                                                    <i class="fas fa-times mr-1"></i> Close
-                                                </button>
                                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">
                                                     <i class="fas fa-times mr-1"></i> Close
                                                 </button>
@@ -420,11 +361,6 @@
                             {% empty %}
                                 <tr>
                                     <td colspan="4" class="text-center py-4">
-                                        <div class="empty-state">
-                                            <i class="fas fa-check-circle text-success mb-3"></i>
-                                            <h5 class="text-muted">No pending leave requests</h5>
-                                            <p class="small">All leave requests have been processed</p>
-                                        </div>
                                         <div class="empty-state">
                                             <i class="fas fa-check-circle text-success mb-3"></i>
                                             <h5 class="text-muted">No pending leave requests</h5>
@@ -557,11 +493,7 @@
                 <div class="modal-dialog modal-lg" role="document">
                     <div class="modal-content shadow-lg">
                         <div class="modal-header bg-gradient-{% if leave.status == 1 %}success{% else %}danger{% endif %} text-white">
-                <div class="modal-dialog modal-lg" role="document">
-                    <div class="modal-content shadow-lg">
-                        <div class="modal-header bg-gradient-{% if leave.status == 1 %}success{% else %}danger{% endif %} text-white">
                             <h5 class="modal-title">
-                                Leave Request - {{ leave.employee.get_full_name }}
                                 Leave Request - {{ leave.employee.get_full_name }}
                             </h5>
                             <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
@@ -571,15 +503,9 @@
                         <div class="modal-body">
                             <div class="row mb-3">
                                 <div class="col-md-4">
-                                <div class="col-md-4">
                                     <p><strong>Start Date:</strong><br>
                                     {{ leave.start_date|date:"M d, Y" }}</p>
                                 </div>
-                                <div class="col-md-4">
-                                    <p><strong>End Date:</strong><br>
-                                    {{ leave.end_date|date:"M d, Y" }}</p>
-                                </div>
-                                <div class="col-md-4">
                                 <div class="col-md-4">
                                     <p><strong>End Date:</strong><br>
                                     {{ leave.end_date|date:"M d, Y" }}</p>
@@ -589,14 +515,11 @@
                                     <span class="badge 
                                         {% if leave.status == 1 %}badge-resolved
                                         {% else %}badge-rejected{% endif %}">
-                                        {% if leave.status == 1 %}badge-resolved
-                                        {% else %}badge-rejected{% endif %}">
                                         {% if leave.status == 1 %}Approved{% else %}Rejected{% endif %}
                                     </span></p>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>Employee Message:</label>
                                 <label>Employee Message:</label>
                                 <div class="p-3 bg-light rounded">
                                     {{ leave.message }}
@@ -615,16 +538,11 @@
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">
                                 <i class="fas fa-times mr-1"></i> Close
                             </button>
-                        <div class="modal-footer bg-light">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
-                                <i class="fas fa-times mr-1"></i> Close
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
         {% endfor %}
-    </div>
     </div>
 </section>
 {% endblock %}
@@ -640,7 +558,6 @@
     });
 </script>
 {% endblock %}
-
 
 {% block custom_js %}
 <script>
