@@ -381,7 +381,7 @@ def manage_department(request):
     department_list = Department.objects.all()
     page = request.GET.get('page', 10)
     
-    paginator = Paginator(department_list, 1)  # 1 item per page
+    paginator = Paginator(department_list, 10)  # 1 item per page
     try:
         departments = paginator.page(page)
     except PageNotAnInteger:
