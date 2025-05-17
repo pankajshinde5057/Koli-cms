@@ -255,6 +255,18 @@ def manage_manager(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
 
+    manager_list = CustomUser.objects.filter(user_type=2)
+    
+    paginator = Paginator(manager_list, 5)
+    page_number = request.GET.get('page', 1)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     context = {
         'allManager': page_obj.object_list,
         'page_obj': page_obj,
@@ -378,7 +390,7 @@ def manage_department(request):
         departments = paginator.page(paginator.num_pages)
     
     context = {
-        'departments': departments,
+        'departments': departments,  # Note: This is the paginated object
         'page_title': 'Manage Departments'
     }
 

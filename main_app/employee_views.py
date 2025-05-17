@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
+from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
 from .forms import *
 from .models import *
@@ -236,7 +237,13 @@ def employee_home(request):
         date__month=current_month,
         date__year=current_year
     ).values_list('date', flat=True)
+    # Get holidays for the current month
+    holidays = Holiday.objects.filter(
+        date__month=current_month,
+        date__year=current_year
+    ).values_list('date', flat=True)
 
+    # Calculate working days in month (excluding weekends, holidays, and 1st/3rd Saturdays)
     # Calculate working days in month (excluding weekends, holidays, and 1st/3rd Saturdays)
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
@@ -259,8 +266,15 @@ def employee_home(request):
         is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
         
         if is_working_day:
+        is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [0, 2]  # 0 and 2 for 1st and 3rd weeks
+        
+        # Check if it's a working day (not sunday, not 1st/3rd saturday, not holiday)
+        is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
+        
+        if is_working_day:
             status = record_dict.get(current_date)
             if not status:
+                absent_days += 1
                 absent_days += 1
             elif status == "half":
                 absent_days += 0.5
@@ -269,12 +283,15 @@ def employee_home(request):
                     employee=employee,
                     status=1,  # Approved
                     leave_type="Half-Day",
+                    leave_type="Half-Day",
                     start_date=current_date  # The specific date you're checking
                 )
                 if leave_records:
                     absent_days += 0.5
+                    absent_days += 0.5
         current_date += timedelta(days=1)
 
+    # Calculate total working days for the month (excluding weekends and holidays)
     # Calculate total working days for the month (excluding weekends and holidays)
     for day in range(1, days_in_month + 1):
         date = timezone.datetime(current_year, current_month, day).date()
@@ -285,8 +302,13 @@ def employee_home(request):
         
         # Count as working day if not sunday, not 1st/3rd saturday, and not holiday
         if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
+        
+        # Count as working day if not sunday, not 1st/3rd saturday, and not holiday
+        if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
             total_working_days += 1
         
+        if is_1st_or_3rd_saturday or is_sunday or date in holidays:
+            weekend_days_list.append(str(date))
         if is_1st_or_3rd_saturday or is_sunday or date in holidays:
             weekend_days_list.append(str(date))
 
@@ -311,8 +333,10 @@ def employee_home(request):
         start_date__year=current_year
     )
     
+    
     # Count half days and full day leaves
     half_days = approved_leaves.filter(leave_type='Half-Day').count()
+     # absent_days = approved_leaves.filter(leave_type='Full-Day').count()
      # absent_days = approved_leaves.filter(leave_type='Full-Day').count()
     # Calculate attendance percentage
     if total_working_days > 0:
@@ -746,6 +770,40 @@ def employee_view_salary(request):
 
 @login_required   
 def employee_view_notification(request):
+    employee = get_object_or_404(Employee, admin=request.user)
+    all_notifications = NotificationEmployee.objects.filter(
+        employee=employee
+    ).order_by('-created_at')
+    notification_from_admin = all_notifications.filter(
+        created_by__is_superuser=True
+    )
+    
+    notification_from_manager = all_notifications.filter(
+        created_by__is_superuser=False
+    )
+    
+    notification_ids = Notification.objects.filter(
+        user=request.user,
+        is_read=False,
+    ).values_list('leave_or_notification_id', flat=True)
+    unread_ids = list(notification_ids)
+    admin_paginator = Paginator(notification_from_admin, 10)
+    admin_page_number = request.GET.get('notification_page')
+    notification_from_admin_obj = admin_paginator.get_page(admin_page_number)
+    manager_paginator = Paginator(notification_from_manager, 10)
+    manager_page_number = request.GET.get('manager_page')
+    notification_from_manager_obj = manager_paginator.get_page(manager_page_number)
+    
+    context = {
+        'notification_from_admin_obj': notification_from_admin_obj,
+        'notification_from_manager_obj': notification_from_manager_obj,
+        'total_notifications': notification_from_admin.count(),
+        'total_manager_notifications': notification_from_manager.count(),
+        'page_title': "View Notifications",
+        'manager_unread_ids': unread_ids,
+        'LOCATION_CHOICES': LOCATION_CHOICES,
+    }
+
     employee = get_object_or_404(Employee, admin=request.user)
     all_notifications = NotificationEmployee.objects.filter(
         employee=employee

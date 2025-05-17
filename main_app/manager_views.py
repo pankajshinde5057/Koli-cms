@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Count,Q
+from django.db.models import Count,Q
 from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
@@ -1529,6 +1530,7 @@ def manager_view_notification(request):
         'notification_from_admin_obj' : notification_from_admin_paginator.get_page(notification_from_admin_obj),
         'pending_leave_requests': pending_leave_requests,
         'leave_history': leave_paginator.get_page(leave_page_number),
+        'leave_history': leave_paginator.get_page(leave_page_number),
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES,
     }
@@ -1766,6 +1768,25 @@ def approve_leave_request(request, leave_id):
                 leave_or_notification_id=leave_id,
                 role="manager"
             )
+            
+            # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+            
+            # Also create notification for manager (optional)
+            Notification.objects.create(
+                user=request.user,
+                message=f"You approved leave for {leave_request.employee.admin.username}",
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="manager"
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
     return redirect('manager_view_notification')
@@ -1776,11 +1797,31 @@ def reject_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
         msg = "Please check the Leave Request"
+        msg = "Please check the Leave Request"
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
             msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
+            
+            # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+            
+            # Also create notification for manager (optional)
+            Notification.objects.create(
+                user=request.user,
+                message=f"You rejected leave for {leave_request.employee.admin.username}",
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="manager"
+            )
             
             # Send notification to employee
             employee_user = leave_request.employee.admin

@@ -94,7 +94,7 @@ urlpatterns = [
 
      path("admin/view/notification/", ceo_views.admin_view_notification,name="admin_view_notification"),
      path('approve-manager-leave/<int:leave_id>/', ceo_views.approve_admin_leave_request, name='approve_manager_leave_request'),
-     path('reject-manager-leave/<int:leave_id>/', ceo_views.approve_admin_leave_request, name='reject_manager_leave_request'),
+     path('reject-manager-leave/<int:leave_id>/', ceo_views.reject_admin_leave_request, name='reject_manager_leave_request'),
 
      # Manager
      path("manager/home/", manager_views.manager_home, name='manager_home'),
