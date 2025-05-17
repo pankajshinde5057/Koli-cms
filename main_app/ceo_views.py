@@ -625,24 +625,37 @@ def employee_feedback_message(request):
 
         return render(request, 'ceo_template/employee_feedback_template.html', context)
     else:
-        feedback_id = request.POST.get('id')
-        try:
-            feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
-            reply = request.POST.get('reply')
-            feedback.reply = reply
-            feedback.save()
-            notify = Notification.objects.filter(
-                user=request.user,
-                role="admin",
-                is_read=False,
-                leave_or_notification_id=feedback_id
-            ).first()
-            if notify:
-                notify.is_read = True
-                notify.save()
-            return HttpResponse(True)
-        except Exception as e:
-            return HttpResponse(False)
+        if request.POST.get('_method') == 'DELETE':
+            feedback_id = request.POST.get('id')
+            try:
+                feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
+                feedback.delete()
+                Notification.objects.filter(
+                    leave_or_notification_id=feedback_id,
+                    notification_type='employee feedback'
+                ).delete()
+                return HttpResponse(True)
+            except Exception as e:
+                return HttpResponse(False)
+        else:
+            feedback_id = request.POST.get('id')
+            try:
+                feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
+                reply = request.POST.get('reply')
+                feedback.reply = reply
+                feedback.save()
+                notify = Notification.objects.filter(
+                    user=request.user,
+                    role="admin",
+                    is_read=False,
+                    leave_or_notification_id=feedback_id
+                ).first()
+                if notify:
+                    notify.is_read = True
+                    notify.save()
+                return HttpResponse(True)
+            except Exception as e:
+                return HttpResponse(False)
 
 
 
@@ -671,15 +684,27 @@ def manager_feedback_message(request):
 
         return render(request, 'ceo_template/manager_feedback_template.html', context)
     else:
-        feedback_id = request.POST.get('id')
-        try:
-            feedback = get_object_or_404(FeedbackManager, id=feedback_id)
-            reply = request.POST.get('reply')
-            feedback.reply = reply
-            feedback.save()
-            return HttpResponse(True)
-        except Exception as e:
-            return HttpResponse(False)
+        # Handle POST (reply) and DELETE requests
+        if request.POST.get('_method') == 'DELETE':
+            # Handle delete request
+            feedback_id = request.POST.get('id')
+            try:
+                feedback = get_object_or_404(FeedbackManager, id=feedback_id)
+                feedback.delete()
+                return HttpResponse(True)
+            except Exception as e:
+                return HttpResponse(False)
+        else:
+            # Handle reply request
+            feedback_id = request.POST.get('id')
+            try:
+                feedback = get_object_or_404(FeedbackManager, id=feedback_id)
+                reply = request.POST.get('reply')
+                feedback.reply = reply
+                feedback.save()
+                return HttpResponse(True)
+            except Exception as e:
+                return HttpResponse(False)
 
 
 @login_required
