@@ -852,7 +852,7 @@ def manage_employee_by_manager(request):
     departments = Department.objects.all()
     divisions = Division.objects.all()
 
-    paginator = Paginator(employees, 5)
+    paginator = Paginator(employees, 10)
     page_obj = paginator.get_page(page_number)
 
     context = {

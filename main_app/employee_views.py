@@ -266,7 +266,7 @@ def employee_home(request):
         is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
         
         if is_working_day:
-        is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [0, 2]  # 0 and 2 for 1st and 3rd weeks
+            is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [0, 2]  # 0 and 2 for 1st and 3rd weeks
         
         # Check if it's a working day (not sunday, not 1st/3rd saturday, not holiday)
         is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
@@ -282,7 +282,6 @@ def employee_home(request):
                 leave_records = LeaveReportEmployee.objects.filter(
                     employee=employee,
                     status=1,  # Approved
-                    leave_type="Half-Day",
                     leave_type="Half-Day",
                     start_date=current_date  # The specific date you're checking
                 )
@@ -301,7 +300,7 @@ def employee_home(request):
         is_1st_or_3rd_saturday = is_saturday and ((day - 1) // 7) in [0, 2]
         
         # Count as working day if not sunday, not 1st/3rd saturday, and not holiday
-        if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
+        # if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
         
         # Count as working day if not sunday, not 1st/3rd saturday, and not holiday
         if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
