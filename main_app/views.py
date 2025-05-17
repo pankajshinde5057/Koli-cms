@@ -20,6 +20,7 @@ from datetime import datetime, time
 from dotenv import load_dotenv
 import os
 from django.urls import reverse
+from django.http import JsonResponse, HttpResponseRedirect
 
 load_dotenv()
 
@@ -174,68 +175,192 @@ class AttendanceActionView(APIView):
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# @login_required
+# def clock_in_out(request):
+#     if request.method == 'POST':
+#         now = timezone.now()
+#         current_record = AttendanceRecord.objects.filter(
+#             user=request.user, 
+#             clock_out__isnull=True
+#         ).first()
+
+#         if current_record:
+#             # Clock out
+#             current_record.clock_out = now
+#             current_record.notes = request.POST.get('notes', '')
+#             current_record.save()
+#             ActivityFeed.objects.create(
+#                 user=request.user,
+#                 activity_type='clock_out',
+#                 related_record=current_record
+#             )
+#         else:
+#             department_id = request.POST.get('department')
+#             department = Department.objects.get(id=department_id) if department_id else None
+#             # Convert to IST
+#             ist = pytz.timezone('Asia/Kolkata')
+#             ist_time = now.astimezone(ist)
+
+#             # Create 9:15 AM and 1:00 PM on the same IST date
+#             late_time = ist.localize(datetime.combine(ist_time.date(), time(9, 15)))
+#             half_day_time = ist.localize(datetime.combine(ist_time.date(), time(13, 0)))  # 1:00 PM
+
+#             print("Current IST Time:", ist_time)
+#             print("Late Time Threshold:", late_time)
+#             print("Half Day Threshold:", half_day_time)
+
+#             # Compare
+#             if ist_time > half_day_time:
+#                 status = 'half_day'
+#             elif ist_time > late_time:
+#                 status = 'late'
+#             else:
+#                 status = 'present'
+
+#             new_record = AttendanceRecord.objects.create(
+#                 user=request.user,
+#                 date = now.date(),
+#                 clock_in=now,
+#                 department=department,
+#                 notes=request.POST.get('notes', ''),
+#                 ip_address=get_router_ip(),
+#                 status=status
+#             )
+
+#             ActivityFeed.objects.create(
+#                 user=request.user,
+#                 activity_type='clock_in',
+#                 related_record=new_record
+#             )
+
+#         return JsonResponse({'status': 'success'})
+#     return redirect('home')
+
+import logging
+
+# Set up logging for debugging
+logger = logging.getLogger(__name__)
+
 @login_required
 def clock_in_out(request):
     if request.method == 'POST':
         now = timezone.now()
-        current_record = AttendanceRecord.objects.filter(
-            user=request.user, 
-            clock_out__isnull=True
+        today = now.date()
+        logger.debug(f"Processing clock_in_out for user {request.user} on {today}")
+
+        # Check for any existing record for today
+        existing_record = AttendanceRecord.objects.filter(
+            user=request.user,
+            date=today
         ).first()
 
-        if current_record:
-            # Clock out
-            current_record.clock_out = now
-            current_record.notes = request.POST.get('notes', '')
-            current_record.save()
-            ActivityFeed.objects.create(
-                user=request.user,
-                activity_type='clock_out',
-                related_record=current_record
-            )
-        else:
-            department_id = request.POST.get('department')
-            department = Department.objects.get(id=department_id) if department_id else None
+        if 'clock_in' in request.POST:
+            if existing_record:
+                logger.warning(f"User {request.user} attempted to clock in again on {today}. Existing record: {existing_record.id}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'You can only clock in once per day.'
+                }, status=400)
+
             # Convert to IST
             ist = pytz.timezone('Asia/Kolkata')
             ist_time = now.astimezone(ist)
+            
+            late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
+            half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
 
-            # Create 9:15 AM and 1:00 PM on the same IST date
-            late_time = ist.localize(datetime.combine(ist_time.date(), time(9, 15)))
-            half_day_time = ist.localize(datetime.combine(ist_time.date(), time(13, 0)))  # 1:00 PM
+            print(f"IST Time Now: {ist_time}, Late Time: {late_time}, Half Day Time: {half_day_time}")
 
-            print("Current IST Time:", ist_time)
-            print("Late Time Threshold:", late_time)
-            print("Half Day Threshold:", half_day_time)
-
-            # Compare
-            if ist_time > half_day_time:
-                status = 'half_day'
-            elif ist_time > late_time:
-                status = 'late'
+            if request.user.user_type == "3":  # Employee
+                earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 45)))
+            elif request.user.user_type == "2":  # Manager
+                earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 30)))
             else:
-                status = 'present'
+                earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(0, 0)))  # No restriction for other types
 
+            if ist_time < earliest_clock_in:
+                logger.warning(f"User {request.user} (type {request.user.user_type}) attempted to clock in too early at {ist_time}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f"Clock-in is not allowed before {'8:45 AM' if request.user.user_type == '3' else '8:30 AM'} IST."
+                }, status=400)
+            
+            # Proceed with clock-in logic
+            department_id = request.POST.get('department')
+            department = Department.objects.get(id=department_id) if department_id else None
+            
+            # Create 9:15 AM and 1:00 PM on the same IST date
+       
+
+            # # Determine status
+            # if ist_time > half_day_time:
+            #     status = 'half_day'
+            # elif ist_time > late_time:
+            #     status = 'late'
+            # else:
+            #     status = 'present'
+
+            logger.debug(f"Creating new attendance record for {request.user} with status {status}")
+            print('half_day' if ist_time > half_day_time else 'late' if ist_time > late_time else 'present', "*"*20)
+            # Create new attendance record
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
-                date = now.date(),
+                date=today,
                 clock_in=now,
                 department=department,
                 notes=request.POST.get('notes', ''),
-                ip_address=get_router_ip(),
-                status=status
+                ip_address=request.META.get('REMOTE_ADDR'),
+                status=  'half_day' if ist_time > half_day_time else 'late' if ist_time > late_time else 'present'
             )
 
+            # Log activity
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_in',
                 related_record=new_record
             )
 
-        return JsonResponse({'status': 'success'})
-    return redirect('home')
+            return JsonResponse({'status': 'success'})
 
+        elif 'clock_out' in request.POST:
+            current_record = AttendanceRecord.objects.filter(
+                user=request.user,
+                date=today,
+                clock_out__isnull=True
+            ).first()
 
+            if not current_record:
+                logger.warning(f"User {request.user} attempted to clock out on {today} with no active record")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No active clock-in record found to clock out.'
+                }, status=400)
+
+            # Clock out
+            current_record.clock_out = now
+            current_record.notes = request.POST.get('notes', '')
+            current_record.save()
+
+            # Log activity
+            ActivityFeed.objects.create(
+                user=request.user,
+                activity_type='clock_out',
+                related_record=current_record
+            )
+
+            logger.debug(f"User {request.user} clocked out successfully on {today}")
+
+            return JsonResponse({'status': 'success'})
+
+        else:
+            logger.error(f"Invalid POST request for {request.user}: {request.POST}")
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Invalid request.'
+            }, status=400)
+
+    logger.debug(f"Redirecting {request.user} to employee_home")
+    return HttpResponseRedirect('employee_home')
 
 @login_required
 def break_action(request):

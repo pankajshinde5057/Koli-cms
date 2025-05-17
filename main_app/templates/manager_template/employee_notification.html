@@ -1,8 +1,6 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
 
-{% block page_title %}{{ page_title }}{% endblock page_title %}
-
 {% block content %}
 <section class="content">
   <div class="container-fluid">
@@ -18,6 +16,8 @@
               Send to Selected
             </button>
           </div>
+          <div class="leave-history-container" id="leave-history-container">
+
           <div class="card-body">
             <table id="example2" class="table table-bordered table-hover">
               <thead>
@@ -57,7 +57,40 @@
                 {% endfor %}
               </tbody>
             </table>
+
+            <div class="pagination-container d-flex justify-content-center mt-3">
+              <ul class="pagination">
+                {% if employees.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link pagination-link" href="?page={{ employees.previous_page_number }}" data-page="{{ employees.previous_page_number }}">«</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">«</span>
+                  </li>
+                {% endif %}
+
+                {% for page_num in employees.paginator.page_range %}
+                  <li class="page-item {% if page_num == employees.number %}active{% endif %}">
+                    <a class="page-link pagination-link" href="?page={{ page_num }}" data-page="{{ page_num }}">{{ page_num }}</a>
+                  </li>
+                {% endfor %}
+
+                {% if employees.has_next %}
+                  <li class="page-item">
+                    <a class="page-link pagination-link" href="?page={{ employees.next_page_number }}" data-page="{{ employees.next_page_number }}">»</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled">
+                    <span class="page-link">»</span>
+                  </li>
+                {% endif %}
+              </ul>
+            </div>
+
           </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -70,7 +103,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Send Notification</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -92,7 +125,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Send Bulk Notification</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
       </div>
       <div class="modal-body">
         <textarea id="bulkMessage" class="form-control" placeholder="Enter bulk message"></textarea>
@@ -111,7 +144,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Send Notification to Selected</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
       </div>
       <div class="modal-body">
         <textarea id="selectiveMessage" class="form-control" placeholder="Enter message for selected employees"></textarea>
@@ -127,116 +160,160 @@
 
 {% block custom_js %}
 <script>
-  $(".show_notification").click(function () {
-    $("#employee_id").val($(this).val());
-  });
-
-  $(".send_notification").click(function () {
-    var id = $("#employee_id").val();
-    var message = $("#message").val();
-    if (message.trim() === "") {
-      alert("Please enter a message");
-      return;
-    }
-    sendNotification(id, message);
-  });
-
-  $(".send_bulk_notification").click(function () {
-    var message = $("#bulkMessage").val();
-    if (message.trim() === "") {
-      alert("Please enter a message");
-      return;
-    }
-    sendBulkNotification(message);
-  });
-
-  $(".send_selected_notification").click(function () {
-    var message = $("#selectiveMessage").val();
-    if (message.trim() === "") {
-      alert("Please enter a message");
-      return;
-    }
-
-    var selectedEmployees = [];
-    $(".employeeCheckbox:checked").each(function () {
-      selectedEmployees.push($(this).val());
+$(document).ready(function() {
+    // Handle pagination clicks
+    $(document).on('click', '.pagination-link', function(e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        
+        $.ajax({
+            url: "{% url 'manager_notify_employee' %}",
+            type: 'GET',
+            data: {
+                page: page
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                // Create a temporary container to parse the full HTML
+                var $temp = $('<div>').html(html);
+                // Extract only the #leave-history-container content
+                var $newContent = $temp.find('#leave-history-container').html();
+                // Update the existing container
+                $('#leave-history-container').html($newContent);
+            },
+            error: function(xhr, status, error) {
+                console.error('Pagination AJAX failed:', error);
+                alert('Error loading page. Please try again.');
+            }
+        });
     });
 
-    if (selectedEmployees.length === 0) {
-      alert("Please select at least one employee");
-      return;
+    // Show notification modal
+    $(document).on('click', '.show_notification', function() {
+        $("#employee_id").val($(this).val());
+    });
+
+    // Send individual notification
+    $(document).on('click', '.send_notification', function() {
+        var id = $("#employee_id").val();
+        var message = $("#message").val();
+        if (message.trim() === "") {
+            alert("Please enter a message");
+            return;
+        }
+        sendNotification(id, message);
+    });
+
+    // Send bulk notification
+    $(document).on('click', '.send_bulk_notification', function() {
+        var message = $("#bulkMessage").val();
+        if (message.trim() === "") {
+            alert("Please enter a message");
+            return;
+        }
+        sendBulkNotification(message);
+    });
+
+    // Send selected notification
+    $(document).on('click', '.send_selected_notification', function() {
+        var message = $("#selectiveMessage").val();
+        if (message.trim() === "") {
+            alert("Please enter a message");
+            return;
+        }
+
+        var selectedEmployees = [];
+        $(".employeeCheckbox:checked").each(function() {
+            selectedEmployees.push($(this).val());
+        });
+
+        if (selectedEmployees.length === 0) {
+            alert("Please select at least one employee");
+            return;
+        }
+
+        sendSelectedNotification(selectedEmployees, message);
+    });
+
+    // Select all checkboxes
+    $(document).on('change', '#selectAll', function() {
+        $(".employeeCheckbox").prop('checked', $(this).prop('checked'));
+    });
+
+    function sendNotification(id, message) {
+        $.ajax({
+            url: "{% url 'manager_send_employee_notification' %}",
+            type: 'POST',
+            data: {
+                id: id,
+                message: message,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response == 'True') {
+                    alert("Notification Sent");
+                    $("#individualNotificationModal").modal('hide');
+                    $("#message").val('');
+                } else {
+                    alert("Notification could not be saved. Please try again.");
+                }
+            },
+            error: function() {
+                alert("Error in saving notification");
+            }
+        });
     }
 
-    sendSelectedNotification(selectedEmployees, message);
-  });
+    function sendBulkNotification(message) {
+        $.ajax({
+            url: "{% url 'send_bulk_employee_notification_by_manager' %}",
+            type: 'POST',
+            data: {
+                message: message,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response == 'True') {
+                    alert("Bulk Notification Sent");
+                    $("#bulkNotificationModal").modal('hide');
+                    $("#bulkMessage").val('');
+                } else {
+                    alert("Bulk Notification could not be sent. Please try again.");
+                }
+            },
+            error: function() {
+                alert("Error in sending bulk notification");
+            }
+        });
+    }
 
-  $("#selectAll").click(function () {
-    $(".employeeCheckbox").prop('checked', $(this).prop('checked'));
-  });
-
-  function sendNotification(id, message) {
-    $.ajax({
-      url: "{% url 'manager_send_employee_notification' %}",
-      type: 'POST',
-      data: {
-        id: id,
-        message: message,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      }
-    }).done(function (response) {
-      if (response == 'True') {
-        alert("Notification Sent");
-        location.reload();
-      } else {
-        alert("Notification could not be saved. Please try again.");
-      }
-    }).fail(function () {
-      alert("Error in saving notification");
-    });
-  }
-
-  function sendBulkNotification(message) {
-    $.ajax({
-      url: "{% url 'send_bulk_employee_notification_by_manager' %}",
-      type: 'POST',
-      data: {
-        message: message,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-      }
-    }).done(function (response) {
-      if (response == 'True') {
-        alert("Bulk Notification Sent");
-        $("#bulkNotificationModal").modal('hide');
-        $("#bulkMessage").val('');
-      } else {
-        alert("Bulk Notification could not be sent. Please try again.");
-      }
-    }).fail(function () {
-      alert("Error in sending bulk notification");
-    });
-  }
-
-  function sendSelectedNotification(employeeIds, message) {
-    $.ajax({
-      url: "{% url 'send_selected_employee_notification_by_manager' %}",
-      type: 'POST',
-      data: {
-        employee_ids: JSON.stringify(employeeIds),
-        message: message,
-      }
-    }).done(function (response) {
-      if (response == 'True') {
-        alert("Notification Sent to Selected Employees");
-        $("#selectiveNotificationModal").modal('hide');
-        $("#selectiveMessage").val('');
-        $(".employeeCheckbox").prop('checked', false);
-        $("#selectAll").prop('checked', false);
-      } else {
-        alert("Notification could not be sent. Please try again.");
-      }
-    }).fail(function () {
-      alert("Error in sending notification");
-    });
-  }
+    function sendSelectedNotification(employeeIds, message) {
+        $.ajax({
+            url: "{% url 'send_selected_employee_notification_by_manager' %}",
+            type: 'POST',
+            data: {
+                employee_ids: JSON.stringify(employeeIds),
+                message: message,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response == 'True') {
+                    alert("Notification Sent to Selected Employees");
+                    $("#selectiveNotificationModal").modal('hide');
+                    $("#selectiveMessage").val('');
+                    $(".employeeCheckbox").prop('checked', false);
+                    $("#selectAll").prop('checked', false);
+                } else {
+                    alert("Notification could not be sent. Please try again.");
+                }
+            },
+            error: function() {
+                alert("Error in sending notification");
+            }
+        });
+    }
+});
 </script>
 {% endblock custom_js %}

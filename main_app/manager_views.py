@@ -5,7 +5,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-
+from django.db.models import Count,Q
 from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
@@ -26,6 +26,7 @@ from django.http import JsonResponse
 from datetime import datetime
 from django.template.loader import render_to_string
 from asset_app.models import AssetCategory
+from django.contrib.auth.decorators import login_required
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -33,6 +34,8 @@ LOCATION_CHOICES = (
     ("Main Office", "Main Office"),
 )
 
+
+@login_required   
 def manager_home(request):
     manager = get_object_or_404(Manager, admin=request.user)
     
@@ -106,6 +109,21 @@ def manager_home(request):
                 'break_duration': duration,
             })
 
+        # current record
+        current_record = AttendanceRecord.objects.filter(
+            user=request.user,
+            clock_out__isnull=True,
+            date=today
+        ).first()
+
+        # for break start end
+        current_break = None
+        if current_record:
+            current_break = Break.objects.filter(
+                attendance_record=current_record,
+                break_end__isnull=True
+            ).first()
+
         # Paginate break entries
         paginator = Paginator(break_entries, 10)  
         page_number = request.GET.get('page')
@@ -130,7 +148,7 @@ def manager_home(request):
         })
 
     context = {
-        'page_title': f"Manager Panel - {manager.admin.last_name} ({manager.division})",
+        'page_title': f"Manager Panel - {manager.admin.get_full_name().capitalize()}",
         'departments': all_departments,
         'time_history_data': time_history_data,
         'selected_department': selected_department,
@@ -143,6 +161,7 @@ def manager_home(request):
         'total_on_break' : total_on_break,
         'break_entries': break_entries,
         'page_obj': page_obj,
+        'current_break' : current_break
     }
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         html = render_to_string('manager_template/home_content.html', context, request=request)
@@ -150,6 +169,8 @@ def manager_home(request):
 
     return render(request, 'manager_template/home_content.html', context)
 
+
+@login_required   
 def manager_take_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     print("manager",manager)
@@ -161,6 +182,7 @@ def manager_take_attendance(request):
     return render(request, 'manager_template/manager_take_attendance.html', context)
 
 
+@login_required   
 @csrf_exempt
 def get_employees(request):
     department_id = request.POST.get('department')
@@ -183,6 +205,7 @@ def get_employees(request):
         return JsonResponse({'error': str(e)}, status=400)
 
 
+@login_required   
 @csrf_exempt
 def get_managers(request):
     print("sd fsdf","*"*20)
@@ -205,6 +228,8 @@ def get_managers(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+
+@login_required   
 @csrf_exempt
 def save_attendance(request):
     employee_data = request.POST.get('employee_ids')
@@ -384,6 +409,7 @@ def save_attendance(request):
 # from datetime import datetime
 
 
+@login_required   
 def manager_update_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
@@ -474,6 +500,8 @@ def manager_update_attendance(request):
 #     return JsonResponse({"error": "Invalid request method"}, status=400)
 from django.forms.models import model_to_dict
 
+
+@login_required   
 @csrf_exempt
 def update_attendance(request):
     if request.method == 'POST':
@@ -567,6 +595,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import AttendanceRecord, Employee, Holiday
 
+
+@login_required   
 @csrf_exempt
 def get_employee_attendance(request):
     if request.method == 'POST':
@@ -704,66 +734,150 @@ def get_employee_attendance(request):
 
 
 
-
-
-
+@login_required   
 def manager_apply_leave(request):
-    try:
-        form = LeaveReportManagerForm(request.POST or None)
-        manager = get_object_or_404(Manager, admin_id=request.user.id)
-        
-        context = {
-            'form': form,
-            'leave_history': LeaveReportManager.objects.filter(manager=manager),
-            'page_title': 'Apply for Leave'
-        }   
-        if request.method == 'POST':
-            if form.is_valid():
-                try:
-                    obj = form.save(commit=False)
-                    obj.manager = manager
-                    obj.save()
-                    # print("obj.admin.idobj.admin.id?>>>>>>>>>>>>",obj.manager.admin_name.id,type(obj.admin.id))
-                    messages.success(
-                        request, "Application for leave has been submitted for review")
-                    user = CustomUser.objects.get(id = obj.manager.id)
-                    send_notification(user, "Leave Appplied from ","notification",obj.id,"admin")
-                    return redirect(reverse('manager_apply_leave'))
-                except Exception as e:
-                    print("ERROR",str(e))
-                    messages.error(request, "Could not apply!")
-            else:
-                messages.error(request, "Form has errors!")
-        return render(request, "manager_template/manager_apply_leave.html", context)
-    except Exception as e:
-        print("ERROR:>>>>>>>>>>>>>>>>>>>>",str(e))
-from django.db.models import Count,Q
+    manager = get_object_or_404(Manager, admin_id=request.user.id)
+    unread_ids = Notification.objects.filter(
+        user=request.user,
+        role="manager",
+        is_read=False,
+        notification_type="leave"
+    ).values_list('leave_or_notification_id', flat=True)
 
-def manage_employee_by_manager(request):
+    leave_list = LeaveReportManager.objects.filter(manager=manager).order_by('-created_at')
+    paginator = Paginator(leave_list, 5)  
 
-    # manager instanccce
-    manager = get_object_or_404(Manager, admin=request.user)
-    search_ = request.GET.get("search",'').strip()
+    page_number = request.GET.get('page')
+    leave_page = paginator.get_page(page_number)
 
-    # get employees with asset count
-    employees = Employee.objects.filter(team_lead=manager).annotate(
-        asset_count = Count('admin__assetsissuance'),
-    ).select_related('admin', 'department', 'division','team_lead')
+    if request.method == 'POST':
+        leave_type_ = request.POST.get('leave_type')
+        half_day_type_ = request.POST.get('half_day_type')
+        start_date_ = request.POST.get('start_date')
+        end_date_ = request.POST.get('end_date')
+        message_ = request.POST.get('message')
+        print(leave_type_, half_day_type_, start_date_, end_date_, message_)
 
-    location_choices = dict(LOCATION_CHOICES)
-    if search_ != None:
-        employees = Employee.objects.filter(admin__first_name__icontains = search_)
+        if not all([leave_type_, start_date_, message_]):
+            messages.error(request, "All fields are required")
+            return redirect(reverse('manager_apply_leave'))
+
+        existing_leaves = LeaveReportManager.objects.filter(
+            manager=manager,
+            start_date__lte=end_date_ if end_date_ else start_date_,
+            end_date__gte=start_date_,
+            status__in=[0, 1]
+        ).exists()
+
+        if existing_leaves:
+            messages.error(request, "You already applied or have approved leave for these dates.")
+            return redirect(reverse('manager_apply_leave'))
+
+        try:
+            start_date = date.fromisoformat(start_date_)
+            end_date = date.fromisoformat(end_date_ if end_date_ else start_date_)
+            if end_date < start_date:
+                messages.error(request, "End date cannot be before start date.")
+                return redirect(reverse('manager_apply_leave'))  
+        except ValueError:
+            messages.error(request, "Invalid date format.")
+            return redirect(reverse('manager_apply_leave'))
+
+        try:
+            obj = LeaveReportManager.objects.create(
+                manager=manager,
+                leave_type=leave_type_,
+                half_day_type=half_day_type_ if half_day_type_ else None,
+                start_date=start_date_,
+                end_date=end_date_ if end_date_ else start_date_,
+                message=message_
+            )
+            messages.success(request, "Your leave request has been submitted.")
+            admin_users = CustomUser.objects.filter(is_superuser=True)
+            if admin_users.exists():
+                for admin_user in admin_users:
+                    send_notification(admin_user, "Leave Applied", "notification", obj.id, "manager")
+            
+            return redirect(reverse('manager_apply_leave'))
+        except Exception as e:
+            messages.error(request, f"Error submitting leave: {str(e)}")
+            return redirect(reverse('manager_apply_leave'))
+
     context = {
-        'employees': employees,
+        'leave_page': leave_page,
+        'unread_ids': list(unread_ids),
+        'page_title': 'Apply for Leave',
+    }
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string("manager_template/manager_apply_leave.html", context, request=request)
+        return HttpResponse(html)
+
+    return render(request, "manager_template/manager_apply_leave.html", context)
+
+
+@login_required   
+def manage_employee_by_manager(request):
+    manager = get_object_or_404(Manager, admin=request.user)
+    search_ = request.GET.get("search", '').strip()
+    gender = request.GET.get("gender", '')
+    department_id = request.GET.get("department", '')
+    division_id = request.GET.get("division", '')
+    page_number = request.GET.get('page', 1)
+
+    # Get employees with asset count
+    employees = Employee.objects.filter(team_lead=manager).annotate(
+        asset_count=Count('admin__assetsissuance'),
+    ).select_related('admin', 'department', 'division', 'team_lead')
+
+    # Apply filters
+    if search_:
+        employees = employees.filter(
+            Q(admin__first_name__icontains=search_) |
+            Q(admin__last_name__icontains=search_) |
+            Q(admin__email__icontains=search_)
+        )
+    
+    if gender:
+        employees = employees.filter(admin__gender=gender)
+    
+    if department_id:
+        employees = employees.filter(department__id=department_id)
+    
+    if division_id:
+        employees = employees.filter(division__id=division_id)
+
+    # Get all departments and divisions for filter dropdowns
+    departments = Department.objects.all()
+    divisions = Division.objects.all()
+
+    paginator = Paginator(employees, 5)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'employees': page_obj,
         'page_title': 'Manage Employees',
-        'location_choices': location_choices,
+        'location_choices': dict(LOCATION_CHOICES),
+        'is_paginated': page_obj.has_other_pages(),
+        'search': search_,
+        'departments': departments,
+        'divisions': divisions,
     }
 
-    if not employees:
-            messages.warning(request, "No employees found")
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "manager_template/manage_employee_by_manager.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
 
+    if not employees:
+        messages.warning(request, "No employees found")
     return render(request, 'manager_template/manage_employee_by_manager.html', context)
 
+
+@login_required   
 @require_GET
 def get_asset_categories(request):
     try:
@@ -773,6 +887,8 @@ def get_asset_categories(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
+
+@login_required   
 @require_GET
 def get_available_assets(request):
     try:
@@ -826,6 +942,8 @@ def get_available_assets(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+
+@login_required   
 @require_GET
 def get_assigned_assets(request):
     employee_id = request.GET.get('employee_id')
@@ -851,6 +969,8 @@ def get_assigned_assets(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+
+@login_required   
 @csrf_exempt
 @require_POST
 def assign_assets(request):
@@ -906,6 +1026,8 @@ def assign_assets(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+
+@login_required   
 @csrf_exempt
 @require_POST
 def remove_asset_assignment(request):
@@ -950,6 +1072,8 @@ def remove_asset_assignment(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+
+@login_required   
 @csrf_exempt
 @require_POST
 def remove_selected_asset_assignment(request):
@@ -996,6 +1120,8 @@ def remove_selected_asset_assignment(request):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
+
+@login_required   
 @csrf_exempt
 @require_POST
 def remove_all_asset_assignment(request):
@@ -1043,6 +1169,7 @@ def remove_all_asset_assignment(request):
         return JsonResponse({'success' : False,'error' : str(e)})
 
 
+@login_required   
 def add_employee_by_manager(request):
     # Only managers can add employees to their department
     manager = get_object_or_404(Manager, admin=request.user)
@@ -1104,7 +1231,7 @@ def add_employee_by_manager(request):
     return render(request, 'manager_template/add_employee_by_manager.html', context)
 
 
-
+@login_required   
 def edit_employee_by_manager(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     if employee.team_lead != request.user.manager:
@@ -1170,6 +1297,7 @@ def edit_employee_by_manager(request, employee_id):
     return render(request, 'manager_template/edit_employee_by_manager.html', context)
 
 
+@login_required   
 def delete_employee_by_manager(request, employee_id):
     # Get the employee object
     employee = get_object_or_404(Employee, id=employee_id)
@@ -1209,6 +1337,7 @@ def delete_employee_by_manager(request, employee_id):
     return redirect(reverse('manage_employee_by_manager'))
 
 
+@login_required   
 def manager_feedback(request):
     form = FeedbackManagerForm(request.POST or None)
     manager = get_object_or_404(Manager, admin_id=request.user.id)
@@ -1233,8 +1362,19 @@ def manager_feedback(request):
                 messages.error(request, "Could not Submit!")
         else:
             messages.error(request, "Form has errors!")
-    return render(request, "manager_template/manager_feedback.html", context)
- 
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            'manager_template/manager_feedback.html',
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+    
+    return render(request, 'manager_template/manager_feedback.html', context)
+
+
+@login_required   
 @csrf_exempt
 def manager_send_employee_notification(request):
     id = request.POST.get('id')
@@ -1267,16 +1407,31 @@ def manager_send_employee_notification(request):
         print(">>>>>>>>>>>>>>>>>>",str(e))
         return HttpResponse("False")
    
-   
+
+@login_required   
 def manager_notify_employee(request):
-    employee = CustomUser.objects.filter(user_type=3)
+    employee_list = CustomUser.objects.filter(user_type=3)
+    paginator = Paginator(employee_list, 5)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     context = {
         'page_title': "Send Notifications To Employees",
-        'employees': employee
+        'employees': page_obj,
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "manager_template/employee_notification.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
     return render(request, "manager_template/employee_notification.html", context)
 
 
+@login_required   
 def manager_view_profile(request):
     manager = get_object_or_404(Manager, admin=request.user)
     form = ManagerEditForm(request.POST or None, request.FILES or None,instance=manager)
@@ -1317,6 +1472,7 @@ def manager_view_profile(request):
     return render(request, "manager_template/manager_view_profile.html", context)
 
 
+@login_required   
 @csrf_exempt
 def manager_fcmtoken(request):
     token = request.POST.get('token')
@@ -1329,46 +1485,58 @@ def manager_fcmtoken(request):
         return HttpResponse("False")
 
 
+
+@login_required   
 def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
+
+    # notification from admin
     notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
-    pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
-    
-    # Get unread notification IDs
-    notification_ids = Notification.objects.filter(
+
+    # Get all unread notifications for manager
+    unread_notifications = Notification.objects.filter(
         user=request.user,
         role="manager",
-        is_read=False,
-        notification_type="notification"
-    ).values_list('leave_or_notification_id', flat=True)
-    manager_unread_ids = list(notification_ids)
-    
-    # Leave history
+        is_read=False
+    ).order_by('-timestamp')
+
+    # Separate types
+    # leave_notifications = unread_notifications.filter(notification_type="leave")
+    # general_notifications = unread_notifications.filter(notification_type="notification")
+
+    # Pending and history
+    pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
-    
+
+    # Mark as read
+    # unread_notifications.update(is_read=True)
+
     # Pagination
     notification_from_admin_paginator = Paginator(notification_from_admin, 3)
+
+    # leave_notification_paginator = Paginator(leave_notifications, 3)
+    # general_notification_paginator = Paginator(general_notifications, 3)
     leave_paginator = Paginator(leave_history, 3)
 
-    notification_page_number = request.GET.get('notification_page')
-    leave_page_number = request.GET.get('leave_page')
+    notification_from_admin_obj = request.GET.get('notification_from_admin_obj')
+    leave_notification_page = request.GET.get('leave_notification_page')
+    # general_notification_page = request.GET.get('general_notification_page')
+    leave_page_number = request.GET.get('leave_history_page')
 
-    notification_from_admin_obj = notification_from_admin_paginator.get_page(notification_page_number)
-    leave_page_obj = leave_paginator.get_page(leave_page_number)
-    
     context = {
-        'notification_from_admin': notification_from_admin,
+        # 'leave_notifications': leave_notification_paginator.get_page(leave_notification_page),
+        # 'general_notifications': general_notification_paginator.get_page(general_notification_page),
+        'notification_from_admin_obj' : notification_from_admin_paginator.get_page(notification_from_admin_obj),
         'pending_leave_requests': pending_leave_requests,
-        'notification_from_admin_obj': notification_from_admin_obj,
-        'leave_page_obj': leave_page_obj,
+        'leave_history': leave_paginator.get_page(leave_page_number),
         'page_title': "View Notifications",
-        'manager_unread_ids': manager_unread_ids,
         'LOCATION_CHOICES': LOCATION_CHOICES,
     }
 
     return render(request, "manager_template/manager_view_notification.html", context)
 
 
+@login_required   
 def manager_asset_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
 
@@ -1422,6 +1590,8 @@ def manager_asset_view_notification(request):
     return render(request, "manager_template/manager_asset_view_notification.html", context)
 
 
+
+@login_required   
 @csrf_exempt
 def send_bulk_employee_notification_by_manager(request):
     if request.method == 'POST':
@@ -1461,6 +1631,8 @@ def send_bulk_employee_notification_by_manager(request):
             print(e)
             return HttpResponse("False")
 
+
+@login_required   
 @csrf_exempt
 def send_selected_employee_notification_by_manager(request):
     if request.method == 'POST':
@@ -1503,6 +1675,7 @@ def send_selected_employee_notification_by_manager(request):
             return HttpResponse("False")
 
 
+@login_required   
 def approve_assest_request(request, notification_id):
     if request.method == 'POST':
         asset_location_  = request.POST.get("asset_location" , "Main Room")
@@ -1538,7 +1711,7 @@ def approve_assest_request(request, notification_id):
     return redirect('manager_asset_view_notification')
 
 
-
+@login_required   
 def reject_assest_request(request, notification_id):
     notification = get_object_or_404(Notify_Manager, id=notification_id)
     if notification.approved is None or notification.approved is False:
@@ -1556,6 +1729,7 @@ def reject_assest_request(request, notification_id):
     return redirect('manager_asset_view_notification')
 
 
+@login_required   
 def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
@@ -1573,29 +1747,65 @@ def approve_leave_request(request, leave_id):
             else:
                 messages.success(request, "Full-Day leave approved.")
             msg = "Leave request approved."
+            
+            # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+            
+            # Also create notification for manager (optional)
+            Notification.objects.create(
+                user=request.user,
+                message=f"You approved leave for {leave_request.employee.admin.username}",
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="manager"
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
-        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
+@login_required   
 def reject_leave_request(request, leave_id):
     if request.method == 'POST':
-        msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
+        msg = "Please check the Leave Request"
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
             msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
+            
+            # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+            
+            # Also create notification for manager (optional)
+            Notification.objects.create(
+                user=request.user,
+                message=f"You rejected leave for {leave_request.employee.admin.username}",
+                notification_type="leave",
+                leave_or_notification_id=leave_id,
+                role="manager"
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.employee.admin.id)
-        send_notification(user, msg,"leave",leave_id,"employee")
     return redirect('manager_view_notification')
 
 
+@login_required   
 def manager_add_salary(request):
     manager = get_object_or_404(Manager, admin=request.user)
     departments = Department.objects.filter(division=manager.division)
@@ -1627,6 +1837,7 @@ def manager_add_salary(request):
     return render(request, "manager_template/manager_add_salary.html", context)
 
 
+@login_required   
 def resolve_asset_issue(request,asset_issu_id):
     if request.method == "POST":
         issue_asset = get_object_or_404(AssetIssue,pk=asset_issu_id)
@@ -1647,6 +1858,7 @@ def resolve_asset_issue(request,asset_issu_id):
     return redirect('manager_asset_view_notification')
 
 
+@login_required   
 @csrf_exempt
 def fetch_employee_salary(request):
     try:

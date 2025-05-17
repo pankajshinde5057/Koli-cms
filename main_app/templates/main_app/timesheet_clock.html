@@ -1,4 +1,349 @@
+{% comment %} timesheet_clock.html {% endcomment %}
 <!-- Clock Timers Display -->
+<li class="nav-item" id="working_timer_li" style="display: none;">
+    <span class="nav-link text-info d-flex align-items-center">
+        <i class="fas fa-hourglass-start me-2"></i>
+        <span class="d-none d-sm-inline">Working Time:</span>
+        <span id="working_duration" class="ms-1">0h 0m 0s</span>
+    </span>
+</li>
+<li class="nav-item" id="break_timer_li" style="display: none;">
+    <span class="nav-link text-warning d-flex align-items-center">
+        <i class="fas fa-coffee me-2"></i>
+        <span class="d-none d-sm-inline">Break Time:</span>
+        <span id="break_duration" class="ms-1">0h 0m 0s</span>
+    </span>
+</li>
+
+{% if current_record and latest_entry.breaks.last and not latest_entry.breaks.last.break_end %}
+    <input type="hidden" id="breakStartTime" value="{{ latest_entry.breaks.last.break_start|date:'c' }}">
+    <input type="hidden" id="currentBreakType" value="{{ latest_entry.breaks.last.break_type }}">
+{% else %}
+    {% if current_record %}
+        <input type="hidden" id="clockInTime" value="{{ latest_entry.clock_in|date:'c' }}">
+    {% endif %}
+{% endif %}
+
+<!-- Clock Action Buttons -->
+{% if current_record %}
+    <li class="nav-item">
+        <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 4px;">
+            <!-- Clock Out Button -->
+            <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
+                {% csrf_token %}
+                <input type="hidden" name="clock_out" value="true">
+                {% if complete_8Hours %}
+                    <button type="submit" class="btn btn-danger rounded-pill px-3">
+                        <span class="d-none d-sm-inline">Clock Out</span>
+                        <i class="fas fa-sign-out-alt ms-sm-1"></i>
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn btn-danger rounded-pill px-3" disabled>
+                        <span class="d-none d-sm-inline">
+                            Clock Out (available in 
+                            <span id="countdown" data-seconds="{{ remaining_time }}"></span>
+                        )
+                        </span>
+                        <i class="fas fa-sign-out-alt ms-sm-1"></i>
+                    </button>
+                {% endif %}
+            </form>
+            
+            <!-- Break Buttons -->
+            {% if current_break %}
+                <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3">
+                    <span class="d-none d-sm-inline">End Break</span>
+                    <i class="fas fa-pause-circle ms-sm-1"></i>
+                </button>
+            {% else %}
+                <div class="btn-group btn-group-sm" role="group" aria-label="Break options">
+                    <button id="shortBreakBtn" type="button" 
+                            class="btn btn-primary rounded-pill px-3">
+                        <span class="d-none d-sm-inline">Short Break</span>
+                        <i class="fas fa-mug-hot ms-sm-1"></i>
+                    </button>
+                    <button id="lunchBreakBtn" type="button" 
+                            class="btn btn-warning rounded-pill px-3 {% if has_taken_lunch_today %}disabled{% endif %}"
+                            {% if has_taken_lunch_today %}title="You can only take one lunch break per day"{% endif %}>
+                        <span class="d-none d-sm-inline">Lunch</span>
+                        <i class="fas fa-utensils ms-sm-1"></i>
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </li>
+{% else %}
+    <li class="nav-item">
+        <div class="form-group text-center">
+            <form id="clockInForm" method="post" action="{% url 'clock_in_out' %}">
+                {% csrf_token %}
+                <input type="hidden" name="clock_in" value="true">
+                {% if today_records.exists %}
+                    <button type="submit" class="btn btn-success rounded-pill px-4" disabled title="You have already clocked in today.">
+                        <span class="d-none d-sm-inline">Clock In</span>
+                        <i class="fas fa-sign-in-alt ms-sm-1"></i>
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn btn-success rounded-pill px-4">
+                        <span class="d-none d-sm-inline">Clock In</span>
+                        <i class="fas fa-sign-in-alt ms-sm-1"></i>
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+    </li>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded, initializing clock-in/out handlers'); // Debug
+
+        const clockInInput = document.getElementById("clockInTime");
+        const breakStartInput = document.getElementById("breakStartTime");
+
+        const workingTimer = document.getElementById("working_timer_li");
+        const breakTimer = document.getElementById("break_timer_li");
+        const workingDurationEl = document.getElementById("working_duration");
+        const breakDurationEl = document.getElementById("break_duration");
+
+        let breakTimerInterval;
+        let workingTimerInterval;
+
+        if (clockInInput) {
+            const clockInTime = new Date(clockInInput.value);
+            workingTimer.style.display = 'block';
+            workingTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = Math.floor((now - clockInTime) / 1000); // seconds
+
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+
+                workingDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+
+        if (breakStartInput) {
+            const breakStartTime = new Date(breakStartInput.value);
+            breakTimer.style.display = 'block';
+            breakTimerInterval = setInterval(() => {
+                const now = new Date();
+                const diff = Math.floor((now - breakStartTime) / 1000); // seconds
+
+                const hours = Math.floor(diff / 3600);
+                const minutes = Math.floor((diff % 3600) / 60);
+                const seconds = diff % 60;
+
+                breakDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+
+        // Handle countdown for clock-out
+        const countdownRT = document.getElementById("countdown");
+        let remainingSeconds = countdownRT ? parseInt(countdownRT.getAttribute("data-seconds")) : NaN;
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hrs}h ${mins}m ${secs}s`;
+        }
+
+        function updateCountdown() {
+            if (remainingSeconds > 0) {
+                countdownRT.textContent = formatTime(remainingSeconds);
+                remainingSeconds--;
+            } else if (countdownRT) {
+                countdownRT.textContent = "now!";
+                const button = countdownRT.closest("button");
+                if (button) {
+                    button.disabled = false;
+                    button.querySelector("span.d-none.d-sm-inline").textContent = "Clock Out";
+                }
+            }
+        }
+
+        if (!isNaN(remainingSeconds)) {
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        }
+
+        // Handle form submissions via AJAX
+        const clockInForm = document.getElementById('clockInForm');
+        const clockOutForm = document.getElementById('clockOutForm');
+
+        if (clockInForm) {
+            console.log('Binding clockInForm submit event'); // Debug
+            clockInForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Clock-in form submitted'); // Debug
+                submitClockAction(this);
+            });
+        } else {
+            console.warn('clockInForm not found'); // Debug
+        }
+
+        if (clockOutForm) {
+            console.log('Binding clockOutForm submit event'); // Debug
+            clockOutForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log('Clock-out form submitted'); // Debug
+                submitClockAction(this);
+            });
+        } else {
+            console.warn('clockOutForm not found'); // Debug
+        }
+
+        // Break buttons
+        const endBreakBtn = document.getElementById('endBreakBtn');
+        const shortBreakBtn = document.getElementById('shortBreakBtn');
+        const lunchBreakBtn = document.getElementById('lunchBreakBtn');
+
+        if (endBreakBtn) {
+            endBreakBtn.addEventListener('click', function() {
+                console.log('End break button clicked'); // Debug
+                submitBreakAction();
+            });
+        }
+
+        if (shortBreakBtn) {
+            shortBreakBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Short break button clicked'); // Debug
+                submitBreakAction('short');
+            });
+        }
+
+        if (lunchBreakBtn) {
+            lunchBreakBtn.addEventListener('click', function(e) {
+                if (this.classList.contains('disabled')) {
+                    e.preventDefault();
+                    return;
+                }
+                e.preventDefault();
+                console.log('Lunch break button clicked'); // Debug
+                submitBreakAction('lunch');
+            });
+        }
+
+        function submitClockAction(form) {
+            console.log('Submitting clock action:', form.action, new FormData(form).get('clock_in') || new FormData(form).get('clock_out')); // Debug
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => {
+                console.log('Fetch response status:', response.status); // Debug
+                return response.json().then(data => ({ status: response.status, data }));
+            })
+            .then(({ status, data }) => {
+                console.log('Response data:', data); // Debug
+                if (status >= 200 && status < 300 && data.status === 'success') {
+                    console.log('Success, reloading page'); // Debug
+                    window.location.reload();
+                } else {
+                    // Display error message in a Bootstrap alert
+                    let alertContainer = document.querySelector('.content .container-fluid');
+                    if (!alertContainer) {
+                        console.warn('Falling back to .content selector'); // Debug
+                        alertContainer = document.querySelector('.content');
+                    }
+                    if (alertContainer) {
+                        const existingAlerts = alertContainer.querySelectorAll('.alert');
+                        existingAlerts.forEach(alert => alert.remove()); // Remove previous alerts
+
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                        alertDiv.role = 'alert';
+                        alertDiv.innerHTML = `
+                            ${data.message || 'An error occurred. Please try again.'}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        `;
+                        alertContainer.prepend(alertDiv);
+                        console.log('Error alert displayed:', data.message); // Debug
+                    } else {
+                        console.error('Alert container not found, using browser alert');
+                        alert(data.message || 'An error occurred. Please try again.');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                let alertContainer = document.querySelector('.content .container-fluid') || document.querySelector('.content');
+                if (alertContainer) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.role = 'alert';
+                    alertDiv.innerHTML = `
+                        Failed to communicate with the server. Please try again.
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    `;
+                    alertContainer.prepend(alertDiv);
+                } else {
+                    alert('Failed to communicate with the server. Please try again.');
+                }
+            });
+        }
+
+        function submitBreakAction(breakType = null) {
+            console.log('Submitting break action:', breakType); // Debug
+            fetch("{% url 'break_action' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    break_type: breakType
+                })
+            })
+            .then(response => {
+                console.log('Break action response status:', response.status); // Debug
+                return response.json().then(data => ({ status: response.status, data }));
+            })
+            .then(({ status, data }) => {
+                console.log('Break action response data:', data); // Debug
+                if (status >= 200 && status < 300 && data.status === 'success') {
+                    console.log('Break action success, reloading page'); // Debug
+                    window.location.reload();
+                } else {
+                    let alertContainer = document.querySelector('.content .container-fluid') || document.querySelector('.content');
+                    if (alertContainer) {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                        alertDiv.role = 'alert';
+                        alertDiv.innerHTML = `
+                            ${data.message || 'An error occurred during break action. Please try again.'}
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        `;
+                        alertContainer.prepend(alertDiv);
+                        console.log('Break error alert displayed:', data.message); // Debug
+                    } else {
+                        console.error('Alert container not found for break action');
+                        alert(data.message || 'An error occurred during break action. Please try again.');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Break action fetch error:', error);
+                alert('Failed to communicate with the server for break action. Please try again.');
+            });
+        }
+    });
+</script>
+
+{% comment %} ------------------ testing purpose ---------------  {% endcomment %}
+{% comment %} <!-- Clock Timers Display -->
 <li class="nav-item" id="working_timer_li" style="display: none;">
     <span class="nav-link text-info d-flex align-items-center">
         <i class="fas fa-hourglass-start me-2"></i>
@@ -249,4 +594,6 @@
         updateCountdown();
         setInterval(updateCountdown, 1000);
     }
-</script>
+</script> {% endcomment %}
+
+{% comment %} ------------------ testing purpose ---------------  {% endcomment %}
