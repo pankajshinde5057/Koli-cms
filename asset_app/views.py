@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
-
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from main_app.notification_badge import send_notification
 from .models import Assets,Notify_Manager,Notify_Employee,AssetsIssuance, AssetCategory, AssetAssignmentHistory,AssetIssue
 from .forms import AssetForm,AssetCategoryForm
@@ -134,6 +134,7 @@ class AssetsDetailView(DetailView):
         })
         return context
 
+
 class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
     model = AssetCategory
     form_class = AssetCategoryForm
@@ -151,8 +152,30 @@ class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
         if search_query:
             categories = categories.filter(category__icontains=search_query)
         
+        # Add pagination
+        page = self.request.GET.get('page', 1)
+        paginator = Paginator(categories, 5)
+        try:
+            categories = paginator.page(page)
+        except PageNotAnInteger:
+            categories = paginator.page(1)
+        except EmptyPage:
+            categories = paginator.page(paginator.num_pages)
+        
         context['categories'] = categories
+        context['search'] = search_query or ''  # Pass search query to context
         return context
+
+    def get(self, request, *args, **kwargs):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            context = self.get_context_data()
+            html = render_to_string(
+                self.template_name,
+                context,
+                request=request
+            )
+            return HttpResponse(html)
+        return super().get(request, *args, **kwargs)
 
     def form_valid(self, form):
         form.instance.category = form.instance.category.lower()
@@ -160,8 +183,9 @@ class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        messages.error(self.request,'This category already present')
+        messages.error(self.request, 'This category already present')
         return super().form_invalid(form)
+    
     
 class AssetCategoryUpdateView(LoginRequiredMixin, UpdateView):
     model = AssetCategory
@@ -553,32 +577,47 @@ def print_all_barcode(request):
     assets = Assets.objects.all().order_by('asset_serial_number')
     assets_to_print = []
     show_print_view = False
+    error_message = None
     
     if request.method == 'POST':
         show_print_view = True
-        
         if 'print_all' in request.POST:
             assets_to_print = assets
         elif 'print_selected' in request.POST:
             selected_ids = request.POST.getlist('selected_assets')
             if not selected_ids:
-                return render(request, 'asset_app/print_assets_barcode.html', {
-                    'assets': assets,
-                    'error_message': 'Please select at least one asset to print'
-                })
-            assets_to_print = assets.filter(id__in=selected_ids)
+                error_message = 'Please select at least one asset to print'
+                show_print_view = False
+            else:
+                assets_to_print = assets.filter(id__in=selected_ids)
     
         search_query = request.POST.get('search', '')
-        
         if search_query:
-            assets = assets.filter(asset_serial_number__icontains=search_query
-            ) | assets.filter(asset_category__category__icontains=search_query
+            assets = assets.filter(
+                asset_serial_number__icontains=search_query
+            ) | assets.filter(
+                asset_category__category__icontains=search_query
             )
-        
+    
+    # Pagination
+    paginator = Paginator(assets, 5)  # 5 assets per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     context = {
-        'assets': assets,
+        'assets': page_obj,
         'assets_to_print': assets_to_print,
         'show_print_view': show_print_view,
+        'error_message': error_message,
+        'search_query': request.POST.get('search', '')
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            'asset_app/print_assets_barcode.html',
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
     return render(request, 'asset_app/print_assets_barcode.html', context)

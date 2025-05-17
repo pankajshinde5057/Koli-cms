@@ -9,7 +9,6 @@ from django.views.decorators.csrf import csrf_exempt
 from .forms import *
 from .models import *
 from collections import defaultdict
-from xhtml2pdf import pisa
 from calendar import monthrange
 from datetime import datetime,timedelta
 from decimal import Decimal
@@ -20,7 +19,13 @@ from django.db.models import Avg,Count,Q,F,Max
 from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 from django.utils.timezone import localdate
 from main_app.notification_badge import send_notification
-
+from django.template.loader import render_to_string
+from datetime import datetime, timedelta
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
+from .models import AttendanceRecord, Holiday, Employee, Manager
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -28,6 +33,7 @@ LOCATION_CHOICES = (
     ("Main Office", "Main Office"),
 )
 
+@login_required
 def admin_home(request):
     total_manager = Manager.objects.all().count()
     total_employees = Employee.objects.all().count()
@@ -70,6 +76,7 @@ def admin_home(request):
     return render(request, 'ceo_template/home_content.html', context)
 
 
+@login_required
 def add_manager(request):
     form = ManagerForm(request.POST or None, request.FILES or None)
     context = {'form': form, 'page_title': 'Add Manager'}
@@ -123,6 +130,7 @@ def add_manager(request):
     return render(request, 'ceo_template/add_manager_template.html', context)
 
 
+@login_required
 def add_employee(request):
     employee_form = EmployeeForm(request.POST or None, request.FILES or None)
     context = {'form': employee_form, 'page_title': 'Add Employee'}
@@ -183,6 +191,7 @@ def add_employee(request):
     return render(request, 'ceo_template/add_employee_template.html', context)
 
 
+@login_required
 def add_division(request):
     form = DivisionForm(request.POST or None)
     context = {
@@ -205,6 +214,7 @@ def add_division(request):
     return render(request, 'ceo_template/add_division_template.html', context)
 
 
+@login_required
 def add_department(request):
     form = DepartmentForm(request.POST or None)
     context = {
@@ -231,6 +241,7 @@ def add_department(request):
     return render(request, 'ceo_template/add_department_template.html', context)
 
 
+@login_required
 def manage_manager(request):
     manager_list = CustomUser.objects.filter(user_type=2)
     
@@ -244,33 +255,11 @@ def manage_manager(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
 
-    context = {
-        'allManager': page_obj.object_list, 
-        'page_obj': page_obj,            
-        'page_title': 'Manage Manager'
-    }
-    return render(request, "ceo_template/manage_manager.html", context)
-
-
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-
-def manage_employee(request):
-    search_ = request.GET.get("search", '').strip()
-    employees = CustomUser.objects.filter(
-        user_type=3,
-        employee__isnull=False
-    ).annotate(
-        asset_count=Count('assetsissuance'),
-    ).select_related('employee', 'employee__department', 'employee__division', 'employee__team_lead')
+    manager_list = CustomUser.objects.filter(user_type=2)
     
-    if search_:
-        employees = employees.filter(
-            Q(first_name__icontains=search_) |
-            Q(last_name__icontains=search_)
-        )
-    
-    paginator = Paginator(employees, 10)
+    paginator = Paginator(manager_list, 5)
     page_number = request.GET.get('page', 1)
+    
     try:
         page_obj = paginator.page(page_number)
     except PageNotAnInteger:
@@ -278,34 +267,121 @@ def manage_employee(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
 
-    location_choices = dict(LOCATION_CHOICES)
     context = {
-        'employees': page_obj.object_list,  
-        'page_obj': page_obj,         
-        'page_title': 'Manage Employees',
-        'location_choices': location_choices,
+        'allManager': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_title': 'Manage Manager'
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "ceo_template/manage_manager.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
+    return render(request, "ceo_template/manage_manager.html", context)
+
+
+@login_required
+def manage_employee(request):
+    search_ = request.GET.get("search", '').strip()
+    gender = request.GET.get("gender", '')
+    department_id = request.GET.get("department", '')
+    division_id = request.GET.get("division", '')
+    page_number = request.GET.get('page', 1)
+
+    # Get employees with asset count
+    employees = CustomUser.objects.filter(
+        user_type=3,
+        employee__isnull=False
+    ).annotate(
+        asset_count=Count('assetsissuance'),
+    ).select_related('employee', 'employee__department', 'employee__division', 'employee__team_lead')
+
+    # Apply filters
+    if search_:
+        employees = employees.filter(
+            Q(first_name__icontains=search_) |
+            Q(last_name__icontains=search_) |
+            Q(email__icontains=search_)
+        )
+    
+    if gender:
+        employees = employees.filter(gender=gender)
+    
+    if department_id:
+        employees = employees.filter(employee__department__id=department_id)
+    
+    if division_id:
+        employees = employees.filter(employee__division__id=division_id)
+
+    # Get all departments and divisions for filter dropdowns
+    departments = Department.objects.all()
+    divisions = Division.objects.all()
+
+    paginator = Paginator(employees, 5)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'employees': page_obj.object_list,
+        'page_obj': page_obj,
+        'page_title': 'Manage Employees',
+        'location_choices': dict(LOCATION_CHOICES),
+        'search': search_,
+        'departments': departments,
+        'divisions': divisions,
+    }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "ceo_template/manage_employee.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
+    if not employees:
+        messages.warning(request, "No employees found")
     return render(request, "ceo_template/manage_employee.html", context)
 
 
-
+@login_required
 def manage_division(request):
     divisions = Division.objects.all()
+    page = request.GET.get('page', 1)
+    
+    paginator = Paginator(divisions, 10)  
+    try:
+        divisions = paginator.page(page)
+    except PageNotAnInteger:
+        divisions = paginator.page(1)
+    except EmptyPage:
+        divisions = paginator.page(paginator.num_pages)
+
     context = {
         'divisions': divisions,
         'page_title': 'Manage Divisions'
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "ceo_template/manage_division.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
     return render(request, "ceo_template/manage_division.html", context)
 
 
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
+@login_required
 def manage_department(request):
     department_list = Department.objects.all()
-    page = request.GET.get('page', 1)  
+    page = request.GET.get('page', 10)
     
-    paginator = Paginator(department_list, 2)  
-    
+    paginator = Paginator(department_list, 1)  # 1 item per page
     try:
         departments = paginator.page(page)
     except PageNotAnInteger:
@@ -317,9 +393,19 @@ def manage_department(request):
         'departments': departments,  # Note: This is the paginated object
         'page_title': 'Manage Departments'
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "ceo_template/manage_department.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
     return render(request, "ceo_template/manage_department.html", context)
 
 
+@login_required
 def edit_manager(request, manager_id):
     manager = get_object_or_404(Manager, id=manager_id)
     form = ManagerForm(request.POST or None, instance=manager)
@@ -373,6 +459,7 @@ def edit_manager(request, manager_id):
     
     
 
+@login_required
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     form = EmployeeForm(request.POST or None, instance=employee)
@@ -436,6 +523,7 @@ def edit_employee(request, employee_id):
 
 
 
+@login_required
 def edit_division(request, division_id):
     instance = get_object_or_404(Division, id=division_id)
     form = DivisionForm(request.POST or None, instance=instance)
@@ -460,6 +548,7 @@ def edit_division(request, division_id):
     return render(request, 'ceo_template/edit_division_template.html', context)
 
 
+@login_required
 def edit_department(request, department_id):
     instance = get_object_or_404(Department, id=department_id)
     form = DepartmentForm(request.POST or None, instance=instance)
@@ -498,23 +587,42 @@ def check_email_availability(request):
         return HttpResponse(False)
 
 
+@login_required
 @csrf_exempt
 def employee_feedback_message(request):
     if request.method != 'POST':
-        feedbacks = FeedbackEmployee.objects.all().order_by('-id')
+        feedback_list = FeedbackEmployee.objects.all().order_by('-id')
+        page = request.GET.get('page', 1)
+        paginator = Paginator(feedback_list, 10)  
+        try:
+            feedbacks = paginator.page(page)
+        except PageNotAnInteger:
+            feedbacks = paginator.page(1)
+        except EmptyPage:
+            feedbacks = paginator.page(paginator.num_pages)
+
         unread_ids = list(
             Notification.objects.filter(
                 user=request.user,
                 is_read=False,
                 notification_type='employee feedback'
-            ).values_list('leave_or_notification_id', flat=True) 
+            ).values_list('leave_or_notification_id', flat=True)
         )
-        print("EMPLOYEEE FEEDBAD",unread_ids)
+
         context = {
             'feedbacks': feedbacks,
             'page_title': 'Employee Feedback Messages',
-            'unread_ids':unread_ids
+            'unread_ids': unread_ids
         }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(
+                'ceo_template/employee_feedback_template.html',
+                context,
+                request=request
+            )
+            return HttpResponse(html)
+
         return render(request, 'ceo_template/employee_feedback_template.html', context)
     else:
         feedback_id = request.POST.get('id')
@@ -523,24 +631,44 @@ def employee_feedback_message(request):
             reply = request.POST.get('reply')
             feedback.reply = reply
             feedback.save()
-            notify = Notification.objects.filter(user = request.user,role = "admin", is_read = False, leave_or_notification_id = feedback_id).first()
+            notify = Notification.objects.filter(
+                user=request.user,
+                role="admin",
+                is_read=False,
+                leave_or_notification_id=feedback_id
+            ).first()
             if notify:
                 notify.is_read = True
                 notify.save()
-                print("OKKKKKKKKKKKKKKK")
             return HttpResponse(True)
         except Exception as e:
             return HttpResponse(False)
 
 
+
+
+@login_required
 @csrf_exempt
 def manager_feedback_message(request):
     if request.method != 'POST':
-        feedbacks = FeedbackManager.objects.all().order_by('-id')
+        feedback_list = FeedbackManager.objects.all().order_by('-id')
+        paginator = Paginator(feedback_list, 10)  
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
         context = {
-            'feedbacks': feedbacks,
+            'feedbacks': page_obj,
+            'page_obj': page_obj,
             'page_title': 'Manager Feedback Messages'
         }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(
+                'ceo_template/manager_feedback_template.html',
+                context,
+                request=request
+            )
+            return HttpResponse(html)
+
         return render(request, 'ceo_template/manager_feedback_template.html', context)
     else:
         feedback_id = request.POST.get('id')
@@ -554,56 +682,78 @@ def manager_feedback_message(request):
             return HttpResponse(False)
 
 
+@login_required
 @csrf_exempt
 def view_manager_leave(request):
     if request.method != 'POST':
-        allLeave = LeaveReportManager.objects.all().order_by('-date')
+        allLeaveList = LeaveReportManager.objects.all().order_by('-date')
+        paginator = Paginator(allLeaveList, 10) 
+        page_number = request.GET.get('page')
+        allLeave = paginator.get_page(page_number)
+
         context = {
             'allLeave': allLeave,
             'page_title': 'Leave Applications From Manager'
         }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(
+                "ceo_template/manager_leave_view.html",
+                context,
+                request=request
+            )
+            return HttpResponse(html)
+
         return render(request, "ceo_template/manager_leave_view.html", context)
     else:
         id = request.POST.get('id')
         status = request.POST.get('status')
-        if (status == '1'):
-            status = 1
-        else:
-            status = -1
+        status = 1 if status == '1' else -1
         try:
             leave = get_object_or_404(LeaveReportManager, id=id)
             leave.status = status
             leave.save()
             return HttpResponse(True)
-        except Exception as e:
-            return False
+        except Exception:
+            return HttpResponse(False)
 
 
+@login_required
 @csrf_exempt
 def view_employee_leave(request):
     if request.method != 'POST':
-        allLeave = LeaveReportEmployee.objects.all()
+        all_leave = LeaveReportEmployee.objects.all().order_by('-created_at')
+        paginator = Paginator(all_leave, 10)  
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
         context = {
-            'allLeave': allLeave,
+            'allLeave': page_obj,
             'page_title': 'Leave Applications From Employees'
         }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(
+                "ceo_template/employee_leave_view.html",
+                context,
+                request=request
+            )
+            return HttpResponse(html)
+
         return render(request, "ceo_template/employee_leave_view.html", context)
     else:
         id = request.POST.get('id')
         status = request.POST.get('status')
-        if (status == '1'):
-            status = 1
-        else:
-            status = -1
+        status = 1 if status == '1' else -1
         try:
             leave = get_object_or_404(LeaveReportEmployee, id=id)
             leave.status = status
             leave.save()
-            return HttpResponse(True)
-        except Exception as e:
-            return False
+            return HttpResponse("True")
+        except Exception:
+            return HttpResponse("False")
 
 
+@login_required
 def admin_view_attendance(request):
     departments = Department.objects.all()
     context = {
@@ -614,6 +764,7 @@ def admin_view_attendance(request):
     return render(request, "ceo_template/admin_view_attendance.html", context)
 
 
+@login_required
 @csrf_exempt
 def get_admin_attendance(request):
     department_id = request.POST.get('department')
@@ -634,6 +785,7 @@ def get_admin_attendance(request):
         return None
 
 
+@login_required
 def admin_view_profile(request):
     admin = get_object_or_404(Admin, admin=request.user)
     form = AdminForm(request.POST or None, request.FILES or None,
@@ -669,24 +821,68 @@ def admin_view_profile(request):
     return render(request, "ceo_template/admin_view_profile.html", context)
 
 
+@login_required
 def admin_notify_manager(request):
-    manager = CustomUser.objects.filter(user_type=2)
+    manager_list = CustomUser.objects.filter(user_type=2).order_by('last_name', 'first_name')
+    
+    page = request.GET.get('page', 1)
+    paginator = Paginator(manager_list, 5)  
+    
+    try:
+        managers = paginator.page(page)
+    except PageNotAnInteger:
+        managers = paginator.page(1)
+    except EmptyPage:
+        managers = paginator.page(paginator.num_pages)
+    
     context = {
         'page_title': "Send Notifications To Manager",
-        'allManager': manager
+        'allManager': managers,
+        'page_obj': managers
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "ceo_template/manager_notification.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
     return render(request, "ceo_template/manager_notification.html", context)
 
 
+@login_required
 def admin_notify_employee(request):
-    employee = CustomUser.objects.filter(user_type=3)
+    employee_list = CustomUser.objects.filter(user_type=3).order_by('last_name', 'first_name')
+    page = request.GET.get('page', 1)
+    paginator = Paginator(employee_list, 10)  
+    
+    try:
+        employees = paginator.page(page)
+    except PageNotAnInteger:
+        employees = paginator.page(1)
+    except EmptyPage:
+        employees = paginator.page(paginator.num_pages)
+    
     context = {
         'page_title': "Send Notifications To Employees",
-        'employees': employee
+        'employees': employees,
+        'page_obj': employees
     }
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string(
+            "ceo_template/employee_notification.html",
+            context,
+            request=request
+        )
+        return HttpResponse(html)
+
     return render(request, "ceo_template/employee_notification.html", context)
 
 
+@login_required
 @csrf_exempt
 def send_employee_notification(request):
     id = request.POST.get('id')
@@ -713,6 +909,7 @@ def send_employee_notification(request):
     except Exception as e:
         return HttpResponse("False")
     
+@login_required
 @csrf_exempt
 def send_bulk_employee_notification(request):
     if request.method == 'POST':
@@ -752,6 +949,7 @@ def send_bulk_employee_notification(request):
             print(e)
             return HttpResponse("False")
 
+@login_required
 @csrf_exempt
 def send_selected_employee_notification(request):
     if request.method == 'POST':
@@ -794,34 +992,34 @@ def send_selected_employee_notification(request):
             return HttpResponse("False")
 
 
+@login_required
 @csrf_exempt
 def send_manager_notification(request):
     id = request.POST.get('id')
     message = request.POST.get('message')
-    print("******************",id)
     manager = get_object_or_404(Manager, admin_id=id)
-    print("******************",manager)
     try:
-        url = "https://fcm.googleapis.com/fcm/send"
-        body = {
-            'notification': {
-                'title': "OfficeOps",
-                'body': message,
-                'click_action': reverse('manager_view_notification'),
-                'icon': static('dist/img/AdminLTELogo.png')
-            },
-            'to': manager.admin.fcm_token
-        }
-        headers = {'Authorization':
-                   'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                   'Content-Type': 'application/json'}
-        data = requests.post(url, data=json.dumps(body), headers=headers)
+        # url = "https://fcm.googleapis.com/fcm/send"
+        # body = {
+        #     'notification': {
+        #         'title': "OfficeOps",
+        #         'body': message,
+        #         'click_action': reverse('manager_view_notification'),
+        #         'icon': static('dist/img/AdminLTELogo.png')
+        #     },
+        #     'to': manager.admin.fcm_token
+        # }
+        # headers = {'Authorization':
+        #            'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+        #            'Content-Type': 'application/json'}
+        # data = requests.post(url, data=json.dumps(body), headers=headers)
         notification = NotificationManager(manager=manager, message=message)
         notification.save()
         return HttpResponse("True")
     except Exception as e:
         return HttpResponse("False")
 
+@login_required
 @csrf_exempt
 def send_bulk_manager_notification(request):
     if request.method == 'POST':
@@ -860,6 +1058,7 @@ def send_bulk_manager_notification(request):
             print(e)
             return HttpResponse("False")
 
+@login_required
 @csrf_exempt
 def send_selected_manager_notification(request):
     if request.method == 'POST':
@@ -900,6 +1099,7 @@ def send_selected_manager_notification(request):
             return HttpResponse("False")
 
 
+@login_required
 def delete_manager(request, manager_id):
     manager = get_object_or_404(CustomUser, manager__id=manager_id)
     try:
@@ -910,6 +1110,7 @@ def delete_manager(request, manager_id):
     return redirect(reverse('manage_manager'))
 
 
+@login_required
 def delete_employee(request, employee_id):
     employee = get_object_or_404(CustomUser, employee__id=employee_id)
     try:
@@ -942,6 +1143,7 @@ def delete_employee(request, employee_id):
     return redirect(reverse('manage_employee'))
 
 
+@login_required
 def delete_division(request, division_id):
     division = get_object_or_404(Division, id=division_id)
     try:
@@ -953,6 +1155,7 @@ def delete_division(request, division_id):
     return redirect(reverse('manage_division'))
 
 
+@login_required
 def delete_department(request, department_id):
     department = get_object_or_404(Department, id=department_id)
     department.delete()
@@ -960,6 +1163,7 @@ def delete_department(request, department_id):
     return redirect(reverse('manage_department'))
 
 
+@login_required
 def generate_performance_report(request):
     departments = Department.objects.all()
     
@@ -1253,7 +1457,7 @@ def admin_asset_issue_history(request):
             Q(resolution_method__icontains=search_query)
         )
     
-    paginator = Paginator(resolved_issues, 3)
+    paginator = Paginator(resolved_issues, 3)  # 3 issues per page
     try:
         page_obj = paginator.page(page)
     except PageNotAnInteger:
@@ -1264,23 +1468,26 @@ def admin_asset_issue_history(request):
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
-        'total_resolved_count': resolved_issues.count(),  
+        'total_resolved_count': resolved_issues.count(),
         'recurring_count': resolved_issues.filter(is_recurring=True).count(),
     }
     
+    # Handle AJAX pagination
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string('ceo_template/admin_view_asset_issue_history.html', context, request=request)
+        return JsonResponse({
+            'html': html,
+            'current_page': page_obj.number,
+            'num_pages': paginator.num_pages,
+            'has_previous': page_obj.has_previous(),
+            'has_next': page_obj.has_next(),
+            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+        })
+    
     return render(request, 'ceo_template/admin_view_asset_issue_history.html', context)
- 
 
-
-
-
-from datetime import datetime, timedelta
-from django.core.paginator import Paginator
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-from .models import AttendanceRecord, Holiday, Employee, Manager
-
+@login_required
 @csrf_exempt
 def get_manager_and_employee_attendance(request):
     if request.method == 'POST':
@@ -1482,6 +1689,7 @@ def get_manager_and_employee_attendance(request):
 
 
 
+@login_required
 @csrf_exempt
 def save_holidays(request):
     if request.method == 'POST':
@@ -1615,6 +1823,9 @@ def delete_holiday(request):
         'error': 'Invalid request method'
     }, status=405)
     
+
+
+@login_required
 @csrf_exempt
 def get_holidays(request):
     if request.method == 'GET':
@@ -1638,6 +1849,8 @@ def get_holidays(request):
         'error': 'Invalid request method'
     }, status=400)
     
+    
+@login_required   
 def admin_view_notification(request):
     pending_leave_requests = LeaveReportManager.objects.filter(
         status=0
@@ -1669,7 +1882,8 @@ def admin_view_notification(request):
     }
 
     return render(request, "ceo_template/admin_view_notification.html", context)
-
+ 
+@login_required   
 def approve_admin_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportManager, id=leave_id)
@@ -1693,7 +1907,7 @@ def approve_admin_leave_request(request, leave_id):
         send_notification(user, msg,"leave",leave_id,"manager")
     return redirect('admin_view_notification')
 
-
+@login_required   
 def reject_admin_leave_request(request, leave_id):
     if request.method == 'POST':
         msg = "Please check the Leave Request"

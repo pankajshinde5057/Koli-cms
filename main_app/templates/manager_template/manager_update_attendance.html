@@ -443,13 +443,21 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                 <div id="filter-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
-                    <strong>Warning!</strong> Please select at least one filter (Department, Employee)
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <div id="filter-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
+                    <strong>Warning!</strong> Please select at least one filter (Department or Employee)
+                    <button type="button" class="close" data-dismiss="alert">×</button>
+                </div>
+                <div id="department-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
+                    <strong>Warning!</strong> Please select an employee when a department is selected
+                    <button type="button" class="close" data-dismiss="alert">×</button>
+                </div>
+                <div id="employee-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
+                    <strong>Warning!</strong> Please select a department when an employee is selected
+                    <button type="button" class="close" data-dismiss="alert">×</button>
                 </div>
                 <div class="card filter-card mb-4 animate__animated animate__fadeIn">
                     <div class="card-header">
-                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i>&nbsp; &nbsp;Filter Attendance Records for Managers and Employees</h3>
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i> Filter Attendance Records</h3>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -569,7 +577,6 @@
                             <p>No attendance records found for the selected criteria</p>
                         </div>
 
-                        <!-- Pagination container -->
                         <div class="pagination-container" id="pagination_container"></div>
                     </div>
                 </div>
@@ -586,7 +593,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 $(document).ready(function() {
-    // Initialize Select2
     $('.select2').select2({
         width: '100%',
         placeholder: function() {
@@ -594,7 +600,6 @@ $(document).ready(function() {
         }
     });
 
-    // Initialize date pickers
     const fromDatePicker = flatpickr("#from_date", {
         dateFormat: "Y-m-d",
         defaultDate: "today",
@@ -607,11 +612,9 @@ $(document).ready(function() {
         maxDate: "today"
     });
 
-    // Set default dates
     $('#from_date').val(moment().format('YYYY-MM-DD'));
     $('#to_date').val(moment().format('YYYY-MM-DD'));
 
-    // Toggle custom date range fields
     $('#time_period').change(function() {
         if ($(this).val() === 'custom') {
             $('.custom-date').show();
@@ -620,7 +623,6 @@ $(document).ready(function() {
         }
     });
 
-    // Initialize employee data
     const allEmployees = [
         {% for employee in employees %}
         {
@@ -632,112 +634,79 @@ $(document).ready(function() {
         {% endfor %}
     ];
 
-    // Department change handler
-    // Department change handler - Modified version
-$('#department').change(function() {
-    const departmentId = $(this).val();
-    const $employeeSelect = $('#employee');
-    const $managerSelect = $('#manager');
-    
-    // Reset employee and manager dropdowns
-    $employeeSelect.empty().append('<option value="">-- Select Employee --</option>');
-    $managerSelect.empty().append('<option value="">-- Select Manager --</option>');
-    
-    // Disable employee dropdown until department is selected
-    $employeeSelect.prop('disabled', !departmentId);
-    
-    // Disable manager dropdown until HR department is selected
-    $managerSelect.prop('disabled', true);
-    
-    if (departmentId && departmentId !== 'all') {
-        // Enable employee dropdown
-        $employeeSelect.prop('disabled', false);
-        $employeeSelect.append('<option value="all">All Employees</option>');
+    $('#department').change(function() {
+        const departmentId = $(this).val();
+        const $employeeSelect = $('#employee');
         
-        // Filter employees by department
-        allEmployees.forEach(emp => {
-            if (emp.department_id == departmentId) {
+        $employeeSelect.empty().append('<option value="">-- Select Employee --</option>');
+        $employeeSelect.prop('disabled', !departmentId);
+        
+        if (departmentId && departmentId !== 'all') {
+            $employeeSelect.prop('disabled', false);
+            $employeeSelect.append('<option value="all">All Employees</option>');
+            
+            allEmployees.forEach(emp => {
+                if (emp.department_id == departmentId) {
+                    $employeeSelect.append($('<option>', {
+                        value: emp.id,
+                        text: `${emp.name} (${emp.department_name})`,
+                        'data-department': emp.department_name
+                    }));
+                }
+            });
+        } else if (departmentId === 'all') {
+            $employeeSelect.prop('disabled', false);
+            $employeeSelect.append('<option value="all">All Employees</option>');
+            
+            allEmployees.forEach(emp => {
                 $employeeSelect.append($('<option>', {
                     value: emp.id,
                     text: `${emp.name} (${emp.department_name})`,
                     'data-department': emp.department_name
                 }));
-            }
-        });
-        
-        // Check if selected department is HR to enable manager dropdown
-        const selectedDept = $('#department option:selected').text().toLowerCase();
-        if (selectedDept.includes('hr')) {
-            $managerSelect.prop('disabled', false);
-            $managerSelect.append('<option value="all">All Managers</option>');
-            {% if managers %}
-                {% for manager in managers %}
-                $managerSelect.append($('<option>', {
-                    value: "{{ manager.id }}",
-                    text: "{{ manager.admin.get_full_name }}"
-                }));
-                {% endfor %}
-            {% endif %}
+            });
         }
-    } else if (departmentId === 'all') {
-        // Enable employee dropdown when "All Departments" is selected
-        $employeeSelect.prop('disabled', false);
-        $employeeSelect.append('<option value="all">All Employees</option>');
-        
-        // Show all employees
-        allEmployees.forEach(emp => {
-            $employeeSelect.append($('<option>', {
-                value: emp.id,
-                text: `${emp.name} (${emp.department_name})`,
-                'data-department': emp.department_name
-            }));
-        });
-    }
-});
+    });
 
-// Initialize with disabled dropdowns
-$(document).ready(function() {
     $('#employee').prop('disabled', true);
-    $('#manager').prop('disabled', true);
-    
-    // Rest of your existing document.ready code...
-});
 
-    // Store current filter data for pagination
     let currentFilterData = {};
 
-    // View Attendance button handler
-   $('#view_attendance').click(function() {
+    $('#view_attendance').click(function() {
         const employeeId = $('#employee').val();
         const departmentId = $('#department').val();
-        const managerId = $('#manager').val();
         const timePeriod = $('#time_period').val();
         
-        // Hide any previous error messages
+        // Hide all error messages
         $('#filter-error').hide();
+        $('#department-error').hide();
+        $('#employee-error').hide();
         
-        // Basic validation - at least one filter must be selected
-        if (!employeeId && !departmentId && !managerId) {
+        // Validation: Check if neither department nor employee is selected
+        if (!employeeId && !departmentId) {
             $('#filter-error').show();
             return;
         }
-
-        // Get selected employee or manager details
-        let selectedName, selectedDepartment, isManager = false;
         
-        if (managerId && managerId !== 'all') {
-            // Manager is selected
-            const selectedManager = $('#manager option:selected');
-            selectedName = selectedManager.text();
-            selectedDepartment = selectedManager.data('department') || 'HR';
-            isManager = true;
-        } else if (employeeId && employeeId !== 'all') {
-            // Employee is selected
+        // Validation: Department selected but no employee
+        if (departmentId && !employeeId) {
+            $('#department-error').show();
+            return;
+        }
+        
+        // Validation: Employee selected but no department
+        if (employeeId && !departmentId) {
+            $('#employee-error').show();
+            return;
+        }
+
+        let selectedName, selectedDepartment;
+        
+        if (employeeId && employeeId !== 'all') {
             const selectedEmployee = $('#employee option:selected');
             selectedName = selectedEmployee.text().split(' (')[0] || 'Selected Employee';
             selectedDepartment = selectedEmployee.data('department') || $('#department option:selected').text();
         } else if (employeeId === 'all') {
-            // All employees selected
             if (departmentId === 'all') {
                 selectedName = 'All Employees';
                 selectedDepartment = 'All Departments';
@@ -745,287 +714,250 @@ $(document).ready(function() {
                 selectedName = 'All Employees in Department';
                 selectedDepartment = $('#department option:selected').text();
             }
-        } else if (managerId === 'all') {
-            // All managers selected
-            selectedName = 'All Managers';
-            selectedDepartment = 'HR';
-            isManager = true;
         } else {
-            // Department only selected
             selectedName = 'All Employees';
             selectedDepartment = $('#department option:selected').text();
         }
+
+        $('#employee_name').text(selectedName);
+        $('#employee_department').text(selectedDepartment);
+
+        const data = {
+            employee_id: employeeId === 'all' ? '' : employeeId,
+            department_id: departmentId === 'all' ? '' : departmentId,
+            page: 1,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        };
+
+        currentFilterData = {
+            employee_id: data.employee_id,
+            department_id: data.department_id,
+            time_period: timePeriod,
+            from_date: $('#from_date').val(),
+            to_date: $('#to_date').val(),
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        };
+
+        const currentDate = moment();
         
-        // Update display based on whether it's a manager or employee
-        if (isManager) {
-            $('#employee_details').hide();
-            $('#manager_details').show();
-            $('#manager_name').text(selectedName);
-            $('#manager_department').text(selectedDepartment);
+        if (timePeriod === 'custom') {
+            const fromDate = $('#from_date').val();
+            const toDate = $('#to_date').val();
+            
+            if (!fromDate || !toDate) {
+                showAlert('Please select both From and To dates', 'warning');
+                return;
+            }
+            
+            if (moment(toDate).isBefore(fromDate)) {
+                showAlert('To Date must be after From Date', 'warning');
+                return;
+            }
+            
+            const maxDateRange = 365;
+            if (moment(toDate).diff(moment(fromDate), 'days') > maxDateRange) {
+                showAlert(`Date range cannot exceed ${maxDateRange} days`, 'warning');
+                return;
+            }
+            
+            data.from_date = fromDate;
+            data.to_date = toDate;
+            data.year = moment(fromDate).year();
+            currentFilterData.from_date = fromDate;
+            currentFilterData.to_date = toDate;
+            currentFilterData.year = moment(fromDate).year();
         } else {
-            $('#manager_details').hide();
-            $('#employee_details').show();
-            $('#employee_name').text(selectedName);
-            $('#employee_department').text(selectedDepartment);
+            data.year = currentDate.year();
+            currentFilterData.year = currentDate.year();
+            
+            if (timePeriod === 'week') {
+                data.week = currentDate.week();
+                data.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
+                data.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
+                currentFilterData.week = currentDate.week();
+                currentFilterData.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
+                currentFilterData.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
+            } else if (timePeriod === 'month') {
+                data.month = currentDate.format('MM');
+                data.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
+                data.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
+                currentFilterData.month = currentDate.format('MM');
+                currentFilterData.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
+                currentFilterData.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
+            } else if (timePeriod === 'year') {
+                data.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
+                data.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
+                currentFilterData.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
+                currentFilterData.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
+            }
         }
 
-    // Prepare data for AJAX request
-    const data = {
-        employee_id: employeeId === 'all' ? '' : employeeId,
-        department_id: departmentId === 'all' ? '' : departmentId,
-        manager_id: managerId === 'all' ? '' : managerId,
-        page: 1,
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-    };
+        fetchAttendanceData(data);
+    });
 
-    // Store current filter data with ALL parameters
-    currentFilterData = {
-        employee_id: data.employee_id,
-        department_id: data.department_id,
-        manager_id: data.manager_id,
-        time_period: timePeriod,
-        from_date: $('#from_date').val(),
-        to_date: $('#to_date').val(),
-        csrfmiddlewaretoken: '{{ csrf_token }}'
-    };
-
-    // Get current date for year/month calculations
-    const currentDate = moment();
-    
-    // Handle time period filters with validation
-    if (timePeriod === 'custom') {
-        const fromDate = $('#from_date').val();
-        const toDate = $('#to_date').val();
-        
-        // Validate custom date range
-        if (!fromDate || !toDate) {
-            showAlert('Please select both From and To dates', 'warning');
+    function fetchAttendanceData(data) {
+        if (!data || (!data.employee_id && !data.department_id)) {
+            showAlert('Invalid filter parameters', 'error');
             return;
         }
-        
-        if (moment(toDate).isBefore(fromDate)) {
-            showAlert('To Date must be after From Date', 'warning');
-            return;
-        }
-        
-        const maxDateRange = 365; // Maximum allowed date range in days
-        if (moment(toDate).diff(moment(fromDate), 'days') > maxDateRange) {
-            showAlert(`Date range cannot exceed ${maxDateRange} days`, 'warning');
-            return;
-        }
-        
-        data.from_date = fromDate;
-        data.to_date = toDate;
-        data.year = moment(fromDate).year();
-        currentFilterData.from_date = fromDate;
-        currentFilterData.to_date = toDate;
-        currentFilterData.year = moment(fromDate).year();
-    } else {
-        data.year = currentDate.year();
-        currentFilterData.year = currentDate.year();
-        
-        if (timePeriod === 'week') {
-            data.week = currentDate.week();
-            data.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
-            data.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
-            currentFilterData.week = currentDate.week();
-            currentFilterData.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
-            currentFilterData.to_date = currentDate.endOf('week').format('YYYY-MM-DD');
-        } else if (timePeriod === 'month') {
-            data.month = currentDate.format('MM');
-            data.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
-            data.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
-            currentFilterData.month = currentDate.format('MM');
-            currentFilterData.from_date = currentDate.startOf('month').format('YYYY-MM-DD');
-            currentFilterData.to_date = currentDate.endOf('month').format('YYYY-MM-DD');
-        } else if (timePeriod === 'year') {
-            data.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
-            data.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
-            currentFilterData.from_date = currentDate.startOf('year').format('YYYY-MM-DD');
-            currentFilterData.to_date = currentDate.endOf('year').format('YYYY-MM-DD');
-        }
-    }
 
-    fetchAttendanceData(data);
-});
-
-// Enhanced fetchAttendanceData with better error handling
-function fetchAttendanceData(data) {
-    // Validate data before sending
-    if (!data || (!data.employee_id && !data.department_id && !data.manager_id)) {
-        showAlert('Invalid filter parameters', 'error');
-        return;
-    }
-
-    $.ajax({
-        url: "{% url 'get_employee_attendance' %}",
-        type: "POST",
-        data: data,
-        beforeSend: function() {
-            $('#attendance_results').show();
-            $('#empty_state').hide();
-            $('#attendance_data').html(`
-                <tr>
-                    <td colspan="9" class="text-center py-4">
-                        <div class="loading-spinner">
-                            <div class="spinner"></div>
-                            <p>Loading attendance data...</p>
-                        </div>
-                    </td>
-                </tr>
-            `);
-        },
-        success: function(response) {
-            try {
-                if (!response) {
-                    throw new Error('Empty response from server');
-                }
-                
-                if (response.error) {
-                    showAlert(response.error, 'error');
+        $.ajax({
+            url: "{% url 'get_employee_attendance' %}",
+            type: "POST",
+            data: data,
+            beforeSend: function() {
+                $('#attendance_results').show();
+                $('#empty_state').hide();
+                $('#attendance_data').html(`
+                    <tr>
+                        <td colspan="9" class="text-center py-4">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Loading attendance data...</p>
+                            </div>
+                        </td>
+                    </tr>
+                `);
+            },
+            success: function(response) {
+                try {
+                    if (!response) {
+                        throw new Error('Empty response from server');
+                    }
+                    
+                    if (response.error) {
+                        showAlert(response.error, 'error');
+                        $('#empty_state').show();
+                        $('#attendance_data').html('');
+                        return;
+                    }
+                    
+                    if (!response.data) {
+                        throw new Error('Invalid data format in response');
+                    }
+                    
+                    if (response.data.length > 0) {
+                        renderAttendanceTable(response.data, response.pagination || {});
+                        $('#empty_state').hide();
+                    } else {
+                        $('#attendance_data').html('');
+                        $('#empty_state').show();
+                    }
+                } catch (e) {
+                    console.error('Error processing response:', e);
+                    showAlert('Error processing attendance data', 'error');
                     $('#empty_state').show();
                     $('#attendance_data').html('');
-                    return;
                 }
-                
-                if (!response.data) {
-                    throw new Error('Invalid data format in response');
+            },
+            error: function(xhr, status, error) {
+                let errorMsg = "Failed to load attendance data";
+                try {
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.statusText) {
+                        errorMsg = `${xhr.status}: ${xhr.statusText}`;
+                    }
+                } catch (e) {
+                    console.error('Error parsing error response:', e);
                 }
-                
-                if (response.data.length > 0) {
-                    renderAttendanceTable(response.data, response.pagination || {});
-                    $('#empty_state').hide();
-                } else {
-                    $('#attendance_data').html('');
-                    $('#empty_state').show();
-                }
-            } catch (e) {
-                console.error('Error processing response:', e);
-                showAlert('Error processing attendance data', 'error');
+                showAlert(errorMsg, 'error');
                 $('#empty_state').show();
                 $('#attendance_data').html('');
             }
-        },
-        error: function(xhr, status, error) {
-            let errorMsg = "Failed to load attendance data";
-            try {
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMsg = xhr.responseJSON.error;
-                } else if (xhr.statusText) {
-                    errorMsg = `${xhr.status}: ${xhr.statusText}`;
-                }
-            } catch (e) {
-                console.error('Error parsing error response:', e);
+        });
+    }
+
+    function renderAttendanceTable(data, pagination) {
+        if (!Array.isArray(data)) {
+            console.error('Invalid data format for attendance table');
+            showAlert('Invalid attendance data format', 'error');
+            return;
+        }
+
+        let tableHtml = '';
+        let presentCount = 0, absentCount = 0, lateCount = 0, halfDayCount = 0, holidayCount = 0;
+        
+        data.forEach(record => {
+            if (!record || typeof record !== 'object') {
+                console.warn('Invalid record skipped:', record);
+                return;
             }
-            showAlert(errorMsg, 'error');
-            $('#empty_state').show();
-            $('#attendance_data').html('');
-        }
-    });
-}
 
-// Enhanced renderAttendanceTable with data validation
-function renderAttendanceTable(data, pagination) {
-    // Validate input data
-    if (!Array.isArray(data)) {
-        console.error('Invalid data format for attendance table');
-        showAlert('Invalid attendance data format', 'error');
-        return;
+            if (!record.status || !record.date) {
+                console.warn('Record missing required fields:', record);
+                return;
+            }
+
+            const status = String(record.status).toLowerCase();
+            if (status.includes('present')) presentCount++;
+            else if (status.includes('absent')) absentCount++;
+            else if (status.includes('late')) lateCount++;
+            else if (status.includes('half')) halfDayCount++;
+            else if (status.includes('holiday')) holidayCount++;
+
+            let date, day;
+            try {
+                date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+                day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+            } catch (e) {
+                console.warn('Invalid date format:', record.date);
+                date = 'Invalid Date';
+                day = 'Invalid Day';
+            }
+
+            const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
+            const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+            const hours = calculateHours(record.clock_in, record.clock_out);
+            const statusClass = getStatusClass(status);
+            const statusIcon = getStatusIcon(status);
+
+            const name = record.name ? String(record.name) : '-';
+            const department = record.department ? String(record.department) : '-';
+
+            tableHtml += `
+                <tr>
+                    <td>${escapeHtml(name)}</td>
+                    <td>${escapeHtml(department)}</td>
+                    <td>${date}</td>
+                    <td>${day}</td>
+                    <td><span class="status-badge ${statusClass}">${statusIcon}${escapeHtml(record.status)}</span></td>
+                    <td>${inTime}</td>
+                    <td>${outTime}</td>
+                    <td>${hours}</td>
+                </tr>
+            `;
+        });
+
+        $('#attendance_data').html(tableHtml);
+        updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount);
+        
+        if (data.length > 0) {
+            try {
+                const fromDate = data[0].date ? (moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date') : '';
+                const toDate = data[data.length - 1].date ? (moment(data[data.length - 1].date).isValid() ? moment(data[data.length - 1].date).format('MMM D, YYYY') : 'Invalid Date') : '';
+                $('#date_range').text(`${fromDate} - ${toDate}`);
+            } catch (e) {
+                console.error('Error formatting date range:', e);
+                $('#date_range').text('Date range unavailable');
+            }
+        } else {
+            $('#date_range').text('No date range');
+        }
+        
+        renderPagination(pagination);
     }
 
-    let tableHtml = '';
-    let presentCount = 0, absentCount = 0, lateCount = 0, halfDayCount = 0, holidayCount = 0;
-    
-    // Validate each record before processing
-    data.forEach(record => {
-        if (!record || typeof record !== 'object') {
-            console.warn('Invalid record skipped:', record);
-            return;
-        }
-
-        // Validate required fields
-        if (!record.status || !record.date) {
-            console.warn('Record missing required fields:', record);
-            return;
-        }
-
-        // Count status types with validation
-        const status = String(record.status).toLowerCase();
-        if (status.includes('present')) presentCount++;
-        else if (status.includes('absent')) absentCount++;
-        else if (status.includes('late')) lateCount++;
-        else if (status.includes('half')) halfDayCount++;
-        else if (status.includes('holiday')) holidayCount++;
-
-        // Format data with validation
-        let date, day;
-        try {
-            date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
-            day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
-        } catch (e) {
-            console.warn('Invalid date format:', record.date);
-            date = 'Invalid Date';
-            day = 'Invalid Day';
-        }
-
-        const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
-        const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
-        const hours = calculateHours(record.clock_in, record.clock_out);
-        const statusClass = getStatusClass(status);
-        const statusIcon = getStatusIcon(status);
-
-        // Validate name and department
-        const name = record.name ? String(record.name) : '-';
-        const department = record.department ? String(record.department) : '-';
-        const userType = record.user_type ? String(record.user_type) : '-';
-
-        tableHtml += `
-            <tr>
-                <td>${escapeHtml(name)}</td>
-                <td>${escapeHtml(department)}</td>
-                <td>${date}</td>
-                <td>${day}</td>
-                <td><span class="status-badge ${statusClass}">${statusIcon}${escapeHtml(record.status)}</span></td>
-                <td>${inTime}</td>
-                <td>${outTime}</td>
-                <td>${hours}</td>
-            </tr>
-        `;
-    });
-
-    $('#attendance_data').html(tableHtml);
-    updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount);
-    
-    // Update date range display with validation
-    if (data.length > 0) {
-        try {
-            const fromDate = data[0].date ? (moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date') : '';
-            const toDate = data[data.length - 1].date ? (moment(data[data.length - 1].date).isValid() ? moment(data[data.length - 1].date).format('MMM D, YYYY') : 'Invalid Date') : '';
-            $('#date_range').text(`${fromDate} - ${toDate}`);
-        } catch (e) {
-            console.error('Error formatting date range:', e);
-            $('#date_range').text('Date range unavailable');
-        }
-    } else {
-        $('#date_range').text('No date range');
+    function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe;
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
     
-    // Render pagination with validation
-    renderPagination(pagination);
-}
-
-// Helper function to escape HTML
-function escapeHtml(unsafe) {
-    if (typeof unsafe !== 'string') return unsafe;
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-    
-    // Render pagination controls
     function renderPagination(pagination) {
         const $paginationContainer = $('#pagination_container');
         $paginationContainer.empty();
@@ -1042,18 +974,16 @@ function escapeHtml(unsafe) {
                 <ul class="pagination justify-content-center">
         `;
     
-        // Previous button
         if (pagination.has_previous) {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous">
-                        <span aria-hidden="true">&laquo;</span>
+                        <span aria-hidden="true">«</span>
                     </a>
                 </li>
             `;
         }
     
-        // Page numbers
         const startPage = Math.max(1, pagination.current_page - 2);
         const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
         
@@ -1096,12 +1026,11 @@ function escapeHtml(unsafe) {
             `;
         }
     
-        // Next button
         if (pagination.has_next) {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next">
-                        <span aria-hidden="true">&raquo;</span>
+                        <span aria-hidden="true">»</span>
                     </a>
                 </li>
             `;
@@ -1115,34 +1044,29 @@ function escapeHtml(unsafe) {
         $paginationContainer.html(paginationHtml);
     }
     
-    // Handle pagination clicks
-   // Handle pagination clicks
-$(document).on('click', '.page-link', function(e) {
-    e.preventDefault();
-    const page = $(this).data('page');
-    if (!page) return;
-    
-    // Create a new data object with ALL filter parameters plus the new page number
-    const data = {
-        ...currentFilterData,
-        page: page
-    };
-    
-    // Make sure we include year/month/week if they exist
-    if (currentFilterData.time_period === 'week') {
-        data.week = currentFilterData.week;
-    } else if (currentFilterData.time_period === 'month') {
-        data.month = currentFilterData.month;
-    }
-    
-    fetchAttendanceData(data);
-    
-    // Smooth scroll to top of results
-    $('html, body').animate({
-        scrollTop: $("#attendance_results").offset().top - 20
-    }, 300);
-});
-    // Helper functions
+    $(document).on('click', '.page-link', function(e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (!page) return;
+        
+        const data = {
+            ...currentFilterData,
+            page: page
+        };
+        
+        if (currentFilterData.time_period === 'week') {
+            data.week = currentFilterData.week;
+        } else if (currentFilterData.time_period === 'month') {
+            data.month = currentFilterData.month;
+        }
+        
+        fetchAttendanceData(data);
+        
+        $('html, body').animate({
+            scrollTop: $("#attendance_results").offset().top - 20
+        }, 300);
+    });
+
     function calculateHours(clockIn, clockOut) {
         if (!clockIn || !clockOut) return '-';
         const diff = moment(clockOut).diff(moment(clockIn), 'minutes');
@@ -1224,13 +1148,86 @@ $(document).on('click', '.page-link', function(e) {
         const alertHtml = `
             <div class="alert alert-${alertClass} alert-dismissible fade show">
                 <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <button type="button" class="close" data-dismiss="alert">×</button>
             </div>
         `;
         $('.container-fluid').prepend(alertHtml);
         setTimeout(() => $('.alert').alert('close'), 5000);
     }
+
+    $('#print_btn').click(function() {
+        const printContent = $('#printable-area').clone();
+        
+        const printWindow = window.open('', '', 'width=800,height=600');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Attendance Report</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                        .status-badge { padding: 3px 6px; border-radius: 3px; font-size: 12px; }
+                        .present { background-color: #dcfce7; color: #166534; }
+                        .absent { background-color: #fee2e2; color: #991b1b; }
+                        .late { background-color: #fef3c7; color: #92400e; }
+                        .halfday { background-color: #dbeafe; color: #1e40af; }
+                        .holiday { background-color: #ede9fe; color: #5b21b6; }
+                        .summary { margin-bottom: 20px; font-weight: bold; }
+                        @page { size: auto; margin: 5mm; }
+                    </style>
+                </head>
+                <body>
+                    <h2>Attendance Report</h2>
+                    <div class="summary">${$('#employee_name').text()} - ${$('#employee_department').text()}</div>
+                    <div class="summary">Date Range: ${$('#date_range').text()}</div>
+        `);
+        printWindow.document.write(printContent.html());
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        
+        printWindow.onload = function() {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        };
+    });
+
+    $('#export_btn').click(function() {
+        const table = document.getElementById('attendance_table');
+        const rows = table.querySelectorAll('tr');
+        const data = [];
+        
+        const headerRow = rows[0];
+        const headerData = [];
+        headerRow.querySelectorAll('th').forEach(th => {
+            headerData.push(th.textContent.trim());
+        });
+        data.push(headerData);
+        
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const rowData = [];
+            row.querySelectorAll('td').forEach(td => {
+                if (td.querySelector('.status-badge')) {
+                    rowData.push(td.querySelector('.status-badge').textContent.trim());
+                } else {
+                    rowData.push(td.textContent.trim());
+                }
+            });
+            data.push(rowData);
+        }
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+        
+        const fileName = `Attendance_Report_${$('#employee_name').text().replace(/\s+/g, '_')}_${moment().format('YYYYMMDD')}.xlsx`;
+        
+        XLSX.writeFile(wb, fileName);
+    });
 });
 </script>
 {% endblock %}
-

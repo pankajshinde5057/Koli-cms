@@ -6,7 +6,7 @@
     <!-- Control Form (will be hidden when printing) -->
     <div class="card mb-4 no-print">
         <div class="card-body">
-            <form method="post" action="{% url 'asset_app:print_all_barcode' %}">
+            <form method="post" action="{% url 'asset_app:print_all_barcode' %}" id="print-form">
                 {% csrf_token %}
                 <div class="row mb-3">
                     <div class="col-md-6">
@@ -24,17 +24,21 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="form-group">
-                            <input name= type="text" id="search-input" class="form-control" 
-                                   placeholder="Search by serial number or name...">
+                            <input name="search" type="text" id="search-input" class="form-control" 
+                                   placeholder="Search by serial number or name..." value="{{ search_query|default:'' }}">
                         </div>
                     </div>
                 </div>
                 
-                <div class="table-responsive">
+                {% if error_message %}
+                <div class="alert alert-danger">{{ error_message }}</div>
+                {% endif %}
+                
+                <div class="table-responsive" id="asset-table-container">
                     <table class="table table-striped table-hover">
                         <thead class="thead-dark">
                             <tr>
-                                <th>Select</th>
+                                <th><input type="checkbox" id="selectAll"></th>
                                 <th>Category</th>
                                 <th>Serial Number</th>
                                 <th>Barcode</th>
@@ -57,9 +61,50 @@
                                     {% endif %}
                                 </td>
                             </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center">No assets found.</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
+                    <nav aria-label="Page navigation" class="d-flex justify-content-center mt-4">
+                        <ul class="pagination">
+                            {% if assets.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link pagination-link" 
+                                   href="?page={{ assets.previous_page_number }}" 
+                                   data-page="{{ assets.previous_page_number }}">«</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled"><span class="page-link">«</span></li>
+                            {% endif %}
+
+                            {% for num in assets.paginator.page_range %}
+                                {% if assets.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > assets.number|add:'-3' and num < assets.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link pagination-link" 
+                                           href="?page={{ num }}" 
+                                           data-page="{{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if assets.has_next %}
+                            <li class="page-item">
+                                <a class="page-link pagination-link" 
+                                   href="?page={{ assets.next_page_number }}" 
+                                   data-page="{{ assets.next_page_number }}">»</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled"><span class="page-link">»</span></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
                 </div>
             </form>
         </div>
@@ -133,5 +178,95 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+$(document).ready(function() {
+    // Handle pagination clicks
+    $(document).on('click', '.pagination-link', function(e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        var searchQuery = $('#search-input').val();
 
+        $.ajax({
+            url: "{% url 'asset_app:print_all_barcode' %}",
+            type: 'GET',
+            data: {
+                page: page,
+                search: searchQuery
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                // Create a temporary container to parse the full HTML
+                var $temp = $('<div>').html(html);
+                // Extract only the #asset-table-container content
+                var $newContent = $temp.find('#asset-table-container').html();
+                // Update the existing container
+                $('#asset-table-container').html($newContent);
+                // Update browser URL without reloading
+                var url = new URL(window.location);
+                url.searchParams.set('page', page);
+                if (searchQuery) {
+                    url.searchParams.set('search', searchQuery);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                window.history.pushState({}, '', url);
+            },
+            error: function(xhr, status, error) {
+                console.error('Pagination AJAX failed:', error);
+                alert('Error loading page. Please try again.');
+            }
+        });
+    });
+
+    // Handle search input
+    $(document).on('input', '#search-input', function() {
+        var searchQuery = $(this).val();
+        
+        $.ajax({
+            url: "{% url 'asset_app:print_all_barcode' %}",
+            type: 'POST',
+            data: {
+                search: searchQuery,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                // Create a temporary container to parse the full HTML
+                var $temp = $('<div>').html(html);
+                // Extract only the #asset-table-container content
+                var $newContent = $temp.find('#asset-table-container').html();
+                // Update the existing container
+                $('#asset-table-container').html($newContent);
+                // Update browser URL without reloading
+                var url = new URL(window.location);
+                if (searchQuery) {
+                    url.searchParams.set('search', searchQuery);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                url.searchParams.delete('page');
+                window.history.pushState({}, '', url);
+            },
+            error: function(xhr, status, error) {
+                console.error('Search AJAX failed:', error);
+                alert('Error performing search. Please try again.');
+            }
+        });
+    });
+
+    // Handle select all checkbox
+    $(document).on('click', '#selectAll', function() {
+        $('.asset-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    // Handle browser back/forward buttons
+    window.onpopstate = function(event) {
+        window.location.reload(); // Reload to ensure correct state
+    };
+});
+</script>
 {% endblock %}

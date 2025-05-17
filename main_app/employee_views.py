@@ -9,6 +9,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
+from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
 from .forms import *
 from .models import *
@@ -21,8 +22,10 @@ from datetime import timedelta, datetime, time
 from django.core.paginator import Paginator
 from datetime import date
 from django.template.loader import render_to_string
+from django.contrib.auth.decorators import login_required
 
 
+@login_required   
 def employee_home(request):
     today = timezone.now().date()
     employee = get_object_or_404(Employee, admin=request.user)
@@ -234,7 +237,13 @@ def employee_home(request):
         date__month=current_month,
         date__year=current_year
     ).values_list('date', flat=True)
+    # Get holidays for the current month
+    holidays = Holiday.objects.filter(
+        date__month=current_month,
+        date__year=current_year
+    ).values_list('date', flat=True)
 
+    # Calculate working days in month (excluding weekends, holidays, and 1st/3rd Saturdays)
     # Calculate working days in month (excluding weekends, holidays, and 1st/3rd Saturdays)
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
@@ -257,8 +266,15 @@ def employee_home(request):
         is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
         
         if is_working_day:
+        is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [0, 2]  # 0 and 2 for 1st and 3rd weeks
+        
+        # Check if it's a working day (not sunday, not 1st/3rd saturday, not holiday)
+        is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
+        
+        if is_working_day:
             status = record_dict.get(current_date)
             if not status:
+                absent_days += 1
                 absent_days += 1
             elif status == "half":
                 absent_days += 0.5
@@ -267,12 +283,15 @@ def employee_home(request):
                     employee=employee,
                     status=1,  # Approved
                     leave_type="Half-Day",
+                    leave_type="Half-Day",
                     start_date=current_date  # The specific date you're checking
                 )
                 if leave_records:
                     absent_days += 0.5
+                    absent_days += 0.5
         current_date += timedelta(days=1)
 
+    # Calculate total working days for the month (excluding weekends and holidays)
     # Calculate total working days for the month (excluding weekends and holidays)
     for day in range(1, days_in_month + 1):
         date = timezone.datetime(current_year, current_month, day).date()
@@ -283,8 +302,13 @@ def employee_home(request):
         
         # Count as working day if not sunday, not 1st/3rd saturday, and not holiday
         if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
+        
+        # Count as working day if not sunday, not 1st/3rd saturday, and not holiday
+        if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
             total_working_days += 1
         
+        if is_1st_or_3rd_saturday or is_sunday or date in holidays:
+            weekend_days_list.append(str(date))
         if is_1st_or_3rd_saturday or is_sunday or date in holidays:
             weekend_days_list.append(str(date))
 
@@ -309,8 +333,10 @@ def employee_home(request):
         start_date__year=current_year
     )
     
+    
     # Count half days and full day leaves
     half_days = approved_leaves.filter(leave_type='Half-Day').count()
+     # absent_days = approved_leaves.filter(leave_type='Full-Day').count()
      # absent_days = approved_leaves.filter(leave_type='Full-Day').count()
     # Calculate attendance percentage
     if total_working_days > 0:
@@ -431,6 +457,8 @@ def employee_home(request):
 
     return render(request, 'employee_template/home_content.html', context)
 
+
+@login_required   
 def employee_apply_leave(request):
     employee = get_object_or_404(Employee, admin_id=request.user.id)
     unread_ids = Notification.objects.filter(
@@ -510,40 +538,78 @@ def employee_apply_leave(request):
     return render(request, "employee_template/employee_apply_leave.html", context)
 
 
-
+@login_required   
 def employee_feedback(request):
-    form = FeedbackEmployeeForm(request.POST or None)
     employee = get_object_or_404(Employee, admin_id=request.user.id)
+    form = FeedbackEmployeeForm(request.POST or None)
+    
+    # Paginate feedback list
     feedbacks_list = FeedbackEmployee.objects.filter(employee=employee).order_by('-created_at')
     paginator = Paginator(feedbacks_list, 5)  # 5 items per page
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
     context = {
         'form': form,
-        'page_obj': page_obj, 
-        'feedbacks': FeedbackEmployee.objects.filter(employee=employee),
+        'page_obj': page_obj,
         'page_title': 'Employee Feedback'
-
     }
-    mark_notification_read(request, 0,"feedback","employee")
+
+    mark_notification_read(request, 0, "feedback", "employee")
+
     if request.method == 'POST':
         if form.is_valid():
             try:
                 obj = form.save(commit=False)
                 obj.employee = employee
                 obj.save()
-                messages.success(
-                    request, "Feedback submitted for review")
-                user = CustomUser.objects.get(id = employee.team_lead.admin.id)
-                send_notification(user, f"Feedback submitted for review for {obj.id}","employee feedback",obj.id,"admin")
+                messages.success(request, "Feedback submitted for review")
+                user = CustomUser.objects.get(id=employee.team_lead.admin.id)
+                send_notification(user, f"Feedback submitted for review for {obj.id}", "employee feedback", obj.id, "admin")
+                # For AJAX form submission, return JSON
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    html = render_to_string('employee_template/employee_feedback.html', context, request=request)
+                    return JsonResponse({
+                        'html': html,
+                        'success': True,
+                        'message': "Feedback submitted for review"
+                    })
                 return redirect(reverse('employee_feedback'))
             except Exception:
                 messages.error(request, "Could not Submit!")
         else:
             messages.error(request, "Form has errors!")
+        
+        # Handle form errors for AJAX
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': "Form has errors!" if form.errors else "Could not Submit!",
+                'errors': form.errors.as_json()
+            })
+
+    # Handle AJAX pagination
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.method == 'GET':
+        html = render_to_string('employee_template/employee_feedback.html', context, request=request)
+        return JsonResponse({
+            'html': html,
+            'current_page': page_obj.number,
+            'num_pages': paginator.num_pages,
+            'has_previous': page_obj.has_previous(),
+            'has_next': page_obj.has_next(),
+            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+        })
+
     return render(request, "employee_template/employee_feedback.html", context)
 
 
+@login_required   
 def employee_view_profile(request):
     employee = get_object_or_404(Employee, admin=request.user)
     context = {'employee': employee,
@@ -552,6 +618,7 @@ def employee_view_profile(request):
     return render(request, "employee_template/employee_view_profile.html", context)
 
 
+@login_required   
 @csrf_exempt
 def employee_fcmtoken(request):
     token = request.POST.get('token')
@@ -563,6 +630,8 @@ def employee_fcmtoken(request):
     except Exception as e:
         return HttpResponse("False")
 
+
+@login_required   
 @csrf_exempt
 def employee_view_attendance(request):
     employee = get_object_or_404(Employee, admin=request.user)
@@ -581,6 +650,7 @@ def employee_view_attendance(request):
         try:
             start_date = request.POST.get('start_date')
             end_date = request.POST.get('end_date')
+            page = request.POST.get('page', 1)
             
             if not all([start_date, end_date]):
                 return JsonResponse({'error': 'Missing required parameters'}, status=400)
@@ -633,16 +703,53 @@ def employee_view_attendance(request):
                 if day['first_clock_in'] <= lunch_start and day['last_clock_out'] >= lunch_end:
                     day['total_worked'] -= timedelta(minutes=40)
 
+                # Format total_worked to HHh MMm
+                total_worked_str = '--'
+                if day['total_worked'] and str(day['total_worked']) != '0:00:00':
+                    total_seconds = int(day['total_worked'].total_seconds())
+                    hours = total_seconds // 3600
+                    minutes = (total_seconds % 3600) // 60
+                    total_worked_str = f"{hours}h {minutes}m"
+
                 json_data.append({
                     "date": date_str,
                     "status": day['status'],
                     "clock_in": localtime(day['first_clock_in']).strftime('%I:%M %p') if day['first_clock_in'] else '--',
                     "clock_out": localtime(day['last_clock_out']).strftime('%I:%M %p') if day['last_clock_out'] else '--',
-                    "total_worked": str(day['total_worked']),
+                    "total_worked": total_worked_str,
                     "records_count": day['records_count']
                 })
 
-            return JsonResponse({'data': json_data}, safe=False)
+            # Paginate the json_data
+            paginator = Paginator(json_data, 5)  # 5 records per page
+            try:
+                page_obj = paginator.page(page)
+            except PageNotAnInteger:
+                page_obj = paginator.page(1)
+            except EmptyPage:
+                page_obj = paginator.page(paginator.num_pages)
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                # Render the full template with paginated data
+                context = {
+                    'page_title': 'View Attendance',
+                    'default_start': start_date,
+                    'default_end': end_date,
+                    'page_obj': page_obj,
+                    'json_data': page_obj.object_list,  # Pass paginated data
+                }
+                html = render_to_string('employee_template/employee_view_attendance.html', context, request=request)
+                return JsonResponse({
+                    'html': html,
+                    'current_page': page_obj.number,
+                    'num_pages': paginator.num_pages,
+                    'has_previous': page_obj.has_previous(),
+                    'has_next': page_obj.has_next(),
+                    'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
+                    'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
+                })
+
+            return JsonResponse({'data': page_obj.object_list}, safe=False)
 
         except ValueError as e:
             return JsonResponse({'error': f'Invalid date format: {str(e)}'}, status=400)
@@ -650,7 +757,7 @@ def employee_view_attendance(request):
             return JsonResponse({'error': str(e)}, status=500)
 
         
-
+@login_required   
 def employee_view_salary(request):
     employee = get_object_or_404(Employee, admin=request.user)
     salarys = EmployeeSalary.objects.filter(employee=employee)
@@ -661,7 +768,42 @@ def employee_view_salary(request):
     return render(request, "employee_template/employee_view_salary.html", context)
 
 
+@login_required   
 def employee_view_notification(request):
+    employee = get_object_or_404(Employee, admin=request.user)
+    all_notifications = NotificationEmployee.objects.filter(
+        employee=employee
+    ).order_by('-created_at')
+    notification_from_admin = all_notifications.filter(
+        created_by__is_superuser=True
+    )
+    
+    notification_from_manager = all_notifications.filter(
+        created_by__is_superuser=False
+    )
+    
+    notification_ids = Notification.objects.filter(
+        user=request.user,
+        is_read=False,
+    ).values_list('leave_or_notification_id', flat=True)
+    unread_ids = list(notification_ids)
+    admin_paginator = Paginator(notification_from_admin, 10)
+    admin_page_number = request.GET.get('notification_page')
+    notification_from_admin_obj = admin_paginator.get_page(admin_page_number)
+    manager_paginator = Paginator(notification_from_manager, 10)
+    manager_page_number = request.GET.get('manager_page')
+    notification_from_manager_obj = manager_paginator.get_page(manager_page_number)
+    
+    context = {
+        'notification_from_admin_obj': notification_from_admin_obj,
+        'notification_from_manager_obj': notification_from_manager_obj,
+        'total_notifications': notification_from_admin.count(),
+        'total_manager_notifications': notification_from_manager.count(),
+        'page_title': "View Notifications",
+        'manager_unread_ids': unread_ids,
+        'LOCATION_CHOICES': LOCATION_CHOICES,
+    }
+
     employee = get_object_or_404(Employee, admin=request.user)
     all_notifications = NotificationEmployee.objects.filter(
         employee=employee
@@ -699,6 +841,7 @@ def employee_view_notification(request):
     return render(request, "employee_template/employee_view_notification.html", context)
 
 
+@login_required   
 def employee_requests(request):
     try:
         employee = Employee.objects.get(admin=request.user)

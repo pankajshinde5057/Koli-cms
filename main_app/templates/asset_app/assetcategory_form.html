@@ -20,21 +20,21 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="card-title">Existing Categories</h3>
                             {% if categories %}
-                            <span class="badge badge-primary">{{ categories.count }} categories</span>
+                            <span class="badge badge-primary">{{ categories.paginator.count }} categories</span>
                             {% endif %}
                         </div>
                     </div>
                     <div class="card-body">
                         <!-- Search Form -->
-                        <form method="GET" action="" class="mb-3">
+                        <form method="GET" action="" class="mb-3" id="searchForm">
                             <div class="input-group">
-                                <input type="text" name="search" class="form-control" placeholder="Search categories..." 
-                                       value="{{ request.GET.q }}">
+                                <input type="text" name="search" class="form-control" id="searchInput" placeholder="Search categories..." 
+                                       value="{{ search }}">
                                 <div class="input-group-append">
                                     <button class="btn btn-primary" type="submit">
                                         <i class="fas fa-search"></i> Search
                                     </button>
-                                    {% if request.GET.q %}
+                                    {% if search %}
                                     <a href="{% url 'asset_app:assetcategory-list' %}" class="btn btn-secondary">
                                         <i class="fas fa-times"></i> Clear
                                     </a>
@@ -43,55 +43,88 @@
                             </div>
                         </form>
 
-                        <!-- Categories Table -->
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th style="width: 10%">No</th>
-                                        <th>Category Name</th>
-                                        <th style="width: 25%">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for item in categories %}
-                                    <tr>
-                                        <td>{{ forloop.counter }}</td>
-                                        <td>{{ item.category }}</td>
-                                        <td>
-                                            <div class="btn-group">
-                                                <button type="button" class="btn btn-sm btn-primary" 
-                                                        data-toggle="modal" 
-                                                        data-target="#updateModal{{ item.id }}"
-                                                        title="Edit">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-danger" 
-                                                        data-toggle="modal" 
-                                                        data-target="#deleteModal{{ item.id }}"
-                                                        title="Delete">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted py-4">
-                                            <i class="fas fa-info-circle fa-2x mb-2"></i><br>
-                                            No categories found. {% if request.GET.q %}Try a different search term.{% endif %}
-                                        </td>
-                                    </tr>
+                        <!-- Categories Table and Pagination Container -->
+                        <div id="category-table-container">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th style="width: 10%">No</th>
+                                            <th>Category Name</th>
+                                            <th style="width: 25%">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in categories %}
+                                        <tr>
+                                            <td>{{ forloop.counter0|add:categories.start_index }}</td>
+                                            <td>{{ item.category }}</td>
+                                            <td>
+                                                <div class="btn-group">
+                                                    <button type="button" class="btn btn-sm btn-primary" 
+                                                            data-toggle="modal" 
+                                                            data-target="#updateModal{{ item.id }}"
+                                                            title="Edit">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger" 
+                                                            data-toggle="modal" 
+                                                            data-target="#deleteModal{{ item.id }}"
+                                                            title="Delete">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted py-4">
+                                                <i class="fas fa-info-circle fa-2x mb-2"></i><br>
+                                                No categories found. {% if search %}Try a different search term.{% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <div class="card-footer d-flex justify-content-center">
+                                <ul class="pagination">
+                                    {% if categories.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link pagination-link" href="?page={{ categories.previous_page_number }}{% if search %}&search={{ search }}{% endif %}" 
+                                               data-page="{{ categories.previous_page_number }}" title="Previous Page">«</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">«</span></li>
+                                    {% endif %}
+
+                                    {% for page_num in categories.paginator.page_range %}
+                                        {% if page_num == categories.number %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% elif page_num >= categories.number|add:'-1' and page_num <= categories.number|add:'1' %}
+                                            <li class="page-item">
+                                                <a class="page-link pagination-link" href="?page={{ page_num }}{% if search %}&search={{ search }}{% endif %}" 
+                                                   data-page="{{ page_num }}">{{ page_num }}</a>
+                                            </li>
+                                        {% endif %}
                                     {% endfor %}
-                                </tbody>
-                            </table>
+
+                                    {% if categories.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link pagination-link" href="?page={{ categories.next_page_number }}{% if search %}&search={{ search }}{% endif %}" 
+                                               data-page="{{ categories.next_page_number }}" title="Next Page">»</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">»</span></li>
+                                    {% endif %}
+                                </ul>
+                            </div>
                         </div>
                     </div>
-                    {% if is_paginated %}
-                    <div class="card-footer clearfix">
-                        {% include 'main_app/pagination.html' %}
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -110,7 +143,7 @@
                     Update Category: {{ item.category }}
                 </h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <form method="POST" action="{% url 'asset_app:assetcategory-update' item.id %}">
@@ -157,7 +190,7 @@
                     Confirm Deletion
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -183,9 +216,51 @@
     </div>
 </div>
 {% endfor %}
-
 {% endblock content %}
 
 {% block javascript %}
+<script>
+$(document).ready(function() {
+    // Handle pagination clicks
+    $(document).on('click', '.pagination-link', function(e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        var search = $('#searchInput').val();
 
-{% endblock %}
+        $.ajax({
+            url: "{% url 'asset_app:assetscategory-create' %}",
+            type: 'GET',
+            data: {
+                page: page,
+                search: search
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                // Create a temporary container to parse the full HTML
+                var $temp = $('<div>').html(html);
+                // Extract only the #category-table-container content
+                var $newContent = $temp.find('#category-table-container').html();
+                // Update the existing container
+                $('#category-table-container').html($newContent);
+                // Update the count badge
+                $('.card-header .badge').text($temp.find('.card-header .badge').text());
+                // Update browser URL without reloading
+                var newUrl = search ? `?page=${page}&search=${encodeURIComponent(search)}` : `?page=${page}`;
+                window.history.pushState({}, '', newUrl);
+            },
+            error: function(xhr, status, error) {
+                console.error('Pagination AJAX failed:', error);
+                alert('Error loading page. Please try again.');
+            }
+        });
+    });
+
+    // Handle browser back/forward buttons
+    window.onpopstate = function(event) {
+        window.location.reload(); // Reload to ensure correct state
+    };
+});
+</script>
+{% endblock javascript %}
