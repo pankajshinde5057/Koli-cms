@@ -190,14 +190,14 @@
                 <span class="badge bg-warning ml-2">Currently Clocked In</span>
             {% endif %}
         </p>
-        <p class="mb-0">
+        {% comment %} <p class="mb-0">
             {% if today_late %}
                 <i class="fas fa-clock text-warning"></i> Late by {{ today_record.late_minutes }} minutes
             {% endif %}
             {% if today_half_day %}
                 <i class="fas fa-user-clock text-secondary"></i> Half day - {{ today_record.half_day_hours }} hours worked
             {% endif %}
-        </p>
+        </p> {% endcomment %}
     </div>
     <div class="container-fluid">
         <div class="row">
