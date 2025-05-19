@@ -412,20 +412,7 @@ def break_action(request):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
-# @csrf_exempt
-# def get_attendance(request):
-#     department_id = request.POST.get("department")
-#     try:
-#         department = get_object_or_404(Department, id=department_id)
-#         attendance = AttendanceRecord.objects.filter(department=department)
 
-#         attendance_list = []
-#         for attd in attendance:
-#             data = {"id": attd.id, "attendance_date": str(attd.date)}
-#             attendance_list.append(data)
-#         return JsonResponse(json.dumps(attendance_list), safe=False)
-#     except Exception as e:
-#         return None
 @csrf_exempt
 def get_attendance(request):
     department_id = request.POST.get("department")
