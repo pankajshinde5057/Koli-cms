@@ -130,10 +130,12 @@ def add_manager(request):
     return render(request, 'ceo_template/add_manager_template.html', context)
 
 
+
 @login_required
 def add_employee(request):
     employee_form = EmployeeForm(request.POST or None, request.FILES or None)
     context = {'form': employee_form, 'page_title': 'Add Employee'}
+
     if request.method == 'POST':
         if employee_form.is_valid():
             first_name = employee_form.cleaned_data.get('first_name')
@@ -147,9 +149,13 @@ def add_employee(request):
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
             team_lead = employee_form.cleaned_data.get('team_lead')
-            
+
+            emergency_name = employee_form.cleaned_data.get('emergency_name')
+            emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
+            emergency_phone = employee_form.cleaned_data.get('emergency_phone')
+            emergency_address = employee_form.cleaned_data.get('emergency_address')
+
             passport_url = None
-            
             if 'profile_pic' in request.FILES:
                 passport = request.FILES['profile_pic']
                 fs = FileSystemStorage()
@@ -158,14 +164,13 @@ def add_employee(request):
 
             try:
                 user = CustomUser.objects.create_user(
-                    email=email, 
-                    password=password, 
-                    user_type=3, 
-                    first_name=first_name, 
-                    last_name=last_name, 
+                    email=email,
+                    password=password,
+                    user_type=3,  # Employee
+                    first_name=first_name,
+                    last_name=last_name,
                     profile_pic=passport_url if passport_url else ""
                 )
-
                 user.gender = gender
                 user.address = address
                 user.save()
@@ -175,10 +180,16 @@ def add_employee(request):
                 employee.department = department
                 employee.phone_number = phone_number
                 employee.designation = designation
-                
                 if team_lead:
                     employee.team_lead = team_lead
-                
+
+                employee.emergency_contact = {
+                    'name': emergency_name,
+                    'relationship': emergency_relationship,
+                    'phone': emergency_phone,
+                    'address': emergency_address
+                }
+
                 employee.save()
 
                 messages.success(request, "Successfully Added")
@@ -187,8 +198,9 @@ def add_employee(request):
                 messages.error(request, "Could Not Add: " + str(e))
         else:
             messages.error(request, "Please fill all the details correctly.")
-        
+
     return render(request, 'ceo_template/add_employee_template.html', context)
+
 
 
 @login_required
@@ -463,12 +475,14 @@ def edit_manager(request, manager_id):
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     form = EmployeeForm(request.POST or None, instance=employee)
+    
     context = {
         'form': form,
         'employee_id': employee_id,
-        "user_object" : employee,
+        'user_object': employee,
         'page_title': 'Edit Employee'
     }
+
     if request.method == 'POST':
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
@@ -480,47 +494,62 @@ def edit_employee(request, employee_id):
             password = form.cleaned_data.get('password') or None
             division = form.cleaned_data.get('division')
             department = form.cleaned_data.get('department')
+            designation = form.cleaned_data.get('designation')
+            phone_number = form.cleaned_data.get('phone_number')
+            team_lead = form.cleaned_data.get('team_lead')
             passport = request.FILES.get('profile_pic') or None
+
+            emergency_name = form.cleaned_data.get('emergency_name')
+            emergency_relationship = form.cleaned_data.get('emergency_relationship')
+            emergency_phone = form.cleaned_data.get('emergency_phone')
+            emergency_address = form.cleaned_data.get('emergency_address')
+
             try:
-                # Get the related CustomUser instance
-                user = CustomUser.objects.get(id=employee.admin.id)
+                if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
+                    raise ValidationError("Emergency phone number must be exactly 10 digits.")
 
-                # If a new passport image is uploaded, update the profile_pic
-                if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    user.profile_pic = passport_url
-
-                # Update the CustomUser fields
+                user = employee.admin
                 user.username = username
                 user.email = email
-                if password != None:
+                if password:
                     user.set_password(password)
                 user.first_name = first_name
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
-                # Save the CustomUser instance
+
+                if passport:
+                    fs = FileSystemStorage()
+                    filename = fs.save(passport.name, passport)
+                    passport_url = fs.url(filename)
+                    user.profile_pic = passport_url
+
                 user.save()
 
-                # Update the Employee model fields
                 employee.division = division
                 employee.department = department
+                employee.designation = designation
+                employee.phone_number = phone_number
+                employee.team_lead = team_lead
+
+                employee.emergency_contact = {
+                    'name': emergency_name or "Not provided",
+                    'relationship': emergency_relationship or "Not provided",
+                    'phone': emergency_phone or "Not provided",
+                    'address': emergency_address or "Not provided"
+                }
+
                 employee.save()
 
                 messages.success(request, "Employee information updated successfully.")
                 return redirect(reverse('edit_employee', args=[employee_id]))
+
             except Exception as e:
-                messages.error(request, "Could Not Update " + str(e))
+                messages.error(request, "Could Not Update: " + str(e))
         else:
-            messages.error(request, "Please Fill Form Properly!")
-    else:
-        return render(request, "ceo_template/edit_employee_template.html", context)
+            messages.error(request, "Please fill all fields properly.")
 
     return render(request, "ceo_template/edit_employee_template.html", context)
-
-
 
 
 @login_required
