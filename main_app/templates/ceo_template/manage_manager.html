@@ -43,9 +43,13 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'edit_manager' manager.manager.id %}" class="btn btn-primary">Edit</a> - 
-                                            <a href="{% url 'delete_manager' manager.manager.id %}" class="btn btn-danger" 
-                                               onclick="return confirm('Are you sure about this ?')">Delete</a>
+                                            {% if manager.manager and manager.manager.id %}
+                                                <a href="{% url 'edit_manager' manager.manager.id %}" class="btn btn-primary">Edit</a> - 
+                                                <a href="{% url 'delete_manager' manager.manager.id %}" class="btn btn-danger" 
+                                                onclick="return confirm('Are you sure about this?')">Delete</a>
+                                            {% else %}
+                                                <span class="text-muted">No Actions Available</span>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% endfor %}

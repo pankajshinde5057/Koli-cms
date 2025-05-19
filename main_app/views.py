@@ -38,47 +38,32 @@ def login_page(request):
     return render(request, "main_app/login.html",{'SITE_KEY' : SITE_KEY})
 
 
-def doLogin(request, **kwargs):
-    # if request.method != "POST":
-    #     return HttpResponse("<h4>Denied</h4>")
-    # else:
-    #     captcha_token = request.POST.get("g-recaptcha-response")
-    #     captcha_url = "https://www.google.com/recaptcha/api/siteverify"
-    #     captcha_key = SECRET_KEY
-    #     data = {"secret": captcha_key, "response": captcha_token}
-    #     try:
-    #         captcha_server = requests.post(url=captcha_url, data=data)
-    #         response = json.loads(captcha_server.text)
-    #         if response["success"] == False:
-    #             messages.error(request, "Invalid Captcha. Try Again")
-    #             return redirect("/")
-    #     except:
-    #         messages.error(request, "Captcha could not be verified. Try Again")
-    #         return redirect("/")
+def doLogin(request):
+    if request.method != "POST":
+        return redirect('login_page')  
 
-        # Authenticate
-        user = authenticate(
-            request,
-            username=request.POST.get("email"),
-            password=request.POST.get("password"),
-        )
-        if user != None:
-            login(request, user)
-            if user.user_type == "1":
-                return redirect(reverse("admin_home"))
-            elif user.user_type == "2":
-                return redirect(reverse("manager_home"))
-            else:
-                return redirect(reverse("employee_home"))
+    user = authenticate(
+        request,
+        username=request.POST.get("email"),
+        password=request.POST.get("password"),
+    )
+    if user:
+        login(request, user)
+        if user.user_type == "1":
+            return redirect("admin_home")
+        elif user.user_type == "2":
+            return redirect("manager_home")
         else:
-            messages.error(request, "Invalid details")
-            return redirect("/")
-
+            return redirect("employee_home")
+    else:
+        messages.error(request, "Invalid details")
+        return redirect('login_page')
+    
 
 def logout_user(request):
     if request.user != None:
         logout(request)
-    return redirect("/")
+    return redirect('login_page')
 
 
 def get_router_ip():
@@ -427,20 +412,7 @@ def break_action(request):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
-# @csrf_exempt
-# def get_attendance(request):
-#     department_id = request.POST.get("department")
-#     try:
-#         department = get_object_or_404(Department, id=department_id)
-#         attendance = AttendanceRecord.objects.filter(department=department)
 
-#         attendance_list = []
-#         for attd in attendance:
-#             data = {"id": attd.id, "attendance_date": str(attd.date)}
-#             attendance_list.append(data)
-#         return JsonResponse(json.dumps(attendance_list), safe=False)
-#     except Exception as e:
-#         return None
 @csrf_exempt
 def get_attendance(request):
     department_id = request.POST.get("department")
