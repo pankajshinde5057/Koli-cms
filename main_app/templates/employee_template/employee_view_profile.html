@@ -67,14 +67,14 @@
                             <!-- Employee Details Column -->
                             <div class="col-md-8">
                                 <!-- About Section -->
-                                <div class="card mb-4">
+                                {% comment %} <div class="card mb-4">
                                     <div class="card-header bg-light">
                                         <h5 class="card-title mb-0">About</h5>
                                     </div>
                                     <div class="card-body">
                                         <p>{{ employee.bio|default:"No information provided" }}</p>
                                     </div>
-                                </div>
+                                </div> {% endcomment %}
                                 
                                 <!-- Professional Information -->
                                 <div class="card mb-4">
