@@ -39,30 +39,31 @@ def login_page(request):
 
 
 def doLogin(request):
-    if request.method == "POST":
-        user = authenticate(
-            request,
-            username=request.POST.get("email"),
-            password=request.POST.get("password"),
-        )
-        if user:
-            login(request, user)
-            if user.user_type == "1":
-                return redirect("admin_home")
-            elif user.user_type == "2":
-                return redirect("manager_home")
-            else:
-                return redirect("employee_home")
-        else:
-            messages.error(request, "Invalid details")
-            return redirect("/doLogin/") 
-    return render(request, "main_app/login.html")
+    if request.method != "POST":
+        return redirect('login_page')  
 
+    user = authenticate(
+        request,
+        username=request.POST.get("email"),
+        password=request.POST.get("password"),
+    )
+    if user:
+        login(request, user)
+        if user.user_type == "1":
+            return redirect("admin_home")
+        elif user.user_type == "2":
+            return redirect("manager_home")
+        else:
+            return redirect("employee_home")
+    else:
+        messages.error(request, "Invalid details")
+        return redirect('login_page')
+    
 
 def logout_user(request):
     if request.user != None:
         logout(request)
-    return redirect('/doLogin/')
+    return redirect('login_page')
 
 
 def get_router_ip():
@@ -411,20 +412,7 @@ def break_action(request):
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
-# @csrf_exempt
-# def get_attendance(request):
-#     department_id = request.POST.get("department")
-#     try:
-#         department = get_object_or_404(Department, id=department_id)
-#         attendance = AttendanceRecord.objects.filter(department=department)
 
-#         attendance_list = []
-#         for attd in attendance:
-#             data = {"id": attd.id, "attendance_date": str(attd.date)}
-#             attendance_list.append(data)
-#         return JsonResponse(json.dumps(attendance_list), safe=False)
-#     except Exception as e:
-#         return None
 @csrf_exempt
 def get_attendance(request):
     department_id = request.POST.get("department")
