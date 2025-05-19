@@ -583,7 +583,6 @@ def update_attendance(request):
                 "message": f"Attendance updated successfully for {updated_count} employees",
                 "updated_count": updated_count
             })
-            print(updated_count)
             
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)

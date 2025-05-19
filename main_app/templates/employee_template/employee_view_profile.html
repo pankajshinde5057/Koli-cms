@@ -52,7 +52,7 @@
                                     </div>
                                 </div>
                                 <!-- Skills -->
-                                <div class="card">
+                                {% comment %} <div class="card">
                                     <div class="card-header bg-light">
                                         <h5 class="card-title mb-0">Skills</h5>
                                     </div>
@@ -61,7 +61,7 @@
                                         <span class="badge bg-info me-1 mb-1">{{ skill.name }}</span>
                                         {% endfor %}
                                     </div>
-                                </div>
+                                </div> {% endcomment %}
                             </div>
                             
                             <!-- Employee Details Column -->
@@ -116,7 +116,6 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Emergency Contact -->
                                 <div class="card mb-4">
                                     <div class="card-header bg-light">
                                         <h5 class="card-title mb-0">Emergency Contact</h5>
@@ -124,12 +123,12 @@
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-md-6">
-                                                <p><strong>Name:</strong> {{ employee.emergency_contact|default:"Not provided" }}</p>
-                                                <p><strong>Relationship:</strong> {{ employee.emergency_contact|default:"Not provided" }}</p>
+                                                <p><strong>Name:</strong> {{ employee.emergency_contact.name|default:"Not provided" }}</p>
+                                                <p><strong>Relationship:</strong> {{ employee.emergency_contact.relationship|default:"Not provided" }}</p>
                                             </div>
                                             <div class="col-md-6">
-                                                <p><strong>Phone:</strong> {{ employee.emergency_contact|default:"Not provided" }}</p>
-                                                <p><strong>Address:</strong> {{ employee.emergency_contact|default:"Not provided" }}</p>
+                                                <p><strong>Phone:</strong> {{ employee.emergency_contact.phone|default:"Not provided" }}</p>
+                                                <p><strong>Address:</strong> {{ employee.emergency_contact.address|default:"Not provided" }}</p>
                                             </div>
                                         </div>
                                     </div>
