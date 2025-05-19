@@ -223,6 +223,7 @@ class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('late', 'Late'),
+        ('half_day','Half_Day')
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
@@ -271,6 +272,15 @@ class AttendanceRecord(models.Model):
         
         if self.clock_out and self.clock_out.date() != self.date:
             raise ValidationError("Clock out time must be on the same date as the attendance record.")
+
+        if self.clock_out and self.user.user_type == "3":
+            try:
+                employee = Employee.objects.get(admin=self.user)
+                schedule = DailySchedule.objects.get(employee=employee, date=self.date)
+                if not schedule.updates.exists():
+                    raise ValidationError("Cannot clock out until a daily update is submitted for today's schedule.")
+            except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
+                raise ValidationError("Cannot clock out without a valid schedule for today.")
     
     def save(self, *args, **kwargs):
         ist = pytz.timezone('Asia/Kolkata')
@@ -315,22 +325,40 @@ class AttendanceRecord(models.Model):
                 record.save()
 
         # automatic determine attendence record:
-        if self.clock_in:
+        if self.clock_in and self.user.user_type == "3":
             ist_time = self.clock_in.astimezone(ist)
             late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            # half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
 
-            self.status = (
-                # 'half_day' if ist_time > half_day_time
-                'late' if ist_time > late_time else 'present'
-            )
+            # Check for half-day due to missing schedule within 30 minutes
+            try:
+                employee = Employee.objects.get(admin=self.user)
+                schedule = DailySchedule.objects.get(employee=employee, date=self.date)
+                schedule_created = schedule.created_at
+                time_since_clock_in = schedule_created - self.clock_in
+                if time_since_clock_in > timedelta(seconds=10):
+                    self.status = 'half_day'
+                else:
+                    self.status = 'late' if ist_time > late_time else 'present'
+            
+            except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
+                # If no schedule exists and 30 minutes have passed since clock-in
+                if timezone.now() - self.clock_in > timedelta(minutes=30):
+                    self.status = 'half_day'
+                else:
+                    self.status = 'late' if ist_time > late_time else 'present'                    
+
+        # For managers or other user types, only check late time
+        elif self.clock_in:
+            ist_time = self.clock_in.astimezone(ist)
+            late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
+            self.status = 'late' if ist_time > late_time else 'present'
 
         # Calculate time durations if clock_out exists
         if self.clock_out:
             self.total_worked = self.clock_out - self.clock_in
+            regular_hours_limit = timezone.timedelta(hours=9)
             
             # Calculate regular vs overtime (assuming 8 hours is regular)
-            regular_hours_limit = timezone.timedelta(hours=8)
             
             # For individual records, we'll calculate partial regular/overtime
             if self.total_worked > regular_hours_limit:
@@ -470,3 +498,55 @@ class Holiday(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.date})"
+
+
+def get_ist_date():
+    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
+
+class DailySchedule(models.Model):
+    STATUS_CHOICES = [
+        ('planned', 'Planned'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+    ]
+
+    employee = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name='schedules')
+    attendance_record = models.ForeignKey('AttendanceRecord', on_delete=models.SET_NULL, related_name='schedules',null=True, blank=True)
+    date = models.DateField(get_ist_date)
+    task_description = models.TextField()
+    project = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('employee', 'date')
+        ordering = ['-date', 'employee__admin__first_name']
+
+    def __str__(self):
+        return f"{self.employee} - {self.task_description} on {self.date}"
+    
+    def duration(self):
+        # calculate work duration from attendance record
+        if self.attendance_record and self.attendance_record.clock_out:
+            duration = self.attendance_record.clock_out - self.attendance_record.clock_in
+            return duration.total_seconds()/3600 # converts to hours
+        return 0
+
+class DailyUpdate(models.Model):
+    schedule = models.ForeignKey(DailySchedule, on_delete=models.CASCADE, related_name='updates')
+    update_description = models.TextField()
+    status = models.CharField(max_length=20, choices=DailySchedule.STATUS_CHOICES, default='in_progress')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('schedule',)  # One update per schedule
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Update for {self.schedule} at {self.updated_at}"
+
+    def clean(self):
+        if not self.update_description.strip():
+            raise ValidationError("Update description cannot be empty.")
+    
