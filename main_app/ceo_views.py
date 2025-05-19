@@ -80,6 +80,7 @@ def admin_home(request):
 def add_manager(request):
     form = ManagerForm(request.POST or None, request.FILES or None)
     context = {'form': form, 'page_title': 'Add Manager'}
+
     if request.method == 'POST':
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
@@ -91,8 +92,13 @@ def add_manager(request):
             division = form.cleaned_data.get('division')
             department = form.cleaned_data.get('department')
 
-            passport_url = None
+            # Emergency contact fields
+            emergency_name = form.cleaned_data.get('emergency_name')
+            emergency_relationship = form.cleaned_data.get('emergency_relationship')
+            emergency_phone = form.cleaned_data.get('emergency_phone')
+            emergency_address = form.cleaned_data.get('emergency_address')
 
+            passport_url = None
             if 'profile_pic' in request.FILES:
                 passport = request.FILES['profile_pic']
                 fs = FileSystemStorage()
@@ -103,30 +109,37 @@ def add_manager(request):
                 user = CustomUser.objects.create_user(
                     email=email, 
                     password=password, 
-                    user_type=2,
+                    user_type=2,  # Manager
                     first_name=first_name, 
                     last_name=last_name, 
                     profile_pic=passport_url if passport_url else ""
                 )
-
                 user.gender = gender
                 user.address = address
                 user.save()
-                print(user,"*"*20)
-                
+
                 manager = user.manager
                 manager.division = division
                 manager.department = department
+
+                manager.emergency_contact = {
+                    'name': emergency_name,
+                    'relationship': emergency_relationship,
+                    'phone': emergency_phone,
+                    'address': emergency_address
+                }
+
                 manager.save()
-                
+
                 messages.success(request, "Successfully Added")
                 return redirect(reverse('manage_manager'))
 
             except Exception as e:
-                messages.error(request, "Could Not Add " + str(e))
-        
+                messages.error(request, "Could Not Add: " + str(e))
+
         else:
             messages.error(request, "Please fill all the details correctly.")
+
     return render(request, 'ceo_template/add_manager_template.html', context)
 
 
@@ -420,13 +433,15 @@ def manage_department(request):
 @login_required
 def edit_manager(request, manager_id):
     manager = get_object_or_404(Manager, id=manager_id)
-    form = ManagerForm(request.POST or None, instance=manager)
+    form = ManagerForm(request.POST or None, request.FILES or None, instance=manager)
+
     context = {
         'form': form,
         'manager_id': manager_id,
-        "user_object" : manager,
+        'user_object': manager,
         'page_title': 'Edit Manager'
     }
+
     if request.method == 'POST':
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
@@ -437,40 +452,58 @@ def edit_manager(request, manager_id):
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password') or None
             division = form.cleaned_data.get('division')
+            department = form.cleaned_data.get('department')
             passport = request.FILES.get('profile_pic') or None
+
+            emergency_name = form.cleaned_data.get('emergency_name')
+            emergency_relationship = form.cleaned_data.get('emergency_relationship')
+            emergency_phone = form.cleaned_data.get('emergency_phone')
+            emergency_address = form.cleaned_data.get('emergency_address')
+
             try:
-                user = CustomUser.objects.get(id=manager.admin.id)
+                if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
+                    raise ValidationError("Emergency phone number must be exactly 10 digits.")
+
+                user = manager.admin
                 user.username = username
                 user.email = email
-                if password != None:
+                if password:
                     user.set_password(password)
-                if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    user.profile_pic = passport_url
                 user.first_name = first_name
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
-                manager.division = division
-                user.save()
-                manager.save()
-                messages.success(request, "Successfully Updated")
-                return redirect(reverse('edit_manager', args=[manager_id]))
-            except Exception as e:
-                messages.error(request, "Could Not Update " + str(e))
-        else:
-            messages.error(request, "Please fil form properly")
-    else:
-        # manager = Manager.objects.get(id=user.id)
-        # user = CustomUser.objects.get(id=manager.admin_id)
-        return render(request, "ceo_template/edit_manager_template.html", context)
-    
-    return render(request, "ceo_template/edit_manager_template.html", context)
-    
-    
 
+                if passport:
+                    fs = FileSystemStorage()
+                    filename = fs.save(passport.name, passport)
+                    passport_url = fs.url(filename)
+                    user.profile_pic = passport_url
+
+                user.save()
+
+                manager.division = division
+                manager.department = department
+                manager.emergency_contact = {
+                    'name': emergency_name or "Not provided",
+                    'relationship': emergency_relationship or "Not provided",
+                    'phone': emergency_phone or "Not provided",
+                    'address': emergency_address or "Not provided"
+                }
+
+                manager.save()
+
+                messages.success(request, "Manager information updated successfully.")
+                return redirect(reverse('edit_manager', args=[manager_id]))
+
+            except Exception as e:
+                messages.error(request, "Could Not Update: " + str(e))
+        else:
+            messages.error(request, "Please fill all fields properly.")
+
+    return render(request, "ceo_template/edit_manager_template.html", context)
+
+    
 @login_required
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)

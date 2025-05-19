@@ -82,7 +82,7 @@ class Department(models.Model):
 class Manager(models.Model):
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
-
+    emergency_contact = models.JSONField(blank=True, null=True)
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='manager')
 
     def __str__(self):
