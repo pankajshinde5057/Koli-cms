@@ -39,30 +39,31 @@ def login_page(request):
 
 
 def doLogin(request):
-    if request.method == "POST":
-        user = authenticate(
-            request,
-            username=request.POST.get("email"),
-            password=request.POST.get("password"),
-        )
-        if user:
-            login(request, user)
-            if user.user_type == "1":
-                return redirect("admin_home")
-            elif user.user_type == "2":
-                return redirect("manager_home")
-            else:
-                return redirect("employee_home")
-        else:
-            messages.error(request, "Invalid details")
-            return redirect("/doLogin/") 
-    return render(request, "main_app/login.html")
+    if request.method != "POST":
+        return redirect('login_page')  
 
+    user = authenticate(
+        request,
+        username=request.POST.get("email"),
+        password=request.POST.get("password"),
+    )
+    if user:
+        login(request, user)
+        if user.user_type == "1":
+            return redirect("admin_home")
+        elif user.user_type == "2":
+            return redirect("manager_home")
+        else:
+            return redirect("employee_home")
+    else:
+        messages.error(request, "Invalid details")
+        return redirect('login_page')
+    
 
 def logout_user(request):
     if request.user != None:
         logout(request)
-    return redirect('/doLogin/')
+    return redirect('login_page')
 
 
 def get_router_ip():
