@@ -45,7 +45,7 @@
                     {% endfor %}
                 {% endif %}
 
-                <form action="doLogin/" method="post">
+                <form action="{% url 'user_login' %}" method="post">
                     {% csrf_token %}
                     <div class="input-group mb-3">
                         <input required type="email" name='email' class="form-control" placeholder="Email">

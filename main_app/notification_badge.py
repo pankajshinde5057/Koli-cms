@@ -37,7 +37,6 @@ def mark_notification_read(request, notification_id,type,role):
     else:
         notification = Notification.objects.filter(user=request.user, notification_type='notification',role = role)
         updated_count = notification.update(is_read=True)
-        print("updated_count",updated_count)
         if updated_count > 0:
             return JsonResponse({'success': True})
         else:

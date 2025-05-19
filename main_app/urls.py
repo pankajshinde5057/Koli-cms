@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-
+from django.contrib.auth.views import LogoutView
 from main_app.EditSalaryView import EditSalaryView
 from main_app.notification_badge import mark_notification_read
 from . import ceo_views, manager_views, employee_views, views

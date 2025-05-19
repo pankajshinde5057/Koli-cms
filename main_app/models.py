@@ -82,35 +82,37 @@ class Department(models.Model):
 class Manager(models.Model):
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
-
+    emergency_contact = models.JSONField(blank=True, null=True)
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='manager')
 
     def __str__(self):
         return self.admin.last_name + " " + self.admin.first_name
 
 
+
 class Employee(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='employee')
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
-    employee_id = models.CharField(max_length=10, unique=True,null=True,blank=True)
-    designation = models.CharField(max_length=10)
+    employee_id = models.CharField(max_length=10, unique=True, null=True, blank=True)
+    designation = models.CharField(max_length=50)
     team_lead = models.ForeignKey(Manager, on_delete=models.CASCADE, related_name='team_members', null=True, blank=True)
-    phone_number = models.CharField(max_length=10, unique=False)
-    emergency_contact = models.JSONField(blank=True,null=True)
+    phone_number = models.CharField(max_length=10)
+    emergency_contact = models.JSONField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
             last_id = Employee.objects.all().order_by('-id').first()
-            if last_id:
+            if last_id and last_id.employee_id:
                 emp_num = int(last_id.employee_id.replace('EMP', '')) + 1
             else:
                 emp_num = 1
-            self.employee_id = f"EMP{emp_num:03d}"  # e.g., EMP001
+            self.employee_id = f"EMP{emp_num:03d}"
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.admin.first_name +" "+self.admin.last_name 
+        return self.admin.first_name + " " + self.admin.last_name
+
 
 
 class LeaveReportEmployee(models.Model):
@@ -143,6 +145,7 @@ class LeaveReportEmployee(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+        
 
 class LeaveReportManager(models.Model):
     LEAVE_TYPE = (
