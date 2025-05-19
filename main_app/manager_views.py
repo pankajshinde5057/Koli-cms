@@ -1545,8 +1545,8 @@ def manager_asset_view_notification(request):
     # Recently resolved recurring asset issues
     all_resolved_recurring = AssetIssue.objects.filter(
         status='resolved',
-        is_recurring=True
     ).order_by('-resolved_date')[:5]
+    print(all_resolved_recurring)
 
     # Asset claim notifications pending approval
     pending_asset_notifications = Notify_Manager.objects.filter(
@@ -1566,7 +1566,6 @@ def manager_asset_view_notification(request):
     # Pagination for resolved recurring issues
     resolved_issues_paginator = Paginator(all_resolved_recurring, 5)
     resolved_issues_page_obj = resolved_issues_paginator.get_page(request.GET.get('resolved_page'))
-
     # IDs of unread notifications for potential frontend use
     manager_unread_ids = pending_asset_notifications.values_list('id', flat=True)
 

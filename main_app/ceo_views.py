@@ -26,6 +26,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from .models import AttendanceRecord, Holiday, Employee, Manager
+from xhtml2pdf import pisa
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -625,37 +626,24 @@ def employee_feedback_message(request):
 
         return render(request, 'ceo_template/employee_feedback_template.html', context)
     else:
-        if request.POST.get('_method') == 'DELETE':
-            feedback_id = request.POST.get('id')
-            try:
-                feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
-                feedback.delete()
-                Notification.objects.filter(
-                    leave_or_notification_id=feedback_id,
-                    notification_type='employee feedback'
-                ).delete()
-                return HttpResponse(True)
-            except Exception as e:
-                return HttpResponse(False)
-        else:
-            feedback_id = request.POST.get('id')
-            try:
-                feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
-                reply = request.POST.get('reply')
-                feedback.reply = reply
-                feedback.save()
-                notify = Notification.objects.filter(
-                    user=request.user,
-                    role="admin",
-                    is_read=False,
-                    leave_or_notification_id=feedback_id
-                ).first()
-                if notify:
-                    notify.is_read = True
-                    notify.save()
-                return HttpResponse(True)
-            except Exception as e:
-                return HttpResponse(False)
+        feedback_id = request.POST.get('id')
+        try:
+            feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
+            reply = request.POST.get('reply')
+            feedback.reply = reply
+            feedback.save()
+            notify = Notification.objects.filter(
+                user=request.user,
+                role="admin",
+                is_read=False,
+                leave_or_notification_id=feedback_id
+            ).first()
+            if notify:
+                notify.is_read = True
+                notify.save()
+            return HttpResponse(True)
+        except Exception as e:
+            return HttpResponse(False)
 
 
 
@@ -684,27 +672,15 @@ def manager_feedback_message(request):
 
         return render(request, 'ceo_template/manager_feedback_template.html', context)
     else:
-        # Handle POST (reply) and DELETE requests
-        if request.POST.get('_method') == 'DELETE':
-            # Handle delete request
-            feedback_id = request.POST.get('id')
-            try:
-                feedback = get_object_or_404(FeedbackManager, id=feedback_id)
-                feedback.delete()
-                return HttpResponse(True)
-            except Exception as e:
-                return HttpResponse(False)
-        else:
-            # Handle reply request
-            feedback_id = request.POST.get('id')
-            try:
-                feedback = get_object_or_404(FeedbackManager, id=feedback_id)
-                reply = request.POST.get('reply')
-                feedback.reply = reply
-                feedback.save()
-                return HttpResponse(True)
-            except Exception as e:
-                return HttpResponse(False)
+        feedback_id = request.POST.get('id')
+        try:
+            feedback = get_object_or_404(FeedbackManager, id=feedback_id)
+            reply = request.POST.get('reply')
+            feedback.reply = reply
+            feedback.save()
+            return HttpResponse(True)
+        except Exception as e:
+            return HttpResponse(False)
 
 
 @login_required
@@ -1479,12 +1455,13 @@ def admin_asset_issue_history(request):
     if search_query:
         resolved_issues = resolved_issues.filter(
             Q(asset__asset_name__icontains=search_query) |
+            Q(asset__asset_serial_number__icontains=search_query) |
             Q(issue_type__icontains=search_query) |
             Q(description__icontains=search_query) |
-            Q(resolution_method__icontains=search_query)
+            Q(resolution_method__icontains=search_query) 
         )
     
-    paginator = Paginator(resolved_issues, 3)  # 3 issues per page
+    paginator = Paginator(resolved_issues, 10)  # 10 issues per page
     try:
         page_obj = paginator.page(page)
     except PageNotAnInteger:
@@ -1502,17 +1479,69 @@ def admin_asset_issue_history(request):
     # Handle AJAX pagination
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         html = render_to_string('ceo_template/admin_view_asset_issue_history.html', context, request=request)
-        return JsonResponse({
-            'html': html,
-            'current_page': page_obj.number,
-            'num_pages': paginator.num_pages,
-            'has_previous': page_obj.has_previous(),
-            'has_next': page_obj.has_next(),
-            'previous_page_number': page_obj.previous_page_number() if page_obj.has_previous() else None,
-            'next_page_number': page_obj.next_page_number() if page_obj.has_next() else None,
-        })
+        return JsonResponse({'html': html})
     
     return render(request, 'ceo_template/admin_view_asset_issue_history.html', context)
+
+
+@login_required
+@csrf_exempt
+def delete_asset_history_issues(request):
+    try:
+        data = json.loads(request.body)
+        issue_ids = data.get('issue_ids', [])
+        delete_all = data.get('delete_all', False)
+        # Check if user has permission to delete
+        if not request.user.is_superuser:
+            return JsonResponse({
+                'success': False,
+                'error': 'Permission denied'
+            }, status=403)
+
+        if delete_all:
+            # Delete all resolved issues
+            deleted_count, _ = AssetIssue.objects.filter(status='resolved').delete()
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully deleted {deleted_count} issues'
+            })
+        elif issue_ids:
+            # Validate issue IDs
+            try:
+                issue_ids = [int(id) for id in issue_ids]
+            except (ValueError, TypeError):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Invalid issue IDs provided'
+                }, status=400)
+            
+            # Delete selected issues
+            deleted_count, _ = AssetIssue.objects.filter(
+                id__in=issue_ids, 
+                status='resolved'
+            ).delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully deleted {deleted_count} issues'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No issues selected for deletion'
+            }, status=400)
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Server error: {str(e)}'
+        }, status=500)
+
 
 @login_required
 @csrf_exempt
@@ -1712,7 +1741,6 @@ def get_manager_and_employee_attendance(request):
 
         except Exception as e:
             return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
-
 
 
 

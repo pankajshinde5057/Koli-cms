@@ -269,8 +269,6 @@ def clock_in_out(request):
             late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
             half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
 
-            print(f"IST Time Now: {ist_time}, Late Time: {late_time}, Half Day Time: {half_day_time}")
-
             if request.user.user_type == "3":  # Employee
                 earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 45)))
             elif request.user.user_type == "2":  # Manager
@@ -288,20 +286,7 @@ def clock_in_out(request):
             # Proceed with clock-in logic
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
-            
-            # Create 9:15 AM and 1:00 PM on the same IST date
-       
 
-            # # Determine status
-            # if ist_time > half_day_time:
-            #     status = 'half_day'
-            # elif ist_time > late_time:
-            #     status = 'late'
-            # else:
-            #     status = 'present'
-
-            logger.debug(f"Creating new attendance record for {request.user} with status {status}")
-            print('half_day' if ist_time > half_day_time else 'late' if ist_time > late_time else 'present', "*"*20)
             # Create new attendance record
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
@@ -310,17 +295,29 @@ def clock_in_out(request):
                 department=department,
                 notes=request.POST.get('notes', ''),
                 ip_address=request.META.get('REMOTE_ADDR'),
-                status=  'half_day' if ist_time > half_day_time else 'late' if ist_time > late_time else 'present'
+                status=  'present'
             )
-
-            # Log activity
-            ActivityFeed.objects.create(
-                user=request.user,
-                activity_type='clock_in',
-                related_record=new_record
-            )
-
-            return JsonResponse({'status': 'success'})
+            try:
+                new_record.full_clean()
+                new_record.save()
+                
+                # Log activity
+                ActivityFeed.objects.create(
+                    user=request.user,
+                    activity_type='clock_in',
+                    related_record=new_record
+                )
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Successfully clocked in! Please create your daily schedule within 30 minutes.'
+                })
+            except ValidationError as e:
+                logger.error(f"Error creating attendance record for {request.user}: {e}")
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f"Error clocking in: {e}"
+                }, status=400)
 
         elif 'clock_out' in request.POST:
             current_record = AttendanceRecord.objects.filter(
@@ -330,37 +327,61 @@ def clock_in_out(request):
             ).first()
 
             if not current_record:
-                logger.warning(f"User {request.user} attempted to clock out on {today} with no active record")
                 return JsonResponse({
                     'status': 'error',
                     'message': 'No active clock-in record found to clock out.'
                 }, status=400)
 
+            # check for daily updates
+            if request.user.user_type == '3': ## for employee
+                try:
+                    employee = Employee.objects.get(admin=request.user)
+                    schedule = DailySchedule.objects.get(employee=employee, date=today)
+                    if not schedule.updates.exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Cannot clock out without submitting a daily update.',
+                            'redirect_url': '/todays_update/'  # Provide URL for client-side redirect
+                        }, status=400)
+                except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Cannot clock out without a valid schedule and update.',
+                        'redirect_url': '/daily_schedule/'  # Redirect to schedule creation if none exists
+                    }, status=400)
+            
             # Clock out
             current_record.clock_out = now
             current_record.notes = request.POST.get('notes', '')
-            current_record.save()
+            try:
+                current_record.full_clean()
+                current_record.save()
 
-            # Log activity
-            ActivityFeed.objects.create(
-                user=request.user,
-                activity_type='clock_out',
-                related_record=current_record
-            )
+                # Log activity
+                ActivityFeed.objects.create(
+                    user=request.user,
+                    activity_type='clock_out',
+                    related_record=current_record
+                )
 
-            logger.debug(f"User {request.user} clocked out successfully on {today}")
-
-            return JsonResponse({'status': 'success'})
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Successfully clocked out!'
+                })
+            except ValidationError as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f"Error clocking out: {e}"
+                }, status=400)
 
         else:
-            logger.error(f"Invalid POST request for {request.user}: {request.POST}")
             return JsonResponse({
                 'status': 'error',
                 'message': 'Invalid request.'
             }, status=400)
 
-    logger.debug(f"Redirecting {request.user} to employee_home")
-    return HttpResponseRedirect('employee_home')
+    return HttpResponseRedirect('manager_home' if request.user.user_type == "2" else 'employee_home')
+
 
 @login_required
 def break_action(request):

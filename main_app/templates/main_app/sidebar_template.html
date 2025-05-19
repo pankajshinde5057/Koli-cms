@@ -542,6 +542,36 @@
                 </li>
 
                 <li class="nav-item">
+                    {% url 'daily_schedule' as daily_schedule %}
+                    <a href="{{daily_schedule}}" class="nav-link {% if daily_schedule == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-tie"></i>
+                        <p>
+                            Daily Schedule
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'todays_update' as todays_update %}
+                    <a href="{{todays_update}}" class="nav-link {% if todays_update == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-tie"></i>
+                        <p>
+                            Today's Update
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'view_all_schedules' as view_all_schedules %}
+                    <a href="{{view_all_schedules}}" class="nav-link {% if view_all_schedules == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-tie"></i>
+                        <p>
+                            All Schedules
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     {% url 'employee_view_attendance' as employee_view_attendance %}
                     <a href="{{employee_view_attendance}}" class="nav-link {% if employee_view_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-calendar-check"></i>
