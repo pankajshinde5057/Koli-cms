@@ -1,6 +1,6 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
-
+from django.contrib.auth.views import LogoutView
 from main_app.EditSalaryView import EditSalaryView
 from main_app.notification_badge import mark_notification_read
 from . import ceo_views, manager_views, employee_views, views
@@ -12,6 +12,7 @@ urlpatterns = [
      path("get_attendance", views.get_attendance, name='get_attendance'),
      path("firebase-messaging-sw.js", views.showFirebaseJS, name='showFirebaseJS'),
      path("doLogin/", views.doLogin, name='user_login'),
+     path('', views.login_page, name='login_page'),
      path("logout_user/", views.logout_user, name='user_logout'),
      path("admin/home/", ceo_views.admin_home, name='admin_home'),
      path("manager/add", ceo_views.add_manager, name='add_manager'),
