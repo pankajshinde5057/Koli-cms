@@ -1,4 +1,4 @@
-from .models import CustomUser, AttendanceRecord, Notification
+from .models import CustomUser, AttendanceRecord, Notification, EarylyClockOutRequest
 from django.utils import timezone
 from django.contrib.auth.models import AnonymousUser
 from zoneinfo import ZoneInfo
@@ -24,8 +24,8 @@ def clock_times(request):
             work_duration = current_time - clock_in_time
 
 
-            # fixed_time = timedelta(hours=9) 
-            fixed_time = timedelta(minutes=1) # for testing
+            fixed_time = timedelta(hours=9) 
+            # fixed_time = timedelta(minutes=1) # for testing
 
             if work_duration >= fixed_time:
                 context["complete_8Hours"] = True
@@ -33,6 +33,13 @@ def clock_times(request):
             else:
                 context['remaining_time'] = int((fixed_time - work_duration).total_seconds())
 
+        if current_record:
+            early_request = EarylyClockOutRequest.objects.filter(
+                attendance_record=current_record
+            ).order_by('-submitted_at').first()
+            if early_request:
+                context['early_clock_out_status'] = early_request.status
+                context['early_clock_out_message'] = early_request.notes or 'No reason provided'
 
         context["latest_entry"] = latest_entry
         context["current_record"] = current_record

@@ -35,13 +35,13 @@
             <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
                 {% csrf_token %}
                 <input type="hidden" name="clock_out" value="true">
-                {% if complete_8Hours %}
+                {% if complete_8Hours or early_clock_out_status == 'approved' %}
                     <button type="submit" class="btn btn-danger rounded-pill px-3">
                         <span class="d-none d-sm-inline">Clock Out</span>
                         <i class="fas fa-sign-out-alt ms-sm-1"></i>
                     </button>
                 {% else %}
-                    <button type="submit" class="btn btn-danger rounded-pill px-3" disabled>
+                    <button type="submit" id="clockOutBtn" class="btn btn-danger rounded-pill px-3" disabled>
                         <span class="d-none d-sm-inline">
                             Clock Out (available in 
                             <span id="countdown" data-seconds="{{ remaining_time }}"></span>
@@ -51,6 +51,13 @@
                     </button>
                 {% endif %}
             </form>
+            <!-- Early Clock Out Request Button -->
+            {% if not complete_8Hours and early_clock_out_status != 'pending' and request.user.user_type == '3' %}
+                <button id="earlyClockOutRequestBtn" type="button" class="btn btn-primary rounded-pill px-3">
+                    <span class="d-none d-sm-inline">Request Early Clock Out</span>
+                    <i class="fas fa-clock ms-sm-1"></i>
+                </button>
+            {% endif %}
             
             <!-- Break Buttons -->
             {% if current_break %}
@@ -99,10 +106,11 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        console.log('DOM loaded, initializing clock-in/out handlers'); // Debug
+        console.log('DOM loaded, initializing clock-in/out handlers');
 
         const clockInInput = document.getElementById("clockInTime");
         const breakStartInput = document.getElementById("breakStartTime");
+        const earlyClockOutRequestBtn = document.getElementById("earlyClockOutRequestBtn");
 
         const workingTimer = document.getElementById("working_timer_li");
         const breakTimer = document.getElementById("break_timer_li");
@@ -111,6 +119,66 @@
 
         let breakTimerInterval;
         let workingTimerInterval;
+        let lastStatus = localStorage.getItem('earlyClockOutStatus') || 'none'; // Track last seen status
+
+        // Check early clock-out approval status periodically
+        function checkEarlyClockOutStatus() {
+            fetch("{% url 'check_early_clock_out_status' %}", {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const button = document.getElementById("clockOutBtn");
+                    const requestBtn = document.getElementById("earlyClockOutRequestBtn");
+
+                    if (data.request_status !== lastStatus) {
+                        lastStatus = data.request_status;
+                        localStorage.setItem('earlyClockOutStatus', lastStatus);
+
+                        if (data.request_status === 'approved') {
+                            if (button) {
+                                button.disabled = false;
+                                button.querySelector("span.d-none.d-sm-inline").textContent = "Clock Out";
+                            }
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Early Clock-Out Approved',
+                                text: 'You can now clock out immediately.',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        } else if (data.request_status === 'denied') {
+                            if (button) {
+                                button.disabled = true;
+                                button.querySelector("span.d-none.d-sm-inline").textContent = `Clock Out (available in ${document.getElementById("countdown").textContent})`;
+                            }
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Early Clock-Out Denied',
+                                text: data.message,
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        } else if (data.request_status === 'pending') {
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Request Pending',
+                                text: 'Your early clock-out request is awaiting manager approval.',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error checking early clock-out status:', error);
+            });
+        }
 
         if (clockInInput) {
             const clockInTime = new Date(clockInInput.value);
@@ -125,6 +193,10 @@
 
                 workingDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
             }, 1000);
+
+            // Start polling
+            setInterval(checkEarlyClockOutStatus, 2000);
+            checkEarlyClockOutStatus(); // Initial check
         }
 
         if (breakStartInput) {
@@ -154,10 +226,10 @@
         }
 
         function updateCountdown() {
-            if (remainingSeconds > 0) {
+            if (remainingSeconds > 0 && lastStatus !== 'approved') {
                 countdownRT.textContent = formatTime(remainingSeconds);
                 remainingSeconds--;
-            } else if (countdownRT) {
+            } else if (countdownRT && lastStatus !== 'approved') {
                 countdownRT.textContent = "now!";
                 const button = countdownRT.closest("button");
                 if (button) {
@@ -172,30 +244,97 @@
             setInterval(updateCountdown, 1000);
         }
 
+        // Handle early clock-out request
+        if (earlyClockOutRequestBtn) {
+            earlyClockOutRequestBtn.addEventListener('click', function() {
+                Swal.fire({
+                    title: 'Request Early Clock-Out',
+                    text: 'Please provide a reason for early clock-out:',
+                    input: 'textarea',
+                    inputPlaceholder: 'Enter your reason here...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Submit Request',
+                    cancelButtonText: 'Cancel',
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return 'You must provide a reason!';
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch("{% url 'early_clock_out_request' %}", {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                reason: result.value
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                lastStatus = 'pending';
+                                localStorage.setItem('earlyClockOutStatus', 'pending');
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Request Submitted',
+                                    text: 'Your early clock-out request has been sent to your manager.',
+                                    confirmButtonText: 'OK',
+                                    confirmButtonColor: '#3085d6'
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: data.message || 'Failed to submit early clock-out request.',
+                                    confirmButtonText: 'OK',
+                                    confirmButtonColor: '#3085d6'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error submitting early clock-out request:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Failed to communicate with the server. Please try again.',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        });
+                    }
+                });
+            });
+        }
+
         // Handle form submissions via AJAX
         const clockInForm = document.getElementById('clockInForm');
         const clockOutForm = document.getElementById('clockOutForm');
 
         if (clockInForm) {
-            console.log('Binding clockInForm submit event'); // Debug
+            console.log('Binding clockInForm submit event');
             clockInForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                console.log('Clock-in form submitted'); // Debug
+                console.log('Clock-in form submitted');
                 submitClockAction(this);
             });
         } else {
-            console.warn('clockInForm not found'); // Debug
+            console.warn('clockInForm not found');
         }
 
         if (clockOutForm) {
-            console.log('Binding clockOutForm submit event'); // Debug
+            console.log('Binding clockOutForm submit event');
             clockOutForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                console.log('Clock-out form submitted'); // Debug
+                console.log('Clock-out form submitted');
                 submitClockAction(this);
             });
         } else {
-            console.warn('clockOutForm not found'); // Debug
+            console.warn('clockOutForm not found');
         }
 
         // Break buttons
@@ -205,7 +344,7 @@
 
         if (endBreakBtn) {
             endBreakBtn.addEventListener('click', function() {
-                console.log('End break button clicked'); // Debug
+                console.log('End break button clicked');
                 submitBreakAction();
             });
         }
@@ -213,7 +352,7 @@
         if (shortBreakBtn) {
             shortBreakBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('Short break button clicked'); // Debug
+                console.log('Short break button clicked');
                 submitBreakAction('short');
             });
         }
@@ -221,9 +360,9 @@
         if (lunchBreakBtn) {
             lunchBreakBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('Lunch break button clicked'); // Debug
+                console.log('Lunch break button clicked');
                 if (this.classList.contains('disabled')) {
-                    console.log('Lunch button disabled, action blocked'); // Debug
+                    console.log('Lunch button disabled, action blocked');
                     Swal.fire({
                         icon: 'warning',
                         title: 'Lunch Break Unavailable',
@@ -233,7 +372,6 @@
                     });
                     return;
                 }
-                // Show professional confirmation popup
                 Swal.fire({
                     title: 'Confirm Lunch Break',
                     text: 'Are you sure you want to start your lunch break? Only one lunch break is permitted per day.',
@@ -246,28 +384,27 @@
                     allowOutsideClick: false
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        console.log('Lunch break confirmed'); // Debug
+                        console.log('Lunch break confirmed');
                         submitBreakAction('lunch');
                     } else {
-                        console.log('Lunch break confirmation cancelled'); // Debug
+                        console.log('Lunch break confirmation cancelled');
                     }
                 }).catch((error) => {
-                    console.error('SweetAlert2 error:', error); // Debug
-                    // Fallback to native confirm if SweetAlert2 fails
+                    console.error('SweetAlert2 error:', error);
                     if (confirm('Are you sure you want to start your lunch break? Only one lunch break is permitted per day.')) {
-                        console.log('Lunch break confirmed (native)'); // Debug
+                        console.log('Lunch break confirmed (native)');
                         submitBreakAction('lunch');
                     } else {
-                        console.log('Lunch break confirmation cancelled (native)'); // Debug
+                        console.log('Lunch break confirmation cancelled (native)');
                     }
                 });
             });
         } else {
-            console.warn('lunchBreakBtn not found'); // Debug
+            console.warn('lunchBreakBtn not found');
         }
 
         function submitClockAction(form) {
-            console.log('Submitting clock action:', form.action, new FormData(form).get('clock_in') || new FormData(form).get('clock_out')); // Debug
+            console.log('Submitting clock action:', form.action, new FormData(form).get('clock_in') || new FormData(form).get('clock_out'));
             fetch(form.action, {
                 method: 'POST',
                 body: new FormData(form),
@@ -276,24 +413,25 @@
                 }
             })
             .then(response => {
-                console.log('Fetch response status:', response.status); // Debug
+                console.log('Fetch response status:', response.status);
                 return response.json().then(data => ({ status: response.status, data }));
             })
             .then(({ status, data }) => {
-                console.log('Response data:', data); // Debug
+                console.log('Response data:', data);
                 if (status >= 200 && status < 300 && data.status === 'success') {
-                    console.log('Success, reloading page'); // Debug
-                    window.location.reload();
+                    console.log('Success, reloading page');
+                    if (new FormData(form).get('clock_out')) {
+                        localStorage.removeItem('earlyClockOutStatus'); // Reset status on clock-out
+                    }
                 } else {
-                    // Display error message in a Bootstrap alert
                     let alertContainer = document.querySelector('.content .container-fluid');
                     if (!alertContainer) {
-                        console.warn('Falling back to .content selector'); // Debug
+                        console.warn('Falling back to .content selector');
                         alertContainer = document.querySelector('.content');
                     }
                     if (alertContainer) {
                         const existingAlerts = alertContainer.querySelectorAll('.alert');
-                        existingAlerts.forEach(alert => alert.remove()); // Remove previous alerts
+                        existingAlerts.forEach(alert => alert.remove());
 
                         const alertDiv = document.createElement('div');
                         alertDiv.className = 'alert alert-danger alert-dismissible fade show';
@@ -305,7 +443,7 @@
                             </button>
                         `;
                         alertContainer.prepend(alertDiv);
-                        console.log('Error alert displayed:', data.message); // Debug
+                        console.log('Error alert displayed:', data.message);
                     } else {
                         console.error('Alert container not found, using browser alert');
                         alert(data.message || 'An error occurred. Please try again.');
@@ -333,7 +471,7 @@
         }
 
         function submitBreakAction(breakType = null) {
-            console.log('Submitting break action:', breakType); // Debug
+            console.log('Submitting break action:', breakType);
             fetch("{% url 'break_action' %}", {
                 method: 'POST',
                 headers: {
@@ -345,16 +483,15 @@
                 })
             })
             .then(response => {
-                console.log('Break action response status:', response.status); // Debug
+                console.log('Break action response status:', response.status);
                 return response.json().then(data => ({ status: response.status, data }));
             })
             .then(({ status, data }) => {
-                console.log('Break action response data:', data); // Debug
+                console.log('Break action response data:', data);
                 if (status >= 200 && status < 300 && data.status === 'success') {
-                    console.log('Break action success, reloading page'); // Debug
+                    console.log('Break action success, reloading page');
                     window.location.reload();
                 } else {
-                    // Use SweetAlert2 for professional error display
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
@@ -366,281 +503,14 @@
             })
             .catch(error => {
                 console.error('Break action fetch error:', error);
-                // Fallback to Bootstrap alert if SweetAlert2 is unavailable
-                let alertContainer = document.querySelector('.content .container-fluid') || document.querySelector('.content');
-                if (alertContainer) {
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-                    alertDiv.role = 'alert';
-                    alertDiv.innerHTML = `
-                        Failed to communicate with the server for break action. Please try again.
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">×</span>
-                        </button>
-                    `;
-                    alertContainer.prepend(alertDiv);
-                    console.log('Break error alert displayed'); // Debug
-                } else {
-                    console.error('Alert container not found for break action');
-                    alert('Failed to communicate with the server for break action. Please try again.');
-                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to communicate with the server for break action. Please try again.',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#3085d6'
+                });
             });
         }
     });
 </script>
-
-{% comment %} ------------------ testing purpose ---------------  {% endcomment %}
-{% comment %} <!-- Clock Timers Display -->
-<li class="nav-item" id="working_timer_li" style="display: none;">
-    <span class="nav-link text-info d-flex align-items-center">
-        <i class="fas fa-hourglass-start me-2"></i>
-        <span class="d-none d-sm-inline">Working Time:</span>
-        <span id="working_duration" class="ms-1">0h 0m 0s</span>
-    </span>
-</li>
-<li class="nav-item" id="break_timer_li" style="display: none;">
-    <span class="nav-link text-warning d-flex align-items-center">
-        <i class="fas fa-coffee me-2"></i>
-        <span class="d-none d-sm-inline">Break Time:</span>
-        <span id="break_duration" class="ms-1">0h 0m 0s</span>
-    </span>
-</li>
-
-{% if current_record and latest_entry.breaks.last and not latest_entry.breaks.last.break_end %}
-    <input type="hidden" id="breakStartTime" value="{{ latest_entry.breaks.last.break_start|date:'c' }}">
-    <input type="hidden" id="currentBreakType" value="{{ latest_entry.breaks.last.break_type }}">
-{% else %}
-    {% if current_record %}
-        <input type="hidden" id="clockInTime" value="{{ latest_entry.clock_in|date:'c' }}">
-    {% endif %}
-{% endif %}
-
-<!-- Clock Action Buttons -->
-{% if current_record %}
-    <li class="nav-item">
-        <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 4px;">
-            <!-- Clock Out Button -->
-            <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
-                {% csrf_token %}
-                {% if complete_8Hours %}
-                    <button type="submit" class="btn btn-danger rounded-pill px-3">
-                        <span class="d-none d-sm-inline">Clock Out</span>
-                        <i class="fas fa-sign-out-alt ms-sm-1"></i>
-                    </button>
-                {% else %}
-                    <button type="submit" class="btn btn-danger rounded-pill px-3" disabled>
-                        <span class="d-none d-sm-inline">
-                            Clock Out (available in 
-                            <span id="countdown" data-seconds="{{ remaining_time }}"></span>
-                        )
-                        </span>
-                        <i class="fas fa-sign-out-alt ms-sm-1"></i>
-                    </button>
-                {% endif %}
-            </form>
-            
-            <!-- Break Buttons -->
-            {% if current_break %}
-                <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3">
-                    <span class="d-none d-sm-inline">End Break</span>
-                    <i class="fas fa-pause-circle ms-sm-1"></i>
-                </button>
-            {% else %}
-                <div class="btn-group btn-group-sm" role="group" aria-label="Break options">
-                    <button id="shortBreakBtn" type="button" 
-                            class="btn btn-primary rounded-pill px-3">
-                        <span class="d-none d-sm-inline">Short Break</span>
-                        <i class="fas fa-mug-hot ms-sm-1"></i>
-                    </button>
-                    <button id="lunchBreakBtn" type="button" 
-                            class="btn btn-warning rounded-pill px-3 {% if has_taken_lunch_today %}disabled{% endif %}"
-                            {% if has_taken_lunch_today %}title="You can only take one lunch break per day"{% endif %}>
-                        <span class="d-none d-sm-inline">Lunch</span>
-                        <i class="fas fa-utensils ms-sm-1"></i>
-                    </button>
-                </div>
-            {% endif %}
-        </div>
-    </li>
-{% else %}  
-    <li class="nav-item">
-        <div class="form-group text-center">
-            <form id="clockInForm" method="post" action="{% url 'clock_in_out' %}">
-                {% csrf_token %}                        
-                <button type="submit" class="btn btn-success rounded-pill px-4">
-                    <span class="d-none d-sm-inline">Clock In</span>
-                    <i class="fas fa-sign-in-alt ms-sm-1"></i>
-                </button>
-            </form>
-        </div>    
-    </li>
-{% endif %}
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const clockInInput = document.getElementById("clockInTime");
-        const breakStartInput = document.getElementById("breakStartTime");
-
-        const workingTimer = document.getElementById("working_timer_li");
-        const breakTimer = document.getElementById("break_timer_li");
-        const workingDurationEl = document.getElementById("working_duration");
-        const breakDurationEl = document.getElementById("break_duration");
-
-        let breakTimerInterval;
-        let workingTimerInterval;
-
-        const countdownRT = document.getElementById('countdown')
-        console.log(countdownRT)
-        if (clockInInput) {
-            const clockInTime = new Date(clockInInput.value);
-           
-            workingTimer.style.display = 'block';
-            workingTimerInterval = setInterval(() => {
-                const now = new Date();
-                const diff = Math.floor((now - clockInTime) / 1000); // seconds
-
-                const hours = Math.floor(diff / 3600);
-                const minutes = Math.floor((diff % 3600) / 60);
-                const seconds = diff % 60;
-
-                workingDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
-            }, 1000);
-        }
-
-        if (breakStartInput) {
-            const breakStartTime = new Date(breakStartInput.value);
-            breakTimer.style.display = 'block';
-
-            breakTimerInterval = setInterval(() => {
-                const now = new Date();
-                const diff = Math.floor((now - breakStartTime) / 1000); // seconds
-
-                const hours = Math.floor(diff / 3600);
-                const minutes = Math.floor((diff % 3600) / 60);
-                const seconds = diff % 60;
-
-                breakDurationEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
-            }, 1000);
-        }
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Handle form submissions via AJAX
-        const clockInForm = document.getElementById('clockInForm');
-        const clockOutForm = document.getElementById('clockOutForm');
-        const breakTimer = document.getElementById("break_timer_li");
-
-        if (clockInForm) {
-            clockInForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                submitClockAction(this);
-            });
-        }
-        
-        if (clockOutForm) {
-            clockOutForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                submitClockAction(this);
-            });
-        }
-        
-        // Break buttons
-        const endBreakBtn = document.getElementById('endBreakBtn');
-        const shortBreakBtn = document.getElementById('shortBreakBtn');
-        const lunchBreakBtn = document.getElementById('lunchBreakBtn');
-        
-        if (endBreakBtn) {
-            endBreakBtn.addEventListener('click', function() {
-                submitBreakAction();
-            });
-        }
-        
-        if (shortBreakBtn) {
-            shortBreakBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                submitBreakAction('short');
-            });
-        }
-        
-        if (lunchBreakBtn) {
-            lunchBreakBtn.addEventListener('click', function(e) {
-                if (this.classList.contains('disabled')) {
-                    e.preventDefault();
-                    return;
-                }
-                e.preventDefault();
-                submitBreakAction('lunch');
-            });
-        }
-        
-        function submitClockAction(form) {
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    window.location.reload();
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-        
-        function submitBreakAction(breakType = null) {
-            fetch("{% url 'break_action' %}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    break_type: breakType
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    window.location.reload();
-                } else if (data.message) {
-                    alert(data.message);  // Show error message if lunch break already taken
-                }
-            });
-        }
-    });
-</script>
-
-<script>
-    const countdownRT = document.getElementById("countdown");
-    let remainingSeconds = parseInt(countdownRT.getAttribute("data-seconds"));
-
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}m ${secs}s`;
-    }
-
-    function updateCountdown() {
-        if (remainingSeconds > 0) {
-            countdownRT.textContent = formatTime(remainingSeconds);
-            remainingSeconds--;
-        } else {
-            countdownRT.textContent = "now!";
-            const button = countdownRT.closest("button");
-            button.disabled = false;
-            button.querySelector("span.d-none.d-sm-inline").textContent = "Clock Out";
-        }
-    }
-
-    if (!isNaN(remainingSeconds)) {
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
-    }
-</script> {% endcomment %}
-
-{% comment %} ------------------ testing purpose ---------------  {% endcomment %}

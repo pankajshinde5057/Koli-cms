@@ -1500,6 +1500,10 @@ def manager_view_notification(request):
         is_read=False
     ).order_by('-timestamp')
 
+    # Pending and history for early clock-out requests
+    pending_early_clock_out_requests = EarylyClockOutRequest.objects.filter(status='pending').order_by('-submitted_at')
+    early_clock_out_history = EarylyClockOutRequest.objects.filter(status__in=['approved', 'denied']).order_by('-reviewed_at')
+
     # Separate types
     # leave_notifications = unread_notifications.filter(notification_type="leave")
     # general_notifications = unread_notifications.filter(notification_type="notification")
@@ -1513,15 +1517,17 @@ def manager_view_notification(request):
 
     # Pagination
     notification_from_admin_paginator = Paginator(notification_from_admin, 3)
-
-    # leave_notification_paginator = Paginator(leave_notifications, 3)
-    # general_notification_paginator = Paginator(general_notifications, 3)
     leave_paginator = Paginator(leave_history, 3)
+    early_clock_out_paginator = Paginator(early_clock_out_history, 3)
+    early_clock_out_requests_paginator = Paginator(pending_early_clock_out_requests, 3)
+
 
     notification_from_admin_obj = request.GET.get('notification_from_admin_obj')
     leave_notification_page = request.GET.get('leave_notification_page')
     # general_notification_page = request.GET.get('general_notification_page')
     leave_page_number = request.GET.get('leave_history_page')
+    early_clock_out_page_number = request.GET.get('early_clock_out_history_page')
+    early_clock_out_requests_page = request.GET.get('early_clock_out_requests_page')
 
     context = {
         # 'leave_notifications': leave_notification_paginator.get_page(leave_notification_page),
@@ -1529,7 +1535,8 @@ def manager_view_notification(request):
         'notification_from_admin_obj' : notification_from_admin_paginator.get_page(notification_from_admin_obj),
         'pending_leave_requests': pending_leave_requests,
         'leave_history': leave_paginator.get_page(leave_page_number),
-        'leave_history': leave_paginator.get_page(leave_page_number),
+        'pending_early_clock_out_requests': early_clock_out_requests_paginator.get_page(early_clock_out_requests_page),
+        'early_clock_out_history': early_clock_out_paginator.get_page(early_clock_out_page_number),
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES,
     }

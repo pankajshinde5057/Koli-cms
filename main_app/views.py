@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 import os
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponseRedirect
+from django.http import HttpResponseForbidden
 
 load_dotenv()
 
@@ -496,3 +497,101 @@ messaging.setBackgroundMessageHandler(function (payload) {
     """
     return HttpResponse(data, content_type='application/javascript')
 
+
+
+def early_clock_out_request(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            reason = data.get('reason')
+            if not reason:
+                return JsonResponse({
+                    'status' : 'error',
+                    'message' : 'Reason is require'
+                },status=400)
+            attendance_record = AttendanceRecord.objects.filter(
+                user = request.user,
+                date = timezone.now().date(),
+                clock_out__isnull = True
+            ).first()
+
+            if not attendance_record:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No active attendance record found'
+                }, status=400)
+        
+            if EarylyClockOutRequest.objects.filter(
+                    attendance_record=attendance_record,
+                    status='pending'
+                ).exists():
+                    return JsonResponse({
+                        'status': 'error', 
+                        'message': 'A pending early clock-out request already exists'
+                    }, status=400)
+            EarylyClockOutRequest.objects.create(
+                attendance_record=attendance_record,
+                user=request.user,
+                reason=reason
+            )
+            return JsonResponse({'status': 'success', 'message': 'Request submitted'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+        
+
+@login_required
+def check_early_clock_out_status(request):
+    try:
+        attendance_record = AttendanceRecord.objects.filter(
+            user=request.user,
+            date=timezone.now().date(),
+            clock_out__isnull=True
+        ).first()
+
+        if not attendance_record:
+            return JsonResponse({'status': 'success', 'request_status': 'none', 'message': ''})
+
+        early_request = EarylyClockOutRequest.objects.filter(
+            attendance_record=attendance_record
+        ).order_by('-submitted_at').first()
+
+        if not early_request:
+            return JsonResponse({'status': 'success', 'request_status': 'none', 'message': ''})
+
+        response = {
+            'status': 'success',
+            'request_status': early_request.status,
+            'message': early_request.notes or ''
+        }
+        return JsonResponse(response)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+
+@login_required
+def approve_early_clock_out(request, request_id):
+    if request.method == 'POST':
+        early_request = get_object_or_404(EarylyClockOutRequest, id=request_id)
+        notes = request.POST.get('notes', '')
+        early_request.status = 'approved'
+        early_request.reviewed_by = request.user
+        early_request.notes = notes
+        early_request.save()
+        return redirect('manager_view_notification')
+
+    return HttpResponseForbidden("Invalid request")
+
+
+@login_required
+def deny_early_clock_out(request, request_id):
+    if request.method == 'POST':
+        early_request = get_object_or_404(EarylyClockOutRequest, id=request_id)
+        notes = request.POST.get('notes', '')
+        early_request.status = 'denied'
+        early_request.reviewed_by = request.user
+        early_request.notes = notes
+        early_request.save()
+        return redirect('manager_view_notification')
+
+    return HttpResponseForbidden("Invalid request")
