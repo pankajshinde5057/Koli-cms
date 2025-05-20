@@ -24,8 +24,8 @@ def clock_times(request):
             work_duration = current_time - clock_in_time
 
 
-            fixed_time = timedelta(hours=9) 
-            # fixed_time = timedelta(minutes=1) # for testing
+            # fixed_time = timedelta(hours=9) 
+            fixed_time = timedelta(minutes=1) # for testing
 
             if work_duration >= fixed_time:
                 context["complete_8Hours"] = True

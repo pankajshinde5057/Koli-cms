@@ -1,0 +1,292 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block custom_css %}
+<style>
+    .update-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .section-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .section-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    /* Schedule Display */
+    .schedule-display {
+        padding: 15px;
+        background-color: #f8fafc;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+    .display-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #4f46e5;
+    }
+    .task-list {
+        list-style-type: decimal;
+        padding-left: 20px;
+        margin-bottom: 0;
+    }
+    .task-list li {
+        padding: 4px 0;
+    }
+    .no-tasks {
+        color: #64748b;
+        font-style: italic;
+    }
+    /* Update Input Section */
+    .update-input-container {
+        margin-bottom: 15px;
+    }
+    .update-item {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 8px;
+        align-items: center;
+    }
+    .update-input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        transition: all 0.3s;
+    }
+    .update-input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+        outline: none;
+    }
+    .update-btn {
+        border: none;
+        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .remove-btn {
+        background-color: #fee2e2;
+        color: #dc2626;
+    }
+    .remove-btn:hover {
+        background-color: #fecaca;
+    }
+    .add-btn {
+        background-color: #4f46e5;
+        color: white;
+        width: 100%;
+        padding: 10px;
+    }
+    .add-btn:hover {
+        background-color: #4338ca;
+    }
+    .save-btn {
+        background-color: #10b981;
+        color: white;
+        width: 100%;
+        padding: 10px;
+        margin-top: 15px;
+    }
+    .save-btn:hover {
+        background-color: #059669;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    /* Status Selector */
+    .status-selector {
+        margin: 15px 0;
+    }
+    .status-option {
+        margin-right: 10px;
+        display: inline-flex;
+        align-items: center;
+    }
+    .status-radio {
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-8">
+    <div class="update-container">
+        <!-- Schedule Display Section -->
+        <div class="section-card">
+            <h3 class="section-title">
+                <i class="fas fa-calendar-check mr-2"></i>
+                Morning Schedule:
+            </h3>
+            <div class="schedule-display">
+                {% if schedule.project %}
+                    <div class="text-sm text-gray-600 mt-2">
+                        <strong>Project:</strong> {{ schedule.project|escape }}
+                    </div>
+                {% endif %}
+                {% if schedule and schedule.task_description_lines %}
+                    <ol class="task-list">
+                        {% for task in schedule.task_description_lines %}
+                        <li>{{ task|escape }}</li>
+                        {% endfor %}
+                    </ol>
+                {% else %}
+                    <div class="no-tasks">No tasks in today's schedule</div>
+                {% endif %}
+                
+            </div>
+        </div>
+
+        <!-- Editable Update Input Section -->
+        <div class="section-card">
+            <h3 class="section-title">
+                <i class="fas fa-edit mr-2"></i>
+                Submit Your Daily Update
+            </h3>
+            
+            <div class="update-input-container">
+                <label class="block text-sm font-medium mb-1">Updates</label>
+                <div id="updates-container">
+                    {% if update and update.update_description_lines %}
+                        {% for update_line in update.update_description_lines %}
+                        <div class="update-item">
+                            <input type="text" value="{{ update_line|escape }}" class="update-input" placeholder="Update description">
+                            <button type="button" class="update-btn remove-btn">×</button>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="update-item">
+                            <input type="text" class="update-input" placeholder="Update description">
+                            <button type="button" class="update-btn remove-btn">×</button>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <button type="button" id="add-update-btn" class="update-btn add-btn">
+                    + Add Update
+                </button>
+            </div>
+            
+            <button id="save-update-btn" class="save-btn">
+                <i class="fas fa-save mr-2"></i>Save Update
+            </button>
+        </div>
+        
+        <!-- Saved Updates Display Section -->
+        <div class="section-card">
+            <h3 class="section-title">
+                <i class="fas fa-history mr-2"></i>
+                Your Recent Updates
+            </h3>
+            
+            {% if update %}
+                <div class="schedule-display mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <strong>{{ update.updated_at|date:"F j, Y, g:i a" }}</strong>
+                    </div>
+                    
+                    <div>
+                        <ol class="task-list">
+                            {% for update_line in update.update_description_lines %}
+                            <li>{{ update_line|escape }}</li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-4 text-gray-500">
+                    No previous updates found
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<form id="update-form" method="post" action="{% url 'todays_update' %}" class="hidden">
+    {% csrf_token %}
+    <input type="hidden" name="update_description" id="update-description-input">
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const updatesContainer = document.getElementById('updates-container');
+    const addUpdateBtn = document.getElementById('add-update-btn');
+    const saveBtn = document.getElementById('save-update-btn');
+    const updateForm = document.getElementById('update-form');
+    const updateDescInput = document.getElementById('update-description-input');
+    const livePreview = document.getElementById('live-preview');
+
+    // Add new update
+    addUpdateBtn.addEventListener('click', function() {
+        const updateItem = document.createElement('div');
+        updateItem.className = 'update-item';
+        updateItem.innerHTML = `
+            <input type="text" class="update-input" placeholder="Update description">
+            <button type="button" class="update-btn remove-btn">×</button>
+        `;
+        updatesContainer.appendChild(updateItem);
+        
+        // Focus on the new input
+        updateItem.querySelector('.update-input').focus();
+        
+        // Update preview
+        updateLivePreview();
+    });
+
+    // Remove update
+    updatesContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-btn')) {
+            const updateItems = document.querySelectorAll('.update-item');
+            if (updateItems.length > 1) {
+                e.target.closest('.update-item').remove();
+            } else {
+                // Clear the last input instead of removing
+                const input = e.target.closest('.update-item').querySelector('.update-input');
+                input.value = '';
+                input.focus();
+            }
+            updateLivePreview();
+        }
+    });
+
+    // Save update
+    saveBtn.addEventListener('click', function() {
+        // Get all update inputs
+        const updates = Array.from(document.querySelectorAll('.update-input'))
+            .map(input => input.value.trim())
+            .filter(update => update !== '');
+        
+        if (updates.length === 0) {
+            alert('Please add at least one valid update!');
+            return;
+        }
+        
+        // Set the hidden form values
+        updateDescInput.value = updates.join('\n');
+        
+        // Submit the form
+        updateForm.submit();
+    });
+
+    // Initialize preview
+    updateLivePreview();
+});
+</script>
+{% endblock %}

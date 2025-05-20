@@ -8,6 +8,8 @@ from django.shortcuts import render, redirect, get_object_or_404,reverse
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
+
+import openpyxl.workbook
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
@@ -23,6 +25,12 @@ from django.core.paginator import Paginator
 from datetime import date
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
+import openpyxl
+from openpyxl.styles import Font, Alignment
+from io import BytesIO
+
+def get_ist_date():
+    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
 from django.db.models import Q
 
 
@@ -663,7 +671,7 @@ def employee_view_attendance(request):
                 })
 
             # Paginate the json_data
-            paginator = Paginator(json_data, 5)  # 5 records per page
+            paginator = Paginator(json_data, 1)  # 5 records per page
             try:
                 page_obj = paginator.page(page)
             except PageNotAnInteger:
@@ -822,3 +830,203 @@ def employee_requests(request):
         return HttpResponse(html)
 
     return render(request, 'employee_template/employee_requests.html', context)
+
+
+
+@login_required
+def daily_schedule(request):
+    """Create or view today's schedule"""
+    employee = get_object_or_404(Employee,admin=request.user)
+    today = get_ist_date()
+
+    existing_schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
+    
+    if request.method == 'POST':
+        task_description_ = request.POST.get('task_description', '')
+        project_ = request.POST.get('project', '')
+
+        tasks = [line for line in task_description_.split("\n") if line.strip()]
+
+        if not tasks:
+            messages.error(request, "Please add at least one valid task.")
+            return render(request, 'employee_template/daily_schedule.html', {
+                'schedule': existing_schedule,
+                'today': today,
+            })
+
+        if existing_schedule:
+            # update existing schedule
+            existing_schedule.task_description = task_description_
+            existing_schedule.project = project_
+            try:
+                existing_schedule.full_clean()
+                existing_schedule.save()
+                messages.success(request, "Schedule updated successfully!")
+                return redirect('daily_schedule')
+            except ValidationError as e:
+                messages.error(request, f"Error updating schedule: {e}")
+        else:
+            # Create new schedule
+            schedule = DailySchedule(
+                employee=employee,
+                date=today,
+                task_description=task_description_,
+                project=project_,
+            )
+            try:
+                schedule.full_clean()
+                schedule.save()
+                messages.success(request, "Schedule created successfully!")
+                return redirect('daily_schedule')
+            except ValidationError as e:
+                messages.error(request, f"Error creating schedule: {e}")
+    
+    return render(request, 'employee_template/daily_schedule.html', {
+        'schedule': existing_schedule,
+        'today': today,
+    })
+
+@login_required
+def todays_update(request):
+    """Morning update view - shows today's schedule with update form"""
+    employee = get_object_or_404(Employee,admin=request.user)
+    today = get_ist_date()
+ 
+    schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
+    if not schedule:
+        messages.error(request, "You must create a schedule before submitting an update.")
+        return redirect('daily_schedule')
+    
+    # Check for existing update
+    existing_update = schedule.updates.first()
+    if request.method == 'POST':
+        update_description_ = request.POST.get('update_description')
+
+        updates = [update for update in update_description_.split('\n') if update.strip()]
+        if not updates:
+            messages.error(request, "Please add at least one valid update.")
+            return render(request, 'employee_template/todays_update.html', {
+                'schedule': schedule,
+                'update': existing_update,
+                'today': today,
+            })
+        
+        if existing_update:
+            # Edit existing update
+            existing_update.update_description = update_description_
+            try:
+                existing_update.full_clean()
+                existing_update.save()
+                messages.success(request, "Update modified successfully!")
+                return redirect('todays_update')
+            except ValidationError as e:
+                messages.error(request, f"Error updating update: {e}")
+        else:
+            # Create new update
+            update = DailyUpdate(
+                schedule=schedule,
+                update_description=update_description_,
+            )
+            try:
+                update.full_clean()
+                update.save()
+                messages.success(request, "Update submitted successfully!")
+                return redirect('todays_update')
+            except ValidationError as e:
+                messages.error(request, f"Error submitting update: {e}")
+    
+    return render(request, 'employee_template/todays_update.html', {
+        'schedule': schedule,
+        'update': existing_update,
+        'today': today,
+    })
+
+
+def view_all_schedules(request):
+    """View all schedules and their updates for the logged-in employee"""
+    employee = get_object_or_404(Employee, admin=request.user)
+    today = get_ist_date()
+
+    # Get filter parameters
+    filter_type = request.GET.get('filter_type', 'today')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    # Start with base queryset
+    schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
+
+    # Apply filters
+    if filter_type == 'today':
+        schedules = schedules.filter(date=today)
+    elif filter_type == 'weekly':
+        start = today - timedelta(days=6)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'monthly':
+        start = today - timedelta(days=29)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'custom' and start_date and end_date:
+        try:
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if start > end:
+                messages.error(request, "Start date cannot be after end date.")
+            else:
+                schedules = schedules.filter(date__gte=start, date__lte=end)
+        except ValueError:
+            messages.error(request, "Invalid date format. Showing all schedules.")
+
+    # Handle Excel Export
+    if 'export' in request.GET:
+        if not schedules.exists():
+            messages.error(request, "No schedules found for this date range.")
+        else:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Schedules and Updates"
+
+            headers = ["Schedule Date", "Project", "Daily-Tasks", "Daily-Updates"]
+            ws.append(headers)
+            for cell in ws[1]:
+                cell.font = Font(bold=True)
+                cell.alignment = Alignment(horizontal='center')
+
+            for schedule in schedules:
+                tasks = schedule.task_description_lines or []
+                updates = schedule.updates.all()
+                if updates:
+                    for update in updates:
+                        ws.append([
+                            schedule.date.strftime('%Y-%m-%d'),
+                            schedule.project or '',
+                            '\n'.join(tasks) if tasks else 'No tasks',
+                            '\n'.join(update.update_description_lines) if update.update_description_lines else 'No updates'
+                        ])
+                else:
+                    ws.append([
+                        schedule.date.strftime('%Y-%m-%d'),
+                        schedule.project or '',
+                        '\n'.join(tasks) if tasks else 'No tasks',
+                        'No updates'
+                    ])
+
+            for col in ws.columns:
+                max_len = max(len(str(cell.value)) if cell.value else 0 for cell in col)
+                ws.column_dimensions[col[0].column_letter].width = max_len + 2
+
+            output = BytesIO()
+            wb.save(output)
+            output.seek(0)
+            response = HttpResponse(
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                content=output.getvalue()
+            )
+            response['Content-Disposition'] = f'attachment; filename=schedules_{today.strftime("%Y%m%d")}.xlsx'
+            return response
+
+    return render(request, 'employee_template/all_schedules.html', {
+        'schedules': schedules,
+        'today': today,
+        'filter_type': filter_type,
+        'start_date': start_date,
+        'end_date': end_date
+    })

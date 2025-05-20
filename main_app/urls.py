@@ -48,6 +48,7 @@ urlpatterns = [
      path("manager/delete/<int:manager_id>",
           ceo_views.delete_manager, name='delete_manager'),
 
+     path('delete_asset_history_issues/', ceo_views.delete_asset_history_issues, name='delete_asset_history_issues'),
      path('send_bulk_employee_notification/', ceo_views.send_bulk_employee_notification, name='send_bulk_employee_notification'),
      path('send_selected_employee_notification/', ceo_views.send_selected_employee_notification, name='send_selected_employee_notification'),
      
@@ -166,4 +167,8 @@ urlpatterns = [
           name='employee_view_salary'),
      path('employee/view/requests-status/', employee_views.employee_requests,
           name='employee_requests'),  
+     path('employee/daily_schedule/', employee_views.daily_schedule,
+          name='daily_schedule'),  
+     path('employee/todays_update', employee_views.todays_update,name='todays_update'),  
+     path('employee/view_all_schedules', employee_views.view_all_schedules,name='view_all_schedules'),  
 ]
