@@ -127,7 +127,6 @@
 {% endblock %}
 
 {% block content %}
-<<<<<<< HEAD
 <div class="container mt-4">
     <div class="card">
         <div class="card-header bg-primary text-white">
@@ -160,7 +159,6 @@
             <div class="mt-3">
                 <a href="{% url 'todays_update' %}" class="btn btn-outline-info">Submit Daily Update</a>
                 <a href="{% url 'employee_home' %}" class="btn btn-outline-secondary">Back to Home</a>
-=======
 <div class="container py-8">
     <div class="schedule-container">
         <!-- Editable Task Input Section -->
@@ -174,7 +172,6 @@
                 <label class="block text-sm font-medium mb-1">Project</label>
                 <input type="text" id="project-input" class="w-100 p-2 border rounded-md" 
                        value="{{ schedule.project|default:'' }}" placeholder="Project name">
->>>>>>> 2e984010285d62c2609448384d82d517b718c81d
             </div>
             
             <div class="task-input-container">
