@@ -171,4 +171,10 @@ urlpatterns = [
           name='daily_schedule'),  
      path('employee/todays_update', employee_views.todays_update,name='todays_update'),  
      path('employee/view_all_schedules', employee_views.view_all_schedules,name='view_all_schedules'),  
+
+
+     path('early-clock-out-request/', views.early_clock_out_request, name='early_clock_out_request'),
+     path('check-early-clock-out-status/', views.check_early_clock_out_status, name='check_early_clock_out_status'),
+     path('approve-early-clock-out/<int:request_id>/', views.approve_early_clock_out, name='approve_early_clock_out'),
+     path('deny-early-clock-out/<int:request_id>/', views.deny_early_clock_out, name='deny_early_clock_out'),
 ]

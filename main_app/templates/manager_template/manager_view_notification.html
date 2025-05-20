@@ -375,6 +375,299 @@
             </div>
         </div>
 
+        <!-- Early Clock-Out Requests Card -->
+        <div class="card card-dark mb-4 shadow-lg">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-clock mr-2"></i>
+                    <strong>Pending Early Clock-Out Requests</strong>
+                </h3>
+                <div class="card-tools">
+                    <span class="badge badge-light">{{ pending_early_clock_out_requests.count }} Pending</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 25%">Employee</th>
+                                <th style="width: 15%">Date</th>
+                                <th style="width: 40%">Reason</th>
+                                <th style="width: 20%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in pending_early_clock_out_requests %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if request.user.profile_pic %}
+                                                <img src="{{ request.user.profile_pic }}" class="img-circle mr-3" width="40" height="40" alt="User Image">
+                                            {% else %}
+                                                <div class="img-circle mr-3 bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                    <i class="fas fa-user text-white"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ request.user.get_full_name }}</strong><br>
+                                                <small class="text-muted">{{ request.attendance_record.department }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info">
+                                            {{ request.attendance_record.date|date:"M d, Y" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="message-preview">
+                                            {{ request.reason|truncatechars:60 }}
+                                            {% if request.reason|length > 60 %}
+                                            <a href="#" data-toggle="modal" data-target="#earlyClockOutModal-{{ request.id }}">Read more</a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <form method="post" action="{% url 'approve_early_clock_out' request.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="notes" value="">
+                                                <button type="submit" class="btn btn-success" title="Approve" onclick="markNotificationRead({{ request.id }})">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </form>
+                                            <form method="post" action="{% url 'deny_early_clock_out' request.id %}" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="notes" value="">
+                                                <button type="submit" class="btn btn-danger" title="Reject" onclick="markNotificationRead({{ request.id }})">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </form>
+                                            <button type="button" class="btn btn-info" data-toggle="modal" 
+                                                    data-target="#earlyClockOutModal-{{ request.id }}" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            {% if request.id in manager_unread_ids %}
+                                                <i class="fas fa-circle unread-dot" title="Unread"></i>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- Early Clock-Out Modal -->
+                                <div class="modal fade leave-modal" id="earlyClockOutModal-{{ request.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content shadow-lg">
+                                            <div class="modal-header bg-gradient-primary text-white">
+                                                <p class="modal-title">Early Clock-Out Request by: <strong>{{ request.user.get_full_name }}</strong></p>
+                                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">×</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><strong>Date:</strong><br>
+                                                        {{ request.attendance_record.date|date:"M d, Y" }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p><strong>Submitted:</strong><br>
+                                                        {{ request.submitted_at|date:"M d, Y H:i" }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Reason:</label>
+                                                    <div class="p-3 bg-light rounded">
+                                                        {{ request.reason }}
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Manager Notes (Optional):</label>
+                                                    <textarea class="form-control" name="notes" form="approveForm-{{ request.id }}" placeholder="Add notes for approval"></textarea>
+                                                    <textarea class="form-control" name="notes" form="denyForm-{{ request.id }}" placeholder="Add notes for denial"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer bg-light">
+                                                <form method="post" action="{% url 'approve_early_clock_out' request.id %}" class="d-inline" id="approveForm-{{ request.id }}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-success">
+                                                        <i class="fas fa-check-circle mr-1"></i> Approve
+                                                    </button>
+                                                </form>
+                                                <form method="post" action="{% url 'deny_early_clock_out' request.id %}" class="d-inline" id="denyForm-{{ request.id }}">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger">
+                                                        <i class="fas fa-times-circle mr-1"></i> Deny
+                                                    </button>
+                                                </form>
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                                    <i class="fas fa-times mr-1"></i> Close
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <div class="empty-state">
+                                            <i class="fas fa-check-circle text-success mb-3"></i>
+                                            <h5 class="text-muted">No pending early clock-out requests</h5>
+                                            <p class="small">All early clock-out requests have been processed</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if pending_early_clock_out_requests.paginator.num_pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Early Clock-Out Requests Pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if pending_early_clock_out_requests.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?early_clock_out_requests_page={{ pending_early_clock_out_requests.previous_page_number }}" aria-label="Previous">
+                                        <span aria-hidden="true">«</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% for num in pending_early_clock_out_requests.paginator.page_range %}
+                                {% if pending_early_clock_out_requests.number == num %}
+                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > pending_early_clock_out_requests.number|add:'-3' and num < pending_early_clock_out_requests.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?early_clock_out_requests_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if pending_early_clock_out_requests.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?early_clock_out_requests_page={{ pending_early_clock_out_requests.next_page_number }}" aria-label="Next">
+                                        <span aria-hidden="true">»</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    <div class="text-center text-muted small mt-2">
+                        Showing {{ pending_early_clock_out_requests.start_index }} - {{ pending_early_clock_out_requests.end_index }} of {{ pending_early_clock_out_requests.paginator.count }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Early Clock-Out History Card -->
+        <div class="card card-dark shadow-lg">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-history mr-2"></i>
+                    <strong>Early Clock-Out Request History</strong>
+                </h3>
+                <div class="card-tools">
+                    <span class="badge badge-light">{{ early_clock_out_history.paginator.count }} Total</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 25%">Employee</th>
+                                <th style="width: 25%">Date</th>
+                                <th style="width: 20%">Status</th>
+                                <th style="width: 30%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in early_clock_out_history %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if request.user.profile_pic %}
+                                                <img src="{{ request.user.profile_pic }}" class="img-circle mr-3" width="40" height="40" alt="User Image">
+                                            {% else %}
+                                                <div class="img-circle mr-3 bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                    <i class="fas fa-user text-white"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ request.user.get_full_name }}</strong><br>
+                                                <small class="text-muted">{{ request.attendance_record.department }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small>{{ request.attendance_record.date|date:"M d, Y" }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if request.status == 'approved' %}badge-approved
+                                            {% else %}badge-denied{% endif %}">
+                                            {{ request.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-info" 
+                                                data-toggle="modal" data-target="#historyEarlyClockOutModal-{{ request.id }}">
+                                            <i class="fas fa-eye mr-1"></i> View Details
+                                        </button>
+                                        {% if request.id in manager_unread_ids %}
+                                            <i class="fas fa-circle unread-dot" title="Unread"></i>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4">
+                                        <div class="empty-state">
+                                            <i class="fas fa-history text-muted mb-3"></i>
+                                            <h5 class="text-muted">No early clock-out history</h5>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if early_clock_out_history.paginator.num_pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Early Clock-Out History Pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if early_clock_out_history.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?early_clock_out_history_page={{ early_clock_out_history.previous_page_number }}" aria-label="Previous">
+                                        <span aria-hidden="true">«</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% for num in early_clock_out_history.paginator.page_range %}
+                                {% if early_clock_out_history.number == num %}
+                                    <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                {% elif num > early_clock_out_history.number|add:'-3' and num < early_clock_out_history.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?early_clock_out_history_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if early_clock_out_history.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?early_clock_out_history_page={{ early_clock_out_history.next_page_number }}" aria-label="Next">
+                                        <span aria-hidden="true">»</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    <div class="text-center text-muted small mt-2">
+                        Showing {{ early_clock_out_history.start_index }} - {{ early_clock_out_history.end_index }} of {{ early_clock_out_history.paginator.count }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
         <!-- Leave History Card -->
         <div class="card card-dark shadow-lg">
             <div class="card-header">
@@ -543,6 +836,65 @@
                 </div>
             </div>
         {% endfor %}
+
+        <!-- Early Clock-Out History Modals -->
+        {% for request in early_clock_out_history %}
+            <div class="modal fade leave-modal" id="historyEarlyClockOutModal-{{ request.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content shadow-lg">
+                        <div class="modal-header bg-gradient-{% if request.status == 'approved' %}success{% else %}danger{% endif %} text-white">
+                            <h5 class="modal-title">
+                                Early Clock-Out Request - {{ request.user.get_full_name }}
+                            </h5>
+                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <p><strong>Date:</strong><br>
+                                    {{ request.attendance_record.date|date:"M d, Y" }}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <p><strong>Submitted:</strong><br>
+                                    {{ request.submitted_at|date:"M d, Y H:i" }}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <p><strong>Status:</strong><br>
+                                    <span class="badge 
+                                        {% if request.status == 'approved' %}badge-approved
+                                        {% else %}badge-denied{% endif %}">
+                                        {{ request.get_status_display }}
+                                    </span></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Employee Reason:</label>
+                                <div class="p-3 bg-light rounded">
+                                    {{ request.reason }}
+                                </div>
+                            </div>
+                            {% if request.notes %}
+                            <div class="form-group">
+                                <label>Manager Notes:</label>
+                                <div class="p-3 bg-light rounded">
+                                    {{ request.notes }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                <i class="fas fa-times mr-1"></i> Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+
     </div>
 </section>
 {% endblock %}

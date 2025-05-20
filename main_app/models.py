@@ -320,6 +320,14 @@ class AttendanceRecord(models.Model):
                     record.overtime_hours = timezone.timedelta()
                 record.save()
 
+        # Check if early clock-out request is approved
+        early_clock_out_approved = False
+        if self.clock_out and not self.pk:  # Only for new or updating records
+            early_clock_out_approved = EarylyClockOutRequest.objects.filter(
+                attendance_record=self,
+                status='approved'
+            ).exists()
+
         # automatic determine attendence record:
         if self.clock_in and self.user.user_type == "3":
         # Automatic status determination based on clock-in time
@@ -548,3 +556,69 @@ class DailyUpdate(models.Model):
     @property
     def update_description_lines(self):
         return [line for line in self.update_description.split('\n') if line.strip()]
+
+
+class EarylyClockOutRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('denied', 'Denied'),
+    ]
+    attendance_record = models.ForeignKey(
+        'AttendanceRecord',
+        on_delete=models.CASCADE,
+        related_name='early_clock_out_requests'
+    )
+    user = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.CASCADE,
+        related_name='early_clock_out_requests'
+    )
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_by = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_early_clock_out_requests'
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['user', 'submitted_at']),
+            models.Index(fields=['status']),
+            models.Index(fields=['attendance_record']),
+        ]
+
+    def __str__(self):
+        return f"Early Clock-Out Request by {self.user} for {self.attendance_record} ({self.status})"
+
+    def clean(self):
+        if self.status == 'approved' and not self.reviewed_by:
+            raise ValidationError("Approved requests must have a reviewer.")
+        if self.reviewed_at and not self.reviewed_by:
+            raise ValidationError("Reviewed requests must have a reviewer.")
+        if self.reviewed_by and not self.reviewed_at:
+            raise ValidationError("Reviewer must have a review timestamp.")
+
+    def save(self, *args, **kwargs):
+        is_new = not self.pk
+        super().save(*args, **kwargs)
+        if is_new:
+            # Create NotificationManager for the manager
+            from .models import NotificationManager, Manager
+            manager = Manager.objects.filter(department=self.attendance_record.department).first()
+            if manager:
+                NotificationManager.objects.create(
+                    manager=manager,
+                    message=f"Early clock-out request from {self.user.get_full_name()} for {self.attendance_record.date}: {self.reason[:100]}",
+                    created_at=timezone.now()
+                )
+        if self.status in ['approved', 'denied'] and not self.reviewed_at:
+            self.reviewed_at = timezone.now()
+            super().save(update_fields=['reviewed_at'])
