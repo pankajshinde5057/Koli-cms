@@ -3,245 +3,108 @@
 
 {% block custom_css %}
 <style>
-    .update-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .section-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    .section-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #eee;
-    }
-    .schedule-display {
-        padding: 15px;
-        background-color: #f8fafc;
-        border-radius: 6px;
-        margin-bottom: 20px;
-    }
-    .display-title {
-        font-weight: 600;
-        margin-bottom: 10px;
-        color: #4f46e5;
-    }
-    .task-list {
-        list-style-type: decimal;
-        padding-left: 20px;
-        margin-bottom: 0;
-    }
-    .task-list li {
-        padding: 4px 0;
-    }
-    .no-tasks {
-        color: #64748b;
-        font-style: italic;
-    }
-    .update-input-container {
-        margin-bottom: 15px;
-    }
-    .update-item {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 8px;
-        align-items: center;
-    }
-    .update-input {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        transition: all 0.3s;
-    }
-    .update-input:focus {
-        border-color: #4f46e5;
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-        outline: none;
-    }
-    .update-btn {
-        border: none;
-        border-radius: 6px;
-        width: 60px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-        cursor: default;
-        transition: all 0.2s;
-        background-color: #f3f4f6;
-        color: #6b7280;
-    }
-    .add-btn {
-        background-color: #4f46e5;
-        color: white;
-        width: 100%;
-        padding: 10px;
-        cursor: pointer;
-    }
-    .add-btn:hover {
-        background-color: #4338ca;
-    }
-    .save-btn {
-        background-color: #10b981;
-        color: white;
-        width: 100%;
-        padding: 10px;
-        margin-top: 15px;
-    }
-    .save-btn:hover {
-        background-color: #059669;
-    }
+    .update-container { max-width: 800px; margin: 0 auto; }
+    .update-item { display: grid; grid-template-columns: 1fr 120px 60px; gap: 10px; margin-bottom: 8px; align-items: center; }
+    .update-input, .time-spent { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; }
+    .update-btn { background-color: #f3f4f6; color: #6b7280; border: none; border-radius: 6px; padding: 8px; }
+    .save-btn { background-color: #10b981; color: white; width: 100%; padding: 10px; margin-top: 15px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container py-8">
     <div class="update-container">
-        <!-- Schedule Display Section -->
         <div class="section-card">
-            <h3 class="section-title">
-                <i class="fas fa-calendar-check mr-2"></i>
-                Morning Schedule:
-            </h3>
-            <div class="schedule-display">
-                {% if schedule.project %}
-                    <div class="text-sm text-gray-600 mt-2">
-                        <strong>Project:</strong> {{ schedule.project|escape }}
-                    </div>
-                {% endif %}
-                {% if schedule and schedule.task_description_lines %}
-                    <ol class="task-list">
-                        {% for task in schedule.task_description_lines %}
-                        <li>{{ task|escape }}</li>
-                        {% endfor %}
-                    </ol>
-                {% else %}
-                    <div class="no-tasks">No tasks in today's schedule</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Editable Update Input Section -->
-        <div class="section-card">
-            <h3 class="section-title">
-                <i class="fas fa-edit mr-2"></i>
-                {% if update and update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
-                    Submit Your Daily Update
-                {% else %}
-                    View Today's Update (Read-Only)
-                {% endif %}
-            </h3>
-            <div class="update-input-container">
-                <label class="block text-sm font-medium mb-1">Updates</label>
-                <div id="updates-container">
-                    {% if update and update.update_description_lines %}
-                        {% for update_line in update.update_description_lines %}
-                        <div class="update-item">
-                            <input type="text" value="{{ update_line|escape }}" class="update-input"
-                                placeholder="Update description"
-                                {% if update.updated_at|date:"Y-m-d" != today|date:"Y-m-d" %}readonly{% endif %}>
-                            {% if update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
-                                <button type="button" class="update-btn">Edit</button>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="update-item">
-                            <input type="text" class="update-input" placeholder="Update description">
-                            <button type="button" class="update-btn">Edit</button>
-                        </div>
-                    {% endif %}
-                </div>
-                {% if not update or update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
-                    <button type="button" id="add-update-btn" class="update-btn add-btn">
-                        + Add Update
-                    </button>
-                {% endif %}
-            </div>
-
-            {% if not update or update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
-                <button id="save-update-btn" class="save-btn">
-                    <i class="fas fa-save mr-2"></i>Save Update
-                </button>
+            <h3 class="section-title">Today's Schedule</h3>
+            {% if schedule.tasks %}
+                <ol>
+                    {% for task in schedule.tasks %}
+                    <li>{{ task.description }} <span class="time-estimate">({{ task.time }})</span></li>
+                    {% endfor %}
+                </ol>
+            {% else %}
+                <div class="text-center py-4">No schedule found</div>
             {% endif %}
         </div>
 
-
-        <!-- Saved Updates Display Section -->
         <div class="section-card">
-            <h3 class="section-title">
-                <i class="fas fa-history mr-2"></i>
-                Your Recent Updates
-            </h3>
-            {% if update %}
-                <div class="schedule-display mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <strong>{{ update.updated_at|date:"F j, Y, g:i a" }}</strong>
+            <h3 class="section-title">Daily Update</h3>
+            <div id="updates-container">
+                {% if update.updates %}
+                    {% for update_line in update.updates %}
+                    <div class="update-item">
+                        <input type="text" class="update-input" value="{{ update_line.description }}" 
+                               {% if not is_editable %}readonly{% endif %} placeholder="Update">
+                        <input type="text" class="time-spent" value="{{ update_line.time }}" 
+                               {% if not is_editable %}readonly{% endif %} placeholder="Time spent">
+                        {% if is_editable %}<button class="update-btn">Edit</button>{% endif %}
                     </div>
-                    <div>
-                        <ol class="task-list">
-                            {% for update_line in update.update_description_lines %}
-                            <li>{{ update_line|escape }}</li>
-                            {% endfor %}
-                        </ol>
+                    {% endfor %}
+                {% else %}
+                    <div class="update-item">
+                        <input type="text" class="update-input" placeholder="Update">
+                        <input type="text" class="time-spent" placeholder="Time spent">
+                        <button class="update-btn">Edit</button>
                     </div>
-                </div>
-            {% else %}
-                <div class="text-center py-4 text-gray-500">
-                    No previous updates found
-                </div>
+                {% endif %}
+            </div>
+            
+            {% if is_editable %}
+                <button id="add-update-btn" class="task-btn add-btn mt-3">+ Add Update</button>
+                <button id="save-update-btn" class="save-btn">Save Update</button>
             {% endif %}
         </div>
     </div>
 </div>
 
-<form id="update-form" method="post" action="{% url 'todays_update' %}" class="hidden">
+<form id="update-form" method="post" action="{% url 'todays_update' %}">
     {% csrf_token %}
     <input type="hidden" name="update_description" id="update-description-input">
 </form>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const updatesContainer = document.getElementById('updates-container');
-    const addUpdateBtn = document.getElementById('add-update-btn');
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('updates-container');
+    const addBtn = document.getElementById('add-update-btn');
     const saveBtn = document.getElementById('save-update-btn');
-    const updateForm = document.getElementById('update-form');
-    const updateDescInput = document.getElementById('update-description-input');
 
-    // Add new update
-    addUpdateBtn.addEventListener('click', function() {
-        const updateItem = document.createElement('div');
-        updateItem.className = 'update-item';
-        updateItem.innerHTML = `
-            <input type="text" class="update-input" placeholder="Update description">
-            <button type="button" class="update-btn">Edit</button>
-        `;
-        updatesContainer.appendChild(updateItem);
-        updateItem.querySelector('.update-input').focus();
-    });
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            const div = document.createElement('div');
+            div.className = 'update-item';
+            div.innerHTML = `
+                <input type="text" class="update-input" placeholder="Update">
+                <input type="text" class="time-spent" placeholder="Time spent">
+                <button class="update-btn">Edit</button>
+            `;
+            container.appendChild(div);
+        });
+    }
 
-    // Save update
-    saveBtn.addEventListener('click', function() {
-        const updates = Array.from(document.querySelectorAll('.update-input'))
-            .map(input => input.value.trim())
-            .filter(update => update !== '');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            const updates = [];
+            let isValid = true;
 
-        if (updates.length === 0) {
-            alert('Please add at least one valid update!');
-            return;
-        }
+            document.querySelectorAll('.update-item').forEach(item => {
+                const desc = item.querySelector('.update-input').value.trim();
+                const time = item.querySelector('.time-spent').value.trim();
+                
+                if (!desc || !time) {
+                    isValid = false;
+                    alert('Please fill both update and time spent fields');
+                    return;
+                }
+                
+                updates.push(`${desc}|${time}`);
+            });
 
-        updateDescInput.value = updates.join('\n');
-        updateForm.submit();
-    });
+            if (isValid && updates.length > 0) {
+                document.getElementById('update-description-input').value = updates.join('\n');
+                document.getElementById('update-form').submit();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
