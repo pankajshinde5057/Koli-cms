@@ -523,11 +523,11 @@ def early_clock_out_request(request):
         
             if EarylyClockOutRequest.objects.filter(
                     attendance_record=attendance_record,
-                    status='pending'
+                    status__in=['pending', 'approved']
                 ).exists():
                     return JsonResponse({
                         'status': 'error', 
-                        'message': 'A pending early clock-out request already exists'
+                        'message': 'An early clock-out request is already pending or approved for this shift'
                     }, status=400)
             EarylyClockOutRequest.objects.create(
                 attendance_record=attendance_record,

@@ -297,7 +297,6 @@
                             }
                         })
                         .catch(error => {
-                            console.error('Error submitting early clock-out request:', error);
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -423,6 +422,7 @@
                     if (new FormData(form).get('clock_out')) {
                         localStorage.removeItem('earlyClockOutStatus'); // Reset status on clock-out
                     }
+                    window.location.reload();
                 } else {
                     let alertContainer = document.querySelector('.content .container-fluid');
                     if (!alertContainer) {
