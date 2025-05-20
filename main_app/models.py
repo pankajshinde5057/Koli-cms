@@ -223,6 +223,7 @@ class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('late', 'Late'),
+        ('half_day', 'Half Day'),  # Added half_day status
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
@@ -290,49 +291,44 @@ class AttendanceRecord(models.Model):
         # if user didn't clock out and it's been more than 10 hours since clock in
         if not self.pk:
             open_records = AttendanceRecord.objects.filter(
-            user=self.user,
-            clock_out__isnull=True,
-            date__lt=self.date # Previous days only
+                user=self.user,
+                clock_out__isnull=True,
+                date__lt=self.date  # Previous days only
             )
             for record in open_records:
-            # set clock-out
+                # set clock-out
                 record.clock_out = record.clock_in + timedelta(hours=10)
-
                 record.notes = (
-                f"{record.notes}\n" if record.notes else ""
+                    f"{record.notes}\n" if record.notes else ""
                 ) + f"Auto-logged out on {timezone.now()} due to new record creation"
-
                 record.total_worked = record.clock_out - record.clock_in
                 regular_hours_limit = timedelta(hours=8)
-
                 if record.total_worked > regular_hours_limit:
                     record.regular_hours = regular_hours_limit
                     record.overtime_hours = record.total_worked - regular_hours_limit
                 else:
                     record.regular_hours = record.total_worked
                     record.overtime_hours = timezone.timedelta()
-
                 record.save()
 
-        # automatic determine attendence record:
+        # Automatic status determination based on clock-in time
         if self.clock_in:
             ist_time = self.clock_in.astimezone(ist)
             late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            # half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
+            half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
 
-            self.status = (
-                # 'half_day' if ist_time > half_day_time
-                'late' if ist_time > late_time else 'present'
-            )
+            if ist_time > half_day_time:
+                self.status = 'half_day'
+            elif ist_time > late_time:
+                self.status = 'late'
+            else:
+                self.status = 'present'
 
         # Calculate time durations if clock_out exists
         if self.clock_out:
             self.total_worked = self.clock_out - self.clock_in
-            
             # Calculate regular vs overtime (assuming 8 hours is regular)
-            regular_hours_limit = timezone.timedelta(hours=8)
-            
-            # For individual records, we'll calculate partial regular/overtime
+            regular_hours_limit = timedelta(hours=8)
             if self.total_worked > regular_hours_limit:
                 self.regular_hours = regular_hours_limit
                 self.overtime_hours = self.total_worked - regular_hours_limit
@@ -346,8 +342,6 @@ class AttendanceRecord(models.Model):
                 user=self.user, 
                 date=self.date
             ).exists()
-            
-            # Mark as primary if it's the first record of the day
             self.is_primary_record = not existing_records
         
         super().save(*args, **kwargs)
