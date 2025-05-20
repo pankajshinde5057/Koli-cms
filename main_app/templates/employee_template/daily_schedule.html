@@ -10,7 +10,7 @@
             <form method="post">
                 {% csrf_token %}
                 <div class="mb-3">
-                    <label for="task_description" class="form-label">Task Description</label>
+                    <label for="task_description" class="form-label">Task Schedule</label>
                     <textarea name="task_description" id="task_description" class="form-control" required>{{ schedule.task_description|default_if_none:'' }}</textarea>
                 </div>
                 <div class="mb-3">
