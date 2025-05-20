@@ -956,6 +956,7 @@ def daily_schedule(request):
         'today': today,
     })
 
+
 @login_required
 def todays_update(request):
     """Morning update view - shows today's schedule with update form"""
@@ -1017,72 +1018,89 @@ def view_all_schedules(request):
     employee = get_object_or_404(Employee, admin=request.user)
     today = get_ist_date()
 
+    schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
+
     # Get filter parameters
     filter_type = request.GET.get('filter_type', 'today')
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
 
-    # Start with base queryset
+    # Base queryset
     schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
 
-    # Apply filters
     if filter_type == 'today':
         schedules = schedules.filter(date=today)
     elif filter_type == 'weekly':
-        start = today - timedelta(days=6)
+        start = today - timedelta(days=6)  # last 7 days including today
         schedules = schedules.filter(date__gte=start, date__lte=today)
-    elif filter_type == 'monthly':
-        start = today - timedelta(days=29)
+    elif filter_type == "monthly":
+        start = today - timedelta(days=29)  
         schedules = schedules.filter(date__gte=start, date__lte=today)
     elif filter_type == 'custom' and start_date and end_date:
         try:
+            from datetime import datetime
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
             if start > end:
                 messages.error(request, "Start date cannot be after end date.")
-            else:
-                schedules = schedules.filter(date__gte=start, date__lte=end)
+                start = end = today
+            schedules = schedules.filter(date__gte=start, date__lte=end)
         except ValueError:
-            messages.error(request, "Invalid date format. Showing all schedules.")
+            messages.error(request, "Invalid date format. Using all schedules.")
+            start_date = end_date = None
 
-    # Handle Excel Export
     if 'export' in request.GET:
-        if not schedules.exists():
-            messages.error(request, "No schedules found for this date range.")
+        if not schedules:
+            messages.error(request,"No Schedules Found for this date range")
         else:
             wb = openpyxl.Workbook()
             ws = wb.active
             ws.title = "Schedules and Updates"
 
-            headers = ["Schedule Date", "Project", "Daily-Tasks", "Daily-Updates"]
+            # Define headers
+            headers = [
+                "Schedule Date", "Project", "Tasks-Schedule", "Task-Updates"
+            ]
+
             ws.append(headers)
             for cell in ws[1]:
                 cell.font = Font(bold=True)
-                cell.alignment = Alignment(horizontal='center')
-
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+            
             for schedule in schedules:
-                tasks = schedule.task_description_lines or []
+                tasks = schedule.task_description_lines
                 updates = schedule.updates.all()
-                if updates:
-                    for update in updates:
-                        ws.append([
-                            schedule.date.strftime('%Y-%m-%d'),
-                            schedule.project or '',
-                            '\n'.join(tasks) if tasks else 'No tasks',
-                            '\n'.join(update.update_description_lines) if update.update_description_lines else 'No updates'
-                        ])
-                else:
+                if not updates:
+                    # Schedule without updates
                     ws.append([
                         schedule.date.strftime('%Y-%m-%d'),
                         schedule.project or '',
                         '\n'.join(tasks) if tasks else 'No tasks',
-                        'No updates'
+                        '', '', ''
                     ])
-
+                else:
+                    for update in updates:
+                        update_lines = update.update_description_lines
+                        ws.append([
+                            schedule.date.strftime('%Y-%m-%d'),
+                            schedule.project or '',
+                            '\n'.join(tasks) if tasks else 'No tasks',
+                            '\n'.join(update_lines) if update_lines else 'No updates'
+                        ])
+            # Adjust column widths
             for col in ws.columns:
-                max_len = max(len(str(cell.value)) if cell.value else 0 for cell in col)
-                ws.column_dimensions[col[0].column_letter].width = max_len + 2
-
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = (max_length + 2)
+                ws.column_dimensions[column].width = adjusted_width
+            
+            # Create response
             output = BytesIO()
             wb.save(output)
             output.seek(0)
@@ -1092,7 +1110,7 @@ def view_all_schedules(request):
             )
             response['Content-Disposition'] = f'attachment; filename=schedules_{today.strftime("%Y%m%d")}.xlsx'
             return response
-
+    
     return render(request, 'employee_template/all_schedules.html', {
         'schedules': schedules,
         'today': today,
