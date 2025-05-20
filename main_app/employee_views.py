@@ -1031,7 +1031,8 @@ def view_all_schedules(request):
     if filter_type == 'today':
         schedules = schedules.filter(date=today)
     elif filter_type == 'weekly':
-        schedules = schedules.filter(date__gte=start_date,date__lte=today)
+        start = today - timedelta(days=6)  # last 7 days including today
+        schedules = schedules.filter(date__gte=start, date__lte=today)
     elif filter_type == "monthly":
         start = today - timedelta(days=29)  
         schedules = schedules.filter(date__gte=start, date__lte=today)
