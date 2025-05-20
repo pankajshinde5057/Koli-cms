@@ -183,64 +183,6 @@
                 </div>
             </div>
             
-            <!-- Schedules List -->
-            <div class="col-md-9">
-                <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h5>Your Schedule History</h5>
-                        <div>
-                            <a href="{% url 'daily_schedule' %}" class="btn btn-light btn-sm">
-                                <i class="fas fa-plus"></i> Add Today
-                            </a>
-                            <a href="{% url 'todays_update' %}" class="btn btn-light btn-sm ms-2">
-                                <i class="fas fa-edit"></i> Update Today
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Project</th>
-                                        <th>Task Schedule</th>
-                                        <th>Hours</th>
-                                        <th>Update</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                {% if schedule_data %}
-                                    {% for data in schedule_data %}
-                                    <tr>
-                                        <td>{{ data.schedule.date|date:"M d, Y" }}</td>
-                                        <td>{{ data.schedule.project|default:"-" }}</td>
-                                        <td>{{ data.schedule.task_description|truncatechars:50 }}</td>
-                                        <td>{{ data.schedule.duration|floatformat:2 }}</td>
-                                        <td>{{ data.update.update_description|truncatechars:50|default:"-" }}</td>
-                                        <td>
-                                            <span class="status-badge bg-{{ data.final_status}}">
-                                                {{ data.final_status|title }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4">
-                                            <div class="alert alert-info">
-                                                No schedules found for the selected filter.
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
             {% endif %}
         </div>
     </div>
