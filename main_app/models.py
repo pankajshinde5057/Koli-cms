@@ -504,18 +504,11 @@ def get_ist_date():
     return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
 
 class DailySchedule(models.Model):
-    STATUS_CHOICES = [
-        ('planned', 'Planned'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-    ]
-
     employee = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name='schedules')
     attendance_record = models.ForeignKey('AttendanceRecord', on_delete=models.SET_NULL, related_name='schedules',null=True, blank=True)
     date = models.DateField(get_ist_date)
     task_description = models.TextField()
     project = models.CharField(max_length=100, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -532,15 +525,17 @@ class DailySchedule(models.Model):
             duration = self.attendance_record.clock_out - self.attendance_record.clock_in
             return duration.total_seconds()/3600 # converts to hours
         return 0
+    
+    @property
+    def task_description_lines(self):
+        return [line for line in self.task_description.split("\n") if line.strip()]
 
 class DailyUpdate(models.Model):
     schedule = models.ForeignKey(DailySchedule, on_delete=models.CASCADE, related_name='updates')
     update_description = models.TextField()
-    status = models.CharField(max_length=20, choices=DailySchedule.STATUS_CHOICES, default='in_progress')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('schedule',)  # One update per schedule
         ordering = ['-updated_at']
 
     def __str__(self):
@@ -550,3 +545,6 @@ class DailyUpdate(models.Model):
         if not self.update_description.strip():
             raise ValidationError("Update description cannot be empty.")
     
+    @property
+    def update_description_lines(self):
+        return [line for line in self.update_description.split('\n') if line.strip()]
