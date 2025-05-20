@@ -222,9 +222,8 @@ class Notification(models.Model):
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
-        ('late', 'Late'),
-        ('half_day','Half_Day')
-        ('half_day', 'Half Day'),  # Added half_day status
+        ['late', 'Late'],
+        ['half_day','Half_Day']
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
