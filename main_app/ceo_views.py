@@ -656,7 +656,7 @@ def employee_feedback_message(request):
     if request.method != 'POST':
         feedback_list = FeedbackEmployee.objects.all().order_by('-id')
         page = request.GET.get('page', 1)
-        paginator = Paginator(feedback_list, 10)  
+        paginator = Paginator(feedback_list, 10)
         try:
             feedbacks = paginator.page(page)
         except PageNotAnInteger:
@@ -684,10 +684,54 @@ def employee_feedback_message(request):
                 context,
                 request=request
             )
-            return HttpResponse(html)
+            return JsonResponse({'success': True, 'html': html})
 
         return render(request, 'ceo_template/employee_feedback_template.html', context)
     else:
+        if request.POST.get('_method') == 'DELETE':
+            feedback_ids = request.POST.getlist('ids[]')  # Changed to getlist('ids[]')
+            action = request.POST.get('action')
+
+            try:
+                if action == 'delete_all':
+                    # Delete all feedback entries
+                    FeedbackEmployee.objects.all().delete()
+                    Notification.objects.filter(
+                        notification_type='employee feedback'
+                    ).delete()
+                    return JsonResponse({'success': True, 'message': 'All feedback deleted successfully'})
+                elif feedback_ids:
+                    # Delete selected feedback entries
+                    FeedbackEmployee.objects.filter(id__in=feedback_ids).delete()
+                    Notification.objects.filter(
+                        leave_or_notification_id__in=feedback_ids,
+                        notification_type='employee feedback'
+                    ).delete()
+                    return JsonResponse({'success': True, 'message': f'Deleted {len(feedback_ids)} feedback entries'})
+                else:
+                    return JsonResponse({'success': False, 'message': 'No feedback IDs provided'}, status=400)
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        else:
+            feedback_id = request.POST.get('id')
+            try:
+                feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
+                reply = request.POST.get('reply')
+                feedback.reply = reply
+                feedback.save()
+                notify = Notification.objects.filter(
+                    user=request.user,
+                    role="admin",
+                    is_read=False,
+                    leave_or_notification_id=feedback_id
+                ).first()
+                if notify:
+                    notify.is_read = True
+                    notify.save()
+                return JsonResponse({'success': True, 'message': 'Reply sent successfully'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
         feedback_id = request.POST.get('id')
         try:
             feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
@@ -706,8 +750,6 @@ def employee_feedback_message(request):
             return HttpResponse(True)
         except Exception as e:
             return HttpResponse(False)
-
-
 
 
 @login_required
@@ -734,6 +776,39 @@ def manager_feedback_message(request):
 
         return render(request, 'ceo_template/manager_feedback_template.html', context)
     else:
+        if request.POST.get('_method') == 'DELETE':
+            # Handle delete requests
+            feedback_ids = request.POST.getlist('ids[]')  # For bulk delete
+            action = request.POST.get('action')  # For delete all
+            
+            try:
+                if action == 'delete_all':
+                    # Delete all feedback
+                    FeedbackManager.objects.all().delete()
+                    return HttpResponse("True")
+                elif feedback_ids:
+                    # Delete selected feedback
+                    FeedbackManager.objects.filter(id__in=feedback_ids).delete()
+                    return HttpResponse("True")
+                else:
+                    # Single delete
+                    feedback_id = request.POST.get('id')
+                    feedback = get_object_or_404(FeedbackManager, id=feedback_id)
+                    feedback.delete()
+                    return HttpResponse("True")
+            except Exception as e:
+                return HttpResponse("False")
+        else:
+            # Handle reply request
+            feedback_id = request.POST.get('id')
+            try:
+                feedback = get_object_or_404(FeedbackManager, id=feedback_id)
+                reply = request.POST.get('reply')
+                feedback.reply = reply
+                feedback.save()
+                return HttpResponse("True")
+            except Exception as e:
+                return HttpResponse("False")
         feedback_id = request.POST.get('id')
         try:
             feedback = get_object_or_404(FeedbackManager, id=feedback_id)

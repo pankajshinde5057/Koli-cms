@@ -257,9 +257,12 @@ def employee_home(request):
         date__range=(start_date, end_date)
     )
     record_dict = {rec.date: rec.status for rec in month_record}
+        # In your employee_home function, replace the absent_days calculation part with this:
+
+    # Calculate absent days for current month up to today
     absent_days = 0
-    current_date = start_date
-    while current_date <= today:
+    current_date = start_date  # start_date is already set to the 1st of current month
+    while current_date <= today:  # Only check up to today's date
         weekday = current_date.weekday()
         is_sunday = weekday == 6
         is_saturday = weekday == 5
@@ -269,28 +272,38 @@ def employee_home(request):
         is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
         
         if is_working_day:
-            is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [0, 2]  # 0 and 2 for 1st and 3rd weeks
-        
-        # Check if it's a working day (not sunday, not 1st/3rd saturday, not holiday)
-        is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
-        
-        if is_working_day:
-            status = record_dict.get(current_date)
-            if not status:
+            # Check if there's an attendance record for this date
+            record_exists = AttendanceRecord.objects.filter(
+                user=request.user,
+                date=current_date
+            ).exists()
+            
+            # Check if there's an approved leave for this date
+            leave_exists = LeaveReportEmployee.objects.filter(
+                employee=employee,
+                status=1,  # Approved
+                start_date__lte=current_date,
+                end_date__gte=current_date
+            ).exists()
+            
+            # If no record and no leave, count as absent
+            if not record_exists and not leave_exists:
                 absent_days += 1
-                absent_days += 1
-            elif status == "half":
-                absent_days += 0.5
-            else:
-                leave_records = LeaveReportEmployee.objects.filter(
+            # If it's a half-day leave or attendance, count 0.5 absent
+            elif (LeaveReportEmployee.objects.filter(
                     employee=employee,
-                    status=1,  # Approved
+                    status=1,
                     leave_type="Half-Day",
-                    start_date=current_date  # The specific date you're checking
-                )
-                if leave_records:
-                    absent_days += 0.5
-                    absent_days += 0.5
+                    start_date__lte=current_date,
+                    end_date__gte=current_date
+                ).exists() or 
+                AttendanceRecord.objects.filter(
+                    user=request.user,
+                    date=current_date,
+                    status="half_day"
+                ).exists()):
+                absent_days += 0.5
+        
         current_date += timedelta(days=1)
 
     # Calculate total working days for the month (excluding weekends and holidays)
