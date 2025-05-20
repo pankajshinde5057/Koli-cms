@@ -21,7 +21,6 @@
         padding-bottom: 10px;
         border-bottom: 1px solid #eee;
     }
-    /* Schedule Display */
     .schedule-display {
         padding: 15px;
         background-color: #f8fafc;
@@ -45,7 +44,6 @@
         color: #64748b;
         font-style: italic;
     }
-    /* Update Input Section */
     .update-input-container {
         margin-bottom: 15px;
     }
@@ -70,26 +68,23 @@
     .update-btn {
         border: none;
         border-radius: 6px;
-        width: 32px;
+        width: 60px;
         height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
+        font-size: 0.9rem;
+        cursor: default;
         transition: all 0.2s;
-    }
-    .remove-btn {
-        background-color: #fee2e2;
-        color: #dc2626;
-    }
-    .remove-btn:hover {
-        background-color: #fecaca;
+        background-color: #f3f4f6;
+        color: #6b7280;
     }
     .add-btn {
         background-color: #4f46e5;
         color: white;
         width: 100%;
         padding: 10px;
+        cursor: pointer;
     }
     .add-btn:hover {
         background-color: #4338ca;
@@ -103,25 +98,6 @@
     }
     .save-btn:hover {
         background-color: #059669;
-    }
-    .status-badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-    /* Status Selector */
-    .status-selector {
-        margin: 15px 0;
-    }
-    .status-option {
-        margin-right: 10px;
-        display: inline-flex;
-        align-items: center;
-    }
-    .status-radio {
-        margin-right: 5px;
     }
 </style>
 {% endblock %}
@@ -150,7 +126,6 @@
                 {% else %}
                     <div class="no-tasks">No tasks in today's schedule</div>
                 {% endif %}
-                
             </div>
         </div>
 
@@ -158,50 +133,59 @@
         <div class="section-card">
             <h3 class="section-title">
                 <i class="fas fa-edit mr-2"></i>
-                Submit Your Daily Update
+                {% if update and update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
+                    Submit Your Daily Update
+                {% else %}
+                    View Today's Update (Read-Only)
+                {% endif %}
             </h3>
-            
             <div class="update-input-container">
                 <label class="block text-sm font-medium mb-1">Updates</label>
                 <div id="updates-container">
                     {% if update and update.update_description_lines %}
                         {% for update_line in update.update_description_lines %}
                         <div class="update-item">
-                            <input type="text" value="{{ update_line|escape }}" class="update-input" placeholder="Update description">
-                            <button type="button" class="update-btn remove-btn">×</button>
+                            <input type="text" value="{{ update_line|escape }}" class="update-input"
+                                placeholder="Update description"
+                                {% if update.updated_at|date:"Y-m-d" != today|date:"Y-m-d" %}readonly{% endif %}>
+                            {% if update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
+                                <button type="button" class="update-btn">Edit</button>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     {% else %}
                         <div class="update-item">
                             <input type="text" class="update-input" placeholder="Update description">
-                            <button type="button" class="update-btn remove-btn">×</button>
+                            <button type="button" class="update-btn">Edit</button>
                         </div>
                     {% endif %}
                 </div>
-                
-                <button type="button" id="add-update-btn" class="update-btn add-btn">
-                    + Add Update
-                </button>
+                {% if not update or update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
+                    <button type="button" id="add-update-btn" class="update-btn add-btn">
+                        + Add Update
+                    </button>
+                {% endif %}
             </div>
-            
-            <button id="save-update-btn" class="save-btn">
-                <i class="fas fa-save mr-2"></i>Save Update
-            </button>
+
+            {% if not update or update.updated_at|date:"Y-m-d" == today|date:"Y-m-d" %}
+                <button id="save-update-btn" class="save-btn">
+                    <i class="fas fa-save mr-2"></i>Save Update
+                </button>
+            {% endif %}
         </div>
-        
+
+
         <!-- Saved Updates Display Section -->
         <div class="section-card">
             <h3 class="section-title">
                 <i class="fas fa-history mr-2"></i>
                 Your Recent Updates
             </h3>
-            
             {% if update %}
                 <div class="schedule-display mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <strong>{{ update.updated_at|date:"F j, Y, g:i a" }}</strong>
                     </div>
-                    
                     <div>
                         <ol class="task-list">
                             {% for update_line in update.update_description_lines %}
@@ -231,7 +215,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const saveBtn = document.getElementById('save-update-btn');
     const updateForm = document.getElementById('update-form');
     const updateDescInput = document.getElementById('update-description-input');
-    const livePreview = document.getElementById('live-preview');
 
     // Add new update
     addUpdateBtn.addEventListener('click', function() {
@@ -239,54 +222,26 @@ document.addEventListener('DOMContentLoaded', function() {
         updateItem.className = 'update-item';
         updateItem.innerHTML = `
             <input type="text" class="update-input" placeholder="Update description">
-            <button type="button" class="update-btn remove-btn">×</button>
+            <button type="button" class="update-btn">Edit</button>
         `;
         updatesContainer.appendChild(updateItem);
-        
-        // Focus on the new input
         updateItem.querySelector('.update-input').focus();
-        
-        // Update preview
-        updateLivePreview();
-    });
-
-    // Remove update
-    updatesContainer.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-btn')) {
-            const updateItems = document.querySelectorAll('.update-item');
-            if (updateItems.length > 1) {
-                e.target.closest('.update-item').remove();
-            } else {
-                // Clear the last input instead of removing
-                const input = e.target.closest('.update-item').querySelector('.update-input');
-                input.value = '';
-                input.focus();
-            }
-            updateLivePreview();
-        }
     });
 
     // Save update
     saveBtn.addEventListener('click', function() {
-        // Get all update inputs
         const updates = Array.from(document.querySelectorAll('.update-input'))
             .map(input => input.value.trim())
             .filter(update => update !== '');
-        
+
         if (updates.length === 0) {
             alert('Please add at least one valid update!');
             return;
         }
-        
-        // Set the hidden form values
+
         updateDescInput.value = updates.join('\n');
-        
-        // Submit the form
         updateForm.submit();
     });
-
-    // Initialize preview
-    updateLivePreview();
 });
 </script>
 {% endblock %}
