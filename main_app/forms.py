@@ -242,3 +242,30 @@ class EditSalaryForm(FormSettings):
     class Meta:
         model = EmployeeSalary
         fields = ['department', 'employee', 'base', 'ctc']
+
+
+# class ScheduleForm(forms.ModelForm):
+#     class Meta:
+#         model = Schedule
+#         fields = ['project', 'task_description', 'status', 'employee']
+#         widgets = {
+#             # 'employee' : forms.TextInput(attrs={'class' : 'form-control'})
+#             'project': forms.TextInput(attrs={'class': 'form-control','placeholder': 'Project name (optional)'}),
+#             'task_description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control','placeholder': 'Describe your tasks for today...'}),
+#             'status': forms.Select(attrs={'class': 'form-control'}),
+#         }
+
+# class ScheduleUpdateForm(forms.ModelForm):
+#     class Meta:
+#         model = ScheduleUpdate
+#         fields = ['update_description', 'status']
+#         widgets = {
+#             'update_description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control','placeholder': 'What progress have you made?'}),
+#             'status': forms.Select(attrs={'class': 'form-control'}),
+#         }
+
+#     def clean_update_description(self):
+#         description = self.cleaned_data['update_description']
+#         if not description.strip():
+#             raise forms.ValidationError("Update description cannot be empty.")
+#         return description

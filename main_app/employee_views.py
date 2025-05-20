@@ -24,6 +24,9 @@ from datetime import date
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 
+def get_ist_date():
+    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
+
 
 @login_required   
 def employee_home(request):
@@ -733,7 +736,7 @@ def employee_view_attendance(request):
                 })
 
             # Paginate the json_data
-            paginator = Paginator(json_data, 5)  # 5 records per page
+            paginator = Paginator(json_data, 1)  # 5 records per page
             try:
                 page_obj = paginator.page(page)
             except PageNotAnInteger:
@@ -892,3 +895,137 @@ def employee_requests(request):
         return HttpResponse(html)
 
     return render(request, 'employee_template/employee_requests.html', context)
+
+
+
+@login_required
+def daily_schedule(request):
+    """Create or view today's schedule"""
+    employee = get_object_or_404(Employee,admin=request.user)
+    today = get_ist_date()
+
+    existing_schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
+    
+    if request.method == 'POST':
+        if existing_schedule:
+            # Edit existing schedule
+            existing_schedule.task_description = request.POST.get('task_description')
+            existing_schedule.project = request.POST.get('project', '')
+            existing_schedule.status = request.POST.get('status')
+            try:
+                existing_schedule.full_clean()
+                existing_schedule.save()
+                messages.success(request, "Schedule updated successfully!")
+                return redirect('daily_schedule')
+            except ValidationError as e:
+                messages.error(request, f"Error updating schedule: {e}")
+        else:
+            # Create new schedule
+            schedule = DailySchedule(
+                employee=employee,
+                date=today,
+                task_description=request.POST.get('task_description'),
+                project=request.POST.get('project', ''),
+                status=request.POST.get('status', 'planned')
+            )
+            try:
+                schedule.full_clean()
+                schedule.save()
+                messages.success(request, "Schedule created successfully!")
+                return redirect('daily_schedule')
+            except ValidationError as e:
+                messages.error(request, f"Error creating schedule: {e}")
+    
+    return render(request, 'employee_template/daily_schedule.html', {
+        'schedule': existing_schedule,
+        'today': today,
+        'status_choices': DailySchedule.STATUS_CHOICES
+    })
+
+@login_required
+def todays_update(request):
+    """Morning update view - shows today's schedule with update form"""
+    employee = get_object_or_404(Employee,admin=request.user)
+    today = get_ist_date()
+ 
+    schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
+    if not schedule:
+        messages.error(request, "You must create a schedule before submitting an update.")
+        return redirect('daily_schedule')
+    
+    # Check for existing update
+    existing_update = schedule.updates.first()
+    if request.method == 'POST':
+        if existing_update:
+            # Edit existing update
+            existing_update.update_description = request.POST.get('update_description')
+            existing_update.status = request.POST.get('status')
+            try:
+                existing_update.full_clean()
+                existing_update.save()
+                messages.success(request, "Update modified successfully!")
+                return redirect('todays_update')
+            except ValidationError as e:
+                messages.error(request, f"Error updating update: {e}")
+        else:
+            # Create new update
+            update = DailyUpdate(
+                schedule=schedule,
+                update_description=request.POST.get('update_description'),
+                status=request.POST.get('status', 'in_progress')
+            )
+            try:
+                update.full_clean()
+                update.save()
+                messages.success(request, "Update submitted successfully!")
+                return redirect('todays_update')
+            except ValidationError as e:
+                messages.error(request, f"Error submitting update: {e}")
+    
+    return render(request, 'employee_template/todays_update.html', {
+        'schedule': schedule,
+        'update': existing_update,
+        'today': today,
+        'status_choices': DailySchedule.STATUS_CHOICES
+    })
+
+@login_required
+def view_all_schedules(request):
+    """View all schedules with filtering options"""
+    employee = get_object_or_404(Employee,admin=request.user)
+    today = get_ist_date()
+    
+    # Handle filters
+    filter_type = request.GET.get('filter', 'week')
+    date_from = request.GET.get('from')
+    date_to = request.GET.get('to')
+    
+    schedules = DailySchedule.objects.filter(employee=employee).prefetch_related('updates').order_by('-date')
+    # Apply filters
+    if filter_type == 'today':
+        schedules = schedules.filter(date=today)
+    elif filter_type == 'week':
+        start_date = today - timedelta(days=today.weekday())
+        end_date = start_date + timedelta(days=6)
+        schedules = schedules.filter(date__range=[start_date, end_date])
+    elif filter_type == 'month':
+        schedules = schedules.filter(date__month=today.month, date__year=today.year)
+    elif filter_type == 'custom' and date_from and date_to:
+        schedules = schedules.filter(date__range=[date_from, date_to])
+
+    schedule_data = []
+    for schedule in schedules:
+        update = schedule.updates.first() 
+        schedule_data.append({
+            'schedule': schedule,
+            'update': update, 
+            'final_status': schedule.status  
+        })
+    
+    return render(request, 'employee_template/all_schedules.html', {
+        'schedule_data': schedule_data,
+        'today': today,
+        'filter_type': filter_type,
+        'date_from': date_from,
+        'date_to': date_to,
+    })
