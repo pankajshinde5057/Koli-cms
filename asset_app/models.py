@@ -5,7 +5,7 @@ from django.urls import reverse
 from io import BytesIO
 from django.core.files import File
 import qrcode
-from .utils import generate_barcode
+from .utils import generate_qrcode
 
 
 LOCATION_CHOICES = (
@@ -78,8 +78,9 @@ class Assets(models.Model):
             super().save(*args, **kwargs)
 
         if not self.barcode:
-            barcode_file = generate_barcode(self.id)
-            self.barcode.save(barcode_file.name, barcode_file, save=False)
+            qrcode_file = generate_qrcode(self.id)
+            self.barcode.save(qrcode_file.name, qrcode_file, save=False)
+
         
         super().save(*args, **kwargs)
 

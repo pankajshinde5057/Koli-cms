@@ -22,6 +22,7 @@ import os
 from django.urls import reverse
 from django.http import JsonResponse, HttpResponseRedirect
 from django.http import HttpResponseForbidden
+from django.db.models import Q
 
 load_dotenv()
 
@@ -498,7 +499,7 @@ messaging.setBackgroundMessageHandler(function (payload) {
     return HttpResponse(data, content_type='application/javascript')
 
 
-
+@login_required
 def early_clock_out_request(request):
     if request.method == "POST":
         try:
@@ -523,11 +524,11 @@ def early_clock_out_request(request):
         
             if EarylyClockOutRequest.objects.filter(
                     attendance_record=attendance_record,
-                    status='pending'
+                    status__in=['pending', 'approved']
                 ).exists():
                     return JsonResponse({
                         'status': 'error', 
-                        'message': 'A pending early clock-out request already exists'
+                        'message': 'An early clock-out request is already pending or approved for this shift'
                     }, status=400)
             EarylyClockOutRequest.objects.create(
                 attendance_record=attendance_record,
@@ -595,3 +596,68 @@ def deny_early_clock_out(request, request_id):
         return redirect('manager_view_notification')
 
     return HttpResponseForbidden("Invalid request")
+
+
+@login_required
+def all_employees_schedules(request):
+    if not request.user.user_type in ['1','2']:
+        messages.error(request, "You do not have permission to access this page.")
+
+    # Get filter parameters
+    filter_type = request.GET.get('filter_type', 'today')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    department_id = request.GET.get('department_id')
+    search_name = request.GET.get('search_name', '').strip()
+
+    # Base queryset: all schedules
+    schedules = DailySchedule.objects.all().order_by('-date')
+
+    # Apply date filters
+    today = get_ist_date()
+    if filter_type == 'today':
+        schedules = schedules.filter(date=today)
+    elif filter_type == 'weekly':
+        start = today - timedelta(days=6)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'monthly':
+        start = today - timedelta(days=29)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'custom' and start_date and end_date:
+        try:
+            from datetime import datetime
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if start > end:
+                messages.error(request, "Start date cannot be after end date.")
+                start = end = today
+            schedules = schedules.filter(date__gte=start, date__lte=end)
+        except ValueError:
+            messages.error(request, "Invalid date format. Using all schedules.")
+            start_date = end_date = None
+
+    # Apply department filter
+    if department_id and department_id != 'all':
+        schedules = schedules.filter(employee__department__id=department_id)
+
+    # Apply name search
+    if search_name:
+        schedules = schedules.filter(
+            Q(employee__admin__first_name__icontains=search_name) |
+            Q(employee__admin__last_name__icontains=search_name)
+        )
+
+    # Get all departments and employees for filters
+    departments = Department.objects.all().order_by('name')
+
+    return render(request, 'main_app/employees_schedule.html', {
+        'schedules': schedules,
+        'today': today,
+        'filter_type': filter_type,
+        'start_date': start_date,
+        'end_date': end_date,
+        'department_id': department_id,
+        'search_name': search_name,
+        'departments': departments
+    })
+

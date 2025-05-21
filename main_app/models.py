@@ -537,6 +537,17 @@ class DailySchedule(models.Model):
             duration = self.attendance_record.clock_out - self.attendance_record.clock_in
             return duration.total_seconds()/3600 # converts to hours
         return 0
+    @property
+    def tasks(self):
+        tasks = []
+        for line in self.task_description.split('\n'):
+            parts = line.split('|', 1)
+            if len(parts) == 2:
+                desc, time = parts
+                tasks.append({'description': desc.strip(), 'time': time.strip()})
+            else:
+                tasks.append({'description': line.strip(), 'time': ''})
+        return tasks
     
     @property
     def task_description_lines(self):
@@ -557,6 +568,18 @@ class DailyUpdate(models.Model):
         if not self.update_description.strip():
             raise ValidationError("Update description cannot be empty.")
     
+    @property
+    def updates(self):
+        updates = []
+        for line in self.update_description.split('\n'):
+            parts = line.split('|', 1)
+            if len(parts) == 2:
+                desc, time = parts
+                updates.append({'description': desc.strip(), 'time': time.strip()})
+            else:
+                updates.append({'description': line.strip(), 'time': ''})
+        return updates
+
     @property
     def update_description_lines(self):
         return [line for line in self.update_description.split('\n') if line.strip()]

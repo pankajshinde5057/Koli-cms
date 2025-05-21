@@ -832,32 +832,31 @@ def employee_requests(request):
     return render(request, 'employee_template/employee_requests.html', context)
 
 
-
 @login_required
 def daily_schedule(request):
-    """Create or view today's schedule"""
-    employee = get_object_or_404(Employee,admin=request.user)
+    employee = get_object_or_404(Employee, admin=request.user)
     today = get_ist_date()
-
     existing_schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
-    
+
     if request.method == 'POST':
-        task_description_ = request.POST.get('task_description', '')
-        project_ = request.POST.get('project', '')
+        task_description = request.POST.get('task_description', '')
+        project = request.POST.get('project', '')
 
-        tasks = [line for line in task_description_.split("\n") if line.strip()]
-
-        if not tasks:
-            messages.error(request, "Please add at least one valid task.")
+        # Validate tasks
+        tasks = [line.strip() for line in task_description.split("\n") if line.strip()]
+        invalid_tasks = [t for t in tasks if '|' not in t]
+        
+        if invalid_tasks:
+            messages.error(request, "Each task must include time estimate (e.g., 'Task description|2h')")
             return render(request, 'employee_template/daily_schedule.html', {
                 'schedule': existing_schedule,
                 'today': today,
             })
 
         if existing_schedule:
-            # update existing schedule
-            existing_schedule.task_description = task_description_
-            existing_schedule.project = project_
+            # Update existing
+            existing_schedule.task_description = task_description
+            existing_schedule.project = project
             try:
                 existing_schedule.full_clean()
                 existing_schedule.save()
@@ -866,12 +865,12 @@ def daily_schedule(request):
             except ValidationError as e:
                 messages.error(request, f"Error updating schedule: {e}")
         else:
-            # Create new schedule
+            # Create new
             schedule = DailySchedule(
                 employee=employee,
                 date=today,
-                task_description=task_description_,
-                project=project_,
+                task_description=task_description,
+                project=project,
             )
             try:
                 schedule.full_clean()
@@ -880,53 +879,56 @@ def daily_schedule(request):
                 return redirect('daily_schedule')
             except ValidationError as e:
                 messages.error(request, f"Error creating schedule: {e}")
-    
+
     return render(request, 'employee_template/daily_schedule.html', {
         'schedule': existing_schedule,
         'today': today,
     })
 
-
 @login_required
 def todays_update(request):
-    """Morning update view - shows today's schedule with update form"""
-    employee = get_object_or_404(Employee,admin=request.user)
+    employee = get_object_or_404(Employee, admin=request.user)
     today = get_ist_date()
- 
     schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
-    if not schedule:
-        messages.error(request, "You must create a schedule before submitting an update.")
-        return redirect('daily_schedule')
     
-    # Check for existing update
-    existing_update = schedule.updates.first()
-    if request.method == 'POST':
-        update_description_ = request.POST.get('update_description')
+    if not schedule:
+        messages.error(request, "Create a schedule first!")
+        return redirect('daily_schedule')
 
-        updates = [update for update in update_description_.split('\n') if update.strip()]
-        if not updates:
-            messages.error(request, "Please add at least one valid update.")
+    existing_update = schedule.updates.first()
+    is_editable = not existing_update or existing_update.updated_at.date() == today
+
+    if request.method == 'POST' and is_editable:
+        update_description = request.POST.get('update_description', '')
+        
+        # Validate updates
+        updates = [line.strip() for line in update_description.split("\n") if line.strip()]
+        invalid_updates = [u for u in updates if '|' not in u]
+        
+        if invalid_updates:
+            messages.error(request, "Each update must include time spent (e.g., 'Completed task|1.5h')")
             return render(request, 'employee_template/todays_update.html', {
                 'schedule': schedule,
                 'update': existing_update,
                 'today': today,
+                'is_editable': is_editable,
             })
-        
+
         if existing_update:
-            # Edit existing update
-            existing_update.update_description = update_description_
+            # Update existing
+            existing_update.update_description = update_description
             try:
                 existing_update.full_clean()
                 existing_update.save()
                 messages.success(request, "Update modified successfully!")
                 return redirect('todays_update')
             except ValidationError as e:
-                messages.error(request, f"Error updating update: {e}")
+                messages.error(request, f"Error updating: {e}")
         else:
-            # Create new update
+            # Create new
             update = DailyUpdate(
                 schedule=schedule,
-                update_description=update_description_,
+                update_description=update_description,
             )
             try:
                 update.full_clean()
@@ -934,12 +936,13 @@ def todays_update(request):
                 messages.success(request, "Update submitted successfully!")
                 return redirect('todays_update')
             except ValidationError as e:
-                messages.error(request, f"Error submitting update: {e}")
-    
+                messages.error(request, f"Error submitting: {e}")
+
     return render(request, 'employee_template/todays_update.html', {
         'schedule': schedule,
         'update': existing_update,
         'today': today,
+        'is_editable': is_editable,
     })
 
 
@@ -1048,3 +1051,91 @@ def view_all_schedules(request):
         'start_date': start_date,
         'end_date': end_date
     })
+
+
+@login_required
+def others_schedule(request):
+    employee = get_object_or_404(Employee, admin=request.user)
+    if not employee.department:
+        messages.error(request, "You are not assigned to a department.")
+        return redirect('all_schedules')
+
+    # Get filter parameters
+    filter_type = request.GET.get('filter_type', 'today')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    employee_id = request.GET.get('employee_id')
+
+    schedules = DailySchedule.objects.filter(
+        employee__department=employee.department
+    ).exclude(employee=employee).order_by('-date')
+
+    # Apply date filters
+    today = get_ist_date()
+    if filter_type == 'today':
+        schedules = schedules.filter(date=today)
+    elif filter_type == 'weekly':
+        start = today - timedelta(days=6)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'monthly':
+        start = today - timedelta(days=29)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'custom' and start_date and end_date:
+        try:
+            from datetime import datetime
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if start > end:
+                messages.error(request, "Start date cannot be after end date.")
+                start = end = today
+            schedules = schedules.filter(date__gte=start, date__lte=end)
+        except ValueError:
+            messages.error(request, "Invalid date format. Using all schedules.")
+            start_date = end_date = None
+    
+    if employee_id and employee_id != 'all':
+        try:
+            schedules = schedules.filter(employee__id=employee_id)
+        except ValueError:
+            messages.error(request, "Invalid employee selected.")
+
+    # Get other employees in the department for the filter dropdown
+    department_employees = Employee.objects.filter(
+        department=employee.department
+    ).exclude(id=employee.id).order_by('admin__first_name')
+
+    return render(request, 'employee_template/others_schedules.html', {
+        'schedules': schedules,
+        'today': today,
+        'filter_type': filter_type,
+        'start_date': start_date,
+        'end_date': end_date,
+        'employee_id': employee_id,
+        'department_employees': department_employees
+    })
+
+
+@login_required
+def early_clock_out_request_page(request):
+    context = {
+        'has_active_attendance': False,
+        'request_status': 'none',
+        'request_message': '',
+    }
+
+    attendance_record = AttendanceRecord.objects.filter(
+        user=request.user,
+        date=timezone.now().date(),
+        clock_out__isnull=True
+    ).first()
+
+    if attendance_record:
+        context['has_active_attendance'] = True
+        early_request = EarylyClockOutRequest.objects.filter(
+            attendance_record=attendance_record
+        ).order_by('-submitted_at').first()
+        if early_request:
+            context['request_status'] = early_request.status
+            context['request_message'] = early_request.notes or ''
+
+    return render(request, 'employee_template/early_clock_out_request.html', context)

@@ -51,6 +51,17 @@
                         </p>
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    {% url 'all_employees_schedules' as all_employees_schedules %}
+                    <a href="{{all_employees_schedules}}" class="nav-link {% if all_employees_schedules == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>
+                            Employees Schedule/Update
+                        </p>
+                    </a>
+                </li>
+
                
                 <li class="nav-item">
                     {% url 'add_manager' as add_manager %}
@@ -342,6 +353,16 @@
                         </p>
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    {% url 'all_employees_schedules' as all_employees_schedules %}
+                    <a href="{{all_employees_schedules}}" class="nav-link {% if all_employees_schedules == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>
+                            Employees Schedule/Update
+                        </p>
+                    </a>
+                </li>
                 
 
                 <li class="nav-item">
@@ -544,7 +565,7 @@
                 <li class="nav-item">
                     {% url 'daily_schedule' as daily_schedule %}
                     <a href="{{daily_schedule}}" class="nav-link {% if daily_schedule == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-user-tie"></i>
+                        <i class="nav-icon fas fa-calendar-day"></i>
                         <p>
                             Daily Schedule
                         </p>
@@ -554,7 +575,7 @@
                 <li class="nav-item">
                     {% url 'todays_update' as todays_update %}
                     <a href="{{todays_update}}" class="nav-link {% if todays_update == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-user-tie"></i>
+                        <i class="nav-icon fas fa-bell"></i>
                         <p>
                             Today's Update
                         </p>
@@ -564,9 +585,19 @@
                 <li class="nav-item">
                     {% url 'view_all_schedules' as view_all_schedules %}
                     <a href="{{view_all_schedules}}" class="nav-link {% if view_all_schedules == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-user-tie"></i>
+                        <i class="nav-icon fas fa-calendar-alt"></i>
                         <p>
                             All Schedules
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    {% url 'others_schedule' as others_schedule %}
+                    <a href="{{others_schedule}}" class="nav-link {% if others_schedule == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>
+                            Other's Schedule/Update
                         </p>
                     </a>
                 </li>
@@ -611,6 +642,16 @@
                         <i class="nav-icon fas fa-comment-dots"></i>
                         <p>
                            Feedback
+
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'early_clock_out_request_page' as early_clock_out_request_page %}
+                    <a href="{{early_clock_out_request_page}}" class="nav-link {% if early_clock_out_request_page == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comment-dots"></i>
+                        <p>
+                           Request Early Clock Out
 
                         </p>
                     </a>
