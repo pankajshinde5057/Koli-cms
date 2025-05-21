@@ -646,6 +646,16 @@
                         </p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    {% url 'early_clock_out_request_page' as early_clock_out_request_page %}
+                    <a href="{{early_clock_out_request_page}}" class="nav-link {% if early_clock_out_request_page == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comment-dots"></i>
+                        <p>
+                           Request Early Clock Out
+
+                        </p>
+                    </a>
+                </li>
                 <li class="nav-header">ASSET MANAGEMENT</li>
                 <li class="nav-item">
                     {% url 'employee_requests' as employee_requests %}

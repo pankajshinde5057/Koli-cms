@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 def clock_times(request):
     context = {
         "latest_entry": None,
+        "current_record": None,
+        "can_clock_out": False,
     }
 
     user = request.user
@@ -30,16 +32,17 @@ def clock_times(request):
             if work_duration >= fixed_time:
                 context["complete_8Hours"] = True
                 context['work_duration'] = work_duration
+                context['can_clock_out'] = True
             else:
                 context['remaining_time'] = int((fixed_time - work_duration).total_seconds())
 
         if current_record:
             early_request = EarylyClockOutRequest.objects.filter(
-                attendance_record=current_record
-            ).order_by('-submitted_at').first()
+                attendance_record=current_record,
+                status='approved'
+            ).exists()
             if early_request:
-                context['early_clock_out_status'] = early_request.status
-                context['early_clock_out_message'] = early_request.notes or 'No reason provided'
+                context['can_clock_out'] = True
 
         context["latest_entry"] = latest_entry
         context["current_record"] = current_record
