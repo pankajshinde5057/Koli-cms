@@ -333,24 +333,28 @@ class AttendanceRecord(models.Model):
         # Automatic status determination based on clock-in time
             ist_time = self.clock_in.astimezone(ist)
             late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
+            half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
 
-            # Check for half-day due to missing schedule within 30 minutes
-            try:
-                employee = Employee.objects.get(admin=self.user)
-                schedule = DailySchedule.objects.get(employee=employee, date=self.date)
-                schedule_created = schedule.created_at
-                time_since_clock_in = schedule_created - self.clock_in
-                if time_since_clock_in > timedelta(seconds=10):
-                    self.status = 'half_day'
-                else:
-                    self.status = 'late' if ist_time > late_time else 'present'
-            
-            except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
-                # If no schedule exists and 30 minutes have passed since clock-in
-                if timezone.now() - self.clock_in > timedelta(minutes=30):
-                    self.status = 'half_day'
-                else:
-                    self.status = 'late' if ist_time > late_time else 'present'                    
+            # Check for half-day if clock-in is after 1:00 PM
+            if ist_time > half_day_time:
+                self.status = 'half_day'
+            else:
+                try:
+                    employee = Employee.objects.get(admin=self.user)
+                    schedule = DailySchedule.objects.get(employee=employee, date=self.date)
+                    schedule_created = schedule.created_at
+                    time_since_clock_in = schedule_created - self.clock_in
+                    if time_since_clock_in > timedelta(seconds=10):
+                        self.status = 'half_day'
+                    else:
+                        self.status = 'late' if ist_time > late_time else 'present'
+                
+                except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
+                    # If no schedule exists and 30 minutes have passed since clock-in
+                    if timezone.now() - self.clock_in > timedelta(minutes=30):
+                        self.status = 'half_day'
+                    else:
+                        self.status = 'late' if ist_time > late_time else 'present'                    
 
         # For managers or other user types, only check late time
         elif self.clock_in:
