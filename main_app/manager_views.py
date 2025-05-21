@@ -28,6 +28,12 @@ from datetime import datetime
 from django.template.loader import render_to_string
 from asset_app.models import AssetCategory
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.core.paginator import Paginator, EmptyPage
+from django.views.decorators.csrf import csrf_exempt
+from .models import AttendanceRecord, Employee, Holiday, LeaveReportEmployee
+from calendar import monthrange
+
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -589,18 +595,13 @@ def update_attendance(request):
     
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
-from datetime import datetime, timedelta
-from django.core.paginator import Paginator, EmptyPage
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import AttendanceRecord, Employee, Holiday
 
-
-@login_required   
+@login_required
 @csrf_exempt
 def get_employee_attendance(request):
     if request.method == 'POST':
         try:
+            # Retrieve POST parameters
             employee_id = request.POST.get('employee_id')
             department_id = request.POST.get('department_id')
             month = request.POST.get('month')
@@ -609,129 +610,356 @@ def get_employee_attendance(request):
             from_date = request.POST.get('from_date')
             to_date = request.POST.get('to_date')
             page = int(request.POST.get('page', 1))
-            per_page = int(request.POST.get('per_page', 5))
+            per_page = 5
 
+            # Validate required date inputs
             if not year and not (from_date and to_date):
                 return JsonResponse({"error": "Year or date range is required"}, status=400)
 
-            # Build queryset
+            # Base queryset with related models
+            queryset = AttendanceRecord.objects.select_related(
+                'user__employee',
+                'user__employee__department'
+            ).prefetch_related('breaks').all()
+
+            # Apply filters
             if employee_id and employee_id != 'all':
-                employee = Employee.objects.select_related('admin', 'department').get(employee_id=employee_id)
-                queryset = AttendanceRecord.objects.filter(user__employee=employee)
-            elif department_id and department_id != 'all':
-                queryset = AttendanceRecord.objects.filter(
-                    user__employee__department_id=department_id
-                ).select_related('user__employee__admin', 'user__employee__department')
-            else:
-                queryset = AttendanceRecord.objects.all().select_related(
-                    'user__employee__admin', 'user__employee__department'
-                )
+                try:
+                    employee = Employee.objects.get(employee_id=employee_id)
+                    queryset = queryset.filter(user__employee=employee)
+                except Employee.DoesNotExist:
+                    return JsonResponse({"error": "Employee not found"}, status=400)
 
-            # Always filter by year
-            if year:
-                queryset = queryset.filter(date__year=int(year))
+            if department_id and department_id != 'all':
+                queryset = queryset.filter(user__employee__department_id=department_id)
 
+            # Date filtering
             holiday_dates = set()
             filtered_dates = None
+            start_date = None
+            end_date = None
+            today = datetime.now().date()
+            current_year = today.year
+            current_month = today.month
 
-            # Priority: Date range > Week > Month
+            # Automatically set holidays for 2nd/4th Saturdays and Sundays
+            def set_automatic_holidays(year, month):
+                days_in_month = monthrange(year, month)[1]
+                start_date = datetime(year, month, 1).date()
+                end_date = min(today, datetime(year, month, days_in_month).date())
+                existing_holidays = set(Holiday.objects.filter(
+                    date__year=year,
+                    date__month=month
+                ).values_list('date', flat=True))
+
+                saturdays = []
+                current_date = start_date
+                while current_date <= end_date:
+                    if current_date.weekday() == 5:  # Saturday
+                        week_number = (current_date.day - 1) // 7
+                        if week_number in [1, 3]:  # 2nd or 4th Saturday
+                            saturdays.append(current_date)
+                    elif current_date.weekday() == 6:  # Sunday
+                        if current_date not in existing_holidays:
+                            Holiday.objects.get_or_create(
+                                date=current_date,
+                                defaults={'name': f'Sunday - {current_date.strftime("%B %d, %Y")}'}
+                            )
+                    current_date += timedelta(days=1)
+
+                # Add 2nd and 4th Saturdays
+                for saturday in saturdays:
+                    if saturday not in existing_holidays:
+                        Holiday.objects.get_or_create(
+                            date=saturday,
+                            defaults={'name': f'Saturday - {saturday.strftime("%B %d, %Y")}'}
+                        )
+
+            # Call to set holidays for current month
+            set_automatic_holidays(current_year, current_month)
+
+            # Calculate total working days and holiday count for the full current month
+            full_month_start = datetime(current_year, current_month, 1).date()
+            days_in_month = monthrange(current_year, current_month)[1]
+            full_month_end = datetime(current_year, current_month, days_in_month).date()
+            full_month_holidays = set(Holiday.objects.filter(
+                date__year=current_year,
+                date__month=current_month
+            ).values_list('date', flat=True))
+            total_working_days = 0
+            holiday_count = 0
+            current_date = full_month_start
+            while current_date <= full_month_end:
+                weekday = current_date.weekday()
+                is_sunday = weekday == 6
+                is_saturday = weekday == 5
+                is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
+                is_holiday = current_date in full_month_holidays
+                if is_sunday or is_2nd_or_4th_saturday or is_holiday:
+                    if current_date <= today:
+                        holiday_count += 1
+                elif not (is_sunday or is_2nd_or_4th_saturday or is_holiday):
+                    total_working_days += 1
+                current_date += timedelta(days=1)
+
             if from_date and to_date:
-                from_date = datetime.strptime(from_date, '%Y-%m-%d').date()
-                to_date = datetime.strptime(to_date, '%Y-%m-%d').date()
-                queryset = queryset.filter(date__range=(from_date, to_date))
+                try:
+                    start_date = datetime.strptime(from_date, '%Y-%m-%d').date()
+                    end_date = datetime.strptime(to_date, '%Y-%m-%d').date()
+                    queryset = queryset.filter(date__range=(start_date, end_date))
+                    holiday_dates = set(Holiday.objects.filter(
+                        date__range=(start_date, end_date)
+                    ).values_list('date', flat=True))
+                    filtered_dates = (start_date, end_date)
+                except ValueError:
+                    return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
+            else:
+                # Default to current month from 1st to today
+                start_date = datetime(current_year, current_month, 1).date()
+                end_date = today
+                queryset = queryset.filter(date__range=(start_date, end_date))
                 holiday_dates = set(Holiday.objects.filter(
-                    date__range=(from_date, to_date)
+                    date__range=(start_date, end_date)
                 ).values_list('date', flat=True))
-                filtered_dates = (from_date, to_date)
-
-            elif week and week.isdigit():
-                week = int(week)
-                first_day_of_year = datetime(int(year), 1, 1).date()
-                start_of_week = first_day_of_year + timedelta(weeks=week - 1)
-                end_of_week = start_of_week + timedelta(days=6)
-                queryset = queryset.filter(date__range=(start_of_week, end_of_week))
-                holiday_dates = set(Holiday.objects.filter(
-                    date__range=(start_of_week, end_of_week)
-                ).values_list('date', flat=True))
-                filtered_dates = (start_of_week, end_of_week)
-
-            elif month and month.isdigit():
-                queryset = queryset.filter(date__month=int(month))
-                holiday_dates = set(Holiday.objects.filter(
-                    date__year=int(year),
-                    date__month=int(month)
-                ).values_list('date', flat=True))
-                start_date = datetime(int(year), int(month), 1).date()
-                end_date = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
                 filtered_dates = (start_date, end_date)
 
-            # Collect attendance records
+                if year:
+                    year = int(year)
+                    if week:
+                        try:
+                            week = int(week)
+                            first_day_of_year = datetime(year, 1, 1).date()
+                            start_date = first_day_of_year + timedelta(weeks=week - 1)
+                            end_date = start_date + timedelta(days=6)
+                            queryset = queryset.filter(date__range=(start_date, end_date))
+                            holiday_dates = set(Holiday.objects.filter(
+                                date__range=(start_date, end_date)
+                            ).values_list('date', flat=True))
+                            filtered_dates = (start_date, end_date)
+                        except ValueError:
+                            return JsonResponse({"error": "Invalid week number"}, status=400)
+                    elif month:
+                        try:
+                            month = int(month)
+                            start_date = datetime(year, month, 1).date()
+                            days_in_month = monthrange(year, month)[1]
+                            end_date = datetime(year, month, days_in_month).date()
+                            if year == current_year and month == current_month:
+                                end_date = today  # Limit to today for current month
+                            queryset = queryset.filter(date__month=month, date__year=year)
+                            holiday_dates = set(Holiday.objects.filter(
+                                date__year=year,
+                                date__month=month
+                            ).values_list('date', flat=True))
+                            filtered_dates = (start_date, end_date)
+                            # Set holidays for the selected month if it's the current year
+                            if year == current_year:
+                                set_automatic_holidays(year, month)
+                        except ValueError:
+                            return JsonResponse({"error": "Invalid month number"}, status=400)
+
+            # Ensure end_date doesn't exceed today
+            if end_date > today:
+                end_date = today
+
+            # Order queryset by date
+            queryset = queryset.order_by('-date')
+
+            # Initialize attendance statistics
+            present_days = 0
+            late_days = 0
+            half_days = 0
+            absent_days = 0
+
+            # Calculate attendance stats
+            if start_date and end_date:
+                current_date = start_date
+                employee = Employee.objects.get(employee_id=employee_id) if employee_id and employee_id != 'all' else None
+                
+                # Create a dictionary to track all dates in the range and their status
+                date_status_map = {}
+                for record in queryset:
+                    if record.date not in date_status_map:
+                        date_status_map[record.date] = record.status
+
+                # Track leaves for the employee
+                leave_dates = set()
+                half_day_leave_dates = set()
+                if employee:
+                    leaves = LeaveReportEmployee.objects.filter(
+                        employee=employee,
+                        status=1,
+                        start_date__lte=end_date,
+                        end_date__gte=start_date
+                    )
+                    for leave in leaves:
+                        leave_start = max(leave.start_date, start_date)
+                        leave_end = min(leave.end_date, end_date)
+                        current_leave_date = leave_start
+                        while current_leave_date <= leave_end:
+                            if leave.leave_type == "Half-Day":
+                                half_day_leave_dates.add(current_leave_date)
+                            else:
+                                leave_dates.add(current_leave_date)
+                            current_leave_date += timedelta(days=1)
+
+                while current_date <= end_date:
+                    weekday = current_date.weekday()
+                    is_sunday = weekday == 6
+                    is_saturday = weekday == 5
+                    is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
+                    is_holiday = current_date in holiday_dates
+
+                    # Determine if this is a working day for attendance stats
+                    if not (is_sunday or is_2nd_or_4th_saturday or is_holiday):
+                        # Check attendance status
+                        record_status = date_status_map.get(current_date)
+                        
+                        # Handle leaves
+                        if current_date in half_day_leave_dates:
+                            present_days += 0.5
+                            half_days += 1
+                            late_days += 1
+                        elif current_date in leave_dates:
+                            # Full day leave counts as present
+                            present_days += 1
+                        elif record_status == 'present':
+                            present_days += 1
+                        elif record_status == 'late':
+                            present_days += 1
+                            late_days += 1
+                        elif record_status == 'half_day':
+                            present_days += 0.5
+                            half_days += 1
+                            late_days += 1
+                        else:
+                            absent_days += 1
+
+                    current_date += timedelta(days=1)
+
+            # Calculate attendance percentage
+            filtered_working_days = total_working_days if filtered_dates[1] == full_month_end else sum(
+                1 for d in [start_date + timedelta(days=x) for x in range((end_date - start_date).days + 1)]
+                if not (d.weekday() == 6 or (d.weekday() == 5 and ((d.day - 1) // 7) in [1, 3]) or d in holiday_dates)
+            )
+            if filtered_working_days > 0:
+                attendance_percentage = (present_days / filtered_working_days) * 100
+                attendance_percentage = round(attendance_percentage, 1)
+            else:
+                attendance_percentage = 0
+
+            # Process attendance records
             attendance_list = []
-            attendance_dates = set()
+            attendance_dates = set(queryset.values_list('date', flat=True))
 
-            for record in queryset.order_by('-date'):
-                employee = record.user.employee
-                attendance_dates.add(record.date)
-                status = "Holiday" if record.date in holiday_dates else record.status
-                attendance_list.append({
-                    "date": record.date.isoformat(),
-                    "status": status,
-                    "clock_in": record.clock_in.isoformat() if record.clock_in else None,
-                    "clock_out": record.clock_out.isoformat() if record.clock_out else None,
-                    "name": f"{employee.admin.first_name} {employee.admin.last_name}",
-                    "department": employee.department.name if employee.department else "",
-                    "employee_id": employee.employee_id,
-                })
+            for record in queryset:
+                if hasattr(record.user, 'employee'):
+                    user = record.user.employee
+                    name = f"{user.admin.first_name} {user.admin.last_name}"
+                    department = user.department.name if user.department else ""
+                    user_type = "Employee"
+                    user_id = user.employee_id
 
-            # Add missing holidays with no attendance record
-            if filtered_dates:
-                from_date, to_date = filtered_dates
-                missing_holiday_dates = holiday_dates - attendance_dates
-                for holiday_date in missing_holiday_dates:
+                    # Determine status - check if it's a holiday or weekend first
+                    weekday = record.date.weekday()
+                    is_sunday = weekday == 6
+                    is_saturday = weekday == 5
+                    is_2nd_or_4th_saturday = is_saturday and ((record.date.day - 1) // 7) in [1, 3]
+                    is_holiday = record.date in holiday_dates
+
+                    if is_holiday or is_sunday or is_2nd_or_4th_saturday:
+                        status = "Holiday"
+                    else:
+                        status = record.status
+
+                    # Calculate hours worked
+                    hours = "0h 0m"
+                    if record.total_worked:
+                        total_seconds = record.total_worked.total_seconds()
+                        hours_worked = int(total_seconds // 3600)
+                        minutes_worked = int((total_seconds % 3600) // 60)
+                        hours = f"{hours_worked}h {minutes_worked}m"
+
                     attendance_list.append({
-                        "date": holiday_date.isoformat(),
+                        "date": record.date.isoformat(),
+                        "day": record.date.strftime('%a'),
+                        "status": status,
+                        "clock_in": record.clock_in.isoformat() if record.clock_in else None,
+                        "clock_out": record.clock_out.isoformat() if record.clock_out else None,
+                        "hours": hours,
+                        "name": name,
+                        "department": department,
+                        "user_type": user_type,
+                        "user_id": user_id,
+                    })
+
+            # Add missing holiday records
+            current_date = start_date
+            while current_date <= end_date:
+                weekday = current_date.weekday()
+                is_sunday = weekday == 6
+                is_saturday = weekday == 5
+                is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
+                is_holiday = current_date in holiday_dates
+
+                if (is_sunday or is_2nd_or_4th_saturday or is_holiday) and current_date not in attendance_dates:
+                    attendance_list.append({
+                        "date": current_date.isoformat(),
+                        "day": current_date.strftime('%a'),
                         "status": "Holiday",
                         "clock_in": None,
                         "clock_out": None,
+                        "hours": "0h 0m",
                         "name": "",
                         "department": "",
-                        "employee_id": "",
+                        "user_type": "",
+                        "user_id": "",
                     })
+                current_date += timedelta(days=1)
 
-            # Final sort and pagination (important fix)
+            # Sort attendance by date descending
             attendance_list = sorted(attendance_list, key=lambda x: x['date'], reverse=True)
+
+            # Paginate results
             paginator = Paginator(attendance_list, per_page)
             try:
                 page_obj = paginator.page(page)
             except EmptyPage:
-                page_obj = paginator.page(paginator.num_pages)
+                return JsonResponse({"error": "Invalid page number"}, status=400)
 
-            return JsonResponse({
-                "data": list(page_obj),
-                "pagination": {
-                    "total_items": paginator.count,
-                    "total_pages": paginator.num_pages,
-                    "current_page": page_obj.number,
-                    "has_next": page_obj.has_next(),
-                    "has_previous": page_obj.has_previous(),
-                    "next_page_number": page_obj.next_page_number() if page_obj.has_next() else None,
-                    "previous_page_number": page_obj.previous_page_number() if page_obj.has_previous() else None,
-                    "per_page": per_page,
-                },
+            # Prepare pagination data
+            pagination_data = {
+                "current_page": page_obj.number,
+                "total_pages": paginator.num_pages,
+                "total_records": paginator.count,
+                "has_previous": page_obj.has_previous(),
+                "has_next": page_obj.has_next(),
+                "previous_page": page_obj.previous_page_number() if page_obj.has_previous() else None,
+                "next_page": page_obj.next_page_number() if page_obj.has_next() else None,
+                "start_index": page_obj.start_index(),
+                "end_index": page_obj.end_index(),
+            }
+
+            # Prepare response
+            response_data = {
+                "data": page_obj.object_list,
+                "pagination": pagination_data,
                 "stats": {
-                    "holidays": len(holiday_dates),
+                    "holidays": holiday_count,
+                    "total_working_days": total_working_days,
+                    "present_days": round(present_days, 1),
+                    "late_days": late_days,
+                    "half_days": half_days,
+                    "absent_days": round(absent_days, 1),
+                    "attendance_percentage": attendance_percentage,
                 }
-            })
+            }
 
-        except Employee.DoesNotExist:
-            return JsonResponse({"error": "Employee not found"}, status=404)
-        except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=400)
+            return JsonResponse(response_data, safe=False)
+
         except Exception as e:
-            return JsonResponse({"error": f"An error occurred: {str(e)}"}, status=500)
-
+            return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
     return JsonResponse({"error": "Invalid request method"}, status=405)
-
 
 
 @login_required   

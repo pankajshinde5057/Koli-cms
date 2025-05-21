@@ -48,7 +48,8 @@
                                         <td>
                                             <button data-toggle="modal" 
                                                     data-target="#reply_modal" 
-                                                    value="{{ feedback.id }}" 
+                                                    value="{{ feedback.id }}"
+                                                    data-name="{{ feedback.manager }}"
                                                     class="btn btn-primary reply_open_modal">Reply</button>
                                         </td>
                                     {% else %}
@@ -124,19 +125,21 @@
             <div class="modal-header bg-primary">
                 <h5 class="modal-title text-white" id="replyModalLabel">Reply to Feedback</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="id">
-                <p>Reply to <span id="reply_name"></span></p>
-                <textarea name="reply_message" id="reply_message" cols="30" rows="5" class="form-control"></textarea>
+                <form id="reply_form">
+                    <input type="hidden" id="feedback_id" name="id">
+                    <p>Reply to <span id="reply_name"></span></p>
+                    <textarea name="reply" id="reply_message" cols="30" rows="5" class="form-control" required></textarea>
+                </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">
                     <i class="fas fa-times"></i> Cancel
                 </button>
-                <button id="reply_btn" class="btn btn-success">
+                <button type="submit" id="reply_btn" class="btn btn-success" form="reply_form">
                     <i class="fas fa-reply"></i> Send Reply
                 </button>
             </div>
@@ -151,7 +154,7 @@
             <div class="modal-header bg-warning">
                 <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -161,7 +164,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                <button type="button" class="btn btn-secondary cancel-btn" data-dismiss="modal">
                     <i class="fas fa-times"></i> Cancel
                 </button>
                 <button type="button" class="btn btn-danger" id="confirmDelete">
@@ -179,7 +182,7 @@
             <div class="modal-header bg-danger">
                 <h5 class="modal-title text-white" id="deleteAllModalLabel">Delete All Feedback</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -189,7 +192,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                <button type="button" class="btn btn-secondary cancel-btn" data-dismiss="modal">
                     <i class="fas fa-times"></i> Cancel
                 </button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteAll">
@@ -202,6 +205,11 @@
 {% endblock content %}
 
 {% block custom_js %}
+<!-- Include Bootstrap JS and its dependency jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+<!-- Include Toastr -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 
@@ -212,12 +220,25 @@ $(document).ready(function() {
         "closeButton": true,
         "progressBar": true,
         "positionClass": "toast-top-right",
-        "timeOut": "3000"
+        "timeOut": "3000",
+        "preventDuplicates": true
     };
 
-    // Initialize all modal close buttons
-    $('.modal [data-dismiss="modal"]').on('click', function() {
-        $(this).closest('.modal').modal('hide');
+    // Ensure modal backdrop is removed when modal is hidden
+    $('.modal').on('hidden.bs.modal', function() {
+        $(this).find('form').trigger('reset');
+        $(this).find('button').prop('disabled', false);
+        $('#reply_name').text('');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+    });
+
+    // Manually handle cancel and close button clicks as a fallback
+    $('.cancel-btn, .modal .close').on('click', function() {
+        var $modal = $(this).closest('.modal');
+        $modal.modal('hide');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
     });
 
     // Update Delete Selected button
@@ -250,20 +271,15 @@ $(document).ready(function() {
 
     // Function to update table state after deletion
     function updateTableAfterDeletion() {
-        // Update row numbering
         $('tbody tr').each(function(index) {
             $(this).find('td:eq(1)').text(index + 1);
         });
         
-        // Update select all checkbox
         var totalCheckboxes = $('.feedback-checkbox').length;
         var checkedCheckboxes = $('.feedback-checkbox:checked').length;
         $('#select-all').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
-        
-        // Update delete button state
         updateDeleteSelectedButton();
         
-        // Show message if no records left
         if (totalCheckboxes === 0) {
             $('tbody').html('<tr><td colspan="8" class="text-center">No feedback messages found.</td></tr>');
         }
@@ -299,10 +315,9 @@ $(document).ready(function() {
             },
             beforeSend: function() {
                 $modal.find('button').prop('disabled', true);
-                $modal.modal('hide');
             },
             success: function(response) {
-                if (response == "True") {
+                if (response === "True") {
                     removeDeletedRows(selectedIds);
                     toastr.success('Selected feedback deleted successfully');
                 } else {
@@ -313,7 +328,10 @@ $(document).ready(function() {
                 toastr.error('Error deleting feedback: ' + error);
             },
             complete: function() {
+                $modal.modal('hide');
                 $modal.find('button').prop('disabled', false);
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
             }
         });
     });
@@ -341,13 +359,11 @@ $(document).ready(function() {
             },
             beforeSend: function() {
                 $modal.find('button').prop('disabled', true);
-                $modal.modal('hide');
             },
             success: function(response) {
-                if (response == "True") {
+                if (response === "True") {
                     $('tbody').html('<tr><td colspan="8" class="text-center">No feedback messages found.</td></tr>');
                     toastr.success('All feedback deleted successfully');
-                    // Reset all checkboxes and counters
                     $('.feedback-checkbox').prop('checked', false);
                     $('#select-all').prop('checked', false);
                     updateDeleteSelectedButton();
@@ -359,24 +375,32 @@ $(document).ready(function() {
                 toastr.error('Error deleting all feedback: ' + error);
             },
             complete: function() {
+                $modal.modal('hide');
                 $modal.find('button').prop('disabled', false);
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
             }
         });
     });
 
-    // Reply Modal
+    // Reply Modal Open
     $(document).on('click', '.reply_open_modal', function() {
-        var id = $(this).val();
-        var name = $(this).parents('tr').children('td:eq(2)').text();
+        var $button = $(this);
+        var id = $button.val();
+        var name = $button.data('name');
+        
+        $('#feedback_id').val(id);
         $('#reply_name').text(name);
-        $('#id').val(id);
         $('#reply_message').val('');
+        $('#reply_modal').modal('show');
     });
 
     // Send Reply
-    $(document).on('click', '#reply_btn', function() {
+    $('#reply_form').on('submit', function(e) {
+        e.preventDefault();
         var $modal = $('#reply_modal');
-        var id = $('#id').val();
+        var $button = $('#reply_btn');
+        var id = $('#feedback_id').val();
         var reply = $('#reply_message').val().trim();
         
         if (!reply) {
@@ -393,27 +417,35 @@ $(document).ready(function() {
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             beforeSend: function() {
+                $button.prop('disabled', true);
                 $modal.find('button').prop('disabled', true);
             },
             success: function(response) {
-                $modal.modal('hide');
-                if (response == "True") {
+                if (response === "True") {
                     toastr.success('Reply sent successfully');
-                    // Update the replied feedback row
                     var $row = $('#feedback-' + id);
-                    $row.find('td:eq(5)').text('Just now'); // Update replied time
-                    $row.find('td:eq(6)').text(reply); // Update reply text
-                    $row.find('.reply_open_modal').remove(); // Remove reply button
+                    $row.find('td:eq(6)').html('<span class="badge badge-success">Just now</span>');
+                    $row.find('td:eq(7)').text(reply);
+                    $row.find('.reply_open_modal').remove();
+                } else if (response === "True:EmailFailed") {
+                    toastr.warning('Reply saved, but failed to notify the manager via email');
+                    var $row = $('#feedback-' + id);
+                    $row.find('td:eq(6)').html('<span class="badge badge-success">Just now</span>');
+                    $row.find('td:eq(7)').text(reply);
+                    $row.find('.reply_open_modal').remove();
                 } else {
                     toastr.error('Failed to send reply');
                 }
             },
             error: function(xhr, status, error) {
-                $modal.modal('hide');
                 toastr.error('Error sending reply: ' + error);
             },
             complete: function() {
+                $modal.modal('hide');
                 $modal.find('button').prop('disabled', false);
+                $button.prop('disabled', false);
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
             }
         });
     });
@@ -446,6 +478,12 @@ $(document).ready(function() {
     window.onpopstate = function() {
         window.location.reload();
     };
+
+    // Safety check on page load to remove any lingering backdrops
+    $(window).on('load', function() {
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+    });
 });
 </script>
 {% endblock custom_js %}

@@ -10,8 +10,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 <style>
     :root {
-        --primary-color:rgb(70, 120, 229);
-        --primary-hover:rgb(56, 83, 202);
+        --primary-color: rgb(70, 120, 229);
+        --primary-hover: rgb(56, 83, 202);
         --success-color: #10b981;
         --danger-color: #ef4444;
         --warning-color: #f59e0b;
@@ -200,7 +200,6 @@
         gap: 8px;
     }
     
-    /* Date input styles */
     .date-input-wrapper {
         position: relative;
     }
@@ -226,7 +225,6 @@
         border-color: var(--primary-color);
     }
     
-    /* Loading animation */
     .loading-spinner {
         display: flex;
         flex-direction: column;
@@ -249,7 +247,6 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Empty state */
     .empty-state {
         text-align: center;
         padding: 40px 20px;
@@ -266,7 +263,6 @@
         font-size: 1rem;
     }
     
-    /* Responsive adjustments */
     @media (max-width: 768px) {
         .summary-item {
             flex: 1 1 100%;
@@ -305,7 +301,6 @@
         }
     }
     
-    /* Pulse animation for new records */
     @keyframes pulse {
         0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
         70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
@@ -330,7 +325,6 @@
         animation: pulse 2s infinite;
     }
     
-    /* Progress bar for attendance */
     .progress-container {
         width: 100%;
         background-color: #e2e8f0;
@@ -347,7 +341,6 @@
         transition: width 0.5s ease;
     }
     
-    /* Tooltip styles */
     [data-tooltip] {
         position: relative;
         cursor: pointer;
@@ -363,7 +356,7 @@
         color: white;
         padding: 4px 8px;
         border-radius: 4px;
-        font-size: 12px;
+        font ACOG4Fsize: 12px;
         white-space: nowrap;
         z-index: 100;
         margin-bottom: 8px;
@@ -381,7 +374,6 @@
         margin-bottom: 3px;
     }
 
-    /* Print-specific styles */
     @media print {
         body * {
             visibility: hidden;
@@ -421,7 +413,6 @@
         }
     }
 
-    /* Pagination styles */
     .pagination-container {
         margin-top: 20px;
     }
@@ -447,14 +438,7 @@
                     <strong>Warning!</strong> Please select at least one filter (Department or Employee)
                     <button type="button" class="close" data-dismiss="alert">×</button>
                 </div>
-                <div id="department-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
-                    <strong>Warning!</strong> Please select an employee when a department is selected
-                    <button type="button" class="close" data-dismiss="alert">×</button>
-                </div>
-                <div id="employee-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
-                    <strong>Warning!</strong> Please select a department when an employee is selected
-                    <button type="button" class="close" data-dismiss="alert">×</button>
-                </div>
+
                 <div class="card filter-card mb-4 animate__animated animate__fadeIn">
                     <div class="card-header">
                         <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i> Filter Attendance Records</h3>
@@ -465,7 +449,6 @@
                                 <label class="form-label">Department</label>
                                 <select class="form-control select2" id="department">
                                     <option value="">-- Select Department --</option>
-                                    <option value="all">All Departments</option>
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
@@ -533,13 +516,14 @@
                     </div>
                     <div class="card-body">
                         <div class="employee-info-container mb-4 d-flex justify-content-between align-items-start">
-                            <div class="employee-details">
+                            <div class="employee-details" id="employee_details">
                                 <b><div class="employee-name h4 mb-1" id="employee_name"></div></b>
                                 <div class="employee-department text-muted">
                                     <i class="fas fa-building mr-1"></i>
                                     <span id="employee_department"></span>
                                 </div>
                             </div>
+                        
                             <div class="date-range text-muted">
                                 <i class="fas fa-calendar-week mr-1"></i>
                                 <span id="date_range"></span>
@@ -593,6 +577,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 $(document).ready(function() {
+    // Initialize Select2
     $('.select2').select2({
         width: '100%',
         placeholder: function() {
@@ -600,6 +585,7 @@ $(document).ready(function() {
         }
     });
 
+    // Initialize date pickers
     const fromDatePicker = flatpickr("#from_date", {
         dateFormat: "Y-m-d",
         defaultDate: "today",
@@ -612,9 +598,11 @@ $(document).ready(function() {
         maxDate: "today"
     });
 
+    // Set default dates
     $('#from_date').val(moment().format('YYYY-MM-DD'));
     $('#to_date').val(moment().format('YYYY-MM-DD'));
 
+    // Toggle custom date range fields
     $('#time_period').change(function() {
         if ($(this).val() === 'custom') {
             $('.custom-date').show();
@@ -623,6 +611,7 @@ $(document).ready(function() {
         }
     });
 
+    // Initialize employee data
     const allEmployees = [
         {% for employee in employees %}
         {
@@ -634,17 +623,23 @@ $(document).ready(function() {
         {% endfor %}
     ];
 
+    // Department change handler
     $('#department').change(function() {
         const departmentId = $(this).val();
         const $employeeSelect = $('#employee');
         
+        // Reset employee dropdown
         $employeeSelect.empty().append('<option value="">-- Select Employee --</option>');
+        
+        // Disable employee dropdown until department is selected
         $employeeSelect.prop('disabled', !departmentId);
         
         if (departmentId && departmentId !== 'all') {
+            // Enable employee dropdown
             $employeeSelect.prop('disabled', false);
             $employeeSelect.append('<option value="all">All Employees</option>');
             
+            // Filter employees by department
             allEmployees.forEach(emp => {
                 if (emp.department_id == departmentId) {
                     $employeeSelect.append($('<option>', {
@@ -655,9 +650,11 @@ $(document).ready(function() {
                 }
             });
         } else if (departmentId === 'all') {
+            // Enable employee dropdown when "All Departments" is selected
             $employeeSelect.prop('disabled', false);
             $employeeSelect.append('<option value="all">All Employees</option>');
             
+            // Show all employees
             allEmployees.forEach(emp => {
                 $employeeSelect.append($('<option>', {
                     value: emp.id,
@@ -668,45 +665,43 @@ $(document).ready(function() {
         }
     });
 
+    // Initialize with disabled employee dropdown
     $('#employee').prop('disabled', true);
-
+    
+    // Store current filter data for pagination
     let currentFilterData = {};
 
+    // View Attendance button handler with validation
     $('#view_attendance').click(function() {
         const employeeId = $('#employee').val();
         const departmentId = $('#department').val();
         const timePeriod = $('#time_period').val();
         
-        // Hide all error messages
+        // Hide any previous error messages
         $('#filter-error').hide();
-        $('#department-error').hide();
-        $('#employee-error').hide();
         
-        // Validation: Check if neither department nor employee is selected
+        // Validation: At least one filter must be selected
         if (!employeeId && !departmentId) {
-            $('#filter-error').show();
-            return;
-        }
-        
-        // Validation: Department selected but no employee
-        if (departmentId && !employeeId) {
-            $('#department-error').show();
-            return;
-        }
-        
-        // Validation: Employee selected but no department
-        if (employeeId && !departmentId) {
-            $('#employee-error').show();
+            $('#filter-error').text('Please select at least one filter (Department or Employee)').show();
             return;
         }
 
+        // Validation: If department is selected but employee is not
+        if (departmentId && !employeeId) {
+            $('#filter-error').text('Please select an employee or "All Employees" for the selected department').show();
+            return;
+        }
+
+        // Get selected employee details
         let selectedName, selectedDepartment;
         
         if (employeeId && employeeId !== 'all') {
+            // Individual employee selected
             const selectedEmployee = $('#employee option:selected');
             selectedName = selectedEmployee.text().split(' (')[0] || 'Selected Employee';
             selectedDepartment = selectedEmployee.data('department') || $('#department option:selected').text();
         } else if (employeeId === 'all') {
+            // All employees selected
             if (departmentId === 'all') {
                 selectedName = 'All Employees';
                 selectedDepartment = 'All Departments';
@@ -715,13 +710,17 @@ $(document).ready(function() {
                 selectedDepartment = $('#department option:selected').text();
             }
         } else {
+            // Department only selected (should not reach here due to validation)
             selectedName = 'All Employees';
             selectedDepartment = $('#department option:selected').text();
         }
-
+        
+        // Update employee details display
+        $('#employee_details').show();
         $('#employee_name').text(selectedName);
         $('#employee_department').text(selectedDepartment);
 
+        // Prepare data for AJAX request
         const data = {
             employee_id: employeeId === 'all' ? '' : employeeId,
             department_id: departmentId === 'all' ? '' : departmentId,
@@ -729,6 +728,7 @@ $(document).ready(function() {
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
+        // Store current filter data
         currentFilterData = {
             employee_id: data.employee_id,
             department_id: data.department_id,
@@ -738,12 +738,15 @@ $(document).ready(function() {
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
+        // Get current date for year/month calculations
         const currentDate = moment();
         
+        // Handle time period filters with validation
         if (timePeriod === 'custom') {
             const fromDate = $('#from_date').val();
             const toDate = $('#to_date').val();
             
+            // Validate custom date range
             if (!fromDate || !toDate) {
                 showAlert('Please select both From and To dates', 'warning');
                 return;
@@ -754,7 +757,7 @@ $(document).ready(function() {
                 return;
             }
             
-            const maxDateRange = 365;
+            const maxDateRange = 365; // Maximum allowed date range in days
             if (moment(toDate).diff(moment(fromDate), 'days') > maxDateRange) {
                 showAlert(`Date range cannot exceed ${maxDateRange} days`, 'warning');
                 return;
@@ -795,7 +798,9 @@ $(document).ready(function() {
         fetchAttendanceData(data);
     });
 
+    // Enhanced fetchAttendanceData with better error handling
     function fetchAttendanceData(data) {
+        // Validate data before sending
         if (!data || (!data.employee_id && !data.department_id)) {
             showAlert('Invalid filter parameters', 'error');
             return;
@@ -810,7 +815,7 @@ $(document).ready(function() {
                 $('#empty_state').hide();
                 $('#attendance_data').html(`
                     <tr>
-                        <td colspan="9" class="text-center py-4">
+                        <td colspan="8" class="text-center py-4">
                             <div class="loading-spinner">
                                 <div class="spinner"></div>
                                 <p>Loading attendance data...</p>
@@ -837,7 +842,7 @@ $(document).ready(function() {
                     }
                     
                     if (response.data.length > 0) {
-                        renderAttendanceTable(response.data, response.pagination || {});
+                        renderAttendanceTable(response.data, response.pagination || {}, response.stats || {});
                         $('#empty_state').hide();
                     } else {
                         $('#attendance_data').html('');
@@ -868,7 +873,9 @@ $(document).ready(function() {
         });
     }
 
-    function renderAttendanceTable(data, pagination) {
+    // Enhanced renderAttendanceTable with data validation
+    function renderAttendanceTable(data, pagination, stats) {
+        // Validate input data
         if (!Array.isArray(data)) {
             console.error('Invalid data format for attendance table');
             showAlert('Invalid attendance data format', 'error');
@@ -876,26 +883,26 @@ $(document).ready(function() {
         }
 
         let tableHtml = '';
-        let presentCount = 0, absentCount = 0, lateCount = 0, halfDayCount = 0, holidayCount = 0;
+        let presentCount = stats.present_days || 0;
+        let absentCount = stats.absent_days || 0;
+        let lateCount = stats.late_days || 0;
+        let halfDayCount = stats.half_days || 0;
+        let holidayCount = stats.holidays || 0;
         
+        // Validate each record before processing
         data.forEach(record => {
             if (!record || typeof record !== 'object') {
                 console.warn('Invalid record skipped:', record);
                 return;
             }
 
+            // Validate required fields
             if (!record.status || !record.date) {
                 console.warn('Record missing required fields:', record);
                 return;
             }
 
-            const status = String(record.status).toLowerCase();
-            if (status.includes('present')) presentCount++;
-            else if (status.includes('absent')) absentCount++;
-            else if (status.includes('late')) lateCount++;
-            else if (status.includes('half')) halfDayCount++;
-            else if (status.includes('holiday')) holidayCount++;
-
+            // Format data with validation
             let date, day;
             try {
                 date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
@@ -908,10 +915,11 @@ $(document).ready(function() {
 
             const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
             const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
-            const hours = calculateHours(record.clock_in, record.clock_out);
-            const statusClass = getStatusClass(status);
-            const statusIcon = getStatusIcon(status);
+            const hours = record.hours || '-';
+            const statusClass = getStatusClass(record.status.toLowerCase());
+            const statusIcon = getStatusIcon(record.status.toLowerCase());
 
+            // Validate name and department
             const name = record.name ? String(record.name) : '-';
             const department = record.department ? String(record.department) : '-';
 
@@ -930,8 +938,9 @@ $(document).ready(function() {
         });
 
         $('#attendance_data').html(tableHtml);
-        updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount);
+        updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount, stats);
         
+        // Update date range display with validation
         if (data.length > 0) {
             try {
                 const fromDate = data[0].date ? (moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date') : '';
@@ -945,9 +954,11 @@ $(document).ready(function() {
             $('#date_range').text('No date range');
         }
         
+        // Render pagination with validation
         renderPagination(pagination);
     }
 
+    // Helper function to escape HTML
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return unsafe;
         return unsafe
@@ -958,6 +969,7 @@ $(document).ready(function() {
             .replace(/'/g, "&#039;");
     }
     
+    // Render pagination controls
     function renderPagination(pagination) {
         const $paginationContainer = $('#pagination_container');
         $paginationContainer.empty();
@@ -974,6 +986,7 @@ $(document).ready(function() {
                 <ul class="pagination justify-content-center">
         `;
     
+        // Previous button
         if (pagination.has_previous) {
             paginationHtml += `
                 <li class="page-item">
@@ -984,6 +997,7 @@ $(document).ready(function() {
             `;
         }
     
+        // Page numbers
         const startPage = Math.max(1, pagination.current_page - 2);
         const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
         
@@ -1026,6 +1040,7 @@ $(document).ready(function() {
             `;
         }
     
+        // Next button
         if (pagination.has_next) {
             paginationHtml += `
                 <li class="page-item">
@@ -1044,16 +1059,19 @@ $(document).ready(function() {
         $paginationContainer.html(paginationHtml);
     }
     
+    // Handle pagination clicks
     $(document).on('click', '.page-link', function(e) {
         e.preventDefault();
         const page = $(this).data('page');
         if (!page) return;
         
+        // Create a new data object with all filter parameters plus the new page number
         const data = {
             ...currentFilterData,
             page: page
         };
         
+        // Include year/month/week if they exist
         if (currentFilterData.time_period === 'week') {
             data.week = currentFilterData.week;
         } else if (currentFilterData.time_period === 'month') {
@@ -1062,13 +1080,15 @@ $(document).ready(function() {
         
         fetchAttendanceData(data);
         
+        // Smooth scroll to top of results
         $('html, body').animate({
             scrollTop: $("#attendance_results").offset().top - 20
         }, 300);
     });
 
+    // Helper functions
     function calculateHours(clockIn, clockOut) {
-        if (!clockIn || !clockOut) return '-';
+        if (! garnerclockIn || !clockOut) return '-';
         const diff = moment(clockOut).diff(moment(clockIn), 'minutes');
         return `${Math.floor(diff / 60)}h ${diff % 60}m`;
     }
@@ -1091,36 +1111,35 @@ $(document).ready(function() {
         return '';
     }
 
-    function updateSummaryCards(present, absent, late, halfDay, holiday) {
-        const total = present + absent + late + halfDay + holiday;
-        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-        
+    function updateSummaryCards(present, absent, late, halfDay, holiday, stats) {
+        const percentage = stats.attendance_percentage || 0;
+        const totalWorkingDays = stats.total_working_days || 0;
         $('#attendance_summary').html(`
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${present}</div>
-                    <div class="summary-label">Present</div>
+                    <div class="summary-label">Present Days</div>
                 </div>
                 <div class="status-badge present"><i class="fas fa-check"></i></div>
             </div>
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${absent}</div>
-                    <div class="summary-label">Absent</div>
+                    <div class="summary-label">Absent Days</div>
                 </div>
                 <div class="status-badge absent"><i class="fas fa-times"></i></div>
             </div>
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${late}</div>
-                    <div class="summary-label">Late</div>
+                    <div class="summary-label">Late Days</div>
                 </div>
                 <div class="status-badge late"><i class="fas fa-clock"></i></div>
             </div>
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${halfDay}</div>
-                    <div class="summary-label">Half Day</div>
+                    <div class="summary-label">Half Days</div>
                 </div>
                 <div class="status-badge halfday"><i class="fas fa-adjust"></i></div>
             </div>
@@ -1130,6 +1149,13 @@ $(document).ready(function() {
                     <div class="summary-label">Holidays</div>
                 </div>
                 <div class="status-badge holiday"><i class="fas fa-umbrella-beach"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${totalWorkingDays}</div>
+                    <div class="summary-label">Working Days</div>
+                </div>
+                <div><i class="fas fa-briefcase text-primary"></i></div>
             </div>
             <div class="summary-item">
                 <div>
@@ -1155,9 +1181,12 @@ $(document).ready(function() {
         setTimeout(() => $('.alert').alert('close'), 5000);
     }
 
+    // Print button handler
     $('#print_btn').click(function() {
+        // Clone the printable area to avoid affecting the original
         const printContent = $('#printable-area').clone();
         
+        // Open a new window for printing
         const printWindow = window.open('', '', 'width=800,height=600');
         printWindow.document.write(`
             <html>
@@ -1187,6 +1216,7 @@ $(document).ready(function() {
         printWindow.document.write('</body></html>');
         printWindow.document.close();
         
+        // Wait for content to load before printing
         printWindow.onload = function() {
             printWindow.focus();
             printWindow.print();
@@ -1194,11 +1224,14 @@ $(document).ready(function() {
         };
     });
 
+    // Excel export button handler
     $('#export_btn').click(function() {
+        // Get all table data
         const table = document.getElementById('attendance_table');
         const rows = table.querySelectorAll('tr');
         const data = [];
         
+        // Process header row
         const headerRow = rows[0];
         const headerData = [];
         headerRow.querySelectorAll('th').forEach(th => {
@@ -1206,10 +1239,12 @@ $(document).ready(function() {
         });
         data.push(headerData);
         
+        // Process data rows
         for (let i = 1; i < rows.length; i++) {
             const row = rows[i];
             const rowData = [];
             row.querySelectorAll('td').forEach(td => {
+                // For status cells, get just the text without the icon
                 if (td.querySelector('.status-badge')) {
                     rowData.push(td.querySelector('.status-badge').textContent.trim());
                 } else {
@@ -1219,13 +1254,17 @@ $(document).ready(function() {
             data.push(rowData);
         }
         
+        // Create workbook
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet(data);
         
+        // Add worksheet to workbook
         XLSX.utils.book_append_sheet(wb, ws, "Attendance");
         
+        // Generate file name
         const fileName = `Attendance_Report_${$('#employee_name').text().replace(/\s+/g, '_')}_${moment().format('YYYYMMDD')}.xlsx`;
         
+        // Export to Excel
         XLSX.writeFile(wb, fileName);
     });
 });

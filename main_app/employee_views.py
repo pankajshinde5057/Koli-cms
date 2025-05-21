@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
 
-import openpyxl.workbook
+# import openpyxl.workbook
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
@@ -196,7 +196,7 @@ def employee_home(request):
         elif record.status == 'half_day':
             monthly_data[month_start_date]['present_days'] += 1  # Count as present
             monthly_data[month_start_date]['late_days'] += 1    # Count as late
-            monthly_data[month_start_date]['half_days'] += 1    # Count as half day
+            monthly_data[month_start_date]['half_days'] += 0.5    # Count as half day
 
     monthly_view = [{
         'month': month,

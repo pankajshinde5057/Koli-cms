@@ -10,8 +10,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 <style>
     :root {
-        --primary-color:rgb(70, 120, 229);
-        --primary-hover:rgb(56, 83, 202);
+        --primary-color: rgb(70, 120, 229);
+        --primary-hover: rgb(56, 83, 202);
         --success-color: #10b981;
         --danger-color: #ef4444;
         --warning-color: #f59e0b;
@@ -200,7 +200,6 @@
         gap: 8px;
     }
     
-    /* Date input styles */
     .date-input-wrapper {
         position: relative;
     }
@@ -226,7 +225,6 @@
         border-color: var(--primary-color);
     }
     
-    /* Loading animation */
     .loading-spinner {
         display: flex;
         flex-direction: column;
@@ -249,7 +247,6 @@
         to { transform: rotate(360deg); }
     }
     
-    /* Empty state */
     .empty-state {
         text-align: center;
         padding: 40px 20px;
@@ -266,7 +263,6 @@
         font-size: 1rem;
     }
     
-    /* Responsive adjustments */
     @media (max-width: 768px) {
         .summary-item {
             flex: 1 1 100%;
@@ -305,7 +301,6 @@
         }
     }
     
-    /* Pulse animation for new records */
     @keyframes pulse {
         0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
         70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
@@ -330,7 +325,6 @@
         animation: pulse 2s infinite;
     }
     
-    /* Progress bar for attendance */
     .progress-container {
         width: 100%;
         background-color: #e2e8f0;
@@ -347,7 +341,6 @@
         transition: width 0.5s ease;
     }
     
-    /* Tooltip styles */
     [data-tooltip] {
         position: relative;
         cursor: pointer;
@@ -381,7 +374,6 @@
         margin-bottom: 3px;
     }
 
-    /* Print-specific styles */
     @media print {
         body * {
             visibility: hidden;
@@ -421,7 +413,6 @@
         }
     }
 
-    /* Pagination styles */
     .pagination-container {
         margin-top: 20px;
     }
@@ -445,12 +436,12 @@
             <div class="col-md-12">
                 <div id="filter-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
                     <strong>Warning!</strong> Please select at least one filter (Department, Employee, or Manager)
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <button type="button" class="close" data-dismiss="alert">×</button>
                 </div>
 
                 <div class="card filter-card mb-4 animate__animated animate__fadeIn">
                     <div class="card-header">
-                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i>&nbsp; &nbsp;Filter Attendance Records for Managers and Employees</h3>
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i> Filter Attendance Records for Managers and Employees</h3>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -458,7 +449,6 @@
                                 <label class="form-label">Department</label>
                                 <select class="form-control select2" id="department">
                                     <option value="">-- Select Department --</option>
-                                    <option value="all">All Departments</option>
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
@@ -545,7 +535,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Manager Info (initially hidden) -->
                             <div class="manager-details" id="manager_details" style="display: none;">
                                 <b><div class="manager-name h4 mb-1" id="manager_name"></div></b>
                                 <div class="manager-department text-muted">
@@ -592,7 +581,6 @@
                             <p>No attendance records found for the selected criteria</p>
                         </div>
 
-                        <!-- Pagination container -->
                         <div class="pagination-container" id="pagination_container"></div>
                     </div>
                 </div>
@@ -925,7 +913,7 @@ $(document).ready(function() {
                     }
                     
                     if (response.data.length > 0) {
-                        renderAttendanceTable(response.data, response.pagination || {});
+                        renderAttendanceTable(response.data, response.pagination || {}, response.stats || {});
                         $('#empty_state').hide();
                     } else {
                         $('#attendance_data').html('');
@@ -957,7 +945,7 @@ $(document).ready(function() {
     }
 
     // Enhanced renderAttendanceTable with data validation
-    function renderAttendanceTable(data, pagination) {
+    function renderAttendanceTable(data, pagination, stats) {
         // Validate input data
         if (!Array.isArray(data)) {
             console.error('Invalid data format for attendance table');
@@ -966,7 +954,11 @@ $(document).ready(function() {
         }
 
         let tableHtml = '';
-        let presentCount = 0, absentCount = 0, lateCount = 0, halfDayCount = 0, holidayCount = 0;
+        let presentCount = stats.present_days || 0;
+        let absentCount = stats.absent_days || 0;
+        let lateCount = stats.late_days || 0;
+        let halfDayCount = stats.half_days || 0;
+        let holidayCount = stats.holidays || 0;
         
         // Validate each record before processing
         data.forEach(record => {
@@ -981,14 +973,6 @@ $(document).ready(function() {
                 return;
             }
 
-            // Count status types with validation
-            const status = String(record.status).toLowerCase();
-            if (status.includes('present')) presentCount++;
-            else if (status.includes('absent')) absentCount++;
-            else if (status.includes('late')) lateCount++;
-            else if (status.includes('half')) halfDayCount++;
-            else if (status.includes('holiday')) holidayCount++;
-
             // Format data with validation
             let date, day;
             try {
@@ -1002,9 +986,9 @@ $(document).ready(function() {
 
             const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
             const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
-            const hours = calculateHours(record.clock_in, record.clock_out);
-            const statusClass = getStatusClass(status);
-            const statusIcon = getStatusIcon(status);
+            const hours = record.hours || '-';
+            const statusClass = getStatusClass(record.status.toLowerCase());
+            const statusIcon = getStatusIcon(record.status.toLowerCase());
 
             // Validate name and department
             const name = record.name ? String(record.name) : '-';
@@ -1027,7 +1011,7 @@ $(document).ready(function() {
         });
 
         $('#attendance_data').html(tableHtml);
-        updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount);
+        updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount, stats);
         
         // Update date range display with validation
         if (data.length > 0) {
@@ -1080,7 +1064,7 @@ $(document).ready(function() {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous">
-                        <span aria-hidden="true">&laquo;</span>
+                        <span aria-hidden="true">«</span>
                     </a>
                 </li>
             `;
@@ -1134,7 +1118,7 @@ $(document).ready(function() {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next">
-                        <span aria-hidden="true">&raquo;</span>
+                        <span aria-hidden="true">»</span>
                     </a>
                 </li>
             `;
@@ -1200,36 +1184,35 @@ $(document).ready(function() {
         return '';
     }
 
-    function updateSummaryCards(present, absent, late, halfDay, holiday) {
-        const total = present + absent + late + halfDay + holiday;
-        const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-        
+    function updateSummaryCards(present, absent, late, halfDay, holiday, stats) {
+        const percentage = stats.attendance_percentage || 0;
+        const totalWorkingDays = stats.total_working_days || 0;
         $('#attendance_summary').html(`
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${present}</div>
-                    <div class="summary-label">Present</div>
+                    <div class="summary-label">Present Days</div>
                 </div>
                 <div class="status-badge present"><i class="fas fa-check"></i></div>
             </div>
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${absent}</div>
-                    <div class="summary-label">Absent</div>
+                    <div class="summary-label">Absent Days</div>
                 </div>
                 <div class="status-badge absent"><i class="fas fa-times"></i></div>
             </div>
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${late}</div>
-                    <div class="summary-label">Late</div>
+                    <div class="summary-label">Late Days</div>
                 </div>
                 <div class="status-badge late"><i class="fas fa-clock"></i></div>
             </div>
             <div class="summary-item">
                 <div>
                     <div class="summary-count">${halfDay}</div>
-                    <div class="summary-label">Half Day</div>
+                    <div class="summary-label">Half Days</div>
                 </div>
                 <div class="status-badge halfday"><i class="fas fa-adjust"></i></div>
             </div>
@@ -1239,6 +1222,13 @@ $(document).ready(function() {
                     <div class="summary-label">Holidays</div>
                 </div>
                 <div class="status-badge holiday"><i class="fas fa-umbrella-beach"></i></div>
+            </div>
+            <div class="summary-item">
+                <div>
+                    <div class="summary-count">${totalWorkingDays}</div>
+                    <div class="summary-label">Working Days</div>
+                </div>
+                <div><i class="fas fa-briefcase text-primary"></i></div>
             </div>
             <div class="summary-item">
                 <div>
@@ -1257,7 +1247,7 @@ $(document).ready(function() {
         const alertHtml = `
             <div class="alert alert-${alertClass} alert-dismissible fade show">
                 <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <button type="button" class="close" data-dismiss="alert">×</button>
             </div>
         `;
         $('.container-fluid').prepend(alertHtml);
