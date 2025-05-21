@@ -39,8 +39,8 @@ from pylibdmtx.pylibdmtx import encode
 from PIL import Image
 
 def generate_barcode(asset_id):
-    # url = f'http://192.168.1.56:8000/asset-app/asset/{asset_id}/detail'
-    url = reverse('asset_app:assets-detail', kwargs={'pk': asset_id})
+    url = f'https://koliinfotech.company/koli-ems/asset-app/asset/{asset_id}/detail'
+    # url = reverse('asset_app:assets-detail', kwargs={'pk': asset_id})
     encoded = encode(url.encode('utf8'))
     
     barcode_image = Image.frombytes('RGB', (encoded.width, encoded.height), encoded.pixels)

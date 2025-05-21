@@ -1051,3 +1051,66 @@ def view_all_schedules(request):
         'start_date': start_date,
         'end_date': end_date
     })
+
+
+@login_required
+def others_schedule(request):
+    employee = get_object_or_404(Employee, admin=request.user)
+    if not employee.department:
+        messages.error(request, "You are not assigned to a department.")
+        return redirect('all_schedules')
+
+    # Get filter parameters
+    filter_type = request.GET.get('filter_type', 'today')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    employee_id = request.GET.get('employee_id')
+
+    schedules = DailySchedule.objects.filter(
+        employee__department=employee.department
+    ).exclude(employee=employee).order_by('-date')
+
+    # Apply date filters
+    today = get_ist_date()
+    if filter_type == 'today':
+        schedules = schedules.filter(date=today)
+    elif filter_type == 'weekly':
+        start = today - timedelta(days=6)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'monthly':
+        start = today - timedelta(days=29)
+        schedules = schedules.filter(date__gte=start, date__lte=today)
+    elif filter_type == 'custom' and start_date and end_date:
+        try:
+            from datetime import datetime
+            start = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if start > end:
+                messages.error(request, "Start date cannot be after end date.")
+                start = end = today
+            schedules = schedules.filter(date__gte=start, date__lte=end)
+        except ValueError:
+            messages.error(request, "Invalid date format. Using all schedules.")
+            start_date = end_date = None
+    
+    if employee_id and employee_id != 'all':
+        try:
+            schedules = schedules.filter(employee__id=employee_id)
+        except ValueError:
+            messages.error(request, "Invalid employee selected.")
+
+    # Get other employees in the department for the filter dropdown
+    department_employees = Employee.objects.filter(
+        department=employee.department
+    ).exclude(id=employee.id).order_by('admin__first_name')
+
+    return render(request, 'employee_template/others_schedules.html', {
+        'schedules': schedules,
+        'today': today,
+        'filter_type': filter_type,
+        'start_date': start_date,
+        'end_date': end_date,
+        'employee_id': employee_id,
+        'department_employees': department_employees
+    })
+
