@@ -3,206 +3,114 @@
 
 {% block custom_css %}
 <style>
-    .schedule-container {
-        max-width: 800px;
-        margin: 0 auto;
-    }
-    .section-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    .section-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #eee;
-    }
-    .task-input-container {
-        margin-bottom: 15px;
-    }
-    .task-item {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 8px;
-        align-items: center;
-    }
-    .task-input {
-        flex: 1;
-        padding: 8px 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        transition: all 0.3s;
-    }
-    .task-input:focus {
-        border-color: #4f46e5;
-        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-        outline: none;
-    }
-    .task-btn {
-        border: none;
-        border-radius: 6px;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        background-color: #e0e7ff;
-        color: #3730a3;
-    }
-    .task-btn:hover {
-        background-color: #c7d2fe;
-    }
-    .add-btn {
-        background-color: #4f46e5;
-        color: white;
-        width: 100%;
-        padding: 10px;
-        margin-top: 10px;
-    }
-    .add-btn:hover {
-        background-color: #4338ca;
-    }
-    .save-btn {
-        background-color: #10b981;
-        color: white;
-        width: 100%;
-        padding: 10px;
-        margin-top: 15px;
-    }
-    .save-btn:hover {
-        background-color: #059669;
-    }
+    .schedule-container { max-width: 800px; margin: 0 auto; }
+    .section-card { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; }
+    .task-item { display: grid; grid-template-columns: 1fr 120px 32px; gap: 10px; margin-bottom: 8px; align-items: center; }
+    .task-input, .time-input { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; transition: all 0.3s; }
+    .task-input:focus, .time-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1); }
+    .task-btn { border: none; border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background-color: #e0e7ff; color: #3730a3; }
+    .add-btn { background-color: #4f46e5; color: white; width: 100%; padding: 10px; margin-top: 10px; }
+    .save-btn { background-color: #10b981; color: white; width: 100%; padding: 10px; margin-top: 15px; }
+    .time-estimate { color: #6b7280; font-size: 0.9em; }
 </style>
 {% endblock %}
 
 {% block content %}
-
 <div class="container py-8">
     <div class="schedule-container">
-        <!-- Editable Task Input Section -->
         <div class="section-card">
-            <h3 class="section-title">
-                <i class="fas fa-edit mr-2"></i>
-                Your Daily Tasks
-            </h3>
-            
+            <h3 class="section-title">Daily Tasks</h3>
             <div class="mb-4">
-                <label class="block text-sm font-medium mb-1">Project</label>
                 <input type="text" id="project-input" class="w-100 p-2 border rounded-md" 
-                    value="{{ schedule.project|default:'' }}" placeholder="Project name">
+                       value="{{ schedule.project|default:'' }}" placeholder="Project name">
             </div>
-            
             <div class="task-input-container">
-                <label class="block text-sm font-medium mb-1">Tasks</label>
                 <div id="tasks-container">
-                    {% if schedule and schedule.task_description_lines %}
-                        {% for task in schedule.task_description_lines %}
+                    {% if schedule.tasks %}
+                        {% for task in schedule.tasks %}
                         <div class="task-item">
-                            <input type="text" value="{{ task|escape }}" class="task-input" placeholder="Task description">
+                            <input type="text" class="task-input" value="{{ task.description }}" placeholder="Task">
+                            <input type="text" class="time-input" value="{{ task.time }}" placeholder="Time">
                             <button type="button" class="task-btn">✎</button>
                         </div>
                         {% endfor %}
                     {% else %}
                         <div class="task-item">
-                            <input type="text" class="task-input" placeholder="Task description">
+                            <input type="text" class="task-input" placeholder="Task">
+                            <input type="text" class="time-input" placeholder="Time">
                             <button type="button" class="task-btn">✎</button>
                         </div>
                     {% endif %}
                 </div>
-                
-                <button type="button" id="add-task-btn" class="task-btn add-btn">
-                    + Add Task
-                </button>
+                <button type="button" id="add-task-btn" class="task-btn add-btn">+ Add Task</button>
             </div>
-            
-            <button id="save-schedule-btn" class="save-btn">
-                <i class="fas fa-save mr-2"></i>Save Schedule
-            </button>
+            <button id="save-schedule-btn" class="save-btn">Save Schedule</button>
         </div>
 
-        <!-- Saved Schedules Display Section -->
         <div class="section-card">
-            <h3 class="section-title">
-                <i class="fas fa-history mr-2"></i>
-                Your Morning Schedules
-            </h3>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <strong>{{ schedule.date|date:"F j, Y" }}</strong>
-            </div>
-            
+            <h3 class="section-title">History</h3>
             {% if schedule %}
-                <div class="schedule-display mb-4">
-                    {% if schedule.project %}
-                    <div class="text-sm text-gray-600 mb-2">
-                        <strong>Project:</strong> {{ schedule.project }}
-                    </div>
-                    {% endif %}
-                    
-                    <div>
-                        <ol class="task-list">
-                            {% for task in schedule.task_description_lines %}
-                            <li>{{ task|escape }}</li>
-                            {% endfor %}
-                        </ol>
-                    </div>
+                <div class="schedule-display">
+                    {% if schedule.project %}<div class="mb-2"><strong>Project:</strong> {{ schedule.project }}</div>{% endif %}
+                    <ol>
+                        {% for task in schedule.tasks %}
+                        <li>{{ task.description }} <span class="time-estimate">({{ task.time }})</span></li>
+                        {% endfor %}
+                    </ol>
                 </div>
             {% else %}
-                <div class="text-center py-4 text-gray-500">
-                    No previous schedules found
-                </div>
+                <div class="text-center py-4">No schedule found</div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<form id="schedule-form" method="post" action="{% url 'daily_schedule' %}" class="hidden">
+<form id="schedule-form" method="post" action="{% url 'daily_schedule' %}">
     {% csrf_token %}
     <input type="hidden" name="task_description" id="task-description-input">
     <input type="hidden" name="project" id="form-project-input">
 </form>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tasksContainer = document.getElementById('tasks-container');
-    const addTaskBtn = document.getElementById('add-task-btn');
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('tasks-container');
+    const addBtn = document.getElementById('add-task-btn');
     const saveBtn = document.getElementById('save-schedule-btn');
-    const scheduleForm = document.getElementById('schedule-form');
-    const taskDescInput = document.getElementById('task-description-input');
-    const formProjectInput = document.getElementById('form-project-input');
-    const projectInput = document.getElementById('project-input');
 
-    // Add new task
-    addTaskBtn.addEventListener('click', function() {
-        const taskItem = document.createElement('div');
-        taskItem.className = 'task-item';
-        taskItem.innerHTML = `
-            <input type="text" class="task-input" placeholder="Task description">
+    addBtn.addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.className = 'task-item';
+        div.innerHTML = `
+            <input type="text" class="task-input" placeholder="Task">
+            <input type="text" class="time-input" placeholder="Time">
             <button type="button" class="task-btn">✎</button>
         `;
-        tasksContainer.appendChild(taskItem);
-        taskItem.querySelector('.task-input').focus();
+        container.appendChild(div);
     });
 
-    // Save schedule
-    saveBtn.addEventListener('click', function() {
-        const tasks = Array.from(document.querySelectorAll('.task-input'))
-            .map(input => input.value.trim())
-            .filter(task => task !== '');
-        
-        if (tasks.length === 0) {
-            alert('Please add at least one valid task!');
-            return;
-        }
+    saveBtn.addEventListener('click', () => {
+        const tasks = [];
+        let isValid = true;
 
-        taskDescInput.value = tasks.join('\n');
-        formProjectInput.value = projectInput.value.trim();
-        scheduleForm.submit();
+        document.querySelectorAll('.task-item').forEach(item => {
+            const task = item.querySelector('.task-input').value.trim();
+            const time = item.querySelector('.time-input').value.trim();
+            
+            if (!task || !time) {
+                isValid = false;
+                alert('Please fill both task and time fields');
+                return;
+            }
+            
+            tasks.push(`${task}|${time}`);
+        });
+
+        if (isValid && tasks.length > 0) {
+            document.getElementById('task-description-input').value = tasks.join('\n');
+            document.getElementById('form-project-input').value = 
+                document.getElementById('project-input').value.trim();
+            document.getElementById('schedule-form').submit();
+        }
     });
 });
 </script>
