@@ -1111,3 +1111,28 @@ def others_schedule(request):
         'department_employees': department_employees
     })
 
+
+@login_required
+def early_clock_out_request_page(request):
+    context = {
+        'has_active_attendance': False,
+        'request_status': 'none',
+        'request_message': '',
+    }
+
+    attendance_record = AttendanceRecord.objects.filter(
+        user=request.user,
+        date=timezone.now().date(),
+        clock_out__isnull=True
+    ).first()
+
+    if attendance_record:
+        context['has_active_attendance'] = True
+        early_request = EarylyClockOutRequest.objects.filter(
+            attendance_record=attendance_record
+        ).order_by('-submitted_at').first()
+        if early_request:
+            context['request_status'] = early_request.status
+            context['request_message'] = early_request.notes or ''
+
+    return render(request, 'employee_template/early_clock_out_request.html', context)

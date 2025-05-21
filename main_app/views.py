@@ -499,7 +499,7 @@ messaging.setBackgroundMessageHandler(function (payload) {
     return HttpResponse(data, content_type='application/javascript')
 
 
-
+@login_required
 def early_clock_out_request(request):
     if request.method == "POST":
         try:
