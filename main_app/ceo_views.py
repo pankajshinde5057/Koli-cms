@@ -864,17 +864,6 @@ def view_employee_leave(request):
 
 
 @login_required
-def admin_view_attendance(request):
-    departments = Department.objects.all()
-    context = {
-        'departments': departments,
-        'page_title': 'View Attendance'
-    }
-
-    return render(request, "ceo_template/admin_view_attendance.html", context)
-
-
-@login_required
 @csrf_exempt
 def get_admin_attendance(request):
     department_id = request.POST.get('department')
@@ -1888,11 +1877,6 @@ def reject_admin_leave_request(request, leave_id):
         send_notification(user, msg,"leave",leave_id,"manager")
     return redirect('admin_view_notification')
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from datetime import datetime
-from .models import Department, Employee, Manager
-
 @login_required
 def admin_view_attendance(request):
     current_date = datetime.now()
@@ -2179,7 +2163,7 @@ def get_manager_and_employee_attendance(request):
                         
                         # Handle leaves
                         if current_date in half_day_leave_dates:
-                            present_days += 0.5
+                            present_days += 1
                             half_days += 1
                             late_days += 1
                         elif current_date in leave_dates:
@@ -2191,7 +2175,7 @@ def get_manager_and_employee_attendance(request):
                             present_days += 1
                             late_days += 1
                         elif record_status == 'half_day':
-                            present_days += 0.5
+                            present_days += 1
                             half_days += 1
                             late_days += 1
                         else:
