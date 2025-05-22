@@ -6,114 +6,117 @@
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-12">
                 <div class="card card-primary">
-                    <div class="card-header d-flex align-items-center">
-                        <h3 class="card-title">{{ page_title }}</h3>
-                        <div class="ml-auto">
-                            <button class="btn btn-sm bg-warning text-dark mr-2" id="delete-selected" disabled>
-                                <i class="fas fa-trash-alt"></i> Delete Selected (<span id="selected-count">0</span>)
+                    <div class="card-header d-flex flex-column flex-md-row align-items-center">
+                        <h3 class="card-title mb-2 mb-md-0">{{ page_title }}</h3>
+                        <div class="ml-md-auto d-flex flex-wrap justify-content-end">
+                            <button class="btn btn-sm bg-warning text-dark mr-2 mb-2 mb-md-0" id="delete-selected" disabled>
+                                <i class="fas fa-trash-alt"></i> <span class="d-none d-md-inline">Delete</span> Selected (<span id="selected-count">0</span>)
                             </button>
-                            <button class="btn btn-danger btn-sm" id="delete-all">
-                                <i class="fas fa-trash"></i> Delete All
+                            <button class="btn btn-danger btn-sm mb-2 mb-md-0" id="delete-all">
+                                <i class="fas fa-trash"></i> <span class="d-none d-md-inline">Delete</span> All
                             </button>
                         </div>
                     </div>
 
-                    <div class="table card-body" id="feedback-table-container">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th><input type="checkbox" id="select-all"></th>
-                                    <th>SN</th>
-                                    <th>Employee</th>
-                                    <th>Message</th>
-                                    <th>Sent On</th>
-                                    <th>Replied On</th>
-                                    <th>Reply</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for feedback in feedbacks %}
-                                <tr id="feedback-{{ feedback.id }}">
-                                    <td><input type="checkbox" class="feedback-checkbox" value="{{ feedback.id }}"></td>
-                                    <td>{{ forloop.counter0|add:feedbacks.start_index }}</td>
-                                    <td>{{ feedback.employee }}</td>
-                                    <td>{{ feedback.feedback }}</td>
-                                    {% if feedback.reply == "" %}
-                                        <td>{{ feedback.created_at }}</td>
-                                        <td><span class='badge badge-warning'>Pending Response</span></td>
-                                        <td>
-                                            <button data-toggle="modal" 
-                                                    data-target="#reply_modal" 
-                                                    value="{{ feedback.id }}"
-                                                    data-name="{{ feedback.employee }}"
-                                                    class="btn btn-primary reply_open_modal">Reply</button>
-                                            {% if feedback.id in unread_ids %}
-                                                <i class="fas fa-circle text-danger" 
-                                                   title="Unread" 
-                                                   style="font-size: 8px; margin-left: 5px; margin-top: 15px;"></i>
-                                            {% endif %}
-                                        </td>
-                                    {% else %}
-                                        <td>{{ feedback.created_at }}</td>
-                                        <td>{{ feedback.updated_at }}</td>
-                                        <td>{{ feedback.reply }}</td>
-                                    {% endif %}
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center">No feedback messages found.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" id="feedback-table-container">
+                            <table class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th class="text-center"><input type="checkbox" id="select-all"></th>
+                                        <th>SN</th>
+                                        <th>Employee</th>
+                                        <th>Message</th>
+                                        <th>Sent On</th>
+                                        <th>Replied On</th>
+                                        <th>Reply</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for feedback in feedbacks %}
+                                    <tr id="feedback-{{ feedback.id }}">
+                                        <td class="text-center"><input type="checkbox" class="feedback-checkbox" value="{{ feedback.id }}"></td>
+                                        <td>{{ forloop.counter0|add:feedbacks.start_index }}</td>
+                                        <td>{{ feedback.employee }}</td>
+                                        <td>{{ feedback.feedback }}</td>
+                                        {% if feedback.reply == "" %}
+                                            <td data-title="Sent On">{{ feedback.created_at|date:"M d, Y H:i" }}</td>
+                                            <td data-title="Status"><span class='badge badge-warning'>Pending</span></td>
+                                            <td data-title="Actions">
+                                                <button data-toggle="modal" 
+                                                        data-target="#reply_modal" 
+                                                        value="{{ feedback.id }}" 
+                                                        class="btn btn-primary btn-sm reply_open_modal">
+                                                    <i class="fas fa-reply"></i> <span class="d-none d-md-inline">Reply</span>
+                                                </button>
+                                                {% if feedback.id in unread_ids %}
+                                                    <i class="fas fa-circle text-danger" 
+                                                       title="Unread" 
+                                                       style="font-size: 8px; margin-left: 5px;"></i>
+                                                {% endif %}
+                                            </td>
+                                        {% else %}
+                                            <td data-title="Sent On">{{ feedback.created_at|date:"M d, Y H:i" }}</td>
+                                            <td data-title="Replied On">{{ feedback.updated_at|date:"M d, Y H:i" }}</td>
+                                            <td data-title="Reply">{{ feedback.reply }}</td>
+                                        {% endif %}
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No feedback messages found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
 
-                        {% if feedbacks.has_other_pages %}
-                        <div class="mt-3">
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination justify-content-center">
-                                    {% if feedbacks.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link pagination-link" 
-                                               href="?page={{ feedbacks.previous_page_number }}" 
-                                               data-page="{{ feedbacks.previous_page_number }}">«</a>
-                                        </li>
-                                    {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link">«</span>
-                                        </li>
-                                    {% endif %}
-
-                                    {% for num in feedbacks.paginator.page_range %}
-                                        {% if feedbacks.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
-                                        {% elif num > feedbacks.number|add:-3 and num < feedbacks.number|add:3 %}
+                            {% if feedbacks.has_other_pages %}
+                            <div class="mt-3 px-3">
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination justify-content-center flex-wrap">
+                                        {% if feedbacks.has_previous %}
                                             <li class="page-item">
                                                 <a class="page-link pagination-link" 
-                                                   href="?page={{ num }}" 
-                                                   data-page="{{ num }}">{{ num }}</a>
+                                                   href="?page={{ feedbacks.previous_page_number }}" 
+                                                   data-page="{{ feedbacks.previous_page_number }}">«</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">«</span>
                                             </li>
                                         {% endif %}
-                                    {% endfor %}
 
-                                    {% if feedbacks.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link pagination-link" 
-                                               href="?page={{ feedbacks.next_page_number }}" 
-                                               data-page="{{ feedbacks.next_page_number }}">»</a>
-                                        </li>
-                                    {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link">»</span>
-                                        </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
+                                        {% for num in feedbacks.paginator.page_range %}
+                                            {% if feedbacks.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                            {% elif num > feedbacks.number|add:-3 and num < feedbacks.number|add:3 %}
+                                                <li class="page-item">
+                                                    <a class="page-link pagination-link" 
+                                                       href="?page={{ num }}" 
+                                                       data-page="{{ num }}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+
+                                        {% if feedbacks.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link pagination-link" 
+                                                   href="?page={{ feedbacks.next_page_number }}" 
+                                                   data-page="{{ feedbacks.next_page_number }}">»</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">»</span>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -123,26 +126,24 @@
 
 <!-- Reply Modal -->
 <div class="modal fade" id="reply_modal" tabindex="-1" role="dialog" aria-labelledby="replyModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary">
                 <h5 class="modal-title text-white" id="replyModalLabel">Reply to Feedback</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <form id="reply_form">
-                    <input type="hidden" id="feedback_id" name="id">
-                    <p>Reply to <span id="reply_name"></span></p>
-                    <textarea name="reply" id="reply_message" cols="30" rows="5" class="form-control" required></textarea>
-                </form>
+                <input type="hidden" id="id">
+                <p>Reply to <span id="reply_name"></span></p>
+                <textarea name="reply_message" id="reply_message" cols="30" rows="5" class="form-control"></textarea>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary cancel-btn" data-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
                     <i class="fas fa-times"></i> Cancel
                 </button>
-                <button type="submit" id="reply_btn" class="btn btn-success" form="reply_form">
+                <button id="reply_btn" class="btn btn-success">
                     <i class="fas fa-reply"></i> Send Reply
                 </button>
             </div>
@@ -157,7 +158,7 @@
             <div class="modal-header bg-warning">
                 <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -167,7 +168,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary cancel-btn" data-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
                     <i class="fas fa-times"></i> Cancel
                 </button>
                 <button type="button" class="btn btn-danger" id="confirmDelete">
@@ -185,7 +186,7 @@
             <div class="modal-header bg-danger">
                 <h5 class="modal-title text-white" id="deleteAllModalLabel">Delete All Feedback</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -195,7 +196,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary cancel-btn" data-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
                     <i class="fas fa-times"></i> Cancel
                 </button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteAll">
@@ -207,12 +208,76 @@
 </div>
 {% endblock content %}
 
+{% block custom_css %}
+<style>
+    /* Responsive table styles */
+    @media (max-width: 767.98px) {
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Optional: Make table rows stack on small screens */
+        /* Uncomment if you prefer this approach */
+        /*
+        table {
+            display: block;
+            width: 100%;
+        }
+        
+        thead {
+            display: none;
+        }
+        
+        tbody, tr, td {
+            display: block;
+            width: 100%;
+        }
+        
+        tr {
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+        }
+        
+        td {
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+            border-top: none;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        td:before {
+            content: attr(data-title);
+            position: absolute;
+            left: 1rem;
+            width: calc(50% - 1rem);
+            padding-right: 1rem;
+            text-align: left;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        td:first-child {
+            background: #f8f9fa;
+            text-align: center;
+            padding-left: 1rem;
+        }
+        
+        td:first-child:before {
+            display: none;
+        }
+        */
+    }
+    
+    /* Button spacing adjustments */
+    .card-header .btn {
+        margin-bottom: 0.25rem;
+    }
+</style>
+{% endblock custom_css %}
+
 {% block custom_js %}
-<!-- Include Bootstrap JS and its dependencies -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-<!-- Include Toastr -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 
@@ -223,25 +288,12 @@ $(document).ready(function() {
         "closeButton": true,
         "progressBar": true,
         "positionClass": "toast-top-right",
-        "timeOut": "3000",
-        "preventDuplicates": true
+        "timeOut": "3000"
     };
 
-    // Ensure modal backdrop is removed when modal is hidden
-    $('.modal').on('hidden.bs.modal', function() {
-        $(this).find('form').trigger('reset');
-        $(this).find('button').prop('disabled', false);
-        $('#reply_name').text('');
-        $('.modal-backdrop').remove();
-        $('body').removeClass('modal-open');
-    });
-
-    // Manually handle cancel and close button clicks as a fallback
-    $('.cancel-btn, .modal .close').on('click', function() {
-        var $modal = $(this).closest('.modal');
-        $modal.modal('hide');
-        $('.modal-backdrop').remove();
-        $('body').removeClass('modal-open');
+    // Initialize all modal close buttons
+    $('.modal [data-dismiss="modal"]').on('click', function() {
+        $(this).closest('.modal').modal('hide');
     });
 
     // Update Delete Selected button
@@ -264,30 +316,6 @@ $(document).ready(function() {
             $('.feedback-checkbox:checked').length === $('.feedback-checkbox').length);
     });
 
-    // Function to remove deleted rows without reloading
-    function removeDeletedRows(ids) {
-        ids.forEach(function(id) {
-            $('#feedback-' + id).remove();
-        });
-        updateTableAfterDeletion();
-    }
-
-    // Function to update table state after deletion
-    function updateTableAfterDeletion() {
-        $('tbody tr').each(function(index) {
-            $(this).find('td:eq(1)').text(index + 1);
-        });
-        
-        var totalCheckboxes = $('.feedback-checkbox').length;
-        var checkedCheckboxes = $('.feedback-checkbox:checked').length;
-        $('#select-all').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
-        updateDeleteSelectedButton();
-        
-        if (totalCheckboxes === 0) {
-            $('tbody').html('<tr><td colspan="7" class="text-center">No feedback messages found.</td></tr>');
-        }
-    }
-
     // Delete Selected button
     $('#delete-selected').click(function() {
         var selectedIds = $('.feedback-checkbox:checked').map(function() {
@@ -300,6 +328,35 @@ $(document).ready(function() {
             toastr.warning('Please select at least one feedback to delete.');
         }
     });
+
+    // Function to remove deleted rows without reloading
+    function removeDeletedRows(ids) {
+        ids.forEach(function(id) {
+            $('#feedback-' + id).remove();
+        });
+        updateTableAfterDeletion();
+    }
+
+    // Function to update table state after deletion
+    function updateTableAfterDeletion() {
+        // Update row numbering
+        $('tbody tr').each(function(index) {
+            $(this).find('td:eq(1)').text(index + 1);
+        });
+        
+        // Update select all checkbox
+        var totalCheckboxes = $('.feedback-checkbox').length;
+        var checkedCheckboxes = $('.feedback-checkbox:checked').length;
+        $('#select-all').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
+        
+        // Update delete button state
+        updateDeleteSelectedButton();
+        
+        // Show message if no records left
+        if (totalCheckboxes === 0) {
+            $('tbody').html('<tr><td colspan="7" class="text-center">No feedback messages found.</td></tr>');
+        }
+    }
 
     // Confirm Delete Selected
     $('#confirmDelete').click(function() {
@@ -318,6 +375,7 @@ $(document).ready(function() {
             },
             beforeSend: function() {
                 $modal.find('button').prop('disabled', true);
+                $modal.modal('hide');
             },
             success: function(response) {
                 if (response.success) {
@@ -331,10 +389,7 @@ $(document).ready(function() {
                 toastr.error('Error deleting feedback: ' + error);
             },
             complete: function() {
-                $modal.modal('hide');
                 $modal.find('button').prop('disabled', false);
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open');
             }
         });
     });
@@ -362,11 +417,13 @@ $(document).ready(function() {
             },
             beforeSend: function() {
                 $modal.find('button').prop('disabled', true);
+                $modal.modal('hide');
             },
             success: function(response) {
                 if (response.success) {
                     $('tbody').html('<tr><td colspan="7" class="text-center">No feedback messages found.</td></tr>');
                     toastr.success(response.message);
+                    // Reset all checkboxes and counters
                     $('.feedback-checkbox').prop('checked', false);
                     $('#select-all').prop('checked', false);
                     updateDeleteSelectedButton();
@@ -378,32 +435,24 @@ $(document).ready(function() {
                 toastr.error('Error deleting all feedback: ' + error);
             },
             complete: function() {
-                $modal.modal('hide');
                 $modal.find('button').prop('disabled', false);
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open');
             }
         });
     });
 
-    // Reply Modal Open
+    // Reply Modal
     $(document).on('click', '.reply_open_modal', function() {
-        var $button = $(this);
-        var id = $button.val();
-        var name = $button.data('name');
-        
-        $('#feedback_id').val(id);
+        var id = $(this).val();
+        var name = $(this).parents('tr').children('td:eq(2)').text();
         $('#reply_name').text(name);
+        $('#id').val(id);
         $('#reply_message').val('');
-        $('#reply_modal').modal('show');
     });
 
     // Send Reply
-    $('#reply_form').on('submit', function(e) {
-        e.preventDefault();
+    $(document).on('click', '#reply_btn', function() {
         var $modal = $('#reply_modal');
-        var $button = $('#reply_btn');
-        var id = $('#feedback_id').val();
+        var id = $('#id').val();
         var reply = $('#reply_message').val().trim();
         
         if (!reply) {
@@ -420,30 +469,27 @@ $(document).ready(function() {
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             beforeSend: function() {
-                $button.prop('disabled', true);
                 $modal.find('button').prop('disabled', true);
             },
             success: function(response) {
+                $modal.modal('hide');
                 if (response.success) {
                     toastr.success(response.message);
+                    // Update the replied feedback row
                     var $row = $('#feedback-' + id);
-                    $row.find('td:eq(5)').html('<span class="badge badge-success">Just now</span>');
-                    $row.find('td:eq(6)').text(reply);
+                    $row.find('td:eq(4)').text(response.updated_at || 'Just now');
+                    $row.find('td:eq(5)').text(response.reply);
                     $row.find('.reply_open_modal').remove();
-                    $row.find('.fas.fa-circle.text-danger').remove(); // Remove unread indicator
                 } else {
                     toastr.error(response.message);
                 }
             },
             error: function(xhr, status, error) {
+                $modal.modal('hide');
                 toastr.error('Error sending reply: ' + error);
             },
             complete: function() {
-                $modal.modal('hide');
                 $modal.find('button').prop('disabled', false);
-                $button.prop('disabled', false);
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open');
             }
         });
     });
@@ -480,12 +526,6 @@ $(document).ready(function() {
     window.onpopstate = function() {
         window.location.reload();
     };
-
-    // Safety check on page load to remove any lingering backdrops
-    $(window).on('load', function() {
-        $('.modal-backdrop').remove();
-        $('body').removeClass('modal-open');
-    });
 });
 </script>
 {% endblock custom_js %}

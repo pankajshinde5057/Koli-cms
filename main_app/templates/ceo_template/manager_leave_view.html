@@ -6,101 +6,105 @@
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-12">
                 <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
                         <h3 class="card-title">{{ page_title }}</h3>
                     </div>
 
-                    <div class="table card-body" id="leave-table-container">
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>SN</th>
-                                    <th>Manager</th>
-                                    <th>Division</th>
-                                    <th>Message</th>
-                                    <th>Leave Date</th>
-                                    <th>Submitted On</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for leave in allLeave %}
-                                <tr>
-                                    <td>{{ forloop.counter0|add:allLeave.start_index }}</td>
-                                    <td>{{ leave.manager }}</td>
-                                    <td>{{ leave.manager.division }}</td>
-                                    <td>{{ leave.message }}</td>
-                                    <td>{{ leave.start_date }}</td>
-                                    <td>{{ leave.created_at }}</td>
-                                    {% if leave.status == 0 %}
-                                        <td>
-                                            <button data-toggle="modal" 
-                                                    data-target="#reply_modal" 
-                                                    value="{{ leave.id }}" 
-                                                    class="btn btn-primary reply_open_modal">Reply</button>
-                                        </td>
-                                    {% elif leave.status == -1 %}
-                                        <td><span class="badge badge-danger">Rejected</span></td>
-                                    {% else %}
-                                        <td><span class="badge badge-success">Approved</span></td>
-                                    {% endif %}
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="7" class="text-center">No leave applications found.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" id="leave-table-container">
+                            <table class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>SN</th>
+                                        <th>Manager</th>
+                                        <th>Division</th>
+                                        <th>Message</th>
+                                        <th>Leave Date</th>
+                                        <th>Submitted On</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for leave in allLeave %}
+                                    <tr>
+                                        <td data-title="SN">{{ forloop.counter0|add:allLeave.start_index }}</td>
+                                        <td data-title="Manager">{{ leave.manager }}</td>
+                                        <td data-title="Division">{{ leave.manager.division }}</td>
+                                        <td data-title="Message">{{ leave.message }}</td>
+                                        <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }}</td>
+                                        <td data-title="Submitted On">{{ leave.created_at|date:"M d, Y H:i" }}</td>
+                                        {% if leave.status == 0 %}
+                                            <td data-title="Action">
+                                                <button data-toggle="modal" 
+                                                        data-target="#reply_modal" 
+                                                        value="{{ leave.id }}" 
+                                                        class="btn btn-primary btn-sm reply_open_modal">
+                                                    <i class="fas fa-reply"></i> <span class="d-none d-md-inline">Reply</span>
+                                                </button>
+                                            </td>
+                                        {% elif leave.status == -1 %}
+                                            <td data-title="Status"><span class="badge badge-danger">Rejected</span></td>
+                                        {% else %}
+                                            <td data-title="Status"><span class="badge badge-success">Approved</span></td>
+                                        {% endif %}
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No leave applications found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
 
-                        {% if allLeave.has_other_pages %}
-                        <div class="mt-3">
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination justify-content-center">
-                                    {% if allLeave.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link pagination-link" 
-                                               href="?page={{ allLeave.previous_page_number }}" 
-                                               data-page="{{ allLeave.previous_page_number }}">«</a>
-                                        </li>
-                                    {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link">«</span>
-                                        </li>
-                                    {% endif %}
-
-                                    {% for num in allLeave.paginator.page_range %}
-                                        {% if allLeave.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
-                                        {% elif num > allLeave.number|add:'-3' and num < allLeave.number|add:'3' %}
+                            {% if allLeave.has_other_pages %}
+                            <div class="mt-3 px-3">
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination justify-content-center flex-wrap">
+                                        {% if allLeave.has_previous %}
                                             <li class="page-item">
                                                 <a class="page-link pagination-link" 
-                                                   href="?page={{ num }}" 
-                                                   data-page="{{ num }}">{{ num }}</a>
+                                                   href="?page={{ allLeave.previous_page_number }}" 
+                                                   data-page="{{ allLeave.previous_page_number }}">«</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">«</span>
                                             </li>
                                         {% endif %}
-                                    {% endfor %}
 
-                                    {% if allLeave.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link pagination-link" 
-                                               href="?page={{ allLeave.next_page_number }}" 
-                                               data-page="{{ allLeave.next_page_number }}">»</a>
-                                        </li>
-                                    {% else %}
-                                        <li class="page-item disabled">
-                                            <span class="page-link">»</span>
-                                        </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
-                        </div>
-                        {% endif %}
+                                        {% for num in allLeave.paginator.page_range %}
+                                            {% if allLeave.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                            {% elif num > allLeave.number|add:'-3' and num < allLeave.number|add:'3' %}
+                                                <li class="page-item">
+                                                    <a class="page-link pagination-link" 
+                                                       href="?page={{ num }}" 
+                                                       data-page="{{ num }}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+
+                                        {% if allLeave.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link pagination-link" 
+                                                   href="?page={{ allLeave.next_page_number }}" 
+                                                   data-page="{{ allLeave.next_page_number }}">»</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">»</span>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            </div>
+                            {% endif %}
+                        </div> <!-- /.table-responsive -->
                     </div> <!-- /.card-body -->
                 </div> <!-- /.card -->
             </div>
@@ -108,12 +112,13 @@
     </div>
 </section>
 
+<!-- Reply Modal -->
 <div class="modal fade" id="reply_modal" tabindex="-1" role="dialog" aria-labelledby="replyModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h4 class="modal-title" id="replyModalLabel">Respond to Leave Request</h4>
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            <div class="modal-header bg-primary">
+                <h4 class="modal-title text-white" id="replyModalLabel">Respond to Leave Request</h4>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-hidden="true">×</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="id">
@@ -125,17 +130,96 @@
                 </select>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button id="reply_btn" class="btn btn-success btn-block">Submit</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button id="reply_btn" class="btn btn-success">
+                    <i class="fas fa-check"></i> Submit
+                </button>
             </div>
         </div><!-- /.modal-content -->
     </div><!-- /.modal-dialog -->
 </div><!-- /.modal -->
 {% endblock content %}
 
+{% block custom_css %}
+<style>
+    /* Responsive table styles */
+    @media (max-width: 767.98px) {
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Optional: Stacked table rows on mobile */
+        /* Uncomment if you prefer this approach */
+        /*
+        table {
+            display: block;
+            width: 100%;
+        }
+        
+        thead {
+            display: none;
+        }
+        
+        tbody, tr, td {
+            display: block;
+            width: 100%;
+        }
+        
+        tr {
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+        }
+        
+        td {
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+            border-top: none;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        td:before {
+            content: attr(data-title);
+            position: absolute;
+            left: 1rem;
+            width: calc(50% - 1rem);
+            padding-right: 1rem;
+            text-align: left;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        td:first-child {
+            background: #f8f9fa;
+            text-align: center;
+            padding-left: 1rem;
+        }
+        
+        td:first-child:before {
+            display: none;
+        }
+        */
+    }
+</style>
+{% endblock custom_css %}
+
 {% block custom_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+
 <script>
 $(document).ready(function() {
+    // Toastr configuration
+    toastr.options = {
+        "closeButton": true,
+        "progressBar": true,
+        "positionClass": "toast-top-right",
+        "timeOut": "3000"
+    };
+
     // Handle pagination clicks
     $(document).on('click', '.pagination-link', function(e) {
         e.preventDefault();
@@ -161,8 +245,8 @@ $(document).ready(function() {
                 window.history.pushState({}, '', '?page=' + page);
             },
             error: function(xhr, status, error) {
+                toastr.error('Error loading page. Please try again.');
                 console.error('Pagination AJAX failed:', error);
-                alert('Error loading page. Please try again.');
             }
         });
     });
@@ -195,20 +279,28 @@ $(document).ready(function() {
                     status: status,
                     csrfmiddlewaretoken: '{{ csrf_token }}'
                 },
+                beforeSend: function() {
+                    $('#reply_btn').prop('disabled', true);
+                },
                 success: function(response) {
                     if (response == "True") {
-                        alert("Leave Response Has Been Saved!");
-                        location.reload();
+                        toastr.success("Leave response has been saved!");
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
                     } else {
-                        alert("Reply Could Not Be Sent");
+                        toastr.error("Reply could not be sent");
                     }
                 },
                 error: function() {
-                    alert("Error Occurred.");
+                    toastr.error("Error occurred while processing your request");
+                },
+                complete: function() {
+                    $('#reply_btn').prop('disabled', false);
                 }
             });
         } else {
-            alert("Choose a valid response");
+            toastr.warning("Please select a valid response");
         }
     });
 });

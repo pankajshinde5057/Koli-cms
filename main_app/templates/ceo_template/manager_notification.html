@@ -5,102 +5,108 @@
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
-                        <button class="btn btn-primary float-right" data-toggle="modal" data-target="#bulkNotificationModal">
-                            Send Bulk Notification
-                        </button>
-                        <button class="btn btn-info float-right mr-2" data-toggle="modal" data-target="#selectiveNotificationModal">
-                            Send to Selected
-                        </button>
+                    <div class="card-header d-flex flex-column flex-md-row align-items-center">
+                        <h3 class="card-title mb-3 mb-md-0">{{ page_title }}</h3>
+                        <div class="ml-md-auto d-flex flex-wrap">
+                            <button class="btn btn-primary btn-sm mb-2 mb-md-0 mr-md-2" data-toggle="modal" data-target="#bulkNotificationModal">
+                                <i class="fas fa-bullhorn"></i> <span class="d-none d-md-inline"></span>Bulk Notification
+                            </button>
+                            <button class="btn btn-info btn-sm mb-2 mb-md-0 ml-2" data-toggle="modal" data-target="#selectiveNotificationModal">
+                                <i class="fas fa-users"></i> <span class="d-none d-md-inline"></span>Selected Notification
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body" id="manager-table-container">
-                        <table id="example2" class="table table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th><input type="checkbox" id="selectAll"></th>
-                                    <th>SN</th>
-                                    <th>Full Name</th>
-                                    <th>Email</th>
-                                    <th>Gender</th>
-                                    <th>Division</th>
-                                    <th>Avatar</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for manager in allManager %}
-                                <tr>
-                                    <td><input type="checkbox" class="managerCheckbox" value="{{ manager.id }}"></td>
-                                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                    <td>{{ manager.last_name }} {{ manager.first_name }}</td>
-                                    <td>{{ manager.email }}</td>
-                                    <td>{{ manager.gender }}</td>
-                                    <td>{{ manager.manager.division.name }}</td>
-                                    <td>
-                                        {% if manager.profile_pic %}
-                                            <img class="img img-fluid mb-2" height="100" width="100" src="{{ manager.profile_pic.url }}" alt="Avatar">
-                                        {% else %}
-                                            No Image
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <button data-toggle="modal" 
-                                                data-target="#myModal" 
-                                                class="btn btn-primary show_notification" 
-                                                value="{{ manager.id }}">Send Notification</button>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="8" class="text-center">No managers found.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-
-                        <!-- Pagination Controls -->
-                        <div class="d-flex justify-content-center mt-3">
-                            <nav>
-                                <ul class="pagination">
-                                    <!-- Previous page (<) -->
-                                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
-                                        <a class="page-link pagination-link" 
-                                           href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}#{% endif %}" 
-                                           data-page="{% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% endif %}" 
-                                           aria-label="Previous">
-                                            <span aria-hidden="true">«</span>
-                                        </a>
-                                    </li>
-                                    
-                                    <!-- Page numbers -->
-                                    {% for num in page_obj.paginator.page_range %}
-                                        {% if page_obj.number == num %}
-                                            <li class="page-item active">
-                                                <span class="page-link">{{ num }}</span>
-                                            </li>
-                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                            <li class="page-item">
-                                                <a class="page-link pagination-link" 
-                                                   href="?page={{ num }}" 
-                                                   data-page="{{ num }}">{{ num }}</a>
-                                            </li>
-                                        {% endif %}
+                    <div class="card-body p-0">
+                        <div class="table-responsive" id="manager-table-container">
+                            <table id="example2" class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th class="text-center"><input type="checkbox" id="selectAll"></th>
+                                        <th>SN</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Gender</th>
+                                        <th>Division</th>
+                                        <th>Avatar</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for manager in allManager %}
+                                    <tr>
+                                        <td class="text-center"><input type="checkbox" class="managerCheckbox" value="{{ manager.id }}"></td>
+                                        <td data-title="SN">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                        <td data-title="Full Name">{{ manager.last_name }} {{ manager.first_name }}</td>
+                                        <td data-title="Email">{{ manager.email }}</td>
+                                        <td data-title="Gender">{{ manager.gender }}</td>
+                                        <td data-title="Division">{{ manager.manager.division.name }}</td>
+                                        <td data-title="Avatar">
+                                            {% if manager.profile_pic %}
+                                                <img class="img img-fluid rounded-circle" height="40" width="40" src="{{ manager.profile_pic.url }}" alt="Avatar">
+                                            {% else %}
+                                                <span class="text-muted">No Image</span>
+                                            {% endif %}
+                                        </td>
+                                        <td data-title="Action">
+                                            <button data-toggle="modal" 
+                                                    data-target="#myModal" 
+                                                    class="btn btn-primary btn-sm show_notification" 
+                                                    value="{{ manager.id }}">
+                                                <i class="fas fa-paper-plane"></i> <span class="d-none d-md-inline">Notify</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center">No managers found.</td>
+                                    </tr>
                                     {% endfor %}
-                                    
-                                    <!-- Next page (>) -->
-                                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
-                                        <a class="page-link pagination-link" 
-                                           href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}#{% endif %}" 
-                                           data-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}" 
-                                           aria-label="Next">
-                                            <span aria-hidden="true">»</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </nav>
+                                </tbody>
+                            </table>
+
+                            <!-- Pagination Controls -->
+                            <div class="d-flex justify-content-center mt-3 px-3">
+                                <nav>
+                                    <ul class="pagination flex-wrap">
+                                        <!-- Previous page (<) -->
+                                        <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                                            <a class="page-link pagination-link" 
+                                               href="?page={% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% else %}#{% endif %}" 
+                                               data-page="{% if page_obj.has_previous %}{{ page_obj.previous_page_number }}{% endif %}" 
+                                               aria-label="Previous">
+                                                <span aria-hidden="true">«</span>
+                                            </a>
+                                        </li>
+                                        
+                                        <!-- Page numbers -->
+                                        {% for num in page_obj.paginator.page_range %}
+                                            {% if page_obj.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                                <li class="page-item">
+                                                    <a class="page-link pagination-link" 
+                                                       href="?page={{ num }}" 
+                                                       data-page="{{ num }}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        
+                                        <!-- Next page (>) -->
+                                        <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                                            <a class="page-link pagination-link" 
+                                               href="?page={% if page_obj.has_next %}{{ page_obj.next_page_number }}{% else %}#{% endif %}" 
+                                               data-page="{% if page_obj.has_next %}{{ page_obj.next_page_number }}{% endif %}" 
+                                               aria-label="Next">
+                                                <span aria-hidden="true">»</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -111,21 +117,25 @@
 
 <!-- Individual Notification Modal -->
 <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="individualNotificationLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="individualNotificationLabel">Send Notification</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-hidden="true">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <input type="text" id="message" class="form-control" placeholder="Enter message">
+                    <input type="text" id="message" class="form-control" placeholder="Enter notification message">
                     <input type="hidden" id="manager_id" class="form-control">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" id="send" class="btn btn-success send_notification">Send Notification</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button type="button" id="send" class="btn btn-success send_notification">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
             </div>
         </div>
     </div>
@@ -133,20 +143,24 @@
 
 <!-- Bulk Notification Modal -->
 <div class="modal fade" id="bulkNotificationModal" tabindex="-1" role="dialog" aria-labelledby="bulkNotificationLabel">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="bulkNotificationLabel">Send Bulk Notification</h5>
-                <button type="button" class="close" data-dismiss="modal">×</button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="bulkNotificationLabel">Bulk Notification</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <textarea id="bulkMessage" class="form-control" placeholder="Enter message"></textarea>
+                    <textarea id="bulkMessage" class="form-control" placeholder="Enter message for all managers" rows="4"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" id="sendBulk" class="btn btn-success send_bulk_notification">Send to All Managers</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button type="button" id="sendBulk" class="btn btn-success send_bulk_notification">
+                    <i class="fas fa-bullhorn"></i> Send to All
+                </button>
             </div>
         </div>
     </div>
@@ -154,29 +168,129 @@
 
 <!-- Selective Notification Modal -->
 <div class="modal fade" id="selectiveNotificationModal" tabindex="-1" role="dialog" aria-labelledby="selectiveNotificationLabel">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="selectiveNotificationLabel">Send to Selected Managers</h5>
-                <button type="button" class="close" data-dismiss="modal">×</button>
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="selectiveNotificationLabel">Selected Managers</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <textarea id="selectiveMessage" class="form-control" placeholder="Enter message for selected managers"></textarea>
+                    <textarea id="selectiveMessage" class="form-control" placeholder="Enter message for selected managers" rows="4"></textarea>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <span id="selectedCount">0</span> managers selected
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" id="sendSelected" class="btn btn-success send_selected_notification">Send to Selected</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button type="button" id="sendSelected" class="btn btn-success send_selected_notification">
+                    <i class="fas fa-users"></i> Send to Selected
+                </button>
             </div>
         </div>
     </div>
 </div>
 {% endblock content %}
 
+{% block custom_css %}
+<style>
+    /* Responsive table styles */
+    @media (max-width: 767.98px) {
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Optional: Stacked table rows on mobile */
+        /* Uncomment if you prefer this approach */
+        /*
+        table {
+            display: block;
+            width: 100%;
+        }
+        
+        thead {
+            display: none;
+        }
+        
+        tbody, tr, td {
+            display: block;
+            width: 100%;
+        }
+        
+        tr {
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+        }
+        
+        td {
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+            border-top: none;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        td:before {
+            content: attr(data-title);
+            position: absolute;
+            left: 1rem;
+            width: calc(50% - 1rem);
+            padding-right: 1rem;
+            text-align: left;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        td:first-child {
+            background: #f8f9fa;
+            text-align: center;
+            padding-left: 1rem;
+        }
+        
+        td:first-child:before {
+            display: none;
+        }
+        */
+    }
+    
+    /* Avatar image styling */
+    .img-fluid.rounded-circle {
+        max-width: 40px;
+        height: auto;
+    }
+    
+    /* Button spacing */
+    .card-header .btn {
+        margin-bottom: 0.25rem;
+    }
+</style>
+{% endblock custom_css %}
+
 {% block custom_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+
 <script>
 $(document).ready(function() {
+    // Toastr configuration
+    toastr.options = {
+        "closeButton": true,
+        "progressBar": true,
+        "positionClass": "toast-top-right",
+        "timeOut": "3000"
+    };
+
+    // Update selected count when checkboxes change
+    function updateSelectedCount() {
+        var count = $('.managerCheckbox:checked').length;
+        $('#selectedCount').text(count);
+        return count;
+    }
+
     // Handle pagination clicks
     $(document).on('click', '.pagination-link', function(e) {
         e.preventDefault();
@@ -193,79 +307,54 @@ $(document).ready(function() {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(html) {
-                // Create a temporary container to parse the full HTML
                 var $temp = $('<div>').html(html);
-                // Extract only the #manager-table-container content
                 var $newContent = $temp.find('#manager-table-container').html();
-                // Update the existing container
                 $('#manager-table-container').html($newContent);
-                // Update browser URL without reloading
                 window.history.pushState({}, '', '?page=' + page);
             },
             error: function(xhr, status, error) {
+                toastr.error('Error loading page. Please try again.');
                 console.error('Pagination AJAX failed:', error);
-                alert('Error loading page. Please try again.');
             }
         });
     });
 
     // Handle browser back/forward buttons
     window.onpopstate = function(event) {
-        window.location.reload(); // Reload to ensure correct state
+        window.location.reload();
     };
 
     // Handle select all checkbox
     $(document).on('click', '#selectAll', function() {
         $('.managerCheckbox').prop('checked', $(this).prop('checked'));
+        updateSelectedCount();
+    });
+
+    // Handle individual checkbox changes
+    $(document).on('change', '.managerCheckbox', function() {
+        var allChecked = $('.managerCheckbox:checked').length === $('.managerCheckbox').length;
+        $('#selectAll').prop('checked', allChecked);
+        updateSelectedCount();
     });
 
     // Handle show notification modal
     $(document).on('click', '.show_notification', function() {
         $('#manager_id').val($(this).val());
+        $('#message').val('').focus();
     });
 
     // Handle send individual notification
     $(document).on('click', '.send_notification', function() {
         var id = $('#manager_id').val();
-        var message = $('#message').val();
-        if (message.trim() == '') {
-            alert('Please enter a message');
+        var message = $('#message').val().trim();
+        if (!message) {
+            toastr.warning('Please enter a message');
             return;
         }
-        sendNotification(id, message);
-    });
-
-    // Handle send bulk notification
-    $(document).on('click', '.send_bulk_notification', function() {
-        var message = $('#bulkMessage').val();
-        if (message.trim() === '') {
-            alert('Please enter a message');
-            return;
-        }
-        sendBulkNotification(message);
-    });
-
-    // Handle send selected notification
-    $(document).on('click', '.send_selected_notification', function() {
-        var message = $('#selectiveMessage').val();
-        if (message.trim() === '') {
-            alert('Please enter a message');
-            return;
-        }
-        var selectedManagers = [];
-        $('.managerCheckbox:checked').each(function() {
-            selectedManagers.push($(this).val());
-        });
-
-        if (selectedManagers.length === 0) {
-            alert('Please select at least one manager');
-            return;
-        }
-
-        sendSelectedNotification(selectedManagers, message);
-    });
-
-    function sendNotification(id, message) {
+        
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+        
         $.ajax({
             url: "{% url 'send_manager_notification' %}",
             type: 'POST',
@@ -276,21 +365,32 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response === 'True') {
-                    alert('Notification Sent');
+                    toastr.success('Notification sent successfully');
                     $('#myModal').modal('hide');
-                    $('#message').val('');
-                    location.reload();
                 } else {
-                    alert('Notification could not be sent. Please try again.');
+                    toastr.error('Failed to send notification');
                 }
             },
             error: function() {
-                alert('Error in sending notification');
+                toastr.error('Error sending notification');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Send');
             }
         });
-    }
+    });
 
-    function sendBulkNotification(message) {
+    // Handle send bulk notification
+    $(document).on('click', '.send_bulk_notification', function() {
+        var message = $('#bulkMessage').val().trim();
+        if (!message) {
+            toastr.warning('Please enter a message');
+            return;
+        }
+        
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+        
         $.ajax({
             url: "{% url 'send_bulk_manager_notification' %}",
             type: 'POST',
@@ -300,20 +400,43 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response === 'True') {
-                    alert('Bulk Notification Sent');
+                    toastr.success('Bulk notification sent successfully');
                     $('#bulkNotificationModal').modal('hide');
                     $('#bulkMessage').val('');
                 } else {
-                    alert('Bulk Notification could not be sent. Please try again.');
+                    toastr.error('Failed to send bulk notification');
                 }
             },
             error: function() {
-                alert('Error in sending bulk notification');
+                toastr.error('Error sending bulk notification');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="fas fa-bullhorn"></i> Send to All');
             }
         });
-    }
+    });
 
-    function sendSelectedNotification(selectedManagers, message) {
+    // Handle send selected notification
+    $(document).on('click', '.send_selected_notification', function() {
+        var message = $('#selectiveMessage').val().trim();
+        if (!message) {
+            toastr.warning('Please enter a message');
+            return;
+        }
+        
+        var selectedManagers = [];
+        $('.managerCheckbox:checked').each(function() {
+            selectedManagers.push($(this).val());
+        });
+
+        if (selectedManagers.length === 0) {
+            toastr.warning('Please select at least one manager');
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+        
         $.ajax({
             url: "{% url 'send_selected_manager_notification' %}",
             type: 'POST',
@@ -324,20 +447,24 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response === 'True') {
-                    alert('Notification Sent to Selected Managers');
+                    toastr.success('Notification sent to selected managers');
                     $('#selectiveNotificationModal').modal('hide');
                     $('#selectiveMessage').val('');
                     $('.managerCheckbox').prop('checked', false);
                     $('#selectAll').prop('checked', false);
+                    $('#selectedCount').text('0');
                 } else {
-                    alert('Notification could not be sent. Please try again.');
+                    toastr.error('Failed to send notification');
                 }
             },
             error: function() {
-                alert('Error in sending notification');
+                toastr.error('Error sending notification');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html('<i class="fas fa-users"></i> Send to Selected');
             }
         });
-    }
+    });
 });
 </script>
 {% endblock custom_js %}
