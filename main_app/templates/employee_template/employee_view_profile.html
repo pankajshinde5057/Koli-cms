@@ -99,15 +99,15 @@
                                             <div class="col-md-6">
                                                 <ul class="list-unstyled">
                                                     <li class="mb-2">
-                                                        <strong>Team Lead:</strong> {{ employee.team_lead.full_name|default:"None" }}
+                                                        <strong>Team Lead:</strong> {{ employee.team_lead|default:"None" }}
                                                     </li>
                                                     <li class="mb-2">
-                                                        <strong>Employment Type:</strong> {{ employee.get_employment_type_display }}
+                                                        <strong>Division :</strong> {{ employee.division  }}
                                                     </li>
                                                     <li class="mb-2">
-                                                        <strong>Status:</strong> 
+                                                        <strong>Gender:</strong> 
                                                         <span class="badge bg-{{ employee.get_status_color }}">
-                                                            {{ employee.get_status_display }}
+                                                            {{ employee.admin.gender }}
                                                         </span>
                                                     </li>
                                                 </ul>
