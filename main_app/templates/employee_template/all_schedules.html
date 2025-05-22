@@ -92,6 +92,14 @@
         color: #64748b;
         font-style: italic;
     }
+    .justification {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f1f5f9;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: #1f2937;
+    }
     .status-badge {
         display: inline-block;
         padding: 4px 10px;
@@ -152,6 +160,12 @@
                             <div class="no-items">No tasks in this schedule</div>
                         {% endif %}
                         
+                        <!-- Schedule Justification -->
+                        <div class="justification">
+                            <strong>Justification:</strong> 
+                            {{ schedule.justification|escape|default:"No justification provided" }}
+                        </div>
+                        
                         <!-- Updates for this schedule -->
                         {% if schedule.updates.exists %}
                             <div class="display-title mt-3">Updates:</div>
@@ -169,6 +183,11 @@
                                     {% else %}
                                         <div class="no-items">No updates provided</div>
                                     {% endif %}
+                                    <!-- Update Justification -->
+                                    <div class="justification">
+                                        <strong>Justification:</strong> 
+                                        {{ update.justification|escape|default:"No justification provided" }}
+                                    </div>
                                 </div>
                             {% endfor %}
                         {% else %}
@@ -181,8 +200,6 @@
                 <div class="text-center py-4 text-gray-500">
                     No schedules or updates found for the selected filter
                 </div>
-            </div>
-            
             {% endif %}
         </div>
     </div>

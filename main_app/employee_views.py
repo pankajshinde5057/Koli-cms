@@ -1007,16 +1007,6 @@ def daily_schedule(request):
         'edit_schedule': edit_schedule,
         'edit_tasks': edit_tasks,
     })
-    
-    
-    
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.core.exceptions import ValidationError
-from datetime import datetime
-from django.utils import timezone
-
 def get_ist_date():
     ist = timezone.get_current_timezone()
     return timezone.now().astimezone(ist).date()
