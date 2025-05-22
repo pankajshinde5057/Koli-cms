@@ -247,8 +247,11 @@
                     if (result.isConfirmed) {
                         console.log('Lunch break confirmed');
                         submitBreakAction('lunch');
-                    } else {
-                        console.log('Lunch break confirmation cancelled');
+
+                        // Disable button immediately to reflect UI change
+                        lunchBreakBtn.classList.add('disabled');
+                        lunchBreakBtn.setAttribute('title', 'You can only take one lunch break per day');
+                        lunchBreakBtn.disabled = true;
                     }
                 }).catch((error) => {
                     console.error('SweetAlert2 error:', error);
