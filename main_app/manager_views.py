@@ -817,7 +817,7 @@ def get_employee_attendance(request):
                         
                         # Handle leaves
                         if current_date in half_day_leave_dates:
-                            present_days += 0.5
+                            present_days += 1
                             half_days += 1
                             late_days += 1
                         elif current_date in leave_dates:
@@ -829,7 +829,7 @@ def get_employee_attendance(request):
                             present_days += 1
                             late_days += 1
                         elif record_status == 'half_day':
-                            present_days += 0.5
+                            present_days += 1
                             half_days += 1
                             late_days += 1
                         else:

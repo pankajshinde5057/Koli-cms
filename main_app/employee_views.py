@@ -837,15 +837,80 @@ def employee_requests(request):
     return render(request, 'employee_template/employee_requests.html', context)
 
 
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from .models import Employee, DailySchedule
+from datetime import date
+
 @login_required
 def daily_schedule(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    today = get_ist_date()
-    existing_schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
-
+    today = date.today()
+    
+    # Get schedule_id from query string for editing
+    schedule_id = request.GET.get('schedule_id')
+    
+    # Get all schedules for history
+    all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
+    
+    # Format schedules with hours and minutes for display
+    formatted_schedules = []
+    for schedule in all_schedules:
+        total_minutes = 0
+        for task in schedule.task_description.splitlines():
+            try:
+                time_part = task.split('(')[1].split(')')[0].strip().lower()
+                if 'h' in time_part:
+                    total_minutes += float(time_part.replace('h', '')) * 60
+                elif 'm' in time_part:
+                    total_minutes += float(time_part.replace('m', ''))
+                elif 's' in time_part:
+                    total_minutes += float(time_part.replace('s', '')) / 60
+            except (IndexError, ValueError):
+                continue
+        
+        if abs(schedule.total_hours - (total_minutes / 60)) > 0.01:
+            schedule.total_hours = total_minutes / 60
+            schedule.save()
+        
+        hours = int(total_minutes / 60)
+        minutes = int(total_minutes % 60)
+        formatted_schedules.append({
+            'id': schedule.id,
+            'date': schedule.date,
+            'project': schedule.project,
+            'task_description': schedule.task_description,
+            'justification': schedule.justification,
+            'hours': hours,
+            'minutes': minutes,
+        })
+    
+    # Load existing schedule for editing
+    edit_schedule = None
+    edit_tasks = []
+    if schedule_id:
+        edit_schedule = get_object_or_404(DailySchedule, id=schedule_id, employee=employee)
+        # Preprocess tasks for editing
+        for task in edit_schedule.task_description.splitlines():
+            try:
+                desc, time = task.split(' (')
+                time = time.rstrip(')')
+                edit_tasks.append({
+                    'description': desc.strip(),
+                    'time': time.strip()
+                })
+            except (IndexError, ValueError):
+                continue
+    
     if request.method == 'POST':
         task_description = request.POST.get('task_description', '')
         project = request.POST.get('project', '')
+        justification = request.POST.get('justification', '')
+        schedule_date = request.POST.get('schedule_date', today)
+        schedule_id = request.POST.get('schedule_id')  # Get schedule_id from form
 
         # Validate tasks
         tasks = [line.strip() for line in task_description.split("\n") if line.strip()]
@@ -854,31 +919,82 @@ def daily_schedule(request):
         if invalid_tasks:
             messages.error(request, "Each task must include time estimate (e.g., 'Task description|2h')")
             return render(request, 'employee_template/daily_schedule.html', {
-                'schedule': existing_schedule,
+                'schedules': formatted_schedules,
                 'today': today,
+                'edit_schedule': edit_schedule,
+                'edit_tasks': edit_tasks,
+                'project': project,
+                'justification': justification,
             })
 
-        if existing_schedule:
-            # Update existing
-            existing_schedule.task_description = task_description
-            existing_schedule.project = project
+        # Calculate total time
+        total_minutes = 0
+        for task in tasks:
             try:
-                existing_schedule.full_clean()
-                existing_schedule.save()
-                messages.success(request, "Schedule updated successfully!")
+                time_part = task.split('|')[1].strip().lower()
+                if 'h' in time_part:
+                    total_minutes += float(time_part.replace('h', '')) * 60
+                elif 'm' in time_part:
+                    total_minutes += float(time_part.replace('m', ''))
+                elif 's' in time_part:
+                    total_minutes += float(time_part.replace('s', '')) / 60
+                else:
+                    total_minutes += float(time_part)
+            except (IndexError, ValueError):
+                messages.error(request, "Invalid time format in tasks")
+                return render(request, 'employee_template/daily_schedule.html', {
+                    'schedules': formatted_schedules,
+                    'today': today,
+                    'edit_schedule': edit_schedule,
+                    'edit_tasks': edit_tasks,
+                    'project': project,
+                    'justification': justification,
+                })
+
+        # Format tasks for storage
+        formatted_tasks = []
+        for task in tasks:
+            desc, time = task.split('|')
+            formatted_tasks.append(f"{desc.strip()} ({time.strip()})")
+        formatted_task_description = "\n".join(formatted_tasks)
+
+        if schedule_id:
+            # Update existing schedule
+            edit_schedule = get_object_or_404(DailySchedule, id=schedule_id, employee=employee)
+            edit_schedule.task_description = formatted_task_description
+            edit_schedule.project = project
+            edit_schedule.justification = justification if total_minutes < 480 else ''
+            edit_schedule.total_hours = total_minutes / 60
+            edit_schedule.date = schedule_date
+            try:
+                edit_schedule.save()
+                messages.success(request, "Schedule successfully updated!")
                 return redirect('daily_schedule')
             except ValidationError as e:
                 messages.error(request, f"Error updating schedule: {e}")
         else:
-            # Create new
+            # Create new schedule
+            existing_schedule = DailySchedule.objects.filter(employee=employee, date=schedule_date).first()
+            if existing_schedule:
+                messages.error(request, "A schedule already exists for this date!")
+                return render(request, 'employee_template/daily_schedule.html', {
+                    'schedules': formatted_schedules,
+                    'today': today,
+                    'edit_schedule': edit_schedule,
+                    'edit_tasks': edit_tasks,
+                    'project': project,
+                    'justification': justification,
+                })
+            
             schedule = DailySchedule(
                 employee=employee,
-                date=today,
-                task_description=task_description,
+                date=schedule_date,
+                task_description=formatted_task_description,
                 project=project,
+                justification=justification if total_minutes < 480 else '',
+                total_hours=total_minutes / 60
             )
             try:
-                schedule.full_clean()
                 schedule.save()
                 messages.success(request, "Schedule created successfully!")
                 return redirect('daily_schedule')
@@ -886,9 +1002,24 @@ def daily_schedule(request):
                 messages.error(request, f"Error creating schedule: {e}")
 
     return render(request, 'employee_template/daily_schedule.html', {
-        'schedule': existing_schedule,
+        'schedules': formatted_schedules,
         'today': today,
+        'edit_schedule': edit_schedule,
+        'edit_tasks': edit_tasks,
     })
+    
+    
+    
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import ValidationError
+from datetime import datetime
+from django.utils import timezone
+
+def get_ist_date():
+    ist = timezone.get_current_timezone()
+    return timezone.now().astimezone(ist).date()
 
 @login_required
 def todays_update(request):
@@ -905,43 +1036,96 @@ def todays_update(request):
 
     if request.method == 'POST' and is_editable:
         update_description = request.POST.get('update_description', '')
+        justification = request.POST.get('justification', '')
         
         # Validate updates
         updates = [line.strip() for line in update_description.split("\n") if line.strip()]
-        invalid_updates = [u for u in updates if '|' not in u]
+        invalid_updates = [u for u in updates if '|' not in u or len(u.split('|')) != 2]
         
         if invalid_updates:
-            messages.error(request, "Each update must include time spent (e.g., 'Completed task|1.5h')")
+            messages.error(request, "Each update must include description and time spent (e.g., 'Completed task|1.5h')")
             return render(request, 'employee_template/todays_update.html', {
                 'schedule': schedule,
                 'update': existing_update,
                 'today': today,
                 'is_editable': is_editable,
+                'justification': justification,
+            })
+
+        # Calculate total time spent and validate time format
+        total_minutes = 0
+        for update in updates:
+            try:
+                desc, time_part = update.split('|')
+                time_part = time_part.strip().lower()
+                if 'h' in time_part:
+                    total_minutes += float(time_part.replace('h', '')) * 60
+                elif 'm' in time_part:
+                    total_minutes += float(time_part.replace('m', ''))
+                elif 's' in time_part:
+                    total_minutes += float(time_part.replace('s', '')) / 60
+                else:
+                    raise ValueError
+            except (ValueError, IndexError):
+                messages.error(request, f"Invalid time format in update: {update}. Use format like 'Task|1.5h'")
+                return render(request, 'employee_template/todays_update.html', {
+                    'schedule': schedule,
+                    'update': existing_update,
+                    'today': today,
+                    'is_editable': is_editable,
+                    'justification': justification,
+                })
+
+        # Require justification if total time is less than 8 hours (480 minutes)
+        if total_minutes < 480 and not justification.strip():
+            messages.error(request, "Please provide justification for spending less than 8 hours.")
+            return render(request, 'employee_template/todays_update.html', {
+                'schedule': schedule,
+                'update': existing_update,
+                'today': today,
+                'is_editable': is_editable,
+                'justification': justification,
             })
 
         if existing_update:
             # Update existing
             existing_update.update_description = update_description
+            existing_update.justification = justification
             try:
                 existing_update.full_clean()
                 existing_update.save()
                 messages.success(request, "Update modified successfully!")
-                return redirect('todays_update')
             except ValidationError as e:
                 messages.error(request, f"Error updating: {e}")
+                return render(request, 'employee_template/todays_update.html', {
+                    'schedule': schedule,
+                    'update': existing_update,
+                    'today': today,
+                    'is_editable': is_editable,
+                    'justification': justification,
+                })
         else:
             # Create new
             update = DailyUpdate(
                 schedule=schedule,
                 update_description=update_description,
+                justification=justification,
             )
             try:
                 update.full_clean()
                 update.save()
                 messages.success(request, "Update submitted successfully!")
-                return redirect('todays_update')
             except ValidationError as e:
                 messages.error(request, f"Error submitting: {e}")
+                return render(request, 'employee_template/todays_update.html', {
+                    'schedule': schedule,
+                    'update': existing_update,
+                    'today': today,
+                    'is_editable': is_editable,
+                    'justification': justification,
+                })
+
+        return redirect('todays_update')
 
     return render(request, 'employee_template/todays_update.html', {
         'schedule': schedule,
@@ -949,7 +1133,6 @@ def todays_update(request):
         'today': today,
         'is_editable': is_editable,
     })
-
 
 def view_all_schedules(request):
     """View all schedules and their updates for the logged-in employee"""

@@ -516,11 +516,14 @@ def get_ist_date():
     return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
 
 class DailySchedule(models.Model):
-    employee = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name='schedules')
-    attendance_record = models.ForeignKey('AttendanceRecord', on_delete=models.SET_NULL, related_name='schedules',null=True, blank=True)
-    date = models.DateField(get_ist_date)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='schedules')
+    attendance_record = models.ForeignKey('AttendanceRecord', on_delete=models.SET_NULL, 
+                                        related_name='schedules', null=True, blank=True)
+    date = models.DateField()
     task_description = models.TextField()
     project = models.CharField(max_length=100, blank=True)
+    justification = models.TextField(blank=True)  # New field for justification
+    total_hours = models.FloatField(default=0.0)  # New field for total scheduled hours
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -531,14 +534,36 @@ class DailySchedule(models.Model):
     def __str__(self):
         return f"{self.employee} - {self.task_description} on {self.date}"
     
+    def save(self, *args, **kwargs):
+        # Calculate total_hours before saving
+        self.total_hours = self.calculate_total_hours()
+        super().save(*args, **kwargs)
+    
+    def calculate_total_hours(self):
+        """Calculate total scheduled hours from task descriptions"""
+        total_minutes = 0
+        for task in self.tasks:
+            time_part = task['time'].strip().lower()
+            if 'h' in time_part:
+                total_minutes += float(time_part.replace('h', '')) * 60
+            elif 'm' in time_part:
+                total_minutes += float(time_part.replace('m', ''))
+            elif 's' in time_part:
+                total_minutes += float(time_part.replace('s', '')) / 60
+            elif time_part:  # assume minutes if no unit specified
+                total_minutes += float(time_part)
+        return total_minutes / 60
+    
     def duration(self):
-        # calculate work duration from attendance record
+        """Calculate actual work duration from attendance record"""
         if self.attendance_record and self.attendance_record.clock_out:
             duration = self.attendance_record.clock_out - self.attendance_record.clock_in
-            return duration.total_seconds()/3600 # converts to hours
+            return duration.total_seconds() / 3600  # converts to hours
         return 0
+    
     @property
     def tasks(self):
+        """Parse task descriptions into structured data"""
         tasks = []
         for line in self.task_description.split('\n'):
             parts = line.split('|', 1)
@@ -551,12 +576,14 @@ class DailySchedule(models.Model):
     
     @property
     def task_description_lines(self):
+        """Get non-empty task description lines"""
         return [line for line in self.task_description.split("\n") if line.strip()]
 
 class DailyUpdate(models.Model):
     schedule = models.ForeignKey(DailySchedule, on_delete=models.CASCADE, related_name='updates')
     update_description = models.TextField()
     updated_at = models.DateTimeField(auto_now=True)
+    justification = models.TextField(blank=True, default='')  # Add justification field
 
     class Meta:
         ordering = ['-updated_at']
@@ -583,6 +610,31 @@ class DailyUpdate(models.Model):
     @property
     def update_description_lines(self):
         return [line for line in self.update_description.split('\n') if line.strip()]
+
+    @property
+    def total_time_spent(self):
+        """Calculate total time spent in minutes from update_description."""
+        total_minutes = 0
+        for update in self.updates:
+            time_str = update['time'].lower()
+            try:
+                if 'h' in time_str:
+                    total_minutes += float(time_str.replace('h', '')) * 60
+                elif 'm' in time_str:
+                    total_minutes += float(time_str.replace('m', ''))
+                elif 's' in time_str:
+                    total_minutes += float(time_str.replace('s', '')) / 60
+            except (ValueError, IndexError):
+                continue
+        return total_minutes
+
+    @property
+    def total_time_spent_formatted(self):
+        """Return total time spent in 'Xh Ym' format."""
+        total_minutes = self.total_time_spent
+        hours = int(total_minutes // 60)
+        minutes = int(total_minutes % 60)
+        return f"{hours}h {minutes}m"
 
 
 class EarylyClockOutRequest(models.Model):
