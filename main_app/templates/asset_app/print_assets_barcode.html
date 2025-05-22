@@ -9,7 +9,7 @@
             <form method="post" action="{% url 'asset_app:print_all_barcode' %}" id="print-form">
                 {% csrf_token %}
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-6 mb-2">
                         <button type="submit" name="print_all" value="true" class="btn btn-success btn-lg btn-block">
                             <i class="fas fa-print mr-2"></i>Print All Barcodes
                         </button>
