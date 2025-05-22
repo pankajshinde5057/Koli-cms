@@ -371,7 +371,11 @@ def employee_home(request):
                 timedelta()
             )
             today_total_worked -= total_break_time
-
+    has_taken_lunch_today = Break.objects.filter(
+    attendance_record__user=request.user,
+    attendance_record__date=today,
+    break_type='lunch'
+    ).exists()
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
@@ -382,6 +386,7 @@ def employee_home(request):
         'current_record': current_record,
         'current_break': current_break,
         'recent_activities': recent_activities,
+        'has_taken_lunch_today': has_taken_lunch_today,
         'attendance_stats': {
             'total_days': total_working_days,
             'present_days': present_days,
