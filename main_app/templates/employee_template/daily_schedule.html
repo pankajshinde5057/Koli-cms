@@ -120,6 +120,61 @@
         color: #1a365d;
         margin-bottom: 20px;
     }
+    .date-input:disabled {
+        background-color: #f3f4f6;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    /* Pagination styles */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 20px;
+    }
+    .pagination-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 50%;
+        background-color: #4f46e5;
+        color: white;
+        font-size: 14px;
+        line-height: 32px;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+    }
+    .pagination-btn:disabled {
+        background-color: #d1d5db;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+    .pagination-btn:hover:not(:disabled) {
+        background-color: #4338ca;
+        transform: translateY(-1px);
+    }
+    .pagination-page {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #e0e7ff;
+        color: #3730a3;
+        font-size: 14px;
+        line-height: 32px;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    .pagination-page.active {
+        background-color: #4f46e5;
+        color: white;
+        font-weight: 600;
+    }
+    .pagination-page:hover:not(.active) {
+        background-color: #c7d2fe;
+    }
 </style>
 {% endblock %}
 
@@ -134,8 +189,8 @@
                        placeholder="Project name" value="{{ edit_schedule.project|default_if_none:'' }}">
             </div>
             <div class="mb-4">
-                <input type="date" id="date-input" class="w-100 p-2 border rounded-md" 
-                       value="{{ edit_schedule.date|default_if_none:today|date:'Y-m-d' }}">
+                <input type="date" id="date-input" class="w-100 p-2 border rounded-md date-input" 
+                       value="{% if edit_schedule %}{{ edit_schedule.date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" disabled>
             </div>
             <div class="task-input-container">
                 <div id="tasks-container">
@@ -192,7 +247,7 @@
         <!-- History Section -->
         <div class="section-card">
             <h3 class="section-title">Schedule History</h3>
-            <div class="history-container">
+            <div class="history-container" id="history-container">
                 {% if schedules %}
                     {% for schedule in schedules %}
                         <div class="history-item">
@@ -224,6 +279,9 @@
                         <div class="empty-history-text">No schedule history found</div>
                     </div>
                 {% endif %}
+            </div>
+            <div class="pagination-container" id="pagination-container">
+                <!-- Pagination controls will be dynamically added here -->
             </div>
         </div>
     </div>
@@ -420,6 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('task-description-input').value = tasks.join('\n');
             document.getElementById('form-project-input').value = projectInput.value.trim();
             document.getElementById('form-date-input').value = dateInput.value;
+            document.getElementById('form-justification-input').value = justificationInput.value.trim();
 
             // Handle justification logic
             if (totalMinutes < 480) {
@@ -432,7 +491,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert('Please provide justification for scheduling less than 8 hours');
                     return;
                 }
-                document.getElementById('form-justification-input').value = justificationInput.value.trim();
             } else {
                 // Clear justification and hide box if 8 hours or more
                 justificationInput.value = '';
@@ -459,6 +517,117 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = `{% url 'daily_schedule' %}?schedule_id=${scheduleId}`;
         });
     });
+
+    // Pagination handling
+    const historyContainer = document.getElementById('history-container');
+    const paginationContainer = document.getElementById('pagination-container');
+    let currentPage = 1;
+
+    function fetchSchedules(page) {
+        fetch(`{% url 'daily_schedule' %}?page=${page}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+            // Clear current history
+            historyContainer.innerHTML = '';
+            
+            // Render schedules
+            if (data.schedules.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="empty-history">
+                        <div class="empty-history-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="empty-history-text">No schedule history found</div>
+                    </div>
+                `;
+            } else {
+                data.schedules.forEach(schedule => {
+                    const scheduleDiv = document.createElement('div');
+                    scheduleDiv.className = 'history-item';
+                    scheduleDiv.innerHTML = `
+                        <div class="history-date">${schedule.date}</div>
+                        ${schedule.project ? `<div class="history-project">Project: ${schedule.project}</div>` : ''}
+                        <div class="history-tasks">
+                            ${schedule.task_description.map(task => `<div class="history-task">${task}</div>`).join('')}
+                        </div>
+                        <div class="history-total">Total: ${schedule.hours}h ${schedule.minutes}m</div>
+                        ${schedule.justification ? `<div class="history-justification"><span class="history-justification-label">Justification:</span> ${schedule.justification}</div>` : ''}
+                        <button class="edit-btn" data-schedule-id="${schedule.id}">✎</button>
+                    `;
+                    historyContainer.appendChild(scheduleDiv);
+                });
+            }
+
+            // Update pagination controls
+            let paginationHTML = `
+                <button class="pagination-btn" id="prev-page" ${!data.has_previous ? 'disabled' : ''}>←</button>
+            `;
+
+            // Calculate page range to display (show up to 5 pages centered around current page)
+            const totalPages = data.num_pages;
+            const current = parseInt(data.page);
+            const maxPagesToShow = 5;
+            let startPage = Math.max(1, current - Math.floor(maxPagesToShow / 2));
+            let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+            // Adjust startPage if endPage is at the maximum
+            if (endPage - startPage + 1 < maxPagesToShow) {
+                startPage = Math.max(1, endPage - maxPagesToShow + 1);
+            }
+
+            // Generate page number buttons
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `
+                    <div class="pagination-page ${i === current ? 'active' : ''}" data-page="${i}">${i}</div>
+                `;
+            }
+
+            paginationHTML += `
+                <button class="pagination-btn" id="next-page" ${!data.has_next ? 'disabled' : ''}>→</button>
+            `;
+
+            paginationContainer.innerHTML = paginationHTML;
+
+            // Update current page
+            currentPage = current;
+
+            // Add event listeners for pagination buttons
+            document.getElementById('prev-page')?.addEventListener('click', () => {
+                if (data.has_previous) fetchSchedules(currentPage - 1);
+            });
+            document.getElementById('next-page')?.addEventListener('click', () => {
+                if (data.has_next) fetchSchedules(currentPage + 1);
+            });
+
+            // Add event listeners for page numbers
+            document.querySelectorAll('.pagination-page').forEach(pageBtn => {
+                pageBtn.addEventListener('click', () => {
+                    const page = parseInt(pageBtn.getAttribute('data-page'));
+                    fetchSchedules(page);
+                });
+            });
+
+            // Re-attach edit button listeners
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const scheduleId = btn.getAttribute('data-schedule-id');
+                    window.location.href = `{% url 'daily_schedule' %}?schedule_id=${scheduleId}`;
+                });
+            });
+        })
+        .catch(error => console.error('Error fetching schedules:', error));
+    }
+
+    // Initial fetch for page 1
+    fetchSchedules(1);
 
     // Initial update
     updateTimeSummary();
