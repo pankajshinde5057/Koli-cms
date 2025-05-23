@@ -355,6 +355,16 @@
                 </li>
 
                 <li class="nav-item">
+                    {% url 'manager_todays_attendance' as manager_todays_attendance %}
+                    <a href="{{ manager_todays_attendance }}" class="nav-link {% if manager_todays_attendance == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-clock"></i>
+                        <p>
+                            Today's Clocked-In
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     {% url 'all_employees_schedules' as all_employees_schedules %}
                     <a href="{{all_employees_schedules}}" class="nav-link {% if all_employees_schedules == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-users"></i>
