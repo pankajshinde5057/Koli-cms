@@ -1,6 +1,7 @@
 from django.utils.deprecation import MiddlewareMixin
-from django.urls import reverse
+from django.urls import reverse,resolve
 from django.shortcuts import redirect
+from django.shortcuts import render
 
 
 class LoginCheckMiddleWare(MiddlewareMixin):
@@ -24,3 +25,45 @@ class LoginCheckMiddleWare(MiddlewareMixin):
                 pass
             else:
                 return redirect(reverse('login_page'))
+
+
+class RoleBasedAccessMiddleware:
+    def __init__(self,get_response):
+        self.get_response = get_response
+
+        self.asset_urls = {
+            'asset_app:assets-list' : ['1','2'],
+            'asset_app:assetscategory-create': ['1','2'],
+            'asset_app:assets-detail' : ['1','2','3'],
+            'asset_app:assets-create' : ['1','2'],
+            'asset_app:asset-assign' : ['1','2'],
+            'asset_app:asset-claim' : ['1','2','3'],
+            'asset_app:approve-notification' : ['1','2'],
+            'asset_app:get_category_config' : ['1','2'],
+            'asset_app:asset-unclaim' : ['1','2'],
+            'asset_app:asset-update' : ['1','2'],
+            'asset_app:asset-delete' : ['1','2'],
+            'asset_app:assetcategory-update' : ['1','2'],
+            'asset_app:not-assign-asset-list' : ['1','2','3'],
+            'asset_app:my-assets' : ['1','2','3'],
+            'asset_app:print_all_barcode' : ['1','2'],
+            'asset_app:assetcategory-delete' : ['1','2'],
+        }
+
+    def __call__(self,request):
+        path = request.path
+        user = request.user
+
+        try:
+            resolved = resolve(request.path_info)
+            current_usrl_name = resolved.view_name
+        except Exception:
+            return self.get_response(request)
+        
+        if current_usrl_name in self.asset_urls:
+            allowed_user_type = self.asset_urls[current_usrl_name]
+            if str(user.user_type) not in allowed_user_type:
+                return render(request,'main_app/403.html',status=403)
+
+        return self.get_response(request)
+

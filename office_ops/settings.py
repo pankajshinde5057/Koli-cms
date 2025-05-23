@@ -57,6 +57,7 @@ MIDDLEWARE = [
     
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'main_app.middleware.LoginCheckMiddleWare',
+    'main_app.middleware.RoleBasedAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'office_ops.urls'

@@ -430,23 +430,9 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <form method="post" action="{% url 'approve_early_clock_out' request.id %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="notes" value="">
-                                                <button type="submit" class="btn btn-success" title="Approve" onclick="markNotificationRead({{ request.id }})">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                            </form>
-                                            <form method="post" action="{% url 'deny_early_clock_out' request.id %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="notes" value="">
-                                                <button type="submit" class="btn btn-danger" title="Reject" onclick="markNotificationRead({{ request.id }})">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </form>
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
                                                     data-target="#earlyClockOutModal-{{ request.id }}" title="View Details">
-                                                <i class="fas fa-eye"></i>
+                                                <i class="fas fa-eye"></i> View Details
                                             </button>
                                             {% if request.id in manager_unread_ids %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
@@ -603,9 +589,9 @@
                                     </td>
                                     <td>
                                         <span class="badge 
-                                            {% if request.status == 'approved' %}badge-approved
-                                            {% else %}badge-denied{% endif %}">
-                                            {{ request.get_status_display }}
+                                            {% if request.status == 'approved' %}badge-resolved
+                                            {% else %}badge-rejected{% endif %}">
+                                            {% if request.status == 'approved' %}Approved{% else %}Denied{% endif %}
                                         </span>
                                     </td>
                                     <td>

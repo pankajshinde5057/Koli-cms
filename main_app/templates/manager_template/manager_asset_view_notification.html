@@ -336,7 +336,7 @@
                     <strong>Asset Request History</strong>
                 </h3>
                 <div class="card-tools">
-                    <span class="badge badge-light">{{ asset_notification_page_obj.paginator.count }} Total</span>
+                    <span class="badge badge-light">{{ asset_history_claim_notication_obj.paginator.count }} Total</span>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -351,7 +351,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for asset in asset_notification_page_obj %}
+                            {% for asset in asset_history_claim_notication_obj %}
                                 <tr>
                                     <td>
                                         <strong>{{ asset.employee.get_full_name }}</strong>
@@ -384,31 +384,31 @@
                     </table>
                 </div>
             </div>
-            {% if asset_notification_page_obj.paginator.num_pages > 1 %}
+            {% if asset_history_claim_notication_obj.paginator.num_pages > 1 %}
                 <div class="card-footer">
                     <nav aria-label="Asset Request Notification History Pagination">
                         <ul class="pagination justify-content-center mb-0">
-                            {% if asset_notification_page_obj.has_previous %}
+                            {% if asset_history_claim_notication_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ asset_notification_page_obj.previous_page_number }}" aria-label="Previous">
+                                    <a class="page-link" href="?asset_claim_notification_history={{ asset_history_claim_notication_obj.previous_page_number }}" aria-label="Previous">
                                         <span aria-hidden="true">&laquo;</span>
                                     </a>
                                 </li>
                             {% endif %}
                             
-                            {% for num in asset_notification_page_obj.paginator.page_range %}
-                                {% if asset_notification_page_obj.number == num %}
+                            {% for num in asset_history_claim_notication_obj.paginator.page_range %}
+                                {% if asset_history_claim_notication_obj.number == num %}
                                     <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
-                                {% elif num > asset_notification_page_obj.number|add:'-3' and num < asset_notification_page_obj.number|add:'3' %}
+                                {% elif num > asset_history_claim_notication_obj.number|add:'-3' and num < asset_history_claim_notication_obj.number|add:'3' %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        <a class="page-link" href="?asset_claim_notification_history={{ num }}">{{ num }}</a>
                                     </li>
                                 {% endif %}
                             {% endfor %}
                             
-                            {% if asset_notification_page_obj.has_next %}
+                            {% if asset_history_claim_notication_obj.has_next %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page={{ asset_notification_page_obj.next_page_number }}" aria-label="Next">
+                                    <a class="page-link" href="?asset_claim_notification_history={{ asset_history_claim_notication_obj.next_page_number }}" aria-label="Next">
                                         <span aria-hidden="true">&raquo;</span>
                                     </a>
                                 </li>
@@ -416,7 +416,7 @@
                         </ul>
                     </nav>
                     <div class="text-center text-muted small mt-2">
-                        Showing {{ asset_notification_page_obj.start_index }} - {{ asset_notification_page_obj.end_index }} of {{ asset_notification_page_obj.paginator.count }}
+                        Showing {{ asset_history_claim_notication_obj.start_index }} - {{ asset_history_claim_notication_obj.end_index }} of {{ asset_notification_page_obj.paginator.count }}
                     </div>
                 </div>
             {% endif %}
