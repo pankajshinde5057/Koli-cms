@@ -1058,6 +1058,12 @@ def daily_schedule(request):
             )
             try:
                 schedule.save()
+                time_since_clock_in = schedule.created_at - attendance_record.clock_in
+                
+                if time_since_clock_in > timedelta(minutes=30):
+                    attendance_record.status = 'half_day'
+                attendance_record.save()
+
                 messages.success(request, "Schedule created successfully!")
                 return redirect('daily_schedule')
             except ValidationError as e:

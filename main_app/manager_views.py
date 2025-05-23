@@ -1788,6 +1788,11 @@ def manager_asset_view_notification(request):
         approved__isnull=True
     ).order_by('-timestamp')
 
+    ## Asset claim notification history 
+    asset_notification_history = Notify_Manager.objects.filter(
+        manager = request.user,
+    ).exclude(approved__isnull=True).order_by('-timestamp')
+
     # Asset issues with pending or in-progress status
     pending_asset_issues = AssetIssue.objects.filter(
         status__in=['pending', 'in_progress']
@@ -1796,6 +1801,10 @@ def manager_asset_view_notification(request):
     # Pagination for asset claim notifications
     asset_notification_paginator = Paginator(pending_asset_notifications, 5)
     asset_notification_page_obj = asset_notification_paginator.get_page(request.GET.get('asset_page'))
+
+    # Pagination for asset ckain notification history
+    asset_history_claim_notication_paginator = Paginator(asset_notification_history,5)
+    asset_history_claim_notication_obj = asset_history_claim_notication_paginator.get_page(request.GET.get('asset_claim_notification_history'))
 
     # Pagination for resolved recurring issues
     resolved_issues_paginator = Paginator(all_resolved_recurring, 5)
@@ -1820,6 +1829,7 @@ def manager_asset_view_notification(request):
         'unread_asset_notification_count': unread_asset_notification_count,
         'unread_asset_request_count': pending_asset_notifications.count(),
         'unread_asset_issue_count': pending_asset_issues.count(),
+        'asset_history_claim_notication_obj' : asset_history_claim_notication_obj
     }
 
     return render(request, "manager_template/manager_asset_view_notification.html", context)
