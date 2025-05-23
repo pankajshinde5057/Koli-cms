@@ -850,21 +850,6 @@ def daily_schedule(request):
         messages.error(request, "Please clock in first.")
         return redirect('employee_home')
 
-    # Auto-create default schedule if clocked in and no schedule exists for today
-    if has_clocked_in and not DailySchedule.objects.filter(employee=employee, date=today).exists():
-        default_schedule = DailySchedule(
-            employee=employee,
-            date=today,
-            task_description="Default Task (8h)",
-            project="Default Project",
-            justification="",
-            total_hours=8
-        )
-        try:
-            default_schedule.save()
-        except ValidationError as e:
-            messages.error(request, f"Error creating default schedule: {e}")
-
     attendance_record = AttendanceRecord.objects.filter(
         user = request.user,
         date = today,
@@ -875,19 +860,12 @@ def daily_schedule(request):
     if not attendance_record:
         messages.error(request,"First Clock-In")
 
-  
-    # attendance_record.clock_in
-    
-
-    # Get schedule_id from query string for editing
     schedule_id = request.GET.get('schedule_id')
     
-    # Handle AJAX request for paginated history
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         page = request.GET.get('page', 1)
         all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
         
-        # Paginate schedules (5 per page)
         paginator = Paginator(all_schedules, 2)
         try:
             schedules_page = paginator.page(page)
@@ -929,10 +907,8 @@ def daily_schedule(request):
             'num_pages': paginator.num_pages,
         })
     
-    # Get all schedules for history
     all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
     
-    # Format schedules with hours and minutes for display
     formatted_schedules = []
     for schedule in all_schedules:
         total_minutes = 0

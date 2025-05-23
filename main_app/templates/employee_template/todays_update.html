@@ -45,7 +45,7 @@
     }
     .time-spent-container {
         position: relative;
-        width: 150px; /* Increased width for better readability */
+        width: 150px;
     }
     .time-spent {
         width: 100%;
@@ -79,11 +79,11 @@
         align-items: center;
     }
     .edit-btn, .delete-btn {
-        padding: 10px; /* Increased padding */
+        padding: 10px;
         border: none;
         border-radius: 6px;
         cursor: pointer;
-        font-size: 16px; /* Slightly larger icons */
+        font-size: 16px;
         transition: all 0.2s;
         background: none;
     }
@@ -105,6 +105,7 @@
         background: #fff8e1; 
         border-radius: 8px;
         border-left: 4px solid #ffc107;
+        display: none;
     }
     .time-summary { 
         margin-top: 20px;
@@ -112,8 +113,8 @@
         font-weight: 600;
         font-size: 15px;
         border-radius: 6px;
-        background: #e6f0fa; /* Light blue background for emphasis */
-        border-left: 4px solid #4a90e2; /* Blue border for emphasis */
+        background: #e6f0fa;
+        border-left: 4px solid #4a90e2;
     }
     .time-summary.error { 
         background: #ffebee;
@@ -141,7 +142,7 @@
         color: white;
         width: 100%;
         padding: 12px;
-        margin-top: 25px; /* Increased margin for spacing */
+        margin-top: 25px;
         border: none;
         border-radius: 6px;
         font-size: 16px;
@@ -160,18 +161,45 @@
         background-color: #f8f9fa;
         cursor: not-allowed;
     }
+    .task-list-container {
+        position: relative;
+        padding-left: 30px;
+    }
     .task-list {
         list-style-type: none;
         padding-left: 0;
+        margin: 0;
     }
     .task-list li {
         padding: 8px 0;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        justify-content: space-between;
+        font-size: 16px;
+        color: #333;
+        line-height: 1.5;
     }
-    .task-list li:last-child {
-        border-bottom: none;
+    .timeline-line {
+        position: absolute;
+        left: 10px;
+        top: 8px; /* Align with the first list item */
+        bottom: 8px; /* Align with the last list item */
+        width: 4px;
+        background-color: #4a90e2;
+    }
+    .timeline-line::before,
+    .timeline-line::after {
+        content: '';
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background-color: #4a90e2;
+        border-radius: 50%;
+    }
+    .timeline-line::before {
+        top: -2px; /* Half the height to position the circle correctly */
+        left: 0;
+    }
+    .timeline-line::after {
+        bottom: -2px; /* Half the height to position the circle correctly */
+        left: 0;
     }
     .time-estimate {
         color: #7f8c8d;
@@ -189,6 +217,23 @@
     .invalid-input {
         border-color: #e74c3c !important;
     }
+    .project-date-container {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .project-input, .date-input {
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .project-input {
+        flex: 2;
+    }
+    .date-input {
+        flex: 1;
+    }
 </style>
 {% endblock %}
 
@@ -199,14 +244,14 @@
         <div class="section-card">
             <h3 class="section-title">Today's Schedule</h3>
             {% if schedule.tasks %}
-                <ul class="task-list">
-                    {% for task in schedule.tasks %}
-                    <li>
-                        <span>{{ task.description }}</span>
-                        <span class="time-estimate">{{ task.time }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
+                <div class="task-list-container">
+                    <div class="timeline-line"></div>
+                    <ul class="task-list">
+                        {% for task in schedule.tasks %}
+                        <li>{{ forloop.counter }}. {{ task.description }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             {% else %}
                 <div class="text-center py-4">No schedule found</div>
             {% endif %}
@@ -215,6 +260,10 @@
         <!-- Update Section -->
         <div class="section-card">
             <h3 class="section-title">Daily Update</h3>
+            <div class="project-date-container">
+                <input type="text" class="project-input" id="project-name" placeholder="Project Name" {% if not is_editable %}readonly{% endif %} value="{% if update %}{{ update.project_name|escape }}{% endif %}">
+                <input type="date" class="date-input readonly" id="update-date" value="2025-05-23" disabled>
+            </div>
             <div id="updates-container">
                 {% if update and update.updates %}
                     {% for update_line in update.updates %}
@@ -264,16 +313,15 @@
                     <i class="fas fa-plus"></i> Add Another Update
                 </button>
                 
-                <div id="time-summary" class="time-summary {% if update and update.total_time_spent < 480 %}error{% endif %}">
+                <div id="time-summary" class="time-summary">
                     {% if update %}
                         Total time spent: <strong>{{ update.total_time_spent_formatted }}</strong>
-                        {% if update.total_time_spent < 480 %}(8 hours required){% endif %}
                     {% else %}
-                        Total time spent: <strong>0h 0m</strong> (8 hours required)
+                        Total time spent: <strong>0h 0m</strong>
                     {% endif %}
                 </div>
                 
-                <div id="justification-box" class="justification-box" {% if not update or update.total_time_spent >= 480 %}style="display: none;"{% endif %}>
+                <div id="justification-box" class="justification-box">
                     <h4>Justification Required</h4>
                     <p>You've logged <strong><span id="total-time-display">
                         {% if update %}{{ update.total_time_spent|floatformat:2 }}{% else %}0{% endif %}
@@ -294,6 +342,7 @@
     {% csrf_token %}
     <input type="hidden" name="update_description" id="update-description-input">
     <input type="hidden" name="justification" id="form-justification-input">
+    <input type="hidden" name="project_name" id="project-name-input">
 </form>
 
 <script>
@@ -305,6 +354,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeSummary = document.getElementById('time-summary');
     const justificationInput = document.getElementById('justification-input');
     const formJustificationInput = document.getElementById('form-justification-input');
+    const projectNameInput = document.getElementById('project-name');
+    const projectNameFormInput = document.getElementById('project-name-input');
+
+    // Ensure justification box is hidden on page load
+    justificationBox.style.display = 'none';
 
     // Track edit mode for each item
     let editModes = {};
@@ -364,6 +418,9 @@ document.addEventListener('DOMContentLoaded', () => {
             e.target.value = value;
             if (value && /^\d*\.?\d*$/.test(value)) {
                 dropdown.style.display = 'block';
+                const rect = input.getBoundingClientRect();
+                dropdown.style.top = `${rect.bottom - rect.top + 5}px`;
+                dropdown.style.left = '0';
             } else {
                 dropdown.style.display = 'none';
             }
@@ -440,13 +497,11 @@ document.addEventListener('DOMContentLoaded', () => {
         timeSummary.innerHTML = `Total time spent: <strong>${hours}h ${minutes}m</strong>`;
         document.getElementById('total-time-display').textContent = totalHours;
         
-        if (totalMinutes < 480 || hasInvalidEntries) {
+        if (totalMinutes < 480) {
             timeSummary.classList.add('error');
             timeSummary.innerHTML += ' <span>(8 hours required)</span>';
-            justificationBox.style.display = 'block';
         } else {
             timeSummary.classList.remove('error');
-            justificationBox.style.display = 'none';
         }
         
         if (hasInvalidEntries) {
@@ -496,6 +551,15 @@ document.addEventListener('DOMContentLoaded', () => {
             let isValid = true;
             let hasEmptyFields = false;
 
+            // Validate project name
+            const projectName = projectNameInput.value.trim();
+            if (!projectName) {
+                hasEmptyFields = true;
+                projectNameInput.classList.add('invalid-input');
+            } else {
+                projectNameInput.classList.remove('invalid-input');
+            }
+
             document.querySelectorAll('.update-item').forEach(item => {
                 const descInput = item.querySelector('.update-input');
                 const timeInput = item.querySelector('.time-spent');
@@ -524,7 +588,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (hasEmptyFields) {
-                alert('Please fill all update and time spent fields');
+                alert('Please fill all required fields including project name, update, and time spent');
                 return;
             }
 
@@ -546,18 +610,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('update-description-input').value = updates.join('\n');
             formJustificationInput.value = justificationInput.value.trim();
+            projectNameFormInput.value = projectName;
 
-            if (totalMinutes < 480 && justificationInput.value.trim() === '') {
+            // Handle justification logic
+            if (totalMinutes < 480) {
                 justificationBox.style.display = 'block';
                 justificationBox.scrollIntoView({ behavior: 'smooth' });
-                justificationInput.classList.add('invalid-input');
-                alert('Please provide justification for spending less than 8 hours');
-                return;
-            } else {
+                if (justificationInput.value.trim() === '') {
+                    justificationInput.classList.add('invalid-input');
+                    alert('Please provide justification for spending less than 8 hours');
+                    return;
+                }
                 justificationInput.classList.remove('invalid-input');
+                document.getElementById('update-form').submit();
+            } else {
+                justificationInput.value = '';
+                formJustificationInput.value = '';
+                justificationBox.style.display = 'none';
+                document.getElementById('update-form').submit();
             }
-
-            document.getElementById('update-form').submit();
         });
     }
 
