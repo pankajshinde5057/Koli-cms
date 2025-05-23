@@ -849,6 +849,18 @@ from datetime import date
 def daily_schedule(request):
     employee = get_object_or_404(Employee, admin=request.user)
     today = date.today()
+    attendance_record = AttendanceRecord.objects.filter(
+        user = request.user,
+        date = today,
+        clock_in__isnull = False,
+        clock_out__isnull = True
+    ).first()
+
+    if not attendance_record:
+        messages.error(request,"First Clock-In")
+
+  
+    # attendance_record.clock_in
     
     # Get schedule_id from query string for editing
     schedule_id = request.GET.get('schedule_id')
@@ -996,6 +1008,12 @@ def daily_schedule(request):
             )
             try:
                 schedule.save()
+                time_since_clock_in = schedule.created_at - attendance_record.clock_in
+                
+                if time_since_clock_in > timedelta(minutes=30):
+                    attendance_record.status = 'half_day'
+                attendance_record.save()
+
                 messages.success(request, "Schedule created successfully!")
                 return redirect('daily_schedule')
             except ValidationError as e:
