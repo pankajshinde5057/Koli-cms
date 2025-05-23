@@ -2,15 +2,11 @@ import json
 from datetime import datetime
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
-from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect, get_object_or_404,reverse
 from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from calendar import monthrange
-
-# import openpyxl.workbook
-from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
 from .forms import *
@@ -838,20 +834,86 @@ def employee_requests(request):
 
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.core.exceptions import ValidationError
-from .models import Employee, DailySchedule
-from datetime import date
-
 @login_required
 def daily_schedule(request):
     employee = get_object_or_404(Employee, admin=request.user)
     today = date.today()
-    
+
+    # Check if employee has clocked in today, redirect to home if not
+    has_clocked_in = AttendanceRecord.objects.filter(
+        user=request.user,
+        date=today,
+        clock_in__isnull=False
+    ).exists()
+
+    if not has_clocked_in:
+        messages.error(request, "Please clock in first.")
+        return redirect('employee_home')
+
+    # Auto-create default schedule if clocked in and no schedule exists for today
+    if has_clocked_in and not DailySchedule.objects.filter(employee=employee, date=today).exists():
+        default_schedule = DailySchedule(
+            employee=employee,
+            date=today,
+            task_description="Default Task (8h)",
+            project="Default Project",
+            justification="",
+            total_hours=8
+        )
+        try:
+            default_schedule.save()
+        except ValidationError as e:
+            messages.error(request, f"Error creating default schedule: {e}")
+
     # Get schedule_id from query string for editing
     schedule_id = request.GET.get('schedule_id')
+    
+    # Handle AJAX request for paginated history
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        page = request.GET.get('page', 1)
+        all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
+        
+        # Paginate schedules (5 per page)
+        paginator = Paginator(all_schedules, 2)
+        try:
+            schedules_page = paginator.page(page)
+        except:
+            return JsonResponse({'error': 'Invalid page'}, status=400)
+        
+        formatted_schedules = []
+        for schedule in schedules_page:
+            total_minutes = 0
+            for task in schedule.task_description.splitlines():
+                try:
+                    time_part = task.split('(')[1].split(')')[0].strip().lower()
+                    if 'h' in time_part:
+                        total_minutes += float(time_part.replace('h', '')) * 60
+                    elif 'm' in time_part:
+                        total_minutes += float(time_part.replace('m', ''))
+                    elif 's' in time_part:
+                        total_minutes += float(time_part.replace('s', '')) / 60
+                except (IndexError, ValueError):
+                    continue
+            
+            hours = int(total_minutes / 60)
+            minutes = int(total_minutes % 60)
+            formatted_schedules.append({
+                'id': schedule.id,
+                'date': schedule.date.strftime('%b %d, %Y'),
+                'project': schedule.project or '',
+                'task_description': schedule.task_description.splitlines(),
+                'justification': schedule.justification or '',
+                'hours': hours,
+                'minutes': minutes,
+            })
+        
+        return JsonResponse({
+            'schedules': formatted_schedules,
+            'has_previous': schedules_page.has_previous(),
+            'has_next': schedules_page.has_next(),
+            'page': page,
+            'num_pages': paginator.num_pages,
+        })
     
     # Get all schedules for history
     all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
@@ -1006,7 +1068,13 @@ def daily_schedule(request):
         'today': today,
         'edit_schedule': edit_schedule,
         'edit_tasks': edit_tasks,
+        'has_clocked_in': has_clocked_in,
     })
+    
+    
+    
+    
+    
 def get_ist_date():
     ist = timezone.get_current_timezone()
     return timezone.now().astimezone(ist).date()
@@ -1123,6 +1191,8 @@ def todays_update(request):
         'today': today,
         'is_editable': is_editable,
     })
+
+
 
 def view_all_schedules(request):
     """View all schedules and their updates for the logged-in employee"""
