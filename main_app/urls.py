@@ -26,6 +26,8 @@ urlpatterns = [
           name='admin_notify_manager'),
      path("admin_view_profile", ceo_views.admin_view_profile,
           name='admin_view_profile'),
+          # In your admin URLs
+     path('admin-todays-attendance/', ceo_views.admin_todays_attendance, name='admin_todays_attendance'),
      path("check_email_availability", ceo_views.check_email_availability,
           name="check_email_availability"),
      path("employee/view/feedback/", ceo_views.employee_feedback_message,
