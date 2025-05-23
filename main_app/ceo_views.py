@@ -1542,6 +1542,42 @@ def generate_performance_report(request):
 #     return render(request, 'ceo_template/admin_view_attendance.html', context)
 
 
+
+
+@login_required
+def admin_todays_attendance(request):
+    if not request.user.is_superuser:
+        return redirect('admin_home')
+    
+    today = timezone.localdate()
+    
+    # Get all employees
+    today_attendances = AttendanceRecord.objects.filter(
+        date=today
+    ).select_related('user__employee__department').order_by('-clock_in')
+
+    # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(today_attendances, 10)
+    
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    context = {
+        'page_title': "Today's Clocked-In Employees (All)",
+        'page_obj': page_obj,
+        'current_date': today.strftime("%Y-%m-%d"),
+        'total_clocked_in': today_attendances.values('user').distinct().count()
+    }
+    return render(request, 'ceo_template/todays_attendance.html', context)
+
+
+
+
 @login_required
 def admin_asset_issue_history(request):
     search_query = request.GET.get('search', '')

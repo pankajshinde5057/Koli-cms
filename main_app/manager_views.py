@@ -33,6 +33,7 @@ from django.core.paginator import Paginator, EmptyPage
 from django.views.decorators.csrf import csrf_exempt
 from .models import AttendanceRecord, Employee, Holiday, LeaveReportEmployee
 from calendar import monthrange
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 LOCATION_CHOICES = (
@@ -176,6 +177,39 @@ def manager_home(request):
 
     return render(request, 'manager_template/home_content.html', context)
 
+
+
+@login_required
+def manager_todays_attendance(request):
+    manager = get_object_or_404(Manager, admin=request.user)
+    today = timezone.localdate()
+    
+    team_members = Employee.objects.filter(team_lead=manager)
+    employee_users = CustomUser.objects.filter(employee__in=team_members)
+    
+    today_attendances = AttendanceRecord.objects.filter(
+        user__in=employee_users,
+        date=today
+    ).select_related('user__employee__department').order_by('-clock_in')
+
+    # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(today_attendances, 10)
+    
+    try:
+        page_obj = paginator.page(page)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
+
+    context = {
+        'page_title': "Today's Clocked-In Employees",
+        'page_obj': page_obj,
+        'current_date': today.strftime("%Y-%m-%d"),
+        'total_clocked_in': today_attendances.values('user').distinct().count()
+    }
+    return render(request, 'manager_template/todays_attendance.html', context)
 
 @login_required   
 def manager_take_attendance(request):
