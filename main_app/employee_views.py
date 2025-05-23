@@ -865,6 +865,20 @@ def daily_schedule(request):
         except ValidationError as e:
             messages.error(request, f"Error creating default schedule: {e}")
 
+    attendance_record = AttendanceRecord.objects.filter(
+        user = request.user,
+        date = today,
+        clock_in__isnull = False,
+        clock_out__isnull = True
+    ).first()
+
+    if not attendance_record:
+        messages.error(request,"First Clock-In")
+
+  
+    # attendance_record.clock_in
+    
+
     # Get schedule_id from query string for editing
     schedule_id = request.GET.get('schedule_id')
     
