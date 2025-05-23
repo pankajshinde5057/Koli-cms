@@ -172,6 +172,7 @@
                             <th>Status</th>
                             <th>Reported Date</th>
                             <th>Review Date</th>
+                            <th>Review</th>
                         </tr>
                     </thead>
                     <tbody id="asset-issues-body">
@@ -196,6 +197,7 @@
                                         <span class="text-danger border-1 border-bottom border-top border-danger">Not Resolved</span>
                                     {% endif %}
                                 </td>
+                                <td>{{ issue.notes }}</td>
                             </tr>
                         {% empty %}
                             <tr>

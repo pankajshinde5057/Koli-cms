@@ -21,6 +21,7 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import ProtectedError
 from django.template.loader import render_to_string
+from django.db import IntegrityError
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -181,8 +182,15 @@ class AssetCategoryCreateView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.category = form.instance.category.lower()
-        messages.success(self.request, "Asset category created successfully!")
-        return super().form_valid(form)
+        try:
+            # Attempt to save the form
+            response = super().form_valid(form)
+            messages.success(self.request, "Asset category created successfully!")
+            return response
+        except IntegrityError:
+            # Handle duplicate category error
+            form.add_error('category', 'This category already exists.')
+            return self.form_invalid(form)
 
     def form_invalid(self, form):
         messages.error(self.request, 'This category already present')
