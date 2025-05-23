@@ -262,7 +262,6 @@
             <h3 class="section-title">Daily Update</h3>
             <div class="project-date-container">
                 <input type="text" class="project-input" id="project-name" placeholder="Project Name" {% if not is_editable %}readonly{% endif %} value="{% if update %}{{ update.project_name|escape }}{% endif %}">
-                <input type="date" class="date-input readonly" id="update-date" value="2025-05-23" disabled>
             </div>
             <div id="updates-container">
                 {% if update and update.updates %}

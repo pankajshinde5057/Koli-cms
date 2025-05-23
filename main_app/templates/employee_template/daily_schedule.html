@@ -188,10 +188,7 @@
                 <input type="text" id="project-input" class="w-100 p-2 border rounded-md" 
                        placeholder="Project name" value="{{ edit_schedule.project|default_if_none:'' }}">
             </div>
-            <div class="mb-4">
-                <input type="date" id="date-input" class="w-100 p-2 border rounded-md date-input" 
-                       value="{% if edit_schedule %}{{ edit_schedule.date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" disabled>
-            </div>
+
             <div class="task-input-container">
                 <div id="tasks-container">
                     {% if edit_schedule and edit_tasks %}
@@ -475,10 +472,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalMinutes += parseTime(timePart);
             });
 
+            const today = new Date().toISOString().slice(0, 10);  // "YYYY-MM-DD"
+            document.getElementById('form-date-input').value = today;
             document.getElementById('task-description-input').value = tasks.join('\n');
             document.getElementById('form-project-input').value = projectInput.value.trim();
-            document.getElementById('form-date-input').value = dateInput.value;
             document.getElementById('form-justification-input').value = justificationInput.value.trim();
+
+
 
             // Handle justification logic
             if (totalMinutes < 480) {
