@@ -423,34 +423,37 @@
                                         <ul class="pagination mb-0" id="paginationContainer">
                                             {% if detailed_time_entries.has_previous %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" 
-                                                    onclick="loadPage(event, {{ detailed_time_entries.previous_page_number }})">&laquo;</a>
+                                                    <a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" data-page="{{ detailed_time_entries.previous_page_number }}" aria-label="Previous">
+                                                        <span aria-hidden="true">«</span>
+                                                    </a>
                                                 </li>
                                             {% else %}
                                                 <li class="page-item disabled">
-                                                    <span class="page-link">&laquo;</span>
+                                                    <span class="page-link">«</span>
                                                 </li>
                                             {% endif %}
 
                                             {% for num in detailed_time_entries.paginator.page_range %}
                                                 {% if detailed_time_entries.number == num %}
-                                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                                    <li class="page-item active">
+                                                        <span class="page-link">{{ num }}</span>
+                                                    </li>
                                                 {% elif num > detailed_time_entries.number|add:'-3' and num < detailed_time_entries.number|add:'3' %}
                                                     <li class="page-item">
-                                                        <a class="page-link" href="?page={{ num }}" 
-                                                        onclick="loadPage(event, {{ num }})">{{ num }}</a>
+                                                        <a class="page-link" href="?page={{ num }}" data-page="{{ num }}">{{ num }}</a>
                                                     </li>
                                                 {% endif %}
                                             {% endfor %}
 
                                             {% if detailed_time_entries.has_next %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" 
-                                                    onclick="loadPage(event, {{ detailed_time_entries.next_page_number }})">&raquo;</a>
+                                                    <a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" data-page="{{ detailed_time_entries.next_page_number }}" aria-label="Next">
+                                                        <span aria-hidden="true">»</span>
+                                                    </a>
                                                 </li>
                                             {% else %}
                                                 <li class="page-item disabled">
-                                                    <span class="page-link">&raquo;</span>
+                                                    <span class="page-link">»</span>
                                                 </li>
                                             {% endif %}
                                         </ul>
@@ -486,7 +489,7 @@
                                     <thead>
                                         <tr>
                                             <th>Month</th>
-                                            <th>Total Hours</th>											
+                                            <th>Total Hours</th>                                            
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -509,128 +512,144 @@
 {% endblock content %}
 
 {% block custom_js %}
-<!-- Auto-submit form when both dates are selected -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-	function submitIfBothDatesSelected() {
-		const form = document.getElementById('dateRangeForm');
-		const start = form.querySelector('input[name="start_date"]').value;
-		const end = form.querySelector('input[name="end_date"]').value;
-		if (start && end) {
-			form.submit();
-		}
-	}
+$(document).ready(function() {
+    // Auto-submit form when both dates are selected
+    function submitIfBothDatesSelected() {
+        const form = document.getElementById('dateRangeForm');
+        const start = form.querySelector('input[name="start_date"]').value;
+        const end = form.querySelector('input[name="end_date"]').value;
+        if (start && end) {
+            form.submit();
+        }
+    }
 
-	// AJAX pagination function
-	function loadPage(event, pageNumber) {
-		event.preventDefault();
-		
-		// Get current query parameters
-		const urlParams = new URLSearchParams(window.location.search);
-		urlParams.set('page', pageNumber);
-		
-		// Show loading indicator
-		const tableContainer = document.getElementById('timeHistoryTable');
-		tableContainer.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
-		
-		// Make AJAX request
-		fetch(window.location.pathname + '?' + urlParams.toString(), {
-			headers: {
-				'X-Requested-With': 'XMLHttpRequest',
-			}
-		})
-		.then(response => response.text())
-		.then(html => {
-			// Parse the response
-			const parser = new DOMParser();
-			const doc = parser.parseFromString(html, 'text/html');
-			
-			// Update the table content
-			const newTable = doc.getElementById('timeHistoryTable');
-			if (newTable) {
-				document.getElementById('timeHistoryTable').innerHTML = newTable.innerHTML;
-			}
-			
-			// Update URL without reloading
-			window.history.pushState({}, '', window.location.pathname + '?' + urlParams.toString());
-		})
-		.catch(error => {
-			console.error('Error loading page:', error);
-			// Fallback to normal page load if AJAX fails
-			window.location.href = event.target.href;
-		});
-	}
+    // Handle pagination clicks
+    $(document).on('click', '#paginationContainer a.page-link', function(e) {
+        e.preventDefault();
+        var page = $(this).attr('href').split('page=')[1];
+        
+        // Get current query parameters to preserve filters
+        const form = document.getElementById('dateRangeForm');
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('page', page);
+        
+        // Preserve existing filters
+        const startDate = form.querySelector('input[name="start_date"]').value;
+        const endDate = form.querySelector('input[name="end_date"]').value;
+        if (startDate) urlParams.set('start_date', startDate);
+        if (endDate) urlParams.set('end_date', endDate);
+        {% if request.user.is_staff %}
+            const user = form.querySelector('input[name="user"]').value;
+            const department = form.querySelector('input[name="department"]').value;
+            if (user) urlParams.set('user', user);
+            if (department) urlParams.set('department', department);
+        {% endif %}
+        
+        // Preserve status filter if present
+        const status = '{{ request.GET.status }}';
+        if (status) urlParams.set('status', status);
+        
+        // Show loading indicator
+        $('#timeHistoryTable').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+        
+        $.ajax({
+            url: window.location.pathname,
+            type: 'GET',
+            data: urlParams.toString(),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                // Parse the response HTML
+                var $responseHtml = $('<div>').html(response.html);
+                
+                // Update table and pagination
+                $('#timeHistoryTable').html($responseHtml.find('#timeHistoryTable').html());
+                
+                // Update URL without reloading
+                window.history.pushState({}, '', window.location.pathname + '?' + urlParams.toString());
+            },
+            error: function(xhr) {
+                try {
+                    var error = JSON.parse(xhr.responseText);
+                    console.error('Error:', error.message || 'An error occurred');
+                } catch (e) {
+                    console.error('Error loading page');
+                }
+                // Fallback to normal page load
+                window.location.href = window.location.pathname + '?' + urlParams.toString();
+            }
+        });
+    });
 
-	// Handle back/forward navigation
-	window.addEventListener('popstate', function() {
-		window.location.reload();
-	});
-</script>
+    // Handle back/forward navigation
+    window.addEventListener('popstate', function() {
+        window.location.reload();
+    });
+});
 
-<!-- Firebase Integration -->
-<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
-<script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
+// Firebase Integration
+var firebaseConfig = {
+    apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
+    authDomain: "sms-with-django.firebaseapp.com",
+    databaseURL: "https://sms-with-django.firebaseio.com",
+    projectId: "sms-with-django",
+    storageBucket: "sms-with-django.appspot.com",
+    messagingSenderId: "945324593139",
+    appId: "1:945324593139:web:03fa99a8854bbd38420c86",
+    measurementId: "G-2F2RXTL9GT"
+};
 
-<script>
-	var firebaseConfig = {
-		apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
-		authDomain: "sms-with-django.firebaseapp.com",
-		databaseURL: "https://sms-with-django.firebaseio.com",
-		projectId: "sms-with-django",
-		storageBucket: "sms-with-django.appspot.com",
-		messagingSenderId: "945324593139",
-		appId: "1:945324593139:web:03fa99a8854bbd38420c86",
-		measurementId: "G-2F2RXTL9GT"
-	};
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
-	firebase.initializeApp(firebaseConfig);
-	const messaging = firebase.messaging();
+function initializeFirebaseMessaging() {
+    messaging.requestPermission()
+        .then(() => messaging.getToken())
+        .then(token => {
+            sendToServer(token);
+        })
+        .catch(err => console.error("Permission denied", err));
+}
 
-	function initializeFirebaseMessaging() {
-		messaging.requestPermission()
-			.then(() => messaging.getToken())
-			.then(token => {
-				sendToServer(token);
-			})
-			.catch(err => console.error("Permission denied", err));
-	}
+messaging.onMessage(payload => {
+    const notificationOptions = {
+        body: payload.notification.body,
+        icon: payload.notification.icon
+    };
 
-	messaging.onMessage(payload => {
-		const notificationOptions = {
-			body: payload.notification.body,
-			icon: payload.notification.icon
-		};
+    if (Notification.permission === "granted") {
+        const notification = new Notification(payload.notification.title, notificationOptions);
+        notification.onclick = event => {
+            event.preventDefault();
+            window.open(payload.notification.click_action, "_blank");
+            notification.close();
+        };
+    }
+});
 
-		if (Notification.permission === "granted") {
-			const notification = new Notification(payload.notification.title, notificationOptions);
-			notification.onclick = event => {
-				event.preventDefault();
-				window.open(payload.notification.click_action, "_blank");
-				notification.close();
-			};
-		}
-	});
+messaging.onTokenRefresh(() => {
+    messaging.getToken().then(newToken => {
+        console.log("New Token: ", newToken);
+        sendToServer(newToken);
+    }).catch(console.error);
+});
 
-	messaging.onTokenRefresh(() => {
-		messaging.getToken().then(newToken => {
-			console.log("New Token: ", newToken);
-			sendToServer(newToken);
-		}).catch(console.error);
-	});
+function sendToServer(token) {
+    $.ajax({
+        url: "{% url 'employee_fcmtoken' %}",
+        method: "POST",
+        data: { token: token },
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+    }).done(() => {
+        console.log("Token sent to server");
+    }).fail(err => {
+        console.error("Failed to send token", err);
+    });
+}
 
-	function sendToServer(token) {
-		$.ajax({
-			url: "{% url 'employee_fcmtoken' %}",
-			method: "POST",
-			data: { token: token },
-			headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-		}).done(() => {
-			console.log("Token sent to server");
-		}).fail(err => {
-			console.error("Failed to send token", err);
-		});
-	}
-
-	initializeFirebaseMessaging();
+initializeFirebaseMessaging();
 </script>
 {% endblock custom_js %}
