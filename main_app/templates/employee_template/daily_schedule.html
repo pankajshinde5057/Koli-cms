@@ -316,12 +316,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = input.parentElement.querySelector('.time-unit-dropdown');
         
         input.addEventListener('input', (e) => {
-            // Allow only numbers
-            let value = e.target.value.replace(/[^0-9]/g, '');
+            // Allow only up to two digits
+            let value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
             e.target.value = value;
             
             // Show dropdown if input contains at least one digit
-            if (value && /^\d+$/.test(value)) {
+            if (value && /^\d{1,2}$/.test(value)) {
                 dropdown.style.display = 'block';
                 const rect = input.getBoundingClientRect();
                 dropdown.style.top = `${rect.bottom - rect.top + 5}px`;
@@ -335,16 +335,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Prevent non-numeric keypresses
         input.addEventListener('keypress', (e) => {
             const charCode = e.charCode || e.keyCode;
-            // Allow only 0-9 (char codes 48-57)
-            if (charCode < 48 || charCode > 57) {
+            // Allow only 0-9 (char codes 48-57) and limit to two digits
+            if (charCode < 48 || charCode > 57 || input.value.length >= 2) {
                 e.preventDefault();
             }
         });
 
-        // Prevent pasting non-numeric content
+        // Prevent pasting non-numeric content or more than two digits
         input.addEventListener('paste', (e) => {
             const pastedText = (e.clipboardData || window.clipboardData).getData('text');
-            if (!/^\d+$/.test(pastedText)) {
+            if (!/^\d{1,2}$/.test(pastedText)) {
                 e.preventDefault();
             }
         });
@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             option.addEventListener('click', () => {
                 const unit = option.getAttribute('data-unit');
                 // Ensure only numbers remain before appending unit
-                input.value = input.value.replace(/[^0-9]/g, '') + unit;
+                input.value = input.value.replace(/[^0-9]/g, '').slice(0, 2) + unit; 
                 dropdown.style.display = 'none';
                 updateTimeSummary();
             });
@@ -478,9 +478,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            if (!time.match(/^\d+[hms]$/)) {
+            // Validate time format: 1 or 2 digits followed by h, m, or s
+            if (!time.match(/^\d{1,2}[hms]$/)) {
                 isValid = false;
-                alert('Invalid time format. Use format like "2h", "30m", or "45s"');
+                alert('Invalid time format. Use 1 or 2 digits followed by "h", "m", or "s" (e.g., "2h", "30m", "45s")');
                 return;
             }
             
