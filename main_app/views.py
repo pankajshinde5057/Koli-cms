@@ -23,6 +23,7 @@ from django.urls import reverse
 from django.http import JsonResponse, HttpResponseRedirect
 from django.http import HttpResponseForbidden
 from django.db.models import Q
+from django.contrib.auth.models import User
 
 load_dotenv()
 
@@ -373,13 +374,34 @@ def clock_in_out(request):
 @login_required
 def break_action(request):
     if request.method == 'POST':
+        data = json.loads(request.body)
+        action_type = data.get('action', 'start_or_end')
+        user_id = data.get('user_id', None)
+
+        # Determine the user to check (default to current user)
+        target_user = request.user
+        if user_id and request.user.has_perm('your_app.can_manage_employees'):  # Replace with actual permission
+            try:
+                target_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return JsonResponse({'error': 'User not found'}, status=400)
+
         current_record = AttendanceRecord.objects.filter(
-            user=request.user, 
+            user=target_user, 
             clock_out__isnull=True
         ).first()
         
         if not current_record:
             return JsonResponse({'error': 'You must be clocked in to take a break'}, status=400)
+        
+        if action_type == 'check_lunch':
+            today = timezone.now().date()
+            lunch_taken = Break.objects.filter(
+                attendance_record__user=target_user,
+                break_type='lunch',
+                break_start__date=today
+            ).exists()
+            return JsonResponse({'lunch_taken': lunch_taken})
         
         current_break = Break.objects.filter(
             attendance_record=current_record,
@@ -391,21 +413,19 @@ def break_action(request):
             current_break.break_end = timezone.now()
             current_break.save()
             ActivityFeed.objects.create(
-                user=request.user,
+                user=target_user,
                 activity_type='break_end',
                 related_record=current_record
             )
             action = 'break_ended'
         else:
             # Start break
-            data = json.loads(request.body)
             break_type = data.get('break_type', 'short')
             
-            # Check if trying to take lunch break and already took one today
             if break_type == 'lunch':
                 today = timezone.now().date()
                 lunch_taken = Break.objects.filter(
-                    attendance_record__user=request.user,
+                    attendance_record__user=target_user,
                     break_type='lunch',
                     break_start__date=today
                 ).exists()
@@ -413,7 +433,8 @@ def break_action(request):
                 if lunch_taken:
                     return JsonResponse({
                         'status': 'error',
-                        'message': 'You can only take one lunch break per day'
+                        'message': 'You have already taken your lunch break today.',
+                        'title': 'Lunch Break Unavailable'
                     }, status=400)
             
             new_break = Break.objects.create(
@@ -424,7 +445,7 @@ def break_action(request):
             
             activity_type = 'break_start_short' if break_type == 'short' else 'break_start_lunch'
             ActivityFeed.objects.create(
-                user=request.user,
+                user=target_user,
                 activity_type=activity_type,
                 related_record=current_record
             )
