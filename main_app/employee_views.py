@@ -11,7 +11,7 @@ from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
 from .forms import *
 from .models import *
-from django.db.models import Sum, F, DurationField, ExpressionWrapper
+from django.db.models import Sum, F,Q, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager,AssetIssue
@@ -27,7 +27,7 @@ from io import BytesIO
 
 def get_ist_date():
     return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
-from django.db.models import Q
+
 
 
 @login_required   
@@ -406,6 +406,17 @@ def employee_home(request):
         },
         'status_choices': AttendanceRecord.STATUS_CHOICES,
     }
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.method == 'GET':
+            html = render_to_string('employee_template/home_content.html', context, request=request)
+            return JsonResponse({
+                'html': html,
+                'current_page': paginated_entries.number,
+                'num_pages': paginator.num_pages,
+                'has_previous': paginated_entries.has_previous(),
+                'has_next': paginated_entries.has_next(),
+                'previous_page_number': paginated_entries.previous_page_number() if paginated_entries.has_previous() else None,
+                'next_page_number': paginated_entries.next_page_number() if paginated_entries.has_next() else None,
+            })
 
     return render(request, 'employee_template/home_content.html', context)
 
