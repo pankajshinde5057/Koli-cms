@@ -644,7 +644,13 @@ def get_employee_attendance(request):
             from_date = request.POST.get('from_date')
             to_date = request.POST.get('to_date')
             page = int(request.POST.get('page', 1))
-            per_page = 5
+            per_page = request.POST.get('per_page', 5)
+            try:
+                per_page = int(per_page)
+                # Cap per_page to prevent excessive memory usage
+                per_page = min(per_page, 10000)
+            except ValueError:
+                per_page = 5
 
             # Validate required date inputs
             if not year and not (from_date and to_date):
@@ -854,6 +860,7 @@ def get_employee_attendance(request):
                             present_days += 1
                             half_days += 1
                             late_days += 1
+                            absent_days += 0.5  # Count half-day leave as 0.5 absent day
                         elif current_date in leave_dates:
                             # Full day leave counts as present
                             present_days += 1
@@ -866,6 +873,7 @@ def get_employee_attendance(request):
                             present_days += 1
                             half_days += 1
                             late_days += 1
+                            absent_days += 0.5  # Count half-day leave as 0.5 absent day
                         else:
                             absent_days += 1
 
