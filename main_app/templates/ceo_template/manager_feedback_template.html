@@ -128,7 +128,7 @@
             <div class="modal-header bg-primary">
                 <h5 class="modal-title text-white" id="replyModalLabel">Reply to Feedback</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -155,7 +155,7 @@
             <div class="modal-header bg-warning">
                 <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -183,7 +183,7 @@
             <div class="modal-header bg-danger">
                 <h5 class="modal-title text-white" id="deleteAllModalLabel">Delete All Feedback</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
@@ -213,58 +213,6 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
-        /* Optional: Make table rows stack on small screens */
-        /* Uncomment if you prefer this approach */
-        /*
-        table {
-            display: block;
-            width: 100%;
-        }
-        
-        thead {
-            display: none;
-        }
-        
-        tbody, tr, td {
-            display: block;
-            width: 100%;
-        }
-        
-        tr {
-            margin-bottom: 1rem;
-            border: 1px solid #dee2e6;
-        }
-        
-        td {
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-            border-top: none;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        td:before {
-            content: attr(data-title);
-            position: absolute;
-            left: 1rem;
-            width: calc(50% - 1rem);
-            padding-right: 1rem;
-            text-align: left;
-            font-weight: bold;
-            color: #495057;
-        }
-        
-        td:first-child {
-            background: #f8f9fa;
-            text-align: center;
-            padding-left: 1rem;
-        }
-        
-        td:first-child:before {
-            display: none;
-        }
-        */
     }
     
     /* Button spacing adjustments */
@@ -313,35 +261,6 @@ $(document).ready(function() {
             $('.feedback-checkbox:checked').length === $('.feedback-checkbox').length);
     });
 
-    // Function to remove deleted rows without reloading
-    function removeDeletedRows(ids) {
-        ids.forEach(function(id) {
-            $('#feedback-' + id).remove();
-        });
-        updateTableAfterDeletion();
-    }
-
-    // Function to update table state after deletion
-    function updateTableAfterDeletion() {
-        // Update row numbering
-        $('tbody tr').each(function(index) {
-            $(this).find('td:eq(1)').text(index + 1);
-        });
-        
-        // Update select all checkbox
-        var totalCheckboxes = $('.feedback-checkbox').length;
-        var checkedCheckboxes = $('.feedback-checkbox:checked').length;
-        $('#select-all').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
-        
-        // Update delete button state
-        updateDeleteSelectedButton();
-        
-        // Show message if no records left
-        if (totalCheckboxes === 0) {
-            $('tbody').html('<tr><td colspan="8" class="text-center">No feedback messages found.</td></tr>');
-        }
-    }
-
     // Delete Selected button
     $('#delete-selected').click(function() {
         var selectedIds = $('.feedback-checkbox:checked').map(function() {
@@ -371,18 +290,23 @@ $(document).ready(function() {
                 'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             beforeSend: function() {
+                console.log('Deleting selected feedbacks:', selectedIds);
                 $modal.find('button').prop('disabled', true);
                 $modal.modal('hide');
             },
             success: function(response) {
-                if (response == "True") {
-                    removeDeletedRows(selectedIds);
-                    toastr.success('Selected feedback deleted successfully');
+                if (response.success) {
+                    selectedIds.forEach(function(id) {
+                        $('#feedback-' + id).remove();
+                    });
+                    updateTableAfterDeletion();
+                    toastr.success(response.message);
                 } else {
-                    toastr.error('Failed to delete selected feedback');
+                    toastr.error(response.message || 'Failed to delete selected feedback');
                 }
             },
             error: function(xhr, status, error) {
+                console.error('Delete error:', status, error);
                 toastr.error('Error deleting feedback: ' + error);
             },
             complete: function() {
@@ -413,22 +337,23 @@ $(document).ready(function() {
                 'csrfmiddlewaretoken': '{{ csrf_token }}'
             },
             beforeSend: function() {
+                console.log('Deleting all feedbacks');
                 $modal.find('button').prop('disabled', true);
                 $modal.modal('hide');
             },
             success: function(response) {
-                if (response == "True") {
+                if (response.success) {
                     $('tbody').html('<tr><td colspan="8" class="text-center">No feedback messages found.</td></tr>');
-                    toastr.success('All feedback deleted successfully');
-                    // Reset all checkboxes and counters
+                    toastr.success(response.message);
                     $('.feedback-checkbox').prop('checked', false);
                     $('#select-all').prop('checked', false);
                     updateDeleteSelectedButton();
                 } else {
-                    toastr.error('Failed to delete all feedback');
+                    toastr.error(response.message || 'Failed to delete all feedback');
                 }
             },
             error: function(xhr, status, error) {
+                console.error('Delete all error:', status, error);
                 toastr.error('Error deleting all feedback: ' + error);
             },
             complete: function() {
@@ -437,6 +362,27 @@ $(document).ready(function() {
         });
     });
 
+    // Function to update table state after deletion
+    function updateTableAfterDeletion() {
+        // Update row numbering
+        $('tbody tr').each(function(index) {
+            $(this).find('td:eq(1)').text(index + 1);
+        });
+        
+        // Update select all checkbox
+        var totalCheckboxes = $('.feedback-checkbox').length;
+        var checkedCheckboxes = $('.feedback-checkbox:checked').length;
+        $('#select-all').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
+        
+        // Update delete button state
+        updateDeleteSelectedButton();
+        
+        // Show message if no records left
+        if (totalCheckboxes === 0) {
+            $('tbody').html('<tr><td colspan="8" class="text-center">No feedback messages found.</td></tr>');
+        }
+    }
+
     // Reply Modal
     $(document).on('click', '.reply_open_modal', function() {
         var id = $(this).val();
@@ -444,6 +390,7 @@ $(document).ready(function() {
         $('#reply_name').text(name);
         $('#id').val(id);
         $('#reply_message').val('');
+        $('#reply_modal').modal('show'); // Ensure modal is shown
     });
 
     // Send Reply
@@ -457,6 +404,8 @@ $(document).ready(function() {
             return;
         }
 
+        console.log('Sending reply for feedback ID:', id); // Debug log
+
         $.ajax({
             url: "{% url 'manager_feedback_message' %}",
             type: 'POST',
@@ -466,26 +415,51 @@ $(document).ready(function() {
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             beforeSend: function() {
+                console.log('Disabling buttons and sending AJAX request...');
                 $modal.find('button').prop('disabled', true);
             },
             success: function(response) {
-                $modal.modal('hide');
-                if (response == "True") {
-                    toastr.success('Reply sent successfully');
-                    // Update the replied feedback row
+                console.log('Response received:', response); // Debug log
+                
+                if (response.success) {
+                    toastr.success(response.message);
+                    
+                    // Update the table row
                     var $row = $('#feedback-' + id);
-                    $row.find('td:eq(5)').text('Just now'); // Update replied time
-                    $row.find('td:eq(6)').text(reply); // Update reply text
-                    $row.find('.reply_open_modal').remove(); // Remove reply button
+                    if ($row.length) {
+                        $row.find('td:eq(5)').text(response.updated_at);
+                        $row.find('td:eq(6)').html(response.reply);
+                        $row.find('td:eq(7)').html(response.reply);
+                        $row.find('.reply_open_modal').remove(); // Remove reply button
+                    } else {
+                        console.warn('Row not found for feedback ID:', id);
+                    }
+
+                    // Close the modal with a slight delay for reliability
+                    setTimeout(function() {
+                        console.log('Closing modal...');
+                        $modal.modal('hide');
+                        $modal.removeClass('show');
+                        $modal.css('display', 'none');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open');
+                        
+                        // Reset modal state
+                        $modal.removeData('bs.modal');
+                        $('#reply_message').val('');
+                        $('#id').val('');
+                        $('#reply_name').text('');
+                    }, 100); // 100ms delay to ensure Toastr displays first
                 } else {
-                    toastr.error('Failed to send reply');
+                    toastr.error(response.message || 'Failed to send reply');
                 }
             },
             error: function(xhr, status, error) {
-                $modal.modal('hide');
+                console.error('AJAX error:', status, error);
                 toastr.error('Error sending reply: ' + error);
             },
             complete: function() {
+                console.log('Re-enabling buttons...');
                 $modal.find('button').prop('disabled', false);
             }
         });
@@ -502,14 +476,19 @@ $(document).ready(function() {
             data: { page: page },
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             success: function(response) {
-                var $temp = $('<div>').html(response);
-                var $newContent = $temp.find('#feedback-table-container').html();
-                $('#feedback-table-container').html($newContent);
-                window.history.pushState({}, '', '?page=' + page);
-                $('#delete-selected').prop('disabled', true);
-                $('#selected-count').text(0);
+                if (response.success) {
+                    var $temp = $('<div>').html(response.html);
+                    var $newContent = $temp.find('#feedback-table-container').html();
+                    $('#feedback-table-container').html($newContent);
+                    window.history.pushState({}, '', '?page=' + page);
+                    $('#delete-selected').prop('disabled', true);
+                    $('#selected-count').text(0);
+                } else {
+                    toastr.error(response.message || 'Failed to load page');
+                }
             },
             error: function(xhr, status, error) {
+                console.error('Pagination error:', status, error);
                 toastr.error('Error loading page. Please try again.');
             }
         });

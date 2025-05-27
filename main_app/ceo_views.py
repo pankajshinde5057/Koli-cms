@@ -647,7 +647,6 @@ def check_email_availability(request):
         return HttpResponse(False)
 
 
-
 @login_required
 @csrf_exempt
 def employee_feedback_message(request):
@@ -717,6 +716,7 @@ def employee_feedback_message(request):
         feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
         reply = request.POST.get('reply')
         feedback.reply = reply
+        feedback.updated_at = timezone.now()
         feedback.save()
         
         notify = Notification.objects.filter(
@@ -724,30 +724,41 @@ def employee_feedback_message(request):
             role="admin",
             is_read=False,
             leave_or_notification_id=feedback_id,
-            notification_type='employee feedback'  # Added for consistency
+            notification_type='employee feedback'
         ).first()
         
         if notify:
             notify.is_read = True
             notify.save()
             
-        return JsonResponse({'success': True, 'message': 'Reply sent successfully'})
+        return JsonResponse({
+            'success': True,
+            'message': 'Reply sent successfully',
+            'reply': feedback.reply,
+            'updated_at': feedback.updated_at.strftime('%b %d, %Y %H:%M')
+        })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
         
-        
+
 
 @login_required
 @csrf_exempt
 def manager_feedback_message(request):
     if request.method != 'POST':
+        # Handle GET request to display feedback list
         feedback_list = FeedbackManager.objects.all().order_by('-id')
+        page = request.GET.get('page', 1)
         paginator = Paginator(feedback_list, 10)
-        page_number = request.GET.get('page')
-        page_obj = paginator.get_page(page_number)
+        try:
+            feedbacks = paginator.page(page)
+        except PageNotAnInteger:
+            feedbacks = paginator.page(1)
+        except EmptyPage:
+            feedbacks = paginator.page(paginator.num_pages)
+
         context = {
-            'feedbacks': page_obj,
-            'page_obj': page_obj,
+            'feedbacks': feedbacks,
             'page_title': 'Manager Feedback Messages'
         }
 
@@ -757,40 +768,46 @@ def manager_feedback_message(request):
                 context,
                 request=request
             )
-            return HttpResponse(html)
+            return JsonResponse({'success': True, 'html': html})
 
         return render(request, 'ceo_template/manager_feedback_template.html', context)
-    else:
-        if request.POST.get('_method') == 'DELETE':
-            try:
-                feedback_ids = request.POST.getlist('ids[]')  # For bulk delete
-                action = request.POST.get('action')  # For delete all
-                
-                if action == 'delete_all':
-                    FeedbackManager.objects.all().delete()
-                    return HttpResponse("True")
-                elif feedback_ids:
-                    FeedbackManager.objects.filter(id__in=feedback_ids).delete()
-                    return HttpResponse("True")
-                else:
-                    feedback_id = request.POST.get('id')
-                    feedback = get_object_or_404(FeedbackManager, id=feedback_id)
-                    feedback.delete()
-                    return HttpResponse("True")
-            except Exception as e:
-                return HttpResponse("False")
-        else:
-            try:
-                feedback_id = request.POST.get('id')
-                feedback = get_object_or_404(FeedbackManager, id=feedback_id)
-                reply = request.POST.get('reply').strip()
-                if not reply:
-                    return HttpResponse("False")
-                feedback.reply = reply
-                feedback.save()
-                return HttpResponse("True")
-            except Exception as e:
-                return HttpResponse("False")
+
+    # Handle POST request
+    if request.POST.get('_method') == 'DELETE':
+        feedback_ids = request.POST.getlist('ids[]')
+        action = request.POST.get('action')
+
+        try:
+            if action == 'delete_all':
+                FeedbackManager.objects.all().delete()
+                return JsonResponse({'success': True, 'message': 'All feedback deleted successfully'})
+            elif feedback_ids:
+                FeedbackManager.objects.filter(id__in=feedback_ids).delete()
+                return JsonResponse({'success': True, 'message': f'Deleted {len(feedback_ids)} feedback entries'})
+            else:
+                return JsonResponse({'success': False, 'message': 'No feedback IDs provided'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+    # Handle feedback reply
+    feedback_id = request.POST.get('id')
+    try:
+        feedback = get_object_or_404(FeedbackManager, id=feedback_id)
+        reply = request.POST.get('reply').strip()
+        if not reply:
+            return JsonResponse({'success': False, 'message': 'Reply cannot be empty'}, status=400)
+        feedback.reply = reply
+        feedback.updated_at = timezone.now()
+        feedback.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Reply sent successfully',
+            'reply': feedback.reply,
+            'updated_at': feedback.updated_at.strftime('%b %d, %Y %H:%M')
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 @login_required
 @csrf_exempt
@@ -951,6 +968,7 @@ def admin_notify_manager(request):
     return render(request, "ceo_template/manager_notification.html", context)
 
 
+
 @login_required
 def admin_notify_employee(request):
     employee_list = CustomUser.objects.filter(user_type=3).order_by('last_name', 'first_name')
@@ -981,6 +999,7 @@ def admin_notify_employee(request):
         return HttpResponse(html)
 
     return render(request, "ceo_template/employee_notification.html", context)
+
 
 
 @login_required
