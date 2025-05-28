@@ -11,10 +11,10 @@
                         <h3 class="card-title mb-3 mb-md-0">{{ page_title }}</h3>
                         <div class="ml-md-auto d-flex flex-wrap">
                             <button class="btn btn-primary btn-sm mb-2 mb-md-0 mr-md-2" data-toggle="modal" data-target="#bulkNotificationModal">
-                                <i class="fas fa-bullhorn"></i> <span class="d-none d-md-inline"></span>Bulk Notification
+                                <i class="fas fa-bullhorn"></i> <span class="d-none d-md-inline">Bulk Notification</span>
                             </button>
                             <button class="btn btn-info btn-sm mb-2 mb-md-0 ml-2" data-toggle="modal" data-target="#selectiveNotificationModal">
-                                <i class="fas fa-users"></i> <span class="d-none d-md-inline"></span>Selected Notification
+                                <i class="fas fa-users"></i> <span class="d-none d-md-inline">Selected Notification</span>
                             </button>
                         </div>
                     </div>
@@ -48,6 +48,7 @@
                                             {% else %}
                                                 <span class="text-muted">No Image</span>
                                             {% endif %}
+  
                                         </td>
                                         <td data-title="Action">
                                             <button data-toggle="modal" 
@@ -121,7 +122,9 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="individualNotificationLabel">Send Notification</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-hidden="true">×</button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -142,12 +145,14 @@
 </div>
 
 <!-- Bulk Notification Modal -->
-<div class="modal fade" id="bulkNotificationModal" tabindex="-1" role="dialog" aria-labelledby="bulkNotificationLabel">
+<div class="modal fade" id="bulkNotificationModal" tabindex="-1" role="dialog" aria-labelledby="bulkNotificationLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="bulkNotificationLabel">Bulk Notification</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">×</button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -167,12 +172,14 @@
 </div>
 
 <!-- Selective Notification Modal -->
-<div class="modal fade" id="selectiveNotificationModal" tabindex="-1" role="dialog" aria-labelledby="selectiveNotificationLabel">
+<div class="modal fade" id="selectiveNotificationModal" tabindex="-1" role="dialog" aria-labelledby="selectiveNotificationLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title" id="selectiveNotificationLabel">Selected Managers</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">×</button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -203,58 +210,6 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
-        /* Optional: Stacked table rows on mobile */
-        /* Uncomment if you prefer this approach */
-        /*
-        table {
-            display: block;
-            width: 100%;
-        }
-        
-        thead {
-            display: none;
-        }
-        
-        tbody, tr, td {
-            display: block;
-            width: 100%;
-        }
-        
-        tr {
-            margin-bottom: 1rem;
-            border: 1px solid #dee2e6;
-        }
-        
-        td {
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-            border-top: none;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        td:before {
-            content: attr(data-title);
-            position: absolute;
-            left: 1rem;
-            width: calc(50% - 1rem);
-            padding-right: 1rem;
-            text-align: left;
-            font-weight: bold;
-            color: #495057;
-        }
-        
-        td:first-child {
-            background: #f8f9fa;
-            text-align: center;
-            padding-left: 1rem;
-        }
-        
-        td:first-child:before {
-            display: none;
-        }
-        */
     }
     
     /* Avatar image styling */
@@ -300,21 +255,22 @@ $(document).ready(function() {
         $.ajax({
             url: "{% url 'admin_notify_manager' %}",
             type: 'GET',
-            data: {
-                page: page
-            },
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            success: function(html) {
-                var $temp = $('<div>').html(html);
-                var $newContent = $temp.find('#manager-table-container').html();
-                $('#manager-table-container').html($newContent);
-                window.history.pushState({}, '', '?page=' + page);
+            data: { page: page },
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function(response) {
+                if (response.success) {
+                    var $temp = $('<div>').html(response.html);
+                    var $newContent = $temp.find('#manager-table-container').html();
+                    $('#manager-table-container').html($newContent);
+                    window.history.pushState({}, '', '?page=' + page);
+                    updateSelectedCount();
+                } else {
+                    toastr.error(response.message || 'Failed to load page');
+                }
             },
             error: function(xhr, status, error) {
+                console.error('Pagination error:', status, error);
                 toastr.error('Error loading page. Please try again.');
-                console.error('Pagination AJAX failed:', error);
             }
         });
     });
@@ -341,20 +297,25 @@ $(document).ready(function() {
     $(document).on('click', '.show_notification', function() {
         $('#manager_id').val($(this).val());
         $('#message').val('').focus();
+        $('#myModal').modal('show'); // Ensure modal is shown
     });
 
     // Handle send individual notification
     $(document).on('click', '.send_notification', function() {
+        var $modal = $('#myModal');
         var id = $('#manager_id').val();
         var message = $('#message').val().trim();
+        
         if (!message) {
             toastr.warning('Please enter a message');
             return;
         }
-        
+
+        console.log('Sending individual notification to manager ID:', id); // Debug log
+
         var $btn = $(this);
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
-        
+
         $.ajax({
             url: "{% url 'send_manager_notification' %}",
             type: 'POST',
@@ -363,18 +324,38 @@ $(document).ready(function() {
                 message: message,
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
+            beforeSend: function() {
+                console.log('Sending AJAX request for individual notification...');
+            },
             success: function(response) {
-                if (response === 'True') {
-                    toastr.success('Notification sent successfully');
-                    $('#myModal').modal('hide');
+                console.log('Response received:', response); // Debug log
+                if (response.success) {
+                    toastr.success(response.message);
+                    
+                    // Close the modal with a slight delay
+                    setTimeout(function() {
+                        console.log('Closing individual notification modal...');
+                        $modal.modal('hide');
+                        $modal.removeClass('show');
+                        $modal.css('display', 'none');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open');
+                        
+                        // Reset modal state
+                        $modal.removeData('bs.modal');
+                        $('#message').val('');
+                        $('#manager_id').val('');
+                    }, 100); // 100ms delay to ensure Toastr displays
                 } else {
-                    toastr.error('Failed to send notification');
+                    toastr.error(response.message || 'Failed to send notification');
                 }
             },
-            error: function() {
-                toastr.error('Error sending notification');
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error);
+                toastr.error('Error sending notification: ' + error);
             },
             complete: function() {
+                console.log('Re-enabling button...');
                 $btn.prop('disabled', false).html('<i class="fas fa-paper-plane"></i> Send');
             }
         });
@@ -382,15 +363,19 @@ $(document).ready(function() {
 
     // Handle send bulk notification
     $(document).on('click', '.send_bulk_notification', function() {
+        var $modal = $('#bulkNotificationModal');
         var message = $('#bulkMessage').val().trim();
+        
         if (!message) {
             toastr.warning('Please enter a message');
             return;
         }
-        
+
+        console.log('Sending bulk notification'); // Debug log
+
         var $btn = $(this);
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
-        
+
         $.ajax({
             url: "{% url 'send_bulk_manager_notification' %}",
             type: 'POST',
@@ -398,19 +383,37 @@ $(document).ready(function() {
                 message: message,
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
+            beforeSend: function() {
+                console.log('Sending AJAX request for bulk notification...');
+            },
             success: function(response) {
-                if (response === 'True') {
-                    toastr.success('Bulk notification sent successfully');
-                    $('#bulkNotificationModal').modal('hide');
-                    $('#bulkMessage').val('');
+                console.log('Response received:', response); // Debug log
+                if (response.success) {
+                    toastr.success(response.message);
+                    
+                    // Close the modal with a slight delay
+                    setTimeout(function() {
+                        console.log('Closing bulk notification modal...');
+                        $modal.modal('hide');
+                        $modal.removeClass('show');
+                        $modal.css('display', 'none');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open');
+                        
+                        // Reset modal state
+                        $modal.removeData('bs.modal');
+                        $('#bulkMessage').val('');
+                    }, 100); // 100ms delay to ensure Toastr displays
                 } else {
-                    toastr.error('Failed to send bulk notification');
+                    toastr.error(response.message || 'Failed to send bulk notification');
                 }
             },
-            error: function() {
-                toastr.error('Error sending bulk notification');
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error);
+                toastr.error('Error sending bulk notification: ' + error);
             },
             complete: function() {
+                console.log('Re-enabling button...');
                 $btn.prop('disabled', false).html('<i class="fas fa-bullhorn"></i> Send to All');
             }
         });
@@ -418,25 +421,28 @@ $(document).ready(function() {
 
     // Handle send selected notification
     $(document).on('click', '.send_selected_notification', function() {
+        var $modal = $('#selectiveNotificationModal');
         var message = $('#selectiveMessage').val().trim();
-        if (!message) {
-            toastr.warning('Please enter a message');
-            return;
-        }
-        
         var selectedManagers = [];
         $('.managerCheckbox:checked').each(function() {
             selectedManagers.push($(this).val());
         });
+
+        if (!message) {
+            toastr.warning('Please enter a message');
+            return;
+        }
 
         if (selectedManagers.length === 0) {
             toastr.warning('Please select at least one manager');
             return;
         }
 
+        console.log('Sending selected notification to managers:', selectedManagers); // Debug log
+
         var $btn = $(this);
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Sending...');
-        
+
         $.ajax({
             url: "{% url 'send_selected_manager_notification' %}",
             type: 'POST',
@@ -445,22 +451,40 @@ $(document).ready(function() {
                 message: message,
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
+            beforeSend: function() {
+                console.log('Sending AJAX request for selected notification...');
+            },
             success: function(response) {
-                if (response === 'True') {
-                    toastr.success('Notification sent to selected managers');
-                    $('#selectiveNotificationModal').modal('hide');
-                    $('#selectiveMessage').val('');
-                    $('.managerCheckbox').prop('checked', false);
-                    $('#selectAll').prop('checked', false);
-                    $('#selectedCount').text('0');
+                console.log('Response received:', response); // Debug log
+                if (response.success) {
+                    toastr.success(response.message);
+                    
+                    // Close the modal with a slight delay
+                    setTimeout(function() {
+                        console.log('Closing selective notification modal...');
+                        $modal.modal('hide');
+                        $modal.removeClass('show');
+                        $modal.css('display', 'none');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open');
+                        
+                        // Reset modal state
+                        $modal.removeData('bs.modal');
+                        $('#selectiveMessage').val('');
+                        $('.managerCheckbox').prop('checked', false);
+                        $('#selectAll').prop('checked', false);
+                        updateSelectedCount();
+                    }, 100); // 100ms delay to ensure Toastr displays
                 } else {
-                    toastr.error('Failed to send notification');
+                    toastr.error(response.message || 'Failed to send notification');
                 }
             },
-            error: function() {
-                toastr.error('Error sending notification');
+            error: function(xhr, status, error) {
+                console.error('AJAX error:', status, error);
+                toastr.error('Error sending notification: ' + error);
             },
             complete: function() {
+                console.log('Re-enabling button...');
                 $btn.prop('disabled', false).html('<i class="fas fa-users"></i> Send to Selected');
             }
         });

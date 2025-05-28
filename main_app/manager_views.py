@@ -1644,43 +1644,10 @@ def manager_feedback(request):
     return render(request, 'manager_template/manager_feedback.html', context)
 
 
-@login_required   
-@csrf_exempt
-def manager_send_employee_notification(request):
-    id = request.POST.get('id')
-    message = request.POST.get('message')
-    # employee = get_object_or_404(Employee, team_lead_id=id)
-    employee = user= CustomUser.objects.filter(id = id).first()
-    print(id,message,employee)
-    try:
-        url = "https://fcm.googleapis.com/fcm/send"
-        body = {
-            'notification': {
-                'title': "OfficeOps",
-                'body': message,
-                'click_action': reverse('employee_view_notification'),
-                'icon': static('dist/img/AdminLTELogo.png')
-            },
-            'to': employee.fcm_token
-        }
-        employee = Employee.objects.filter(admin = employee).first()
-        headers = {'Authorization':
-                   'key=dxHXv-hbaBoaO0OyQN0_W3:APA91bH4UU9a727PTFs2kQzSaB3O1UWzEMoWVVrKdNGj1cgBD4vPQHIhaWd_C6o9ocbpLOvR1-_stx52N96ywgex3IDByDpicjQ-hMRLqDJXxEVUFGM3huo',
-                   'Content-Type': 'application/json'}
-        data = requests.post(url, data=json.dumps(body), headers=headers)
-        notification = NotificationEmployee(employee=employee, message=message,created_by=request.user)
-
-        notification.save()
-        send_notification(user, message,"notification",notification.id,"employee")
-        return HttpResponse("True")
-    except Exception as e:
-        print(">>>>>>>>>>>>>>>>>>",str(e))
-        return HttpResponse("False")
-   
-
-@login_required   
+@login_required
 def manager_notify_employee(request):
     employee_list = CustomUser.objects.filter(user_type=3)
+    
     paginator = Paginator(employee_list, 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1696,9 +1663,152 @@ def manager_notify_employee(request):
             context,
             request=request
         )
-        return HttpResponse(html)
+        return JsonResponse({'success': True, 'html': html})
 
     return render(request, "manager_template/employee_notification.html", context)
+
+
+@login_required
+@csrf_exempt
+def manager_send_employee_notification(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+    
+    id = request.POST.get('id')
+    message = request.POST.get('message', '').strip()
+    
+    if not message:
+        return JsonResponse({'success': False, 'message': 'Message cannot be empty'}, status=400)
+    
+    try:
+        # Retrieve CustomUser and corresponding Employee
+        user = get_object_or_404(CustomUser, id=id, user_type=3)
+        employee = get_object_or_404(Employee, admin=user)
+        
+        if user.fcm_token:
+            url = "https://fcm.googleapis.com/fcm/send"
+            body = {
+                'notification': {
+                    'title': "OfficeOps",
+                    'body': message,
+                    'click_action': reverse('employee_view_notification'),
+                    'icon': static('dist/img/AdminLTELogo.png')
+                },
+                'to': user.fcm_token
+            }
+            headers = {
+                'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                'Content-Type': 'application/json'
+            }
+            response = requests.post(url, data=json.dumps(body), headers=headers)
+            if response.status_code != 200:
+                print(f"FCM request failed: {response.text}")
+        
+        notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
+        notification.save()
+        
+        # Assuming send_notification is a custom function; ensure it's defined
+        try:
+            send_notification(user, message, "notification", notification.id, "employee")
+        except Exception as e:
+            print(f"send_notification failed: {str(e)}")
+        
+        return JsonResponse({'success': True, 'message': 'Notification sent successfully'})
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@csrf_exempt
+def send_bulk_employee_notification_by_manager(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+    
+    message = request.POST.get('message', '').strip()
+    
+    if not message:
+        return JsonResponse({'success': False, 'message': 'Message cannot be empty'}, status=400)
+    
+    try:
+        employees = Employee.objects.all()
+        if not employees.exists():
+            return JsonResponse({'success': False, 'message': 'No employees found'}, status=400)
+        
+        for employee in employees:
+            if employee.admin.fcm_token:
+                url = "https://fcm.googleapis.com/fcm/send"
+                body = {
+                    'notification': {
+                        'title': "KoliInfoTech",
+                        'body': message,
+                        'click_action': reverse('employee_view_notification'),
+                        'icon': static('dist/img/AdminLTELogo.png')
+                    },
+                    'to': employee.admin.fcm_token
+                }
+                headers = {
+                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                    'Content-Type': 'application/json'
+                }
+                response = requests.post(url, data=json.dumps(body), headers=headers)
+                if response.status_code != 200:
+                    print(f"FCM request failed for employee {employee.id}: {response.text}")
+            
+            notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
+            notification.save()
+        
+        return JsonResponse({'success': True, 'message': 'Bulk notification sent successfully'})
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@csrf_exempt
+def send_selected_employee_notification_by_manager(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+    
+    message = request.POST.get('message', '').strip()
+    try:
+        employee_ids = json.loads(request.POST.get('employee_ids', '[]'))
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid employee IDs format'}, status=400)
+    
+    if not message:
+        return JsonResponse({'success': False, 'message': 'Message cannot be empty'}, status=400)
+    
+    if not employee_ids:
+        return JsonResponse({'success': False, 'message': 'No employees selected'}, status=400)
+    
+    try:
+        for emp_id in employee_ids:
+            employee = get_object_or_404(Employee, admin_id=emp_id)
+            if employee.admin.fcm_token:
+                url = "https://fcm.googleapis.com/fcm/send"
+                body = {
+                    'notification': {
+                        'title': "KoliInfoTech",
+                        'body': message,
+                        'click_action': reverse('employee_view_notification'),
+                        'icon': static('dist/img/AdminLTELogo.png')
+                    },
+                    'to': employee.admin.fcm_token
+                }
+                headers = {
+                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
+                    'Content-Type': 'application/json'
+                }
+                response = requests.post(url, data=json.dumps(body), headers=headers)
+                if response.status_code != 200:
+                    print(f"FCM request failed for employee {employee.id}: {response.text}")
+            
+            notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
+            notification.save()
+        
+        return JsonResponse({'success': True, 'message': 'Notification sent to selected employees'})
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 @login_required   
@@ -1876,90 +1986,6 @@ def manager_asset_view_notification(request):
 
     return render(request, "manager_template/manager_asset_view_notification.html", context)
 
-
-
-@login_required   
-@csrf_exempt
-def send_bulk_employee_notification_by_manager(request):
-    if request.method == 'POST':
-        message = request.POST.get('message')
-        employees = Employee.objects.all()
-        success = True
-        
-        try:
-            for employee in employees:
-                if employee.admin.fcm_token:
-                    url = "https://fcm.googleapis.com/fcm/send"
-                    body = {
-                        'notification': {
-                            'title': "KoliInfoTech",
-                            'body': message,
-                            'click_action': reverse('employee_view_notification'),
-                            'icon': static('dist/img/AdminLTELogo.png')
-                        },
-                        'to': employee.admin.fcm_token
-                    }
-                    headers = {
-                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                        'Content-Type': 'application/json'
-                    }
-                    requests.post(url, data=json.dumps(body), headers=headers)
-                
-                # Save notification to database
-                notification = NotificationEmployee(
-                    employee=employee,
-                    message=message,
-                    created_by=request.user
-                )
-                notification.save()
-                
-            return HttpResponse("True")
-        except Exception as e:
-            print(e)
-            return HttpResponse("False")
-
-
-@login_required   
-@csrf_exempt
-def send_selected_employee_notification_by_manager(request):
-    if request.method == 'POST':
-        message = request.POST.get('message')
-        employee_ids = json.loads(request.POST.get('employee_ids'))
-        print(employee_ids)
-        success = True
-        
-        try:
-            for emp_id in employee_ids:
-                employee = get_object_or_404(Employee, admin_id=emp_id)
-                if employee.admin.fcm_token:
-                    url = "https://fcm.googleapis.com/fcm/send"
-                    body = {
-                        'notification': {
-                            'title': "KoliInfoTech",
-                            'body': message,
-                            'click_action': reverse('employee_view_notification'),
-                            'icon': static('dist/img/AdminLTELogo.png')
-                        },
-                        'to': employee.admin.fcm_token
-                    }
-                    headers = {
-                        'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                        'Content-Type': 'application/json'
-                    }
-                    requests.post(url, data=json.dumps(body), headers=headers)
-                
-                # Save notification to database
-                notification = NotificationEmployee(
-                    employee=employee,
-                    message=message,
-                    created_by=request.user
-                )
-                notification.save()
-                
-            return HttpResponse("True")
-        except Exception as e:
-            print(e)
-            return HttpResponse("False")
 
 
 @login_required   
