@@ -46,6 +46,15 @@
         color: white;
         border-radius: 12px 12px 0 0 !important;
         padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .card-header .actions {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
     }
     
     .select2-container--default .select2-selection--single {
@@ -85,6 +94,21 @@
     
     .btn-primary:active {
         transform: translateY(0);
+    }
+    
+    .btn-outline-light {
+        color: white;
+        border-color: white;
+        transition: all 0.3s;
+        padding: 6px 12px;
+        font-size: 0.875rem;
+    }
+    
+    .btn-outline-light:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-color: white;
+        color: white;
+        transform: translateY(-2px);
     }
     
     .status-badge {
@@ -299,6 +323,11 @@
             flex: 2;
             text-align: right;
         }
+        
+        .card-header .actions {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
     }
     
     @keyframes pulse {
@@ -338,7 +367,7 @@
         height: 100%;
         border-radius: 10px;
         background-color: var(--primary-color);
-        transition: width 0.5s ease;
+        transition: width 0.3s ease;
     }
     
     [data-tooltip] {
@@ -356,7 +385,7 @@
         color: white;
         padding: 4px 8px;
         border-radius: 4px;
-        font ACOG4Fsize: 12px;
+        font-size: 12px;
         white-space: nowrap;
         z-index: 100;
         margin-bottom: 8px;
@@ -403,13 +432,16 @@
             font-size: 12px !important;
         }
         .attendance-table th {
-            background-color: #f8f9fa !important;
+            background-color: #f2f2f2 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .status-badge {
             padding: 3px 6px !important;
             font-size: 10px !important;
+        }
+        .actions {
+            display: none !important;
         }
     }
 
@@ -503,14 +535,14 @@
                 </div>
 
                 <div class="card results-card animate__animated animate__fadeIn" id="attendance_results" style="display:none;">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header">
                         <h3 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>Attendance Records</h3>
                         <div class="actions">
-                            <button class="btn btn-sm btn-outline-light" id="print_btn" data-tooltip="Print Records">
-                                <i class="fas fa-print"></i>
+                            <button class="btn btn-sm btn-outline-light no-print" id="print_btn" data-tooltip="Print Records">
+                                <i class="fas fa-print"></i> Print
                             </button>
-                            <button class="btn btn-sm btn-outline-light" id="export_btn" data-tooltip="Export to Excel">
-                                <i class="fas fa-file-excel"></i>
+                            <button class="btn btn-sm btn-outline-light no-print" id="export_btn" data-tooltip="Export to Excel">
+                                <i class="fas fa-file-excel"></i> Export
                             </button>
                         </div>
                     </div>
@@ -561,7 +593,7 @@
                             <p>No attendance records found for the selected criteria</p>
                         </div>
 
-                        <div class="pagination-container" id="pagination_container"></div>
+                        <div class="pagination-container no-print" id="pagination_container"></div>
                     </div>
                 </div>
             </div>
@@ -873,6 +905,46 @@ $(document).ready(function() {
         });
     }
 
+    // New function to fetch all attendance data for print/export without spinner
+    function fetchAllAttendanceData(callback) {
+        const data = {
+            ...currentFilterData,
+            page: 1,
+            per_page: 10000
+        };
+
+        $.ajax({
+            url: "{% url 'get_employee_attendance' %}",
+            type: "POST",
+            data: data,
+            success: function(response) {
+                try {
+                    if (!response || response.error || !response.data) {
+                        showAlert(response.error || 'Invalid data format', 'error');
+                        return;
+                    }
+                    callback(response.data, response.stats || {});
+                } catch (e) {
+                    console.error('Error processing all records:', e);
+                    showAlert('Error processing all attendance data', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                let errorMsg = "Failed to load all attendance data";
+                try {
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    } else if (xhr.statusText) {
+                        errorMsg = `${xhr.status}: ${xhr.statusText}`;
+                    }
+                } catch (e) {
+                    console.error('Error parsing error response:', e);
+                }
+                showAlert(errorMsg, 'error');
+            }
+        });
+    }
+
     // Enhanced renderAttendanceTable with data validation
     function renderAttendanceTable(data, pagination, stats) {
         // Validate input data
@@ -966,7 +1038,7 @@ $(document).ready(function() {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/'/g, "&#39;");
     }
     
     // Render pagination controls
@@ -983,7 +1055,7 @@ $(document).ready(function() {
         
         let paginationHtml = `
             <nav aria-label="Page navigation">
-                <ul class="pagination justify-content-center">
+                <ul class="pagination">
         `;
     
         // Previous button
@@ -996,7 +1068,7 @@ $(document).ready(function() {
                 </li>
             `;
         }
-    
+
         // Page numbers
         const startPage = Math.max(1, pagination.current_page - 2);
         const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
@@ -1065,13 +1137,11 @@ $(document).ready(function() {
         const page = $(this).data('page');
         if (!page) return;
         
-        // Create a new data object with all filter parameters plus the new page number
         const data = {
             ...currentFilterData,
             page: page
         };
         
-        // Include year/month/week if they exist
         if (currentFilterData.time_period === 'week') {
             data.week = currentFilterData.week;
         } else if (currentFilterData.time_period === 'month') {
@@ -1080,7 +1150,6 @@ $(document).ready(function() {
         
         fetchAttendanceData(data);
         
-        // Smooth scroll to top of results
         $('html, body').animate({
             scrollTop: $("#attendance_results").offset().top - 20
         }, 300);
@@ -1088,7 +1157,7 @@ $(document).ready(function() {
 
     // Helper functions
     function calculateHours(clockIn, clockOut) {
-        if (! garnerclockIn || !clockOut) return '-';
+        if (!clockIn || !clockOut) return '-';
         const diff = moment(clockOut).diff(moment(clockIn), 'minutes');
         return `${Math.floor(diff / 60)}h ${diff % 60}m`;
     }
@@ -1181,91 +1250,156 @@ $(document).ready(function() {
         setTimeout(() => $('.alert').alert('close'), 5000);
     }
 
-    // Print button handler
+    // Enhanced Print button handler
     $('#print_btn').click(function() {
-        // Clone the printable area to avoid affecting the original
-        const printContent = $('#printable-area').clone();
-        
-        // Open a new window for printing
-        const printWindow = window.open('', '', 'width=800,height=600');
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Attendance Report</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                        th { background-color: #f2f2f2; }
-                        .status-badge { padding: 3px 6px; border-radius: 3px; font-size: 12px; }
-                        .present { background-color: #dcfce7; color: #166534; }
-                        .absent { background-color: #fee2e2; color: #991b1b; }
-                        .late { background-color: #fef3c7; color: #92400e; }
-                        .halfday { background-color: #dbeafe; color: #1e40af; }
-                        .holiday { background-color: #ede9fe; color: #5b21b6; }
-                        .summary { margin-bottom: 20px; font-weight: bold; }
-                        @page { size: auto; margin: 5mm; }
-                    </style>
-                </head>
-                <body>
-                    <h2>Attendance Report</h2>
-                    <div class="summary">${$('#employee_name').text()} - ${$('#employee_department').text()}</div>
-                    <div class="summary">Date Range: ${$('#date_range').text()}</div>
-        `);
-        printWindow.document.write(printContent.html());
-        printWindow.document.write('</body></html>');
-        printWindow.document.close();
-        
-        // Wait for content to load before printing
-        printWindow.onload = function() {
-            printWindow.focus();
-            printWindow.print();
-            printWindow.close();
-        };
+        fetchAllAttendanceData(function(data, stats) {
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                showAlert('No records to print', 'warning');
+                return;
+            }
+
+            // Generate table HTML for all records
+            let tableHtml = `
+                <table border="1" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Date</th>
+                            <th>Day</th>
+                            <th>Status</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.forEach(record => {
+                if (!record || typeof record !== 'object') return;
+                if (!record.status || !record.date) return;
+
+                let date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+                let day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+                const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
+                const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+                const hours = record.hours || '-';
+                const statusClass = getStatusClass(record.status.toLowerCase());
+                const statusIcon = getStatusIcon(record.status.toLowerCase());
+                const name = record.name ? String(record.name) : '-';
+                const department = record.department ? String(record.department) : '-';
+
+                tableHtml += `
+                    <tr>
+                        <td>${escapeHtml(name)}</td>
+                        <td>${escapeHtml(department)}</td>
+                        <td>${date}</td>
+                        <td>${day}</td>
+                        <td><span class="status-badge ${statusClass}">${statusIcon}${escapeHtml(record.status)}</span></td>
+                        <td>${inTime}</td>
+                        <td>${outTime}</td>
+                        <td>${hours}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `
+                    </tbody>
+                </table>
+            `;
+
+            // Open a new window for printing
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Attendance Report</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; }
+                            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                            th { background-color: #f2f2f2; }
+                            .status-badge { padding: 3px 6px; border-radius: 3px; font-size: 12px; }
+                            .present { background-color: #dcfce7; color: #166534; }
+                            .absent { background-color: #fee2e2; color: #991b1b; }
+                            .late { background-color: #fef3c7; color: #92400e; }
+                            .halfday { background-color: #dbeafe; color: #1e40af; }
+                            .holiday { background-color: #ede9fe; color: #5b21b6; }
+                            .summary { margin-bottom: 20px; font-weight: bold; }
+                            @page { size: auto; margin: 5mm; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>Attendance Report</h2>
+                        <div class="summary">${$('#employee_name').text()} - ${$('#employee_department').text()}</div>
+                        <div class="summary">Date Range: ${$('#date_range').text()}</div>
+                        ${tableHtml}
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+            // Wait for content to load before printing
+            printWindow.onload = function() {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+            };
+        });
     });
 
-    // Excel export button handler
+    // Enhanced Excel export button handler
     $('#export_btn').click(function() {
-        // Get all table data
-        const table = document.getElementById('attendance_table');
-        const rows = table.querySelectorAll('tr');
-        const data = [];
-        
-        // Process header row
-        const headerRow = rows[0];
-        const headerData = [];
-        headerRow.querySelectorAll('th').forEach(th => {
-            headerData.push(th.textContent.trim());
-        });
-        data.push(headerData);
-        
-        // Process data rows
-        for (let i = 1; i < rows.length; i++) {
-            const row = rows[i];
-            const rowData = [];
-            row.querySelectorAll('td').forEach(td => {
-                // For status cells, get just the text without the icon
-                if (td.querySelector('.status-badge')) {
-                    rowData.push(td.querySelector('.status-badge').textContent.trim());
-                } else {
-                    rowData.push(td.textContent.trim());
-                }
+        fetchAllAttendanceData(function(data, stats) {
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                showAlert('No records to export', 'warning');
+                return;
+            }
+
+            // Prepare data for Excel
+            const excelData = [
+                ['Name', 'Department', 'Date', 'Day', 'Status', 'Clock In', 'Clock Out', 'Hours']
+            ];
+
+            data.forEach(record => {
+                if (!record || typeof record !== 'object') return;
+                if (!record.status || !record.date) return;
+
+                let date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+                let day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+                const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
+                const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+                const hours = record.hours || '-';
+                const name = record.name ? String(record.name) : '-';
+                const department = record.department ? String(record.department) : '-';
+                const status = record.status || '-';
+
+                excelData.push([
+                    name,
+                    department,
+                    date,
+                    day,
+                    status,
+                    inTime,
+                    outTime,
+                    hours
+                ]);
             });
-            data.push(rowData);
-        }
-        
-        // Create workbook
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        
-        // Add worksheet to workbook
-        XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-        
-        // Generate file name
-        const fileName = `Attendance_Report_${$('#employee_name').text().replace(/\s+/g, '_')}_${moment().format('YYYYMMDD')}.xlsx`;
-        
-        // Export to Excel
-        XLSX.writeFile(wb, fileName);
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+            
+            // Generate file name
+            const fileName = `Attendance_Report_${$('#employee_name').text().replace(/\s+/g, '_')}_${moment().format('YYYYMMDD')}.xlsx`;
+            
+            // Export to Excel
+            XLSX.writeFile(wb, fileName);
+        });
     });
 });
 </script>

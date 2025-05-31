@@ -216,58 +216,6 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
-        /* Optional: Make table rows stack on small screens */
-        /* Uncomment if you prefer this approach */
-        /*
-        table {
-            display: block;
-            width: 100%;
-        }
-        
-        thead {
-            display: none;
-        }
-        
-        tbody, tr, td {
-            display: block;
-            width: 100%;
-        }
-        
-        tr {
-            margin-bottom: 1rem;
-            border: 1px solid #dee2e6;
-        }
-        
-        td {
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-            border-top: none;
-            border-bottom: 1px solid #dee2e6;
-        }
-        
-        td:before {
-            content: attr(data-title);
-            position: absolute;
-            left: 1rem;
-            width: calc(50% - 1rem);
-            padding-right: 1rem;
-            text-align: left;
-            font-weight: bold;
-            color: #495057;
-        }
-        
-        td:first-child {
-            background: #f8f9fa;
-            text-align: center;
-            padding-left: 1rem;
-        }
-        
-        td:first-child:before {
-            display: none;
-        }
-        */
     }
     
     /* Button spacing adjustments */
@@ -423,7 +371,6 @@ $(document).ready(function() {
                 if (response.success) {
                     $('tbody').html('<tr><td colspan="7" class="text-center">No feedback messages found.</td></tr>');
                     toastr.success(response.message);
-                    // Reset all checkboxes and counters
                     $('.feedback-checkbox').prop('checked', false);
                     $('#select-all').prop('checked', false);
                     updateDeleteSelectedButton();
@@ -447,6 +394,7 @@ $(document).ready(function() {
         $('#reply_name').text(name);
         $('#id').val(id);
         $('#reply_message').val('');
+        $('#reply_modal').modal('show'); // Ensure modal is shown
     });
 
     // Send Reply
@@ -460,6 +408,8 @@ $(document).ready(function() {
             return;
         }
 
+        console.log('Sending reply for feedback ID:', id); // Debug log
+
         $.ajax({
             url: "{% url 'employee_feedback_message' %}",
             type: 'POST',
@@ -469,26 +419,51 @@ $(document).ready(function() {
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             beforeSend: function() {
+                console.log('Disabling buttons and sending AJAX request...');
                 $modal.find('button').prop('disabled', true);
             },
             success: function(response) {
-                $modal.modal('hide');
+                console.log('Response received:', response); // Debug log
+                
                 if (response.success) {
                     toastr.success(response.message);
-                    // Update the replied feedback row
+                    
+                    // Update the table row
                     var $row = $('#feedback-' + id);
-                    $row.find('td:eq(4)').text(response.updated_at || 'Just now');
-                    $row.find('td:eq(5)').text(response.reply);
-                    $row.find('.reply_open_modal').remove();
+                    if ($row.length) {
+                        $row.find('td:eq(4)').text(response.updated_at);
+                        $row.find('td:eq(5)').html(response.reply);
+                        $row.find('td:eq(6)').html(response.reply);
+                        $row.find('.fa-circle.text-danger').remove();
+                    } else {
+                        console.warn('Row not found for feedback ID:', id);
+                    }
+
+                    // Close the modal with a slight delay for reliability
+                    setTimeout(function() {
+                        console.log('Closing modal...');
+                        $modal.modal('hide');
+                        $modal.removeClass('show');
+                        $modal.css('display', 'none');
+                        $('.modal-backdrop').remove();
+                        $('body').removeClass('modal-open');
+                        
+                        // Reset modal state
+                        $modal.removeData('bs.modal');
+                        $('#reply_message').val('');
+                        $('#id').val('');
+                        $('#reply_name').text('');
+                    }, 100); // 100ms delay to ensure Toastr displays first
                 } else {
-                    toastr.error(response.message);
+                    toastr.error(response.message || 'Failed to send reply');
                 }
             },
             error: function(xhr, status, error) {
-                $modal.modal('hide');
+                console.error('AJAX error:', status, error);
                 toastr.error('Error sending reply: ' + error);
             },
             complete: function() {
+                console.log('Re-enabling buttons...');
                 $modal.find('button').prop('disabled', false);
             }
         });
