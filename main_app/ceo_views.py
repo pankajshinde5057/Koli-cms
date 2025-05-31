@@ -23,6 +23,8 @@ from django.core.paginator import Paginator
 from .models import AttendanceRecord, Holiday, Employee, Manager
 from xhtml2pdf import pisa
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.utils.dateparse import parse_date
 
 
 LOCATION_CHOICES = (
@@ -33,44 +35,144 @@ LOCATION_CHOICES = (
 
 @login_required
 def admin_home(request):
-    total_manager = Manager.objects.all().count()
+    total_managers = Manager.objects.all().count()
     total_employees = Employee.objects.all().count()
     departments = Department.objects.all()
     total_department = departments.count()
     total_division = Division.objects.all().count()
-    attendance_list = AttendanceRecord.objects.filter(department__in=departments)
-    total_attendance = attendance_list.count()
     
-    total_assets = Assets.objects.all().count()
-    active_assets = Assets.objects.filter(is_asset_issued=True).count()
-    inactive_assets = Assets.objects.filter(is_asset_issued=False).count()
+    today = date.today()
+    current_time = timezone.now()
 
-    resolved_issues = AssetIssue.objects.filter(status='resolved')
-    total_resolved = resolved_issues.count()
-    recurring_issues = resolved_issues.filter(is_recurring=True).count()
-    holidays = Holiday.objects.all().order_by('date')
-    attendance_list = []
-    department_list = []
-    for department in departments:
-        attendance_count = AttendanceRecord.objects.filter(department=department).count()
-        department_list.append(department.name[:7])
-        attendance_list.append(attendance_count)
+    # Get filter parameters
+    selected_department = request.GET.get('department', 'all').strip().lower()
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    
+    # Parse dates with fallback to today
+    try:
+        start_date = parse_date(start_date).date() if start_date else today
+        end_date = parse_date(end_date).date() if end_date else today
+    except ValueError:
+        start_date = end_date = today
+
+    # Ensure end_date is not before start_date
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    # Filter employees and managers
+    employees = CustomUser.objects.filter(user_type=3)  # Employees
+    managers = CustomUser.objects.filter(user_type=2)   # Managers
+    
+    if selected_department != 'all':
+        employees = employees.filter(employee__department__name__iexact=selected_department)
+        managers = managers.filter(manager__department__name__iexact=selected_department)
+
+    # IDs for querying
+    employee_ids = employees.values_list('id', flat=True)
+    manager_ids = managers.values_list('id', flat=True)
+    all_user_ids = list(employee_ids) + list(manager_ids)
+
+    # Break data for today (for cards)
+    employee_breaks_today = Break.objects.filter(
+        attendance_record__user_id__in=employee_ids,
+        break_start__date__gte=start_date,
+        break_start__date__lte=end_date,
+        break_start__lte=current_time,
+    ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
+    
+    manager_breaks_today = Break.objects.filter(
+        attendance_record__user_id__in=manager_ids,
+        break_start__date__gte=start_date,
+        break_start__date__lte=end_date,
+        break_start__lte=current_time,
+    ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
+    
+    total_employee_on_break = employee_breaks_today.count()
+    total_manager_on_break = manager_breaks_today.count()
+
+    # Leave data
+    total_employee_leave = LeaveReportEmployee.objects.filter(
+        employee__admin_id__in=employee_ids,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    ).count()
+    
+    total_manager_leave = LeaveReportManager.objects.filter(
+        manager__admin_id__in=manager_ids,
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    ).count()
+
+    # Combined break entries
+    break_entries = []
+    break_queryset = Break.objects.filter(
+        attendance_record__user_id__in=all_user_ids,
+        break_start__date__gte=start_date,
+        break_start__date__lte=end_date
+    ).select_related('attendance_record__user')  # Optimize query with select_related
+    
+    for b in break_queryset.order_by('-break_start'):
+        user = b.attendance_record.user  # Access user directly from attendance_record
+        user_type = 'Employee' if user.user_type == '3' else 'Manager' if user.user_type == '2' else 'Unknown'
+        
+        # Get department with proper error handling
+        department = 'N/A'
+        try:
+            if user_type == 'Employee':
+                employee = Employee.objects.get(admin=user)
+                department = employee.department.name if employee.department else 'N/A'
+            elif user_type == 'Manager':
+                manager = Manager.objects.get(admin=user)
+                department = manager.department.name if manager.department else 'N/A'
+        except (Employee.DoesNotExist, Manager.DoesNotExist):
+            department = 'N/A'
+            
+        # Calculate duration
+        duration = 0
+        if b.break_end:
+            duration = int((b.break_end - b.break_start).total_seconds() / 60)
+        elif b.break_start:
+            duration = int((current_time - b.break_start).total_seconds() / 60)
+            
+        break_entries.append({
+            'user_id': user.id,
+            'user_name': user.get_full_name() or 'Unknown',
+            'user_type': user_type,
+            'department': department,
+            'break_start': timezone.localtime(b.break_start).strftime('%Y-%m-%d %H:%M'),
+            'break_end': timezone.localtime(b.break_end).strftime('%Y-%m-%d %H:%M') if b.break_end else 'Ongoing',
+            'break_duration': duration,
+        })
+
+    # Paginate break entries
+    paginator = Paginator(break_entries, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Context
     context = {
         'page_title': "Administrative Dashboard",
         'total_employees': total_employees,
-        'total_manager': total_manager,
-        'total_division': total_division,
+        'total_managers': total_managers,
         'total_department': total_department,
-        'department_list': department_list,
-        'attendance_list': attendance_list,
-        'total_assets': total_assets,
-        'active_assets': active_assets,
-        'inactive_assets': inactive_assets,
-        'total_resolved_issues': total_resolved,
-        'recurring_issues': recurring_issues,
-        'holidays': holidays,
-
+        'total_division': total_division,
+        'total_employee_leave': total_employee_leave,
+        'total_manager_leave': total_manager_leave,
+        'total_employee_on_break': total_employee_on_break,
+        'total_manager_on_break': total_manager_on_break,
+        'break_entries': page_obj.object_list,
+        'page_obj': page_obj,
+        'departments': departments,
+        'selected_department': selected_department,
+        'start_date': start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else start_date,
+        'end_date': end_date.strftime('%Y-%m-%d') if isinstance(end_date, date) else end_date,
     }
+    
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        html = render_to_string('ceo_template/home_content.html', context, request=request)
+        return HttpResponse(html)
+    
     return render(request, 'ceo_template/home_content.html', context)
 
 
@@ -492,7 +594,7 @@ def edit_manager(request, manager_id):
                 manager.save()
 
                 messages.success(request, "Manager information updated successfully.")
-                return redirect(reverse('edit_manager', args=[manager_id]))
+                return redirect(reverse('manage_manager'))
 
             except Exception as e:
                 messages.error(request, "Could Not Update: " + str(e))
@@ -573,7 +675,7 @@ def edit_employee(request, employee_id):
                 employee.save()
 
                 messages.success(request, "Employee information updated successfully.")
-                return redirect(reverse('edit_employee', args=[employee_id]))
+                return redirect(reverse('manage_employee'))
 
             except Exception as e:
                 messages.error(request, "Could Not Update: " + str(e))
@@ -600,6 +702,7 @@ def edit_division(request, division_id):
                 division.name = name
                 division.save()
                 messages.success(request, "Successfully Updated")
+                return redirect(reverse('manage_division'))
             except:
                 messages.error(request, "Could Not Update")
         else:
@@ -627,7 +730,7 @@ def edit_department(request, department_id):
                 department.division = division
                 department.save()
                 messages.success(request, "Successfully Updated")
-                return redirect(reverse('edit_department', args=[department_id]))
+                return redirect(reverse('manage_department'))
             except Exception as e:
                 messages.error(request, "Could Not Add " + str(e))
         else:
@@ -1325,12 +1428,48 @@ def delete_department(request, department_id):
     return redirect(reverse('manage_department'))
 
 
+@require_POST
+@login_required
+def get_department_data(request):
+    if request.method == "POST":
+        department_id = request.POST.get('department')
+
+        data = {
+            'employees' : [],
+            'managers' : [],
+            'status' : 'success'
+        }
+        try:
+            if department_id and department_id != 'all':
+                employees = Employee.objects.filter(department_id=department_id).select_related('admin')
+                managers = Manager.objects.filter(department_id=department_id).select_related('admin')
+                
+                data['employees'] = [{
+                    'id' : emp.admin.id,
+                    'name' : f'{emp.admin.get_full_name()}'
+                } for emp in employees]
+
+                data['managers'] = [{
+                    'id' : mag.admin.id,
+                    'name' : f"{mag.admin.get_full_name()}"
+                } for mag in managers]
+
+            return JsonResponse(data)
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+
+
 @login_required
 def generate_performance_report(request):
     departments = Department.objects.all()
     
     if request.method == 'POST':
         employee_ids = request.POST.getlist('employee')
+        manager_ids = request.POST.getlist('manager')
         month = request.POST.get('month')
         year = request.POST.get('year')
         department_id = request.POST.get('department')
@@ -1339,178 +1478,39 @@ def generate_performance_report(request):
             messages.error(request, "Month and Year are required fields")
             return redirect('generate_performance_report')
             
-        if not department_id and not employee_ids:
-            messages.error(request, "Please select at least one filter (Department or Employee)")
+        if not department_id and not employee_ids and not manager_ids:
+            messages.error(request, "Please select at least one filter (Department, Employee or Manager)")
             return redirect('generate_performance_report')
         
         try:
             year = int(year)
             month = int(month)
             
-            # Get employees based on selection
+            # Get employees and managers based on selection
             employees = Employee.objects.all()
+            managers = Manager.objects.all()
+
             if department_id and department_id != 'all':
                 employees = employees.filter(department_id=department_id)
+                managers = managers.filter(department_id=department_id)
             if employee_ids:
                 employees = employees.filter(admin__id__in=employee_ids)
+            if manager_ids:
+                managers = managers.filter(admin__id__in=manager_ids)
             
-            # Process each employee
+            # Process each employee and manager
             all_reports = []
+            
+            # Process employees
             for employee in employees:
-                user = employee.admin
-                # Get the number of days in the selected month
-                num_days = monthrange(year, month)[1]
-                start_date = datetime(year, month, 1).date()
-                end_date = datetime(year, month, num_days).date()
-                
-                # Initialize counters
-                working_days = 0
-                present_days = 0
-                late_days = 0
-                half_days = 0
-                absent_days = 0
-                total_worked = timedelta()
-                total_regular = timedelta()
-                total_overtime = timedelta()
-                daily_records = []
-
-                # Get all attendance records for the month in one query
-                attendance_records = AttendanceRecord.objects.filter(
-                    user=user,
-                    date__range=(start_date, end_date)
-                ).order_by('date').select_related('user')
-                # Get all leave records for the month in one query
-                leave_records = LeaveReportEmployee.objects.filter(
-                    employee=employee,
-                    status=1,
-                    start_date__lte=end_date,
-                    end_date__gte=start_date
-                )
-                # Create a dictionary to track leave days
-                leave_days = defaultdict(Decimal)
-                for leave in leave_records:
-                    current_date = max(leave.start_date, start_date)
-                    end_date_leave = min(leave.end_date, end_date)
-                    while current_date <= end_date_leave:
-                        if leave.leave_type == "Full-Day":
-                            leave_days[current_date] += Decimal('1.0')
-                        elif leave.leave_type == "Half-Day":
-                            leave_days[current_date] += Decimal('0.5')
-                        current_date += timedelta(days=1)
-
-                # Prefetch break records for all attendance records
-                attendance_ids = [ar.id for ar in attendance_records]
-                break_records = Break.objects.filter(
-                    attendance_record_id__in=attendance_ids
-                )
-                # Create a mapping of attendance ID to break records
-                breaks_map = defaultdict(list)
-                for br in break_records:
-                    breaks_map[br.attendance_record_id].append(br)
-
-                # Process each day of the month
-                for day in range(1, num_days + 1):
-                    current_date = datetime(year, month, day).date()
-                    weekday = current_date.weekday()
-                    is_sunday = weekday == 6
-                    is_saturday = weekday == 5
-                    week_of_month = (day - 1) // 7
-                    is_weekend = is_sunday or (is_saturday and week_of_month in [1, 3])
-                    
-                    # Initialize day_status with default values
-                    day_status = {
-                        'date': current_date,
-                        'is_weekend': is_weekend,
-                        'attendance': None,
-                        'leave': 0.0,
-                        'breaks_taken': 0,
-                        'total_break_time': timedelta(),
-                        'status': None
-                    }
-
-                    if not is_weekend:
-                        working_days += 1
-                        
-                        # Find attendance for this day
-                        attendance = next(
-                            (ar for ar in attendance_records if ar.date == current_date), 
-                            None
-                        )
-                        leave_hours = leave_days.get(current_date, Decimal('0.0'))
-                        
-                        if attendance:
-                            day_status['attendance'] = attendance
-                            day_status['status'] = attendance.status
-                            
-                            # Process breaks
-                            for br in breaks_map.get(attendance.id, []):
-                                if br.break_end:
-                                    break_duration = br.duration if br.duration else (br.break_end - br.break_start)
-                                    day_status['total_break_time'] += break_duration
-                                    day_status['breaks_taken'] += 1
-
-                            # Handle attendance status
-                            if attendance.status == 'present':
-                                present_days += 1
-                            elif attendance.status == 'late':
-                                late_days += 1
-
-                            # Handle half-day leave with attendance
-                            if leave_hours == Decimal('0.5'):
-                                day_status['status'] = 'half-day'
-                                day_status['leave'] = 0.5
-                                half_days += 1
-
-                            # Add working hours
-                            if attendance.total_worked:
-                                total_worked += attendance.total_worked
-                            if attendance.regular_hours:
-                                total_regular += attendance.regular_hours
-                            if attendance.overtime_hours:
-                                total_overtime += attendance.overtime_hours
-                        
-                        # Handle leave without attendance
-                        elif leave_hours > 0:
-                            day_status['leave'] = float(leave_hours)
-                            if leave_hours == Decimal('0.5'):
-                                day_status['status'] = 'half-day'
-                                half_days += 1
-                            else:
-                                day_status['status'] = 'leave'
-                                absent_days += 1
-                        
-                        # No attendance and no leave
-                        else:
-                            day_status['status'] = 'absent'
-                            absent_days += 1
-
-                    daily_records.append(day_status)
-                # Convert timedelta to hours
-                total_worked_hours = total_worked.total_seconds() / 3600
-                total_regular_hours = total_regular.total_seconds() / 3600
-                total_overtime_hours = total_overtime.total_seconds() / 3600
-                
-                # Calculate percentages
-               
-                
-                report_data = {
-                    'employee': employee,
-                    'month': month,
-                    'month_name': datetime(year, month, 1).strftime('%B'),
-                    'year': year,
-                    'daily_records': daily_records,
-                    'present_days': present_days,
-                    'half_days': half_days,
-                    'late_days': late_days,
-                    'absent_days': absent_days,
-                    'total_worked_hours': round(total_worked_hours, 2),
-                    'total_regular_hours': round(total_regular_hours, 2),
-                    'total_overtime_hours': round(total_overtime_hours, 2),
-                    'total_working_days': working_days,
-                    # 'present_percentage': present_percentage,
-                    # 'absent_percentage': absent_percentage,
-                }
-                all_reports.append(report_data)
+                report = generate_individual_report(employee.admin, year, month)
+                all_reports.append(report)
+            
+            # Process managers
+            for manager in managers:
+                report = generate_individual_report(manager.admin, year, month)
+                all_reports.append(report)
+            
             # For HTML preview
             if 'generate_html' in request.POST:
                 if len(all_reports) == 1:
@@ -1527,15 +1527,17 @@ def generate_performance_report(request):
                 if len(all_reports) == 1:
                     template = get_template('ceo_template/attendance_report_pdf.html')
                     filename = f"attendance_report_{all_reports[0]['employee'].admin.get_full_name()}_{month}_{year}.pdf"
+                    context = all_reports[0]
                 else:
                     template = get_template('ceo_template/multi_employee_report.html')
                     filename = f"attendance_report_{month}_{year}.pdf"
+                    context = {
+                        'all_reports': all_reports,
+                        'month_name': datetime(year, month, 1).strftime('%B'),
+                        'year': year,
+                    }
                 
-                html = template.render({
-                    'all_reports': all_reports,
-                    'month_name': datetime(year, month, 1).strftime('%B'),
-                    'year': year,
-                } if len(all_reports) > 1 else all_reports[0])
+                html = template.render(context)
                 
                 response = HttpResponse(content_type='application/pdf')
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -1567,6 +1569,200 @@ def generate_performance_report(request):
     }
     return render(request, 'ceo_template/generate_report.html', context)
 
+def generate_individual_report(user, year, month):
+    """Helper function to generate report for a single user (employee or manager)"""
+    # Get the number of days in the selected month
+    num_days = monthrange(year, month)[1]
+    start_date = datetime(year, month, 1).date()
+    end_date = datetime(year, month, num_days).date()
+    
+    # Initialize counters
+    working_days = 0
+    present_days = 0
+    late_days = 0
+    half_days = 0
+    absent_days = 0
+    total_breaks = 0
+    total_worked = timedelta()
+    total_regular = timedelta()
+    total_overtime = timedelta()
+    daily_records = []
+    half_day_counted = set()
+
+    # Get all attendance records for the month in one query
+    attendance_records = AttendanceRecord.objects.filter(
+        user=user,
+        date__range=(start_date, end_date)
+    ).order_by('date').select_related('user')
+    
+    # Get all leave records for the month in one query
+    if hasattr(user, 'employee'):
+        leave_records = LeaveReportEmployee.objects.filter(
+            employee=user.employee,
+            status=1,
+            start_date__lte=end_date,
+            end_date__gte=start_date
+        )
+    elif hasattr(user, 'manager'):
+        leave_records = LeaveReportManager.objects.filter(
+            manager=user.manager,
+            status=1,
+            start_date__lte=end_date,
+            end_date__gte=start_date
+        )
+    else:
+        leave_records = []
+    
+    # Create a dictionary to track leave days
+    leave_days = defaultdict(Decimal)
+    for leave in leave_records:
+        current_date = max(leave.start_date, start_date)
+        end_date_leave = min(leave.end_date, end_date)
+        while current_date <= end_date_leave:
+            if leave.leave_type == "Full-Day":
+                leave_days[current_date] += Decimal('1.0')
+            elif leave.leave_type == "Half-Day":
+                leave_days[current_date] += Decimal('0.5')
+            current_date += timedelta(days=1)
+
+    # Prefetch break records for all attendance records
+    attendance_ids = [ar.id for ar in attendance_records]
+    break_records = Break.objects.filter(
+        attendance_record_id__in=attendance_ids
+    )
+    # Create a mapping of attendance ID to break records
+    breaks_map = defaultdict(list)
+    for br in break_records:
+        breaks_map[br.attendance_record_id].append(br)
+
+    # Process each day of the month
+    for day in range(1, num_days + 1):
+        current_date = datetime(year, month, day).date()
+        weekday = current_date.weekday()
+        is_sunday = weekday == 6
+        is_saturday = weekday == 5
+        week_of_month = (day - 1) // 7
+        is_weekend = is_sunday or (is_saturday and week_of_month in [1, 3])
+        
+        # Initialize day_status with default values
+        day_status = {
+            'date': current_date,
+            'is_weekend': is_weekend,
+            'attendance': None,
+            'leave': 0.0,
+            'breaks_taken': 0,
+            'total_break_time': timedelta(),
+            'status': None
+        }
+
+        if not is_weekend:
+            working_days += 1
+            
+            # Find attendance for this day
+            attendance = next(
+                (ar for ar in attendance_records if ar.date == current_date), 
+                None
+            )
+            leave_hours = leave_days.get(current_date, Decimal('0.0'))
+            
+            if attendance:
+                day_status['attendance'] = attendance
+                day_status['status'] = attendance.status
+
+                # increase present for any status (present , late , half_day)
+                present_days += 1
+                
+                # Process breaks
+                for br in breaks_map.get(attendance.id, []):
+                    if br.break_end:
+                        break_duration = br.duration if br.duration else (br.break_end - br.break_start)
+                        day_status['total_break_time'] += break_duration
+                        day_status['breaks_taken'] += 1
+                
+                # total breaks
+                total_breaks += day_status['breaks_taken']
+
+                # # Handle attendance status
+                # if attendance.status == 'present':
+                #     present_days += 1
+                if attendance.status == 'late':
+                    late_days += 1
+                elif attendance.status == 'half_day':
+                    if current_date not in half_day_counted:
+                        half_days += 1
+                        half_day_counted.add(current_date)
+
+                # Handle half-day leave with attendance
+                if leave_hours == Decimal('0.5'):
+                    day_status['status'] = 'half_day'
+                    day_status['leave'] = 0.5
+                    if current_date not in half_day_counted:
+                        half_days += 1
+                        half_day_counted.add(current_date)
+
+                    # reduce present day by 0.5
+                    present_days -= 0.5
+
+                # Add working hours
+                if attendance.total_worked:
+                    total_worked += attendance.total_worked
+                if attendance.regular_hours:
+                    total_regular += attendance.regular_hours
+                if attendance.overtime_hours:
+                    total_overtime += attendance.overtime_hours
+            
+            # Handle leave without attendance
+            elif leave_hours > 0:
+                day_status['leave'] = float(leave_hours)
+                if leave_hours == Decimal('0.5'):
+                    day_status['status'] = 'half_day'
+                    if current_date not in half_day_counted:
+                        half_days += 1
+                        half_day_counted.add(current_date)
+
+                    # Count half-day leave as presence
+                    present_days += 0.5  
+                else:
+                    day_status['status'] = 'leave'
+                    absent_days += 1
+            
+            # No attendance and no leave
+            else:
+                day_status['status'] = 'absent'
+                absent_days += 1
+
+        daily_records.append(day_status)
+
+    # Convert timedelta to hours
+    total_worked_hours = total_worked.total_seconds() / 3600
+    total_regular_hours = total_regular.total_seconds() / 3600
+    total_overtime_hours = total_overtime.total_seconds() / 3600
+    
+    # Determine if this is an employee or manager
+    if hasattr(user, 'employee'):
+        person = user.employee
+    elif hasattr(user, 'manager'):
+        person = user.manager
+    else:
+        person = None
+    
+    return {
+        'employee': person,  
+        'user': user,
+        'month': month,
+        'month_name': datetime(year, month, 1).strftime('%B'),
+        'year': year,
+        'daily_records': daily_records,
+        'present_days': present_days,
+        'half_days': half_days,
+        'late_days': late_days,
+        'absent_days': absent_days,
+        'total_breaks': total_breaks, 
+        'total_worked_hours': round(total_worked_hours, 2),
+        'total_regular_hours': round(total_regular_hours, 2),
+        'total_overtime_hours': round(total_overtime_hours, 2),
+        'total_working_days': working_days,
+    }
 
 # @login_required
 # def admin_view_attendance(request):
@@ -2281,7 +2477,6 @@ def get_manager_and_employee_attendance(request):
                         elif record_status == 'half_day':
                             present_days += 1
                             half_days += 1
-                            late_days += 1
                             absent_days += 0.5  # Count half-day attendance as 0.5 absent day
                         else:
                             absent_days += 1

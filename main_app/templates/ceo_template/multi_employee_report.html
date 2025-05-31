@@ -156,7 +156,7 @@
                                             <span class="badge status-badge bg-success">P</span>
                                         {% elif record.status == 'late' %}
                                             <span class="badge status-badge bg-warning text-dark">Late</span>
-                                        {% elif record.status == 'half-day' %}
+                                        {% elif record.status == 'half_day' %}
                                             <span class="badge status-badge bg-primary">HF</span>
                                         {% elif record.status == 'leave' %}
                                             <span class="badge status-badge bg-info">LV</span>
@@ -195,14 +195,15 @@
                                 <table class="table table-sm table-borderless mb-1">
                                     <tr><td>Total Days:</td><td class="fw-bold">{{ report.daily_records|length }}</td></tr>
                                     <tr><td>Working Days:</td><td class="fw-bold">{{ report.total_working_days }}</td></tr>
-                                    <tr><td>Present Days:</td><td class="fw-bold">{{ report.present_days }} ({{ report.present_percentage }}%)</td></tr>
+                                    <tr><td>Present Days:</td><td class="fw-bold">{{ report.present_days }}</td></tr>
                                 </table>
                             </div>
                             <div class="col-6">
                                 <table class="table table-sm table-borderless mb-1">
+                                    <tr><td>Total Breaks:</td><td class="fw-bold">{{ report.total_breaks }}</td></tr>
                                     <tr><td>Late Arrivals:</td><td class="fw-bold">{{ report.late_days }}</td></tr>
                                     <tr><td>Half Days:</td><td class="fw-bold">{{ report.half_days }}</td></tr>
-                                    <tr><td>Absent Days:</td><td class="fw-bold">{{ report.absent_days }} ({{ report.absent_percentage }}%)</td></tr>
+                                    <tr><td>Absent Days:</td><td class="fw-bold">{{ report.absent_days }}</td></tr>
                                 </table>
                             </div>
                         </div>

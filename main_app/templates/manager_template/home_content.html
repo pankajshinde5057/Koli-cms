@@ -102,6 +102,26 @@
           font-size: 55px;
       }
   }
+  .btn-loading {
+        position: relative;
+        pointer-events: none;
+    }
+    .btn-loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        margin: -8px 0 0 -8px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 </style>
 {% endblock custom_css %}
 
@@ -132,7 +152,7 @@
             <div class="icon">
               <i class="fas fa-calendar-alt"></i>
             </div>
-            <a href="{% url 'manager_apply_leave' %}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
+            <a href="{% url 'manager_view_notification' %}" class="small-box-footer">More info <i class="fas fa-arrow-circle-right"></i></a>
           </div>
         </div>
 

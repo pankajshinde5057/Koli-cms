@@ -226,7 +226,22 @@ class AttendanceActionView(APIView):
 
 import logging
 
-# Set up logging for debugging
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponseRedirect
+from django.shortcuts import render, get_object_or_404
+from django.utils import timezone
+from datetime import datetime, time, timedelta
+from calendar import monthrange
+from django.db.models import Sum, F, ExpressionWrapper, DurationField
+from django.db.models.functions import Coalesce
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.contrib import messages
+from .models import AttendanceRecord, Employee, Department, DailySchedule, ActivityFeed, Break, Holiday, LeaveReportEmployee
+import pytz
+import logging
+
 logger = logging.getLogger(__name__)
 
 @login_required
@@ -234,7 +249,7 @@ def clock_in_out(request):
     if request.method == 'POST':
         now = timezone.now()
         today = now.date()
-        logger.debug(f"Processing clock_in_out for user {request.user} on {today}")
+        logger.debug(f"Processing clock_in_out for user {request.user} on {today} at {now}")
 
         # Check for any existing record for today
         existing_record = AttendanceRecord.objects.filter(
@@ -253,16 +268,20 @@ def clock_in_out(request):
             # Convert to IST
             ist = pytz.timezone('Asia/Kolkata')
             ist_time = now.astimezone(ist)
+            logger.debug(f"Clock-in time in IST: {ist_time}")
             
-            late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
+            # Define time thresholds
+            on_time_threshold = datetime.combine(ist_time.date(), time(9, 0)).replace(tzinfo=ist)
+            late_threshold = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
+            half_day_threshold = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
+            after_3pm_threshold = datetime.combine(ist_time.date(), time(15, 0)).replace(tzinfo=ist)
 
             if request.user.user_type == "3":  # Employee
                 earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 45)))
             elif request.user.user_type == "2":  # Manager
                 earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 30)))
             else:
-                earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(0, 0)))  # No restriction for other types
+                earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(0, 0)))
 
             if ist_time < earliest_clock_in:
                 logger.warning(f"User {request.user} (type {request.user.user_type}) attempted to clock in too early at {ist_time}")
@@ -271,6 +290,18 @@ def clock_in_out(request):
                     'message': f"Clock-in is not allowed before {'8:45 AM' if request.user.user_type == '3' else '8:30 AM'} IST."
                 }, status=400)
             
+            # Determine status based on clock-in time
+            if ist_time > after_3pm_threshold:
+                status = 'present'  # After 3:00 PM, count as present
+            elif ist_time > half_day_threshold:
+                status = 'half_day'  # Between 1:00 PM and 3:00 PM
+            elif ist_time > late_threshold:
+                status = 'late'  # After 9:15 AM but before 1:00 PM
+            else:
+                status = 'present'  # Before 9:15 AM
+
+            logger.debug(f"Assigned status: {status} for clock-in at {ist_time}")
+
             # Proceed with clock-in logic
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
@@ -283,13 +314,14 @@ def clock_in_out(request):
                 department=department,
                 notes=request.POST.get('notes', ''),
                 ip_address=request.META.get('REMOTE_ADDR'),
-                status=  'present'
+                status=status
             )
             try:
                 new_record.full_clean()
                 new_record.save()
                 
-                # Log activity
+                logger.debug(f"Saved record status: {new_record.status} for clock-in at {new_record.clock_in.astimezone(ist)}")
+                
                 ActivityFeed.objects.create(
                     user=request.user,
                     activity_type='clock_in',
@@ -320,8 +352,8 @@ def clock_in_out(request):
                     'message': 'No active clock-in record found to clock out.'
                 }, status=400)
 
-            # check for daily updates
-            if request.user.user_type == '3': ## for employee
+            # Check for daily updates
+            if request.user.user_type == '3':
                 try:
                     employee = Employee.objects.get(admin=request.user)
                     schedule = DailySchedule.objects.get(employee=employee, date=today)
@@ -329,13 +361,13 @@ def clock_in_out(request):
                         return JsonResponse({
                             'status': 'error',
                             'message': 'Cannot clock out without submitting a daily update.',
-                            'redirect_url': '/todays_update/'  # Provide URL for client-side redirect
+                            'redirect_url': '/todays_update/'
                         }, status=400)
                 except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
                     return JsonResponse({
                         'status': 'error',
                         'message': 'Cannot clock out without a valid schedule and update.',
-                        'redirect_url': '/daily_schedule/'  # Redirect to schedule creation if none exists
+                        'redirect_url': '/daily_schedule/'
                     }, status=400)
             
             # Clock out
@@ -345,7 +377,6 @@ def clock_in_out(request):
                 current_record.full_clean()
                 current_record.save()
 
-                # Log activity
                 ActivityFeed.objects.create(
                     user=request.user,
                     activity_type='clock_out',
@@ -369,6 +400,7 @@ def clock_in_out(request):
             }, status=400)
 
     return HttpResponseRedirect('manager_home' if request.user.user_type == "2" else 'employee_home')
+
 
 
 @login_required

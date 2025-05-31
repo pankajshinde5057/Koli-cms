@@ -467,20 +467,21 @@
         <div class="row">
             <div class="col-md-12">
                 <div id="filter-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
-                    <strong>Warning!</strong> Please select at least one filter (Department, Employee, or Manager)
+                    <strong>Warning!</strong> Please select at least one filter (Department or Person)
                     <button type="button" class="close" data-dismiss="alert">×</button>
                 </div>
 
                 <div class="card filter-card mb-4 animate__animated animate__fadeIn">
                     <div class="card-header">
-                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i> Filter Attendance Records for Managers and Employees</h3>
+                        <h3 class="card-title mb-0"><i class="fas fa-calendar-check"></i> Filter Attendance Records</h3>
                     </div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Department</label>
-                                <select class="form-control select2" id="department">
-                                    <option value="">-- Select Department --</option>
+                                <select class="form-control select2" id="department" data-placeholder="-- Select Department --">
+                                    <option value=""></option>
+                                    <option value="all">All Departments</option>
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
@@ -488,29 +489,12 @@
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Employee</label>
-                                <select class="form-control select2" id="employee">
-                                    <option value="">-- Select Employee --</option>
-                                    <option value="all">All Employees</option>
-                                    {% for employee in employees %}
-                                    <option value="{{ employee.employee_id }}" data-department="{{ employee.department.id }}">
-                                        {{ employee.admin.get_full_name }} ({{ employee.department.name }})
-                                    </option>
-                                    {% endfor %}
+                                <label class="form-label">User (Employee/Manager)</label>
+                                <select class="form-control select2" id="person" data-placeholder="-- Select Person --">
+                                    <option value=""></option>
+                                    <option value="no-records">No records available</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Manager</label>
-                            <select class="form-control select2" id="manager">
-                                <option value="">-- Select Manager --</option>
-                                <option value="all">All Managers</option>
-                                {% if managers %}
-                                    {% for manager in managers %}
-                                    <option value="{{ manager.id }}" data-department="HR">{{ manager.admin.get_full_name }}</option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
                         </div>
                         <div class="row">
                             <div class="col-md-4 mb-3">
@@ -559,20 +543,13 @@
                     </div>
                     <div class="card-body">
                         <div class="employee-info-container mb-4 d-flex justify-content-between align-items-start">
-                            <div class="employee-details" id="employee_details">
-                                <b><div class="employee-name h4 mb-1" id="employee_name"></div></b>
-                                <div class="employee-department text-muted">
+                            <div class="person-details" id="person_details">
+                                <b><div class="person-name h4 mb-1" id="person_name"></div></b>
+                                <div class="person-department text-muted">
                                     <i class="fas fa-building mr-1"></i>
-                                    <span id="employee_department"></span>
+                                    <span id="person_department"></span>
                                 </div>
-                            </div>
-                            
-                            <div class="manager-details" id="manager_details" style="display: none;">
-                                <b><div class="manager-name h4 mb-1" id="manager_name"></div></b>
-                                <div class="manager-department text-muted">
-                                    <i class="fas fa-building mr-1"></i>
-                                    <span id="manager_department"></span>
-                                </div>
+                               
                             </div>
                         
                             <div class="date-range text-muted">
@@ -634,7 +611,8 @@ $(document).ready(function() {
         width: '100%',
         placeholder: function() {
             return $(this).data('placeholder') || 'Select an option';
-        }
+        },
+        allowClear: true
     });
 
     // Initialize date pickers
@@ -663,14 +641,24 @@ $(document).ready(function() {
         }
     });
 
-    // Initialize employee data
-    const allEmployees = [
+    // Initialize person data
+    const allPersons = [
         {% for employee in employees %}
         {
             id: "{{ employee.employee_id }}",
             name: "{{ employee.admin.get_full_name }}",
             department_id: "{{ employee.department.id }}",
-            department_name: "{{ employee.department.name }}"
+            department_name: "{{ employee.department.name }}",
+            type: "Employee"
+        },
+        {% endfor %}
+        {% for manager in managers %}
+        {
+            id: "{{ manager.id }}",
+            name: "{{ manager.admin.get_full_name }}",
+            department_id: "HR",
+            department_name: "HR",
+            type: "Manager"
         },
         {% endfor %}
     ];
@@ -678,178 +666,147 @@ $(document).ready(function() {
     // Department change handler
     $('#department').change(function() {
         const departmentId = $(this).val();
-        const $employeeSelect = $('#employee');
-        const $managerSelect = $('#manager');
+        const $personSelect = $('#person');
         
-        // Reset employee and manager dropdowns
-        $employeeSelect.empty().append('<option value="">-- Select Employee --</option>');
-        $managerSelect.empty().append('<option value="">-- Select Manager --</option>');
+        // Clear existing options and reset to default
+        $personSelect.empty().append('<option value=""></option>');
         
-        // Disable employee dropdown until department is selected
-        $employeeSelect.prop('disabled', !departmentId);
-        
-        // Disable manager dropdown until HR department is selected
-        $managerSelect.prop('disabled', true);
-        
-        if (departmentId && departmentId !== 'all') {
-            // Enable employee dropdown
-            $employeeSelect.prop('disabled', false);
-            $employeeSelect.append('<option value="all">All Employees</option>');
-            
-            // Filter employees by department
-            allEmployees.forEach(emp => {
-                if (emp.department_id == departmentId) {
-                    $employeeSelect.append($('<option>', {
-                        value: emp.id,
-                        text: `${emp.name} (${emp.department_name})`,
-                        'data-department': emp.department_name
+        if (!departmentId) {
+            // No department selected, show "No records available"
+            $personSelect.append('<option value="no-records">No records available</option>');
+            $personSelect.trigger('change');
+            return;
+        }
+
+        // Add "All Employees" and "All Managers" options based on department
+        const selectedDept = $('#department option:selected').text().toLowerCase();
+        if (selectedDept.includes('hr')) {
+            $personSelect.append('<option value="all-managers">All Managers</option>');
+        } else if (departmentId === 'all') {
+            $personSelect.append('<option value="all-employees">All Employees</option>');
+            $personSelect.append('<option value="all-managers">All Managers</option>');
+        } else {
+            $personSelect.append('<option value="all-employees">All Employees</option>');
+        }
+
+        // Populate person dropdown based on department
+        if (departmentId === 'all') {
+            allPersons.forEach(person => {
+                $personSelect.append($('<option>', {
+                    value: person.id,
+                    text: `${person.name} (${person.type})`,
+                    'data-department': person.department_name,
+                    'data-type': person.type
+                }));
+            });
+        } else if (selectedDept.includes('hr')) {
+            // For HR department, show only managers
+            allPersons.forEach(person => {
+                if (person.type === 'Manager') {
+                    $personSelect.append($('<option>', {
+                        value: person.id,
+                        text: `${person.name} (${person.type})`,
+                        'data-department': person.department_name,
+                        'data-type': person.type
                     }));
                 }
             });
-            
-            // Check if selected department is HR to enable manager dropdown
-            const selectedDept = $('#department option:selected').text().toLowerCase();
-            if (selectedDept.includes('hr')) {
-                $managerSelect.prop('disabled', false);
-                $managerSelect.append('<option value="all">All Managers</option>');
-                {% if managers %}
-                    {% for manager in managers %}
-                    $managerSelect.append($('<option>', {
-                        value: "{{ manager.id }}",
-                        text: "{{ manager.admin.get_full_name }}",
-                        'data-department': "HR"
+        } else {
+            // For other departments, show only employees
+            allPersons.forEach(person => {
+                if (person.department_id === departmentId && person.type === 'Employee') {
+                    $personSelect.append($('<option>', {
+                        value: person.id,
+                        text: `${person.name} (${person.type})`,
+                        'data-department': person.department_name,
+                        'data-type': person.type
                     }));
-                    {% endfor %}
-                {% endif %}
-            }
-        } else if (departmentId === 'all') {
-            // Enable employee dropdown when "All Departments" is selected
-            $employeeSelect.prop('disabled', false);
-            $employeeSelect.append('<option value="all">All Employees</option>');
-            
-            // Show all employees
-            allEmployees.forEach(emp => {
-                $employeeSelect.append($('<option>', {
-                    value: emp.id,
-                    text: `${emp.name} (${emp.department_name})`,
-                    'data-department': emp.department_name
-                }));
+                }
             });
         }
+
+        // Trigger change to update Select2 display
+        $personSelect.trigger('change');
     });
 
-    // Initialize with disabled dropdowns
-    $('#employee').prop('disabled', true);
-    $('#manager').prop('disabled', true);
-    
     // Store current filter data for pagination
     let currentFilterData = {};
 
     // View Attendance button handler with validation
     $('#view_attendance').click(function() {
-        const employeeId = $('#employee').val();
+        const personId = $('#person').val();
         const departmentId = $('#department').val();
-        const managerId = $('#manager').val();
         const timePeriod = $('#time_period').val();
         
         // Hide any previous error messages
         $('#filter-error').hide();
         
-        // Basic validation - at least one filter must be selected
-        if (!employeeId && !departmentId && !managerId) {
-            $('#filter-error').show();
+        // Basic validation
+        if (!departmentId) {
+            $('#filter-error').text('Please select a department').show();
             return;
         }
 
-        // New validation: If department is selected but neither employee nor manager is selected
-        if (departmentId && !employeeId && !managerId) {
-            $('#filter-error').text('Please select either an employee (or "All Employees") or a manager (or "All Managers") for the selected department').show();
+        if (personId === 'no-records') {
+            $('#filter-error').text('No records available for the selected department').show();
             return;
         }
 
-        // New validation: If HR department is selected but manager is not selected
-        const selectedDept = $('#department option:selected').text().toLowerCase();
-        if (selectedDept.includes('hr') && !managerId) {
-            $('#filter-error').text('Please select a manager (or "All Managers") for HR department').show();
-            return;
-        }
-
-        // Get selected employee or manager details
-        let selectedName, selectedDepartment, isManager = false;
+        // Get selected person details
+        let selectedName, selectedDepartment, selectedType;
         
-        if (managerId && managerId !== 'all') {
-            // Manager is selected
-            const selectedManager = $('#manager option:selected');
-            selectedName = selectedManager.text();
-            selectedDepartment = selectedManager.data('department') || 'HR';
-            isManager = true;
-        } else if (employeeId && employeeId !== 'all') {
-            // Employee is selected
-            const selectedEmployee = $('#employee option:selected');
-            selectedName = selectedEmployee.text().split(' (')[0] || 'Selected Employee';
-            selectedDepartment = selectedEmployee.data('department') || $('#department option:selected').text();
-        } else if (employeeId === 'all') {
-            // All employees selected
-            if (departmentId === 'all') {
+        if (personId && personId !== 'no-records') {
+            if (personId === 'all-employees') {
                 selectedName = 'All Employees';
-                selectedDepartment = 'All Departments';
+                selectedDepartment = departmentId === 'all' ? 'All Departments' : $('#department option:selected').text();
+                selectedType = 'Employee';
+            } else if (personId === 'all-managers') {
+                selectedName = 'All Managers';
+                selectedDepartment = 'HR';
+                selectedType = 'Manager';
             } else {
-                selectedName = 'All Employees in Department';
-                selectedDepartment = $('#department option:selected').text();
+                const selectedPerson = $('#person option:selected');
+                selectedName = selectedPerson.text().split(' (')[0];
+                selectedDepartment = selectedPerson.data('department') || $('#department option:selected').text();
+                selectedType = selectedPerson.data('type') || 'Unknown';
             }
-        } else if (managerId === 'all') {
-            // All managers selected
-            selectedName = 'All Managers';
-            selectedDepartment = 'HR';
-            isManager = true;
         } else {
-            // Department only selected
-            selectedName = 'All Employees';
-            selectedDepartment = $('#department option:selected').text();
+            $('#filter-error').text('Please select a person or group').show();
+            return;
         }
         
-        // Update display based on whether it's a manager or employee
-        if (isManager) {
-            $('#employee_details').hide();
-            $('#manager_details').show();
-            $('#manager_name').text(selectedName);
-            $('#manager_department').text(selectedDepartment);
-        } else {
-            $('#manager_details').hide();
-            $('#employee_details').show();
-            $('#employee_name').text(selectedName);
-            $('#employee_department').text(selectedDepartment);
-        }
+        // Update display
+        $('#person_details').show();
+        $('#person_name').text(selectedName);
+        $('#person_department').text(selectedDepartment);
+        $('#person_type').text(selectedType);
 
         // Prepare data for AJAX request
         const data = {
-            employee_id: employeeId === 'all' ? '' : employeeId,
+            person_id: personId === 'all-employees' || personId === 'all-managers' ? '' : personId,
             department_id: departmentId === 'all' ? '' : departmentId,
-            manager_id: managerId === 'all' ? '' : managerId,
+            person_type: personId === 'all-employees' ? 'Employee' : personId === 'all-managers' ? 'Manager' : selectedType,
             page: 1,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
-        // Store current filter data with ALL parameters
+        // Store current filter data
         currentFilterData = {
-            employee_id: data.employee_id,
+            person_id: data.person_id,
             department_id: data.department_id,
-            manager_id: data.manager_id,
+            person_type: data.person_type,
             time_period: timePeriod,
             from_date: $('#from_date').val(),
             to_date: $('#to_date').val(),
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
-        // Get current date for year/month calculations
+        // Handle time period filters
         const currentDate = moment();
-        
-        // Handle time period filters with validation
         if (timePeriod === 'custom') {
             const fromDate = $('#from_date').val();
             const toDate = $('#to_date').val();
             
-            // Validate custom date range
             if (!fromDate || !toDate) {
                 showAlert('Please select both From and To dates', 'warning');
                 return;
@@ -860,7 +817,7 @@ $(document).ready(function() {
                 return;
             }
             
-            const maxDateRange = 365; // Maximum allowed date range in days
+            const maxDateRange = 365;
             if (moment(toDate).diff(moment(fromDate), 'days') > maxDateRange) {
                 showAlert(`Date range cannot exceed ${maxDateRange} days`, 'warning');
                 return;
@@ -901,10 +858,9 @@ $(document).ready(function() {
         fetchAttendanceData(data);
     });
 
-    // Enhanced fetchAttendanceData with better error handling
+    // Fetch attendance data
     function fetchAttendanceData(data) {
-        // Validate data before sending
-        if (!data || (!data.employee_id && !data.department_id && !data.manager_id)) {
+        if (!data || (!data.person_id && !data.department_id && !data.person_type)) {
             showAlert('Invalid filter parameters', 'error');
             return;
         }
@@ -976,7 +932,6 @@ $(document).ready(function() {
         });
     }
 
-    // Modified fetchAllAttendanceData to avoid showing spinner
     function fetchAllAttendanceData(callback) {
         const data = {
             ...currentFilterData,
@@ -1016,9 +971,7 @@ $(document).ready(function() {
         });
     }
 
-    // Enhanced renderAttendanceTable with data validation
     function renderAttendanceTable(data, pagination, stats) {
-        // Validate input data
         if (!Array.isArray(data)) {
             console.error('Invalid data format for attendance table');
             showAlert('Invalid attendance data format', 'error');
@@ -1032,20 +985,17 @@ $(document).ready(function() {
         let halfDayCount = stats.half_days || 0;
         let holidayCount = stats.holidays || 0;
         
-        // Validate each record before processing
         data.forEach(record => {
             if (!record || typeof record !== 'object') {
                 console.warn('Invalid record skipped:', record);
                 return;
             }
 
-            // Validate required fields
             if (!record.status || !record.date) {
                 console.warn('Record missing required fields:', record);
                 return;
             }
 
-            // Format data with validation
             let date, day;
             try {
                 date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
@@ -1061,8 +1011,6 @@ $(document).ready(function() {
             const hours = record.hours || '-';
             const statusClass = getStatusClass(record.status.toLowerCase());
             const statusIcon = getStatusIcon(record.status.toLowerCase());
-
-            // Validate name and department
             const name = record.name ? String(record.name) : '-';
             const department = record.department ? String(record.department) : '-';
             const userType = record.user_type ? String(record.user_type) : '-';
@@ -1085,7 +1033,6 @@ $(document).ready(function() {
         $('#attendance_data').html(tableHtml);
         updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount, stats);
         
-        // Update date range display with validation
         if (data.length > 0) {
             try {
                 const fromDate = data[0].date ? (moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date') : '';
@@ -1099,11 +1046,9 @@ $(document).ready(function() {
             $('#date_range').text('No date range');
         }
         
-        // Render pagination with validation
         renderPagination(pagination);
     }
 
-    // Helper function to escape HTML
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return unsafe;
         return unsafe
@@ -1114,7 +1059,6 @@ $(document).ready(function() {
             .replace(/'/g, "&#039;");
     }
     
-    // Render pagination controls
     function renderPagination(pagination) {
         const $paginationContainer = $('#pagination_container');
         $paginationContainer.empty();
@@ -1131,7 +1075,6 @@ $(document).ready(function() {
                 <ul class="pagination justify-content-center">
         `;
     
-        // Previous button
         if (pagination.has_previous) {
             paginationHtml += `
                 <li class="page-item">
@@ -1142,7 +1085,6 @@ $(document).ready(function() {
             `;
         }
     
-        // Page numbers
         const startPage = Math.max(1, pagination.current_page - 2);
         const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
         
@@ -1185,7 +1127,6 @@ $(document).ready(function() {
             `;
         }
     
-        // Next button
         if (pagination.has_next) {
             paginationHtml += `
                 <li class="page-item">
@@ -1204,19 +1145,16 @@ $(document).ready(function() {
         $paginationContainer.html(paginationHtml);
     }
     
-    // Handle pagination clicks
     $(document).on('click', '.page-link', function(e) {
         e.preventDefault();
         const page = $(this).data('page');
         if (!page) return;
         
-        // Create a new data object with ALL filter parameters plus the new page number
         const data = {
             ...currentFilterData,
             page: page
         };
         
-        // Make sure we include year/month/week if they exist
         if (currentFilterData.time_period === 'week') {
             data.week = currentFilterData.week;
         } else if (currentFilterData.time_period === 'month') {
@@ -1225,13 +1163,11 @@ $(document).ready(function() {
         
         fetchAttendanceData(data);
         
-        // Smooth scroll to top of results
         $('html, body').animate({
             scrollTop: $("#attendance_results").offset().top - 20
         }, 300);
     });
 
-    // Helper functions
     function calculateHours(clockIn, clockOut) {
         if (!clockIn || !clockOut) return '-';
         const diff = moment(clockOut).diff(moment(clockIn), 'minutes');
@@ -1326,7 +1262,6 @@ $(document).ready(function() {
         setTimeout(() => $('.alert').alert('close'), 5000);
     }
 
-    // Modified Print button handler
     $('#print_btn').click(function() {
         fetchAllAttendanceData(function(data, stats) {
             if (!data || !Array.isArray(data) || data.length === 0) {
@@ -1334,7 +1269,6 @@ $(document).ready(function() {
                 return;
             }
 
-            // Generate table HTML for all records
             let tableHtml = `
                 <table border="1" style="width: 100%; border-collapse: collapse;">
                     <thead>
@@ -1388,7 +1322,6 @@ $(document).ready(function() {
                 </table>
             `;
 
-            // Open a new window for printing
             const printWindow = window.open('', '', 'width=800,height=600');
             printWindow.document.write(`
                 <html>
@@ -1411,7 +1344,7 @@ $(document).ready(function() {
                     </head>
                     <body>
                         <h2>Attendance Report</h2>
-                        <div class="summary">${$('#employee_name').text()} - ${$('#employee_department').text()}</div>
+                        <div class="summary">${$('#person_name').text()} - ${$('#person_department').text()} (${$('#person_type').text()})</div>
                         <div class="summary">Date Range: ${$('#date_range').text()}</div>
                         ${tableHtml}
                     </body>
@@ -1419,7 +1352,6 @@ $(document).ready(function() {
             `);
             printWindow.document.close();
             
-            // Wait for content to load before printing
             printWindow.onload = function() {
                 printWindow.focus();
                 printWindow.print();
@@ -1428,7 +1360,6 @@ $(document).ready(function() {
         });
     });
 
-    // Excel export button handler
     $('#export_btn').click(function() {
         fetchAllAttendanceData(function(data, stats) {
             if (!data || !Array.isArray(data) || data.length === 0) {
@@ -1436,7 +1367,6 @@ $(document).ready(function() {
                 return;
             }
 
-            // Prepare data for Excel
             const excelData = [
                 ['Name', 'Department', 'User Type', 'Date', 'Day', 'Status', 'Clock In', 'Clock Out', 'Hours']
             ];
@@ -1468,17 +1398,10 @@ $(document).ready(function() {
                 ]);
             });
 
-            // Create workbook
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(excelData);
-            
-            // Add worksheet to workbook
             XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-            
-            // Generate file name
-            const fileName = `Attendance_Report_${$('#employee_name').text().replace(/\s+/g, '_')}_${moment().format('YYYYMMDD')}.xlsx`;
-            
-            // Export to Excel
+            const fileName = `Attendance_Report_${$('#person_name').text().replace(/\s+/g, '_')}_${moment().format('YYYYMMDD')}.xlsx`;
             XLSX.writeFile(wb, fileName);
         });
     });

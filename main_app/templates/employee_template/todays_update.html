@@ -179,8 +179,8 @@
     .timeline-line {
         position: absolute;
         left: 10px;
-        top: 8px;
-        bottom: 8px;
+        top: 8px; /* Align with the first list item */
+        bottom: 8px; /* Align with the last list item */
         width: 4px;
         background-color: #4a90e2;
     }
@@ -194,11 +194,11 @@
         border-radius: 50%;
     }
     .timeline-line::before {
-        top: -2px;
+        top: -2px; /* Half the height to position the circle correctly */
         left: 0;
     }
     .timeline-line::after {
-        bottom: -2px;
+        bottom: -2px; /* Half the height to position the circle correctly */
         left: 0;
     }
     .time-estimate {
@@ -261,7 +261,7 @@
         <div class="section-card">
             <h3 class="section-title">Daily Update</h3>
             <div class="project-date-container">
-                <input type="text" class="project-input" id="project-name" placeholder="Project Name" {% if not is_editable %}readonly{% endif %} value="{% if update %}{{ update.project_name|escape }}{% endif %}">
+                <input type="text" class="project-input" id="project-name" placeholder="Project Name" {% if not is_editable %}readonly{% endif %} value="{% if update %}{{ update.schedule.project|escape }}{% endif %}">
             </div>
             <div id="updates-container">
                 {% if update and update.updates %}
@@ -413,28 +413,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = input.parentElement.querySelector('.time-unit-dropdown');
         
         input.addEventListener('input', (e) => {
-            let value = e.target.value;
-            // Allow 1-2 digits followed by optional h, m, or s
-            value = value.replace(/[^0-9hms]/g, ''); // Remove invalid characters
-            if (value.match(/^\d{0,2}/)) {
-                // Extract numeric part (up to 2 digits)
-                let numPart = value.match(/^\d{0,2}/)[0];
-                let unitPart = value.match(/[hms]/i) ? value.match(/[hms]/i)[0] : '';
-                if (numPart.length > 2) {
-                    numPart = numPart.slice(0, 2); // Restrict to 2 digits
-                }
-                e.target.value = numPart + unitPart;
-                // Show dropdown if there's a valid number
-                if (numPart && !unitPart) {
-                    dropdown.style.display = 'block';
-                    const rect = input.getBoundingClientRect();
-                    dropdown.style.top = `${rect.bottom - rect.top + 5}px`;
-                    dropdown.style.left = '0';
-                } else {
-                    dropdown.style.display = 'none';
-                }
+            let value = e.target.value.replace(/[^0-9.hms]/g, '');
+            e.target.value = value;
+            if (value && /^\d*\.?\d*$/.test(value)) {
+                dropdown.style.display = 'block';
+                const rect = input.getBoundingClientRect();
+                dropdown.style.top = `${rect.bottom - rect.top + 5}px`;
+                dropdown.style.left = '0';
             } else {
-                e.target.value = '';
                 dropdown.style.display = 'none';
             }
             updateTimeSummary();
@@ -444,12 +430,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dropdown.querySelectorAll('div').forEach(option => {
                 option.addEventListener('click', () => {
                     const unit = option.getAttribute('data-unit');
-                    let value = input.value.replace(/[^0-9]/g, '');
-                    if (value && value.length <= 2) {
-                        input.value = value + unit;
-                    } else {
-                        input.value = '0' + unit;
-                    }
+                    let value = input.value.replace(/[^0-9.]/g, '');
+                    if (value === '') value = '0';
+                    input.value = value + unit;
                     dropdown.style.display = 'none';
                     updateTimeSummary();
                 });
@@ -470,11 +453,11 @@ document.addEventListener('DOMContentLoaded', () => {
         timeStr = timeStr.toLowerCase().trim();
         try {
             if (timeStr.includes('h')) {
-                return parseInt(timeStr.split('h')[0]) * 60;
+                return parseFloat(timeStr.split('h')[0]) * 60;
             } else if (timeStr.includes('m')) {
-                return parseInt(timeStr.split('m')[0]);
+                return parseFloat(timeStr.split('m')[0]);
             } else if (timeStr.includes('s')) {
-                return parseInt(timeStr.split('s')[0]) / 60;
+                return parseFloat(timeStr.split('s')[0]) / 60;
             }
             return 0;
         } catch (e) {
@@ -492,9 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeValue = timeInput ? timeInput.value.trim() : '';
             
             if (timeValue) {
-                // Validate format: 1-2 digits followed by h, m, or s
-                if (timeValue.match(/^\d{1,2}[hms]$/i)) {
-                    const minutes = parseTime(timeValue);
+                const minutes = parseTime(timeValue);
+                if (minutes > 0 || timeValue === '0h') {
                     totalMinutes += minutes;
                     timeInput.classList.remove('invalid-input');
                 } else {
@@ -523,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (hasInvalidEntries) {
             timeSummary.classList.add('error');
-            timeSummary.innerHTML += ' <span>(Some entries have invalid time format, e.g., "2h", "30m", "45s")</span>';
+            timeSummary.innerHTML += ' <span>(Some entries have invalid time format)</span>';
         }
     }
 
@@ -593,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     timeInput.classList.remove('invalid-input');
                 }
                 
-                if (!time.match(/^\d{1,2}[hms]$/i)) {
+                if (!time.match(/^\d*\.?\d+[hms]$/i)) {
                     isValid = false;
                     timeInput.classList.add('invalid-input');
                     return;
@@ -610,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!isValid) {
-                alert('Invalid time format. Use 1 or 2 digits followed by h, m, or s (e.g., "2h", "30m", "45s")');
+                alert('Invalid time format. Use format like "2h", "1.5h", "30m", or "45s"');
                 return;
             }
 

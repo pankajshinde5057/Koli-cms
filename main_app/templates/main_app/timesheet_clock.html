@@ -178,23 +178,48 @@
         const clockInForm = document.getElementById('clockInForm');
         const clockOutForm = document.getElementById('clockOutForm');
 
+        // Clock In Form
         if (clockInForm) {
             console.log('Binding clockInForm submit event');
             clockInForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 console.log('Clock-in form submitted');
-                submitClockAction(this);
+
+                // Get the submit button
+                const submitButton = this.querySelector('button[type="submit"]');
+
+                // Add loading state
+                submitButton.classList.add('btn-loading');
+                submitButton.disabled = true;
+                submitClockAction(this).finally(() => {
+                    // Remove loading state if the promise settles (though page will reload on success)
+                    submitButton.classList.remove('btn-loading');
+                    submitButton.disabled = false;
+                });
             });
         } else {
             console.warn('clockInForm not found');
         }
-
+        
+        // Clock Out Form
         if (clockOutForm) {
             console.log('Binding clockOutForm submit event');
             clockOutForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 console.log('Clock-out form submitted');
-                submitClockAction(this);
+
+                // Get the submit button
+                const submitButton = this.querySelector('button[type="submit"]');
+                
+                // Add loading state
+                submitButton.classList.add('btn-loading');
+                submitButton.disabled = true;
+
+                submitClockAction(this).finally(() => {
+                    // Remove loading state if the promise settles (though page will reload on success)
+                    submitButton.classList.remove('btn-loading');
+                    submitButton.disabled = false;
+                });
             });
         } else {
             console.warn('clockOutForm not found');
@@ -207,16 +232,32 @@
 
         if (endBreakBtn) {
             endBreakBtn.addEventListener('click', function() {
+                // add loading state
+                this.classList.add('btn-loading');
+                this.disabled = true;
                 console.log('End break button clicked');
-                submitBreakAction();
+
+                submitBreakAction().finally(() => {
+                    // Remove loading state when done (success or error)
+                    this.classList.remove('btn-loading');
+                    this.disabled = false;
+                });
             });
         }
 
         if (shortBreakBtn) {
             shortBreakBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+                // Add loading state
+                this.classList.add('btn-loading');
+                this.disabled = true;
                 console.log('Short break button clicked');
-                submitBreakAction('short');
+                
+                submitBreakAction('short').finally(() => {
+                    // Remove loading state when done
+                    this.classList.remove('btn-loading');
+                    this.disabled = false;
+                });
             });
         }
 
@@ -224,6 +265,10 @@
             console.log('Lunch break button found, initializing event listener');
             lunchBreakBtn.addEventListener('click', function(e) {
                 e.preventDefault();
+
+                // Add loading state
+                this.classList.add('btn-loading');
+                this.disabled = true;
                 console.log('Lunch break button clicked at', new Date().toISOString());
                 console.log('Checking lunch break status for user:', currentUserId);
 
@@ -250,6 +295,10 @@
                     console.log('Check lunch response data:', data);
                     if (data.lunch_taken === true) {
                         console.log('Lunch break already taken, showing unavailable popup');
+                        // Remove loading state
+                        this.classList.remove('btn-loading');
+                        this.disabled = false;
+
                         Swal.fire({
                             icon: 'warning',
                             title: 'Lunch Break Unavailable',
@@ -284,10 +333,18 @@
                                 submitBreakAction('lunch');
                             } else {
                                 console.log('Lunch break confirmation cancelled (native)');
+                                // Remove loading state
+                                this.classList.remove('btn-loading');
+                                this.disabled = false;
+                                return Promise.reject('cancelled');
                             }
                         });
                     } else {
                         console.error('Unexpected response from check_lunch:', data);
+                        // Remove loading state
+                        this.classList.remove('btn-loading');
+                        this.disabled = false;
+
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -299,6 +356,10 @@
                 })
                 .catch(error => {
                     console.error('Error checking lunch break status:', error);
+
+                    // Remove loading state
+                    this.classList.remove('btn-loading');
+                    this.disabled = false;
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
