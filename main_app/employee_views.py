@@ -25,14 +25,17 @@ import openpyxl
 from openpyxl.styles import Font, Alignment
 from io import BytesIO
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 def get_ist_date():
     return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
 
-
-
 @login_required   
 def employee_home(request):
-    today = timezone.now().date()
+    today = timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
+    current_time = timezone.now()
     employee = get_object_or_404(Employee, admin=request.user)
     date_filter = request.GET.get('date', "today")
     department_filter = request.GET.get('department')
@@ -41,7 +44,6 @@ def employee_home(request):
     current_month = today.month
     current_year = today.year
     start_date = today.replace(day=1)
-
     if today.month == 12:
         next_month = today.replace(year=today.year + 1, month=1, day=1)
     else:
@@ -55,23 +57,26 @@ def employee_home(request):
         try:
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-            records = records.filter(date__range=(start_date, end_date))
+            if start_date > end_date:
+                messages.warning(request, "End date must be after start date.")
+                records = records.filter(date__month=current_month, date__year=current_year)
+            else:
+                records = records.filter(date__range=(start_date, end_date))
         except ValueError:
-            messages.warning(request, "Invalid date range format. Please use YYYY-MM-DD.")
+            messages.warning(request, "Invalid date format. Please use YYYY-MM-DD.")
+            records = records.filter(date__month=current_month, date__year=current_year)
     else:
         records = records.filter(date__month=current_month, date__year=current_year)
 
-        # if date_filter == 'today':
-        #     records = records.filter(date=today)
-        # elif date_filter == 'week':
-        #     start_date = today - timedelta(days=today.weekday())
-        #     end_date = start_date + timedelta(days=6)
-        #     records = records.filter(date__range=[start_date, end_date])
-    # Additional filters
     if department_filter:
         records = records.filter(department_id=department_filter)
     if status_filter:
         records = records.filter(status=status_filter)
+
+    # Log all records for debugging
+    for record in records:
+        ist_clock_in = record.clock_in.astimezone(pytz.timezone('Asia/Kolkata')) if record.clock_in else None
+        logger.debug(f"Record for {record.date}: status={record.status}, clock_in={ist_clock_in}")
 
     detailed_time_entries = []
     for record in records.order_by('date', 'clock_in'):
@@ -165,7 +170,6 @@ def employee_home(request):
         'overtime_hours': data['overtime_hours']
     } for week, data in sorted(weekly_data.items(), reverse=True)]
 
-    # Monthly data calculation with half_day counted as present and late
     monthly_data = {}
     for record in completed_records:
         month_start_date = record.date.replace(day=1)
@@ -184,15 +188,15 @@ def employee_home(request):
         monthly_data[month_start_date]['regular_hours'] += record.regular_hours
         monthly_data[month_start_date]['overtime_hours'] += record.overtime_hours
 
+        # Increment counts based on status
         if record.status == 'present':
             monthly_data[month_start_date]['present_days'] += 1
         elif record.status == 'late':
             monthly_data[month_start_date]['present_days'] += 1
             monthly_data[month_start_date]['late_days'] += 1
         elif record.status == 'half_day':
-            monthly_data[month_start_date]['present_days'] += 1  # Count as present
-            monthly_data[month_start_date]['late_days'] += 1    # Count as late
-            monthly_data[month_start_date]['half_days'] += 0.5    # Count as half day
+            monthly_data[month_start_date]['present_days'] += 1
+            monthly_data[month_start_date]['half_days'] += 0.5
 
     monthly_view = [{
         'month': month,
@@ -274,11 +278,6 @@ def employee_home(request):
                     leave_type="Half-Day",
                     start_date__lte=current_date,
                     end_date__gte=current_date
-                ).exists() or 
-                AttendanceRecord.objects.filter(
-                    user=request.user,
-                    date=current_date,
-                    status="half_day"
                 ).exists()):
                 absent_days += 0.5
         
@@ -297,29 +296,28 @@ def employee_home(request):
         if is_1st_or_3rd_saturday or is_sunday or date in holidays:
             weekend_days_list.append(str(date))
 
-    # Adjusted present and late days counting
     attended_dates = records.values_list('date', flat=True).distinct()
     present_dates = records.filter(
-        status__in=['present', 'late', 'half_day']  # Include half_day as present
+        status__in=['present', 'late', 'half_day']
     ).values_list('date', flat=True).distinct().count()
 
-    late_dates = records.filter(
-        status__in=['late', 'half_day']  # Include half_day as late
-    ).values_list('date', flat=True).distinct().count()
-
-    half_days = records.filter(
-        status='half_day'
-    ).values_list('date', flat=True).distinct().count()
+    # Calculate late and half days based on status
+    late_dates = records.filter(status='late').values_list('date', flat=True).distinct().count()
+    half_days_records = records.filter(status='half_day')
+    half_days = half_days_records.values_list('date', flat=True).distinct().count()
+    half_day_details = [
+        f"{rec.date}: clock_in={(rec.clock_in.astimezone(pytz.timezone('Asia/Kolkata')) if rec.clock_in else 'None')}"
+        for rec in half_days_records
+    ]
+    logger.debug(f"Half days count: {half_days}, Records with status='half_day': {half_day_details}")
 
     present_days = present_dates
-
     approved_leaves = LeaveReportEmployee.objects.filter(
         employee=employee,
         status=1,
         start_date__month=current_month,
-        start_date__year=current_year
+        start_date__year=current_year,
     )
-    
     leave_half_days = approved_leaves.filter(leave_type='Half-Day').count()
 
     if total_working_days > 0:
@@ -329,12 +327,11 @@ def employee_home(request):
         attendance_percentage = 0
 
     attendance_percentage = round(attendance_percentage, 1)
-
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
 
-    # Simplified today's status logic (status is handled in model)
+    # Today's Summary Section
     today_records = AttendanceRecord.objects.filter(
         user=request.user,
         date=today
@@ -344,20 +341,56 @@ def employee_home(request):
     today_status = None
     today_late = False
     today_half_day = False
+    today_duration_str = None
+    today_clock_in_time = None
+    today_clock_out_time = None
+    today_current_duration_str = None
+    today_late_duration_str = None
+    lunch_taken = False
+    on_break = False
+    lunch_taken_time = None
+    break_taken_time = None
 
     if today_records.exists():
         today_record = today_records.first()
-        today_status = today_record.status
-        
-        if today_status == 'late':
-            today_late = True
-        elif today_status == 'half_day':
-            today_late = True    # Half day counts as late
-            today_half_day = True
-
-        first_clock_in = today_record.clock_in
+        today_clock_in_time = today_record.clock_in
         last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
-        last_clock_out = last_clock_out_record.clock_out if last_clock_out_record else None
+        today_clock_out_time = last_clock_out_record.clock_out if last_clock_out_record else None
+        
+        ist = pytz.timezone('Asia/Kolkata')
+        clock_in_ist = today_record.clock_in.astimezone(ist) if today_record.clock_in else None
+        office_start = datetime.combine(clock_in_ist.date(), time(9, 0)).replace(tzinfo=ist) if clock_in_ist else None
+        late_threshold = datetime.combine(clock_in_ist.date(), time(9, 15)).replace(tzinfo=ist) if clock_in_ist else None
+
+        logger.debug(f"Today's record: date={today}, status={today_record.status}, clock_in={clock_in_ist}")
+
+        # Determine clocked-in/out state for the title
+        if today_clock_out_time:
+            today_status = 'Clocked Out'
+        elif current_record:
+            today_status = 'Clocked In'
+        else:
+            today_status = 'Not Clocked In Today'
+
+        # Set late and half-day flags based on status
+        today_late = today_record.status == 'late'
+        today_half_day = today_record.status == 'half_day'
+
+        logger.debug(f"Today's summary: status={today_status}, today_late={today_late}, today_half_day={today_half_day}")
+
+        # Calculate late duration (always relative to 9:00 AM, regardless of status)
+        if clock_in_ist and clock_in_ist > office_start:
+            late_duration = clock_in_ist - office_start
+            total_seconds = late_duration.total_seconds()
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            today_late_duration_str = f"{hours} hours {minutes} minutes" if total_seconds > 0 else "0 hours 0 minutes"
+        else:
+            today_late_duration_str = "0 hours 0 minutes"
+
+        # Calculate total worked time
+        first_clock_in = today_record.clock_in
+        last_clock_out = today_clock_out_time
         
         if first_clock_in and last_clock_out:
             today_total_worked = last_clock_out - first_clock_in
@@ -367,22 +400,74 @@ def employee_home(request):
                 timedelta()
             )
             today_total_worked -= total_break_time
-    has_taken_lunch_today = Break.objects.filter(
-    attendance_record__user=request.user,
-    attendance_record__date=today,
-    break_type='lunch'
+            total_seconds = today_total_worked.total_seconds()
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            today_duration_str = f"{hours} hours {minutes} minutes" if total_seconds > 0 else "0 hours 0 minutes"
+        elif first_clock_in and not last_clock_out:
+            current_duration = current_time - first_clock_in
+            total_break_time = sum(
+                (brk.duration for record in today_records 
+                for brk in record.breaks.all() if brk.duration),
+                timedelta()
+            )
+            current_duration -= total_break_time
+            total_seconds = current_duration.total_seconds()
+            if total_seconds < 0:
+                total_seconds = 0
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            today_current_duration_str = f"{hours} hours {minutes} minutes" if total_seconds > 0 else "0 hours 0 minutes"
+            today_duration_str = today_current_duration_str  # Use current duration for display
+        else:
+            today_status = 'Not Clocked In Today'
+            today_duration_str = "0 hours 0 minutes"
+            today_late_duration_str = "0 hours 0 minutes"
+
+    # Lunch and Break Status
+    lunch_taken = Break.objects.filter(
+        attendance_record__user=request.user,
+        attendance_record__date=today,
+        break_type='lunch'
     ).exists()
+
+    on_break = current_break is not None
+
+    lunch_break = Break.objects.filter(
+        attendance_record__user=request.user,
+        attendance_record__date=today,
+        break_type='lunch'
+    ).first()
+    if lunch_break:
+        lunch_taken_time = lunch_break.break_start
+
+    recent_break = Break.objects.filter(
+        attendance_record__user=request.user,
+        attendance_record__date=today
+    ).exclude(break_type='lunch').order_by('-break_start').first()
+    if recent_break:
+        break_taken_time = recent_break.break_start
+
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
         'today_total_worked': today_total_worked,
+        'today_duration_str': today_duration_str,
+        'today_current_duration_str': today_current_duration_str,
+        'today_late_duration_str': today_late_duration_str,
         'today_status': today_status,
+        'today_record': today_records.first() if today_records.exists() else None,  # Pass the record for status
         'today_late': today_late,
         'today_half_day': today_half_day,
+        'today_clock_in_time': today_clock_in_time,
+        'today_clock_out_time': today_clock_out_time,
         'current_record': current_record,
         'current_break': current_break,
         'recent_activities': recent_activities,
-        'has_taken_lunch_today': has_taken_lunch_today,
+        'lunch_taken': lunch_taken,
+        'on_break': on_break,
+        'lunch_taken_time': lunch_taken_time,
+        'break_taken_time': break_taken_time,
         'attendance_stats': {
             'total_days': total_working_days,
             'present_days': present_days,
@@ -406,19 +491,23 @@ def employee_home(request):
         },
         'status_choices': AttendanceRecord.STATUS_CHOICES,
     }
+
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.method == 'GET':
-            html = render_to_string('employee_template/home_content.html', context, request=request)
-            return JsonResponse({
-                'html': html,
-                'current_page': paginated_entries.number,
-                'num_pages': paginator.num_pages,
-                'has_previous': paginated_entries.has_previous(),
-                'has_next': paginated_entries.has_next(),
-                'previous_page_number': paginated_entries.previous_page_number() if paginated_entries.has_previous() else None,
-                'next_page_number': paginated_entries.next_page_number() if paginated_entries.has_next() else None,
-            })
+        html = render_to_string('employee_template/home_content.html', context, request=request)
+        return JsonResponse({
+            'html': html,
+            'current_page': paginated_entries.number,
+            'num_pages': paginator.num_pages,
+            'has_previous': paginated_entries.has_previous(),
+            'has_next': paginated_entries.has_next(),
+            'previous_page_number': paginated_entries.previous_page_number() if paginated_entries.has_previous() else None,
+            'next_page_number': paginated_entries.next_page_number() if paginated_entries.has_next() else None,
+        })
 
     return render(request, 'employee_template/home_content.html', context)
+
+
+
 
 @login_required   
 def employee_apply_leave(request):
@@ -845,156 +934,53 @@ def employee_requests(request):
 
 
 
+def get_ist_datetime():
+    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata'))
+
+
 @login_required
 def daily_schedule(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    today = date.today()
+    today = get_ist_date()
+    now = get_ist_datetime()
 
-    # Check if employee has clocked in today, redirect to home if not
-    has_clocked_in = AttendanceRecord.objects.filter(
+     # Check if employee has clocked in today, redirect to home if not
+    attendance_record = AttendanceRecord.objects.filter(
         user=request.user,
         date=today,
-        clock_in__isnull=False
-    ).exists()
-
-    if not has_clocked_in:
-        messages.error(request, "Please clock in first.")
-        return redirect('employee_home')
-
-    attendance_record = AttendanceRecord.objects.filter(
-        user = request.user,
-        date = today,
-        clock_in__isnull = False,
-        clock_out__isnull = True
+        clock_in__isnull=False,
+        clock_out__isnull=True
     ).first()
 
     if not attendance_record:
-        messages.error(request,"First Clock-In")
+        messages.error(request, "Please clock in first.")
+        return redirect('employee_home')
 
-    schedule_id = request.GET.get('schedule_id')
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        page = request.GET.get('page', 1)
-        all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
-        
-        paginator = Paginator(all_schedules, 2)
-        try:
-            schedules_page = paginator.page(page)
-        except:
-            return JsonResponse({'error': 'Invalid page'}, status=400)
-        
-        formatted_schedules = []
-        for schedule in schedules_page:
-            total_minutes = 0
-            for task in schedule.task_description.splitlines():
-                try:
-                    time_part = task.split('(')[1].split(')')[0].strip().lower()
-                    if 'h' in time_part:
-                        total_minutes += float(time_part.replace('h', '')) * 60
-                    elif 'm' in time_part:
-                        total_minutes += float(time_part.replace('m', ''))
-                    elif 's' in time_part:
-                        total_minutes += float(time_part.replace('s', '')) / 60
-                except (IndexError, ValueError):
-                    continue
-            
-            hours = int(total_minutes / 60)
-            minutes = int(total_minutes % 60)
-            formatted_schedules.append({
-                'id': schedule.id,
-                'date': schedule.date.strftime('%b %d, %Y'),
-                'project': schedule.project or '',
-                'task_description': schedule.task_description.splitlines(),
-                'justification': schedule.justification or '',
-                'hours': hours,
-                'minutes': minutes,
-            })
-        
-        return JsonResponse({
-            'schedules': formatted_schedules,
-            'has_previous': schedules_page.has_previous(),
-            'has_next': schedules_page.has_next(),
-            'page': page,
-            'num_pages': paginator.num_pages,
-        })
-    
-    all_schedules = DailySchedule.objects.filter(employee=employee).order_by('-date')
-    
-    formatted_schedules = []
-    for schedule in all_schedules:
-        total_minutes = 0
-        for task in schedule.task_description.splitlines():
-            try:
-                time_part = task.split('(')[1].split(')')[0].strip().lower()
-                if 'h' in time_part:
-                    total_minutes += float(time_part.replace('h', '')) * 60
-                elif 'm' in time_part:
-                    total_minutes += float(time_part.replace('m', ''))
-                elif 's' in time_part:
-                    total_minutes += float(time_part.replace('s', '')) / 60
-            except (IndexError, ValueError):
-                continue
-        
-        if abs(schedule.total_hours - (total_minutes / 60)) > 0.01:
-            schedule.total_hours = total_minutes / 60
-            schedule.save()
-        
-        hours = int(total_minutes / 60)
-        minutes = int(total_minutes % 60)
-        formatted_schedules.append({
-            'id': schedule.id,
-            'date': schedule.date,
-            'project': schedule.project,
-            'task_description': schedule.task_description,
-            'justification': schedule.justification,
-            'hours': hours,
-            'minutes': minutes,
-        })
-    
-    # Load existing schedule for editing
-    edit_schedule = None
-    edit_tasks = []
-    if schedule_id:
-        edit_schedule = get_object_or_404(DailySchedule, id=schedule_id, employee=employee)
-        # Preprocess tasks for editing
-        for task in edit_schedule.task_description.splitlines():
-            try:
-                desc, time = task.split(' (')
-                time = time.rstrip(')')
-                edit_tasks.append({
-                    'description': desc.strip(),
-                    'time': time.strip()
-                })
-            except (IndexError, ValueError):
-                continue
-    
-    if request.method == 'POST':
-        task_description = request.POST.get('task_description', '')
-        project = request.POST.get('project', '')
-        justification = request.POST.get('justification', '')
-        schedule_date = request.POST.get('schedule_date', today)
-        schedule_id = request.POST.get('schedule_id')  # Get schedule_id from form
+    schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
 
-        # Validate tasks
+    # Check if editing is allowed (within 30 minutes of creation)
+    allow_edit = True
+    if schedule:
+        edit_window = schedule.created_at + timedelta(minutes=30)  # Changed to 30 minutes for clarity
+        allow_edit = now <= edit_window
+
+    if request.method == 'POST' and allow_edit:
+        task_description = request.POST.get('task_description', '').strip()
+        project = request.POST.get('project', '').strip()
+        justification = request.POST.get('justification', '').strip()
+
+        if not task_description:
+            messages.error(request, "Please add at least one task.")
+            return redirect('daily_schedule')
+        
         tasks = [line.strip() for line in task_description.split("\n") if line.strip()]
-        invalid_tasks = [t for t in tasks if '|' not in t]
-        
-        if invalid_tasks:
-            messages.error(request, "Each task must include time estimate (e.g., 'Task description|2h')")
-            return render(request, 'employee_template/daily_schedule.html', {
-                'schedules': formatted_schedules,
-                'today': today,
-                'edit_schedule': edit_schedule,
-                'edit_tasks': edit_tasks,
-                'project': project,
-                'justification': justification,
-            })
 
-        # Calculate total time
+        # Parse tasks and calculate total minutes
         total_minutes = 0
-        for task in tasks:
+        for line in tasks:
+            time_part = line.split('|')[1].strip().lower()
             try:
-                time_part = task.split('|')[1].strip().lower()
+                time_part = line.split('|')[1].strip().lower()
                 if 'h' in time_part:
                     total_minutes += float(time_part.replace('h', '')) * 60
                 elif 'm' in time_part:
@@ -1003,80 +989,81 @@ def daily_schedule(request):
                     total_minutes += float(time_part.replace('s', '')) / 60
                 else:
                     total_minutes += float(time_part)
-            except (IndexError, ValueError):
-                messages.error(request, "Invalid time format in tasks")
-                return render(request, 'employee_template/daily_schedule.html', {
-                    'schedules': formatted_schedules,
-                    'today': today,
-                    'edit_schedule': edit_schedule,
-                    'edit_tasks': edit_tasks,
-                    'project': project,
-                    'justification': justification,
-                })
-
-        # Format tasks for storage
-        formatted_tasks = []
-        for task in tasks:
-            desc, time = task.split('|')
-            formatted_tasks.append(f"{desc.strip()} ({time.strip()})")
-        formatted_task_description = "\n".join(formatted_tasks)
-
-        if schedule_id:
-            # Update existing schedule
-            edit_schedule = get_object_or_404(DailySchedule, id=schedule_id, employee=employee)
-            edit_schedule.task_description = formatted_task_description
-            edit_schedule.project = project
-            edit_schedule.justification = justification if total_minutes < 480 else ''
-            edit_schedule.total_hours = total_minutes / 60
-            edit_schedule.date = schedule_date
-            try:
-                edit_schedule.save()
-                messages.success(request, "Schedule successfully updated!")
+            except ValueError:
+                messages.error(request, f"Invalid time value in task: {line}")
                 return redirect('daily_schedule')
+
+        total_hours = total_minutes / 60
+
+        # Check for justification if less than 8 hours
+        if total_hours < 8 and not justification:
+            messages.error(request, "Please provide justification for scheduling less than 8 hours.")
+            return redirect('daily_schedule')
+
+        if schedule:
+            # Update existing schedule
+            schedule.task_description = task_description
+            schedule.project = project
+            schedule.justification = justification
+            schedule.total_hours = total_hours
+            try:
+                schedule.full_clean()
+                schedule.save()
+                messages.success(request, "Schedule updated successfully!")
             except ValidationError as e:
                 messages.error(request, f"Error updating schedule: {e}")
         else:
             # Create new schedule
-            existing_schedule = DailySchedule.objects.filter(employee=employee, date=schedule_date).first()
-            if existing_schedule:
-                messages.error(request, "A schedule already exists for this date!")
-                return render(request, 'employee_template/daily_schedule.html', {
-                    'schedules': formatted_schedules,
-                    'today': today,
-                    'edit_schedule': edit_schedule,
-                    'edit_tasks': edit_tasks,
-                    'project': project,
-                    'justification': justification,
-                })
-            
             schedule = DailySchedule(
                 employee=employee,
-                date=schedule_date,
-                task_description=formatted_task_description,
+                date=today,
+                task_description=task_description,
                 project=project,
-                justification=justification if total_minutes < 480 else '',
-                total_hours=total_minutes / 60
+                justification=justification,
+                total_hours=total_hours
             )
             try:
+                schedule.full_clean()
                 schedule.save()
+
                 time_since_clock_in = schedule.created_at - attendance_record.clock_in
-                
                 if time_since_clock_in > timedelta(minutes=30):
                     attendance_record.status = 'half_day'
                 attendance_record.save()
 
-                messages.success(request, "Schedule created successfully!")
-                return redirect('daily_schedule')
+                messages.success(request, f"Schedule created successfully.")
+
             except ValidationError as e:
                 messages.error(request, f"Error creating schedule: {e}")
 
-    return render(request, 'employee_template/daily_schedule.html', {
-        'schedules': formatted_schedules,
+        return redirect('daily_schedule')
+
+    show_form = False
+    if request.GET.get('edit') == 'true' and allow_edit:
+        show_form = True
+    elif not schedule:
+        show_form = True
+
+    edit_tasks = []
+    if schedule and schedule.task_description:
+        for task in schedule.task_description.splitlines():
+            parts = task.split('|')
+            if len(parts) >= 2:
+                edit_tasks.append({
+                    'description' : parts[0].strip(),
+                    'time' : parts[1].strip()
+                })
+
+    context = {
+        'schedule': schedule,
         'today': today,
-        'edit_schedule': edit_schedule,
+        'allow_edit': allow_edit,
+        'now': now,
+        'show_form': show_form,
         'edit_tasks': edit_tasks,
-        'has_clocked_in': has_clocked_in,
-    })
+    }
+
+    return render(request, 'employee_template/daily_schedule.html', context)
     
     
     
@@ -1091,6 +1078,17 @@ def todays_update(request):
     employee = get_object_or_404(Employee, admin=request.user)
     today = get_ist_date()
     schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
+
+    attendance_record = AttendanceRecord.objects.filter(
+        user=request.user,
+        date=today,
+        clock_in__isnull=False,
+        clock_out__isnull=False
+    ).first()
+
+    if attendance_record:
+        messages.error(request,"Can't update record after clock-out.  Only can view in your All Schedules")
+        return redirect('employee_home')
     
     if not schedule:
         messages.error(request, "Create a schedule first!")

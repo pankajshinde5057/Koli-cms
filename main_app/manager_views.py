@@ -872,7 +872,6 @@ def get_employee_attendance(request):
                         elif record_status == 'half_day':
                             present_days += 1
                             half_days += 1
-                            late_days += 1
                             absent_days += 0.5  # Count half-day leave as 0.5 absent day
                         else:
                             absent_days += 1

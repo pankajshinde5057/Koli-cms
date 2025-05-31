@@ -2,11 +2,10 @@
 {% load static %}
 {% load custom_filters %}
 
-{% comment %} {% block page_title %}{{ page_title }}{% endblock page_title %} {% endcomment %}
-
 {% block custom_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <style>
-  /* Gradient Backgrounds */
   .bg-gradient-primary {
       background: linear-gradient(135deg, #667eea 0%, rgb(64, 11, 117) 100%) !important;
   }
@@ -32,7 +31,6 @@
       background: linear-gradient(135deg, rgb(146, 89, 99) 0%, rgb(179, 151, 11) 100%) !important;
   }
   
-  /* Icon Circle */
   .icon-circle {
       width: 50px;
       height: 50px;
@@ -47,7 +45,6 @@
       background-color: rgba(255,255,255,0.2);
   }
   
-  /* Card Hover Effects */
   .card {
       transition: all 0.3s ease;
       border-radius: 10px;
@@ -61,14 +58,12 @@
       box-shadow: 0 10px 20px rgba(0,0,0,0.15);
   }
   
-  /* Badges */
   .badge {
       font-weight: 500;
       padding: 5px 10px;
       border-radius: 20px;
   }
   
-  /* Buttons */
   .btn {
       border-radius: 8px;
       padding: 10px 15px;
@@ -80,7 +75,6 @@
       transform: translateY(-2px);
   }
   
-  /* Alert Styling */
   .alert-info {
       background: linear-gradient(135deg, rgba(23, 162, 184, 0.9) 0%, rgba(23, 162, 184, 0.7) 100%);
       color: white;
@@ -93,7 +87,6 @@
       opacity: 0.8;
   }
   
-  /* Small Box Styling */
   .small-box {
       border-radius: 10px;
       color: white;
@@ -121,7 +114,6 @@
       transform: scale(1.1);
   }
   
-  /* Table Styling */
   .table {
       border-collapse: separate;
       border-spacing: 0;
@@ -137,7 +129,6 @@
       background-color: rgba(0,0,0,0.02);
   }
   
-  /* Pagination Styling */
   .pagination .page-item.active .page-link {
       background-color: #667eea;
       border-color: #667eea;
@@ -147,58 +138,161 @@
       color: #667eea;
   }
   
-  /* Custom Card Header */
   .card-header {
       border-radius: 10px 10px 0 0 !important;
       background-color: white;
       border-bottom: 1px solid rgba(0,0,0,0.1);
   }
   
-  /* Status Badges */
   .badge.bg-success { background-color: #28a745 !important; }
+  .badge.bg-dark-gray { background-color: #5A6268 !important; }
   .badge.bg-warning { background-color: #ffc107 !important; color: #212529; }
   .badge.bg-secondary { background-color: #6c757d !important; }
   .badge.bg-danger { background-color: #dc3545 !important; }
   .badge.bg-primary { background-color: #007bff !important; }
   .badge.bg-info { background-color: #17a2b8 !important; }
+  .badge.bg-orange { background-color: #fd7e14 !important; color: #212529; }
+
+  .date-filter-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+  }
+  .date-filter-group .form-group {
+      margin-bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+  }
+  .date-filter-group label {
+      color: white;
+      font-weight: 500;
+      margin-bottom: 0;
+  }
+  .date-filter-group input {
+      width: 150px;
+      border-radius: 5px;
+  }
+
+  .pagination-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+  }
+
+  .clocked-status {
+      font-size: 0.8rem;
+      margin-left: 10px;
+  }
+  .clocked-in {
+      color: white;
+  }
+  .clocked-out {
+      color: white;
+  }
+
+  .late-by-badge {
+      margin-left: 5px;
+  }
+
+ .btn-loading {
+        position: relative;
+        pointer-events: none;
+    }
+ .btn-loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        margin: -8px 0 0 -8px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 </style>
 {% endblock custom_css %}
 
 {% block content %}
 <section class="content">
+    <!-- Today's Work Summary -->
     <div class="alert alert-info alert-dismissible shadow">
         <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
-        <h5><i class="icon fas fa-info-circle"></i> Today's Work Summary</h5>
+        <h5>
+            <i class="icon fas fa-info-circle"></i> Today's Work Summary :-
+            {% if today_status == 'Clocked In' %}
+                <span class="badge bg-success clocked-status clocked-in">currently clocked in</span>
+            {% elif today_status == 'Clocked Out' %}
+                <span class="badge bg-secondary clocked-status clocked-out">currently clocked out</span>
+            {% endif %}
+        </h5>
         <p>
             <strong>Status:</strong>
-            {% if today_status %}
-                {% if today_late %}
-                    <span class="badge bg-warning">Late</span>
-                {% elif today_half_day %}
-                    <span class="badge bg-secondary">Half Day</span>
-                {% else %}
+            {% if today_record %}
+                {% if today_record.status == 'present' %}
                     <span class="badge bg-success">Present</span>
+                {% elif today_record.status == 'late' %}
+                    <span class="badge bg-orange">Late</span>
+                {% elif today_record.status == 'half_day' %}
+                    <span class="badge bg-secondary">Half Day</span>
                 {% endif %}
             {% else %}
-                <span class="badge bg-danger">Not Checked In</span>
+                <span class="badge bg-danger">Not Clocked In Today</span>
+            {% endif %}
+            
+            {% if today_late and today_record.status != 'late' %}
+                <span class="badge bg-orange">Late</span>
+            {% endif %}
+            {% if today_half_day and today_record.status != 'half_day' %}
+                <span class="badge bg-secondary">Half Day</span>
             {% endif %}
             
             <strong class="ml-3">Total Hours:</strong> 
-            {{ today_total_worked|duration_to_hours_minutes }}
-            
-            {% if current_record and not current_record.clock_out %}
-                <span class="badge bg-warning ml-2">Currently Clocked In</span>
-            {% endif %}
+            <span class="badge bg-info ml-2">
+                {{ today_duration_str|default:"0 hours 0 minutes" }}
+            </span>
+            <span class="badge bg-orange late-by-badge">
+                Late by: {{ today_late_duration_str|default:"0 hours 0 minutes" }}
+            </span>
         </p>
-        {% comment %} <p class="mb-0">
-            {% if today_late %}
-                <i class="fas fa-clock text-warning"></i> Late by {{ today_record.late_minutes }} minutes
+        <p>
+            <strong>Break Status:</strong>
+            {% if on_break %}
+                <span class="badge bg-primary ml-2">On Break</span>
+            {% else %}
+                <span class="badge bg-dark-gray ml-2">Not On Break</span>
             {% endif %}
-            {% if today_half_day %}
-                <i class="fas fa-user-clock text-secondary"></i> Half day - {{ today_record.half_day_hours }} hours worked
+            {% if lunch_taken %}
+                <span class="badge bg-warning ml-2">Lunch Taken</span>
+            {% else %}
+                <span class="badge bg-dark-gray ml-2">Lunch Not Taken</span>
             {% endif %}
-        </p> {% endcomment %}
+            
+            <strong class="ml-3">Lunch Taken Time:</strong>
+            <span class="badge bg-warning ml-2">
+                {% if lunch_taken_time %}
+                    {{ lunch_taken_time|time:"h:i:s A" }}
+                {% else %}
+                    Not Taken
+                {% endif %}
+            </span>
+            <strong class="ml-3">Break Taken Time:</strong>
+            <span class="badge bg-primary ml-2">
+                {% if break_taken_time %}
+                    {{ break_taken_time|time:"h:i:s A" }}
+                {% else %}
+                    Not Taken
+                {% endif %}
+            </span>
+        </p>
     </div>
+
     <div class="container-fluid">
         <div class="row">
             <!-- Present Days -->
@@ -311,17 +405,15 @@
                 <div class="card-header bg-dark text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Time History</h5>
-                        <div>
-                            <form method="get" id="dateRangeForm" class="d-flex align-items-center gap-2">
-                                <div class="form-group mb-0 mr-2">
-                                    <input type="date" name="start_date" class="form-control form-control-sm"
-                                           value="{{ request.GET.start_date }}"
-                                           onchange="submitIfBothDatesSelected()">
+                        <div class="d-flex align-items-center gap-3">
+                            <form method="get" id="dateRangeForm" class="date-filter-group">
+                                <div class="form-group">
+                                    <input type="text" name="start_date" id="start_date" class="form-control form-control-sm" 
+                                           value="{{ current_filters.start_date|default_if_none:'' }}" placeholder="YYYY-MM-DD">
                                 </div>
-                                <div class="form-group mb-0">
-                                    <input type="date" name="end_date" class="form-control form-control-sm"
-                                           value="{{ request.GET.end_date }}"
-                                           onchange="submitIfBothDatesSelected()">
+                                <div class="form-group">
+                                    <input type="text" name="end_date" id="end_date" class="form-control form-control-sm" 
+                                           value="{{ current_filters.end_date|default_if_none:'' }}" placeholder="YYYY-MM-DD">
                                 </div>
                                 {% if request.user.is_staff %}
                                     <input type="hidden" name="user" value="{{ request.GET.user }}">
@@ -330,14 +422,14 @@
                             </form>
 
                             {% if request.user.is_staff %}
-                            <div class="btn-group ms-2">
+                            <div class="btn-group">
                                 <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                     {% if request.GET.user %}User: {{ request.GET.user }}{% else %}All Users{% endif %}
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}">All Users</a></li>
+                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}">All Users</a></li>
                                     {% for user in users %}
-                                    <li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}user={{ user.id }}">{{ user.get_full_name }}</a></li>
+                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}user={{ user.id }}">{{ user.get_full_name }}</a></li>
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -347,9 +439,9 @@
                                     {% if request.GET.department %}Dept: {{ request.GET.department }}{% else %}All Departments{% endif %}
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}">All Departments</a></li>
+                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}">All Departments</a></li>
                                     {% for dept in departments %}
-                                    <li><a class="dropdown-item" href="?{% if request.GET.date %}date={{ request.GET.date }}&{% endif %}department={{ dept.id }}">{{ dept.name }}</a></li>
+                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}department={{ dept.id }}">{{ dept.name }}</a></li>
                                     {% endfor %}
                                 </ul>
                             </div>
@@ -382,7 +474,7 @@
                                                 {% elif entry.type == 'clock_out' %}
                                                     <span class="badge bg-secondary">Clock Out</span>
                                                 {% else %}
-                                                    <span class="badge bg-warning">Break Start</span>
+                                                    <span class="badge bg-warning">Break</span>
                                                 {% endif %}
                                             </td>
                                             <td>{{ entry.start_time|time:"h:i:s A" }}</td>
@@ -412,13 +504,14 @@
                                                 </span>
                                             </td>
                                         </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="6" class="text-center">No records found for the selected date range.</td>
+                                        </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <div id="entriesInfo">
-                                        Showing {{ detailed_time_entries.start_index }} to {{ detailed_time_entries.end_index }} of {{ detailed_time_entries.paginator.count }} entries
-                                    </div>
+                                <div class="pagination-container mt-3">
                                     <nav>
                                         <ul class="pagination mb-0" id="paginationContainer">
                                             {% if detailed_time_entries.has_previous %}
@@ -489,7 +582,7 @@
                                     <thead>
                                         <tr>
                                             <th>Month</th>
-                                            <th>Total Hours</th>                                            
+                                            <th>Total Hours</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -513,47 +606,78 @@
 
 {% block custom_js %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    // Auto-submit form when both dates are selected
-    function submitIfBothDatesSelected() {
-        const form = document.getElementById('dateRangeForm');
-        const start = form.querySelector('input[name="start_date"]').value;
-        const end = form.querySelector('input[name="end_date"]').value;
-        if (start && end) {
-            form.submit();
+    {% if show_absent_popup %}
+    Swal.fire({
+        icon: 'warning',
+        title: 'Clock-In Restricted',
+        text: 'Employee cannot clock in after 3:00 PM. It will be counted as absent now.',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#dc3545'
+    });
+    {% endif %}
+
+    $('#dateRangeForm').on('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    flatpickr("#start_date", {
+        dateFormat: "Y-m-d",
+        defaultDate: "{{ current_filters.start_date|default_if_none:'' }}",
+        onChange: function(selectedDates, dateStr) {
+            checkAndSubmit();
+        }
+    });
+
+    flatpickr("#end_date", {
+        dateFormat: "Y-m-d",
+        defaultDate: "{{ current_filters.end_date|default_if_none:'' }}",
+        onChange: function(selectedDates, dateStr) {
+            checkAndSubmit();
+        }
+    });
+
+    function checkAndSubmit() {
+        const startDate = $("#start_date").val();
+        const endDate = $("#end_date").val();
+
+        if (startDate && endDate) {
+            submitFilters();
         }
     }
 
-    // Handle pagination clicks
-    $(document).on('click', '#paginationContainer a.page-link', function(e) {
-        e.preventDefault();
-        var page = $(this).attr('href').split('page=')[1];
+    function submitFilters(params = null) {
+        const urlParams = params || new URLSearchParams(window.location.search);
         
-        // Get current query parameters to preserve filters
-        const form = document.getElementById('dateRangeForm');
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('page', page);
-        
-        // Preserve existing filters
-        const startDate = form.querySelector('input[name="start_date"]').value;
-        const endDate = form.querySelector('input[name="end_date"]').value;
+        const startDate = $("#start_date").val();
+        const endDate = $("#end_date").val();
         if (startDate) urlParams.set('start_date', startDate);
+        else urlParams.delete('start_date');
         if (endDate) urlParams.set('end_date', endDate);
+        else urlParams.delete('end_date');
+
         {% if request.user.is_staff %}
-            const user = form.querySelector('input[name="user"]').value;
-            const department = form.querySelector('input[name="department"]').value;
+            const user = $('#dateRangeForm input[name="user"]').val();
+            const department = $('#dateRangeForm input[name="department"]').val();
             if (user) urlParams.set('user', user);
+            else urlParams.delete('user');
             if (department) urlParams.set('department', department);
+            else urlParams.delete('department');
         {% endif %}
-        
-        // Preserve status filter if present
-        const status = '{{ request.GET.status }}';
+        const status = '{{ request.GET.status|default_if_none:'' }}';
         if (status) urlParams.set('status', status);
-        
-        // Show loading indicator
+        else urlParams.delete('status');
+
+        if (!urlParams.has('page')) {
+            urlParams.delete('page');
+        }
+
         $('#timeHistoryTable').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
-        
+
         $.ajax({
             url: window.location.pathname,
             type: 'GET',
@@ -562,35 +686,95 @@ $(document).ready(function() {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(response) {
-                // Parse the response HTML
-                var $responseHtml = $('<div>').html(response.html);
-                
-                // Update table and pagination
-                $('#timeHistoryTable').html($responseHtml.find('#timeHistoryTable').html());
-                
-                // Update URL without reloading
+                $('#timeHistoryTable').html($(response.html).find('#timeHistoryTable').html());
+                $("#start_date").val(response.html.match(/name="start_date"[^>]*value="([^"]*)"/)?.[1] || '');
+                $("#end_date").val(response.html.match(/name="end_date"[^>]*value="([^"]*)"/)?.[1] || '');
+                {% if request.user.is_staff %}
+                    const userMatch = response.html.match(/name="user"[^>]*value="([^"]*)"/);
+                    const departmentMatch = response.html.match(/name="department"[^>]*value="([^"]*)"/);
+                    $('#dateRangeForm input[name="user"]').val(userMatch ? userMatch[1] : '');
+                    $('#dateRangeForm input[name="department"]').val(departmentMatch ? departmentMatch[1] : '');
+                {% endif %}
                 window.history.pushState({}, '', window.location.pathname + '?' + urlParams.toString());
             },
             error: function(xhr) {
+                console.error('AJAX error gard:', xhr.status, xhr.statusText);
                 try {
-                    var error = JSON.parse(xhr.responseText);
-                    console.error('Error:', error.message || 'An error occurred');
+                    const error = JSON.parse(xhr.responseText);
+                    console.error('Error message:', error.message || 'Unknown error');
                 } catch (e) {
-                    console.error('Error loading page');
+                    console.error('Failed to parse error response');
                 }
-                // Fallback to normal page load
                 window.location.href = window.location.pathname + '?' + urlParams.toString();
             }
         });
+    }
+
+    $(document).on('click', '#paginationContainer a.page-link[data-page]', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const page = $(this).data('page');
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('page', page);
+        submitFilters(urlParams);
     });
 
-    // Handle back/forward navigation
-    window.addEventListener('popstate', function() {
-        window.location.reload();
+    {% if request.user.is_staff %}
+    $(document).on('click', '.dropdown-menu a.dropdown-item', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const href = $(this).attr('href');
+        const newParams = new URLSearchParams(href.split('?')[1] || '');
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (newParams.has('user')) {
+            const user = newParams.get('user');
+            if (user) urlParams.set('user', user);
+            else urlParams.delete('user');
+            $('#dateRangeForm input[name="user"]').val(user || '');
+        }
+        if (newParams.has('department')) {
+            const department = newParams.get('department');
+            if (department) urlParams.set('department', department);
+            else urlParams.delete('department');
+            $('#dateRangeForm input[name="department"]').val(department || '');
+        }
+
+        submitFilters(urlParams);
+    });
+    {% endif %}
+
+    window.addEventListener('popstate', function(event) {
+        const urlParams = new URLSearchParams(window.location.search);
+        $('#timeHistoryTable').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
+
+        $.ajax({
+            url: window.location.pathname,
+            type: 'GET',
+            data: urlParams.toString(),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                $('#timeHistoryTable').html($(response.html).find('#timeHistoryTable').html());
+                $("#start_date").val(response.html.match(/name="start_date"[^>]*value="([^"]*)"/)?.[1] || '');
+                $("#end_date").val(response.html.match(/name="end_date"[^>]*value="([^"]*)"/)?.[1] || '');
+                {% if request.user.is_staff %}
+                    const userMatch = response.html.match(/name="user"[^>]*value="([^"]*)"/);
+                    const departmentMatch = response.html.match(/name="department"[^>]*value="([^"]*)"/);
+                    $('#dateRangeForm input[name="user"]').val(userMatch ? userMatch[1] : '');
+                    $('#dateRangeForm input[name="department"]').val(departmentMatch ? departmentMatch[1] : '');
+                {% endif %}
+            },
+            error: function(xhr) {
+                console.error('Popstate error:', xhr.status, xhr.statusText);
+                window.location.reload();
+            }
+        });
     });
 });
 
-// Firebase Integration
 var firebaseConfig = {
     apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
     authDomain: "sms-with-django.firebaseapp.com",

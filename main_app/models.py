@@ -222,8 +222,8 @@ class Notification(models.Model):
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
-        ['late', 'Late'],
-        ['half_day','Half_Day']
+        ('late', 'Late'),
+        ('half_day', 'Half Day'),
     ]
     
     user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='attendance_records')
@@ -284,28 +284,15 @@ class AttendanceRecord(models.Model):
     
     def save(self, *args, **kwargs):
         ist = pytz.timezone('Asia/Kolkata')
-        # Check if user didn't clock out and it's been more than 10 hours since clock in
-        # if not self.clock_out and self.clock_in:
-        #     time_since_clock_in = timezone.now() - self.clock_in
-        #     if time_since_clock_in >= timedelta(seconds=15):
-        #         self.clock_out = self.clock_in + timedelta(seconds=30)
-        #         if self.clock_out.date() != self.date:
-        #             self.clock_out = timezone.make_aware(
-        #                 timezone.datetime.combine(
-        #                     self.date, 
-        #                     timezone.datetime.max.time()
-        #                 )
-        #             )
-
-        # if user didn't clock out and it's been more than 10 hours since clock in
+        
+        # Auto-close previous days' open records
         if not self.pk:
             open_records = AttendanceRecord.objects.filter(
                 user=self.user,
                 clock_out__isnull=True,
-                date__lt=self.date  # Previous days only
+                date__lt=self.date
             )
             for record in open_records:
-                # set clock-out
                 record.clock_out = record.clock_in + timedelta(hours=10)
                 record.notes = (
                     f"{record.notes}\n" if record.notes else ""
@@ -317,73 +304,46 @@ class AttendanceRecord(models.Model):
                     record.overtime_hours = record.total_worked - regular_hours_limit
                 else:
                     record.regular_hours = record.total_worked
-                    record.overtime_hours = timezone.timedelta()
+                    record.overtime_hours = timedelta()
                 record.save()
 
         # Check if early clock-out request is approved
         early_clock_out_approved = False
-        if self.clock_out and not self.pk:  # Only for new or updating records
+        if self.clock_out and not self.pk:
             early_clock_out_approved = EarylyClockOutRequest.objects.filter(
                 attendance_record=self,
                 status='approved'
             ).exists()
 
-        # automatic determine attendence record:
-        if self.clock_in and self.user.user_type == "3":
         # Automatic status determination based on clock-in time
+        if self.clock_in:
             ist_time = self.clock_in.astimezone(ist)
             late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
             half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
+            after_3pm_time = datetime.combine(ist_time.date(), time(15, 0)).replace(tzinfo=ist)
 
-            # Check for half-day if clock-in is after 1:00 PM
-            if ist_time > half_day_time:
-                self.status = 'half_day'
-            else:
-                try:
-                    employee = Employee.objects.get(admin=self.user)
-                    schedule = DailySchedule.objects.get(employee=employee, date=self.date)
-                    schedule_created = schedule.created_at
-                    time_since_clock_in = schedule_created - self.clock_in
-                    if time_since_clock_in > timedelta(seconds=10):
-                        self.status = 'half_day'
-                    else:
-                        self.status = 'late' if ist_time > late_time else 'present'
-                
-                except (Employee.DoesNotExist, DailySchedule.DoesNotExist):
-                    # If no schedule exists and 30 minutes have passed since clock-in
-                    if timezone.now() - self.clock_in > timedelta(minutes=30):
-                        self.status = 'half_day'
-                    else:
-                        self.status = 'late' if ist_time > late_time else 'present'                    
-
-        # For managers or other user types, only check late time
-        elif self.clock_in:
-            ist_time = self.clock_in.astimezone(ist)
-            late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            self.status = 'late' if ist_time > late_time else 'present'
-            half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
-
-            if ist_time > half_day_time:
-                self.status = 'half_day'
+            if ist_time > after_3pm_time:
+                self.status = 'present'  # After 3:00 PM, count as present
+            elif ist_time > half_day_time:
+                self.status = 'half_day'  # Between 1:00 PM and 3:00 PM
             elif ist_time > late_time:
-                self.status = 'late'
+                self.status = 'late'  # After 9:15 AM but before 1:00 PM
             else:
-                self.status = 'present'
+                self.status = 'present'  # Before 9:15 AM
 
         # Calculate time durations if clock_out exists
         if self.clock_out:
             self.total_worked = self.clock_out - self.clock_in
-            regular_hours_limit = timezone.timedelta(hours=9)
-                        
+            regular_hours_limit = timedelta(hours=9)
             if self.total_worked > regular_hours_limit:
                 self.regular_hours = regular_hours_limit
                 self.overtime_hours = self.total_worked - regular_hours_limit
             else:
                 self.regular_hours = self.total_worked
-                self.overtime_hours = timezone.timedelta()
+                self.overtime_hours = timedelta()
         
         # Check if this is the first record of the day
-        if not self.pk:  # Only for new records
+        if not self.pk:
             existing_records = AttendanceRecord.objects.filter(
                 user=self.user, 
                 date=self.date
