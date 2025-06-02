@@ -473,6 +473,16 @@ def manage_employee(request):
 
 
 @login_required
+def view_employee(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    context = {
+        'employee': employee,
+        'page_title': f'Profile - {employee}'
+    }
+    return render(request, 'ceo_template/view_employee.html', context)
+
+
+@login_required
 def manage_division(request):
     divisions = Division.objects.all()
     page = request.GET.get('page', 1)

@@ -56,7 +56,7 @@ urlpatterns = [
      
      path('send_bulk_manager_notification/', ceo_views.send_bulk_manager_notification, name='send_bulk_manager_notification'),
      path('send_selected_manager_notification/', ceo_views.send_selected_manager_notification, name='send_selected_manager_notification'),
-
+     path('view-employee/<int:employee_id>', ceo_views.view_employee, name='view_employee'),
      path("manage/employees/", manager_views.manage_employee_by_manager, name='manage_employee_by_manager'),
      path("manager/add/employee/", manager_views.add_employee_by_manager, name='add_employee_by_manager'),
      path("manager/edit/employee/<int:employee_id>/", manager_views.edit_employee_by_manager, name='edit_employee_by_manager'),
