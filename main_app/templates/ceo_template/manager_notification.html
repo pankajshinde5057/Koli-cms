@@ -29,7 +29,7 @@
                                         <th>Email</th>
                                         <th>Gender</th>
                                         <th>Division</th>
-                                        <th>Avatar</th>
+                                        {% comment %} <th>Avatar</th> {% endcomment %}
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -42,12 +42,12 @@
                                         <td data-title="Email">{{ manager.email }}</td>
                                         <td data-title="Gender">{{ manager.gender }}</td>
                                         <td data-title="Division">{{ manager.manager.division.name }}</td>
-                                        <td data-title="Avatar">
+                                        {% comment %} <td data-title="Avatar">
                                             {% if manager.profile_pic %}
                                                 <img class="img img-fluid rounded-circle" height="40" width="40" src="{{ manager.profile_pic.url }}" alt="Avatar">
                                             {% else %}
                                                 <span class="text-muted">No Image</span>
-                                            {% endif %}
+                                            {% endif %} {% endcomment %}
   
                                         </td>
                                         <td data-title="Action">

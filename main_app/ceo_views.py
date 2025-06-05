@@ -316,6 +316,52 @@ def add_employee(request):
 
 
 
+@login_required   
+def admin_view_profile(request):
+    admin = get_object_or_404(Admin, admin=request.user)
+    form = AdminForm(request.POST or None, request.FILES or None, instance=admin)
+    context = {
+        'form': form, 
+        'page_title': 'View/Update Profile',
+        'user_object': request.user,
+    }
+
+    if request.method == 'POST':
+        try:
+            if form.is_valid():
+
+                first_name = form.cleaned_data.get('first_name')
+                last_name = form.cleaned_data.get('last_name')
+                password = form.cleaned_data.get('password') or None
+                address = form.cleaned_data.get('address')
+                gender = form.cleaned_data.get('gender')
+                profile_pic = form.profile_pic('profile_pic') or None
+                
+                user = request.user
+                if password:
+                    user.set_password(password)
+                if profile_pic:
+                    fs = FileSystemStorage()
+                    filename = fs.save(profile_pic.name, profile_pic)
+                    passport_url = fs.url(filename)
+                    user.profile_pic = passport_url
+                
+                user.first_name = first_name
+                user.last_name = last_name
+                user.address = address
+                user.gender = gender
+                user.save()
+                
+                messages.success(request, "Profile Updated!")
+                return redirect(reverse('admin_view_profile'))
+            else:
+                messages.error(request, "Invalid Data Provided")
+        except Exception as e:
+            messages.error(request, f"Error Occurred While Updating Profile: {str(e)}")
+    
+    return render(request, "ceo_template/admin_view_profile.html", context)
+
+
 @login_required
 def add_division(request):
     form = DivisionForm(request.POST or None)
@@ -407,6 +453,17 @@ def manage_manager(request):
         return HttpResponse(html)
 
     return render(request, "ceo_template/manage_manager.html", context)
+
+
+@login_required
+def view_manager(request, manager_id):
+    manager = get_object_or_404(Manager, id=manager_id)
+    context = {
+        'manager': manager,
+        'page_title': f'Profile - {manager}'
+    }
+    print("iiiiiiiiiiiiii",manager)
+    return render(request, 'ceo_template/view_manager.html', context)
 
 
 @login_required
@@ -1012,42 +1069,6 @@ def get_admin_attendance(request):
         return JsonResponse(json.dumps(json_data), safe=False)
     except Exception as e:
         return None
-
-
-@login_required
-def admin_view_profile(request):
-    admin = get_object_or_404(Admin, admin=request.user)
-    form = AdminForm(request.POST or None, request.FILES or None,
-                     instance=admin)
-    context = {'form': form,
-               'page_title': 'View/Edit Profile'
-               }
-    if request.method == 'POST':
-        try:
-            if form.is_valid():
-                first_name = form.cleaned_data.get('first_name')
-                last_name = form.cleaned_data.get('last_name')
-                password = form.cleaned_data.get('password') or None
-                passport = request.FILES.get('profile_pic') or None
-                custom_user = admin.admin
-                if password != None:
-                    custom_user.set_password(password)
-                if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    custom_user.profile_pic = passport_url
-                custom_user.first_name = first_name
-                custom_user.last_name = last_name
-                custom_user.save()
-                messages.success(request, "Profile Updated!")
-                return redirect(reverse('admin_view_profile'))
-            else:
-                messages.error(request, "Invalid Data Provided")
-        except Exception as e:
-            messages.error(
-                request, "Error Occured While Updating Profile " + str(e))
-    return render(request, "ceo_template/admin_view_profile.html", context)
 
 
 @login_required
