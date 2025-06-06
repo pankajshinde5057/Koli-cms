@@ -86,6 +86,8 @@ class Manager(models.Model):
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
     emergency_contact = models.JSONField(blank=True, null=True)
+    phone_number = models.CharField(max_length=10, blank=True, null=True)
+    designation = models.CharField(max_length=50, blank=True, null=True)
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='manager')
     date_of_joining = models.DateField(blank=True, null=True)
     

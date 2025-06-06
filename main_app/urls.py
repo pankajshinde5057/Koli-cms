@@ -56,7 +56,8 @@ urlpatterns = [
      
      path('send_bulk_manager_notification/', ceo_views.send_bulk_manager_notification, name='send_bulk_manager_notification'),
      path('send_selected_manager_notification/', ceo_views.send_selected_manager_notification, name='send_selected_manager_notification'),
-
+     path('view-employee/<int:employee_id>', ceo_views.view_employee, name='view_employee'),
+     path('view-manager/<int:manager_id>', ceo_views.view_manager, name='view_manager'),
      path("manage/employees/", manager_views.manage_employee_by_manager, name='manage_employee_by_manager'),
      path("manager/add/employee/", manager_views.add_employee_by_manager, name='add_employee_by_manager'),
      path("manager/edit/employee/<int:employee_id>/", manager_views.edit_employee_by_manager, name='edit_employee_by_manager'),
@@ -107,6 +108,8 @@ urlpatterns = [
      path("manager/feedback/", manager_views.manager_feedback, name='manager_feedback'),
      path("manager/view/profile/", manager_views.manager_view_profile,
           name='manager_view_profile'),
+     path("admin/view/profile/", ceo_views.admin_view_profile,
+          name='admin_view_profile'),
      path("manager/attendance/take/", manager_views.manager_take_attendance,
           name='manager_take_attendance'),
      path("manager/attendance/update/", manager_views.manager_update_attendance, name='manager_update_attendance'),

@@ -55,7 +55,7 @@ class Assets(models.Model):
 
     asset_condition = models.CharField(max_length=100, choices=ASSET_CONDITION_CHOICES, blank=True, null=True)
     os_version = models.CharField(max_length=100, blank=True, null=True,default=None)
-    ip_address = models.CharField(blank=True, null=True,default=None)
+    ip_address = models.GenericIPAddressField(blank=True, null=True,default=None)
     processor = models.CharField(max_length=100, blank=True, null=True)  
     ram = models.CharField(max_length=50, blank=True, null=True)  
     storage = models.CharField(max_length=50, blank=True, null=True)

@@ -5,6 +5,7 @@
 {% block custom_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
+  /* General Styling */
   .bg-gradient-primary {
       background: linear-gradient(135deg, #667eea 0%, rgb(64, 11, 117) 100%) !important;
   }
@@ -29,6 +30,7 @@
   .bg-pattern-2 {
       background: linear-gradient(135deg, rgb(187, 34, 204) 0%, rgb(24, 192, 49) 100%) !important;
   }
+  
   .row {
       color: black !important;
   }
@@ -95,25 +97,72 @@
       font-weight: 600;
   }
 
+  /* Date Filter Styling */
   .date-filter-group {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
+      margin-bottom: 10px;
   }
+  
   .date-filter-group .form-group {
       margin-bottom: 0;
       display: flex;
       align-items: center;
       gap: 5px;
   }
+  
   .date-filter-group label {
       color: white;
       font-weight: 500;
       margin-bottom: 0;
+      white-space: nowrap;
   }
-  .date-filter-group input, .date-filter-group select {
-      width: 150px;
+  
+  .date-filter-group input, 
+  .date-filter-group select {
+      min-width: 150px;
       border-radius: 5px;
+      padding: 5px 10px;
+  }
+
+  /* Responsive Table Styling */
+  @media (max-width: 768px) {
+      .table-responsive {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+      }
+      
+      .table thead th, 
+      .table tbody td {
+          white-space: nowrap;
+          min-width: 120px;
+      }
+      
+      .date-filter-group {
+          flex-direction: column;
+          align-items: flex-start;
+      }
+      
+      .date-filter-group .form-group {
+          width: 100%;
+      }
+      
+      .date-filter-group input, 
+      .date-filter-group select {
+          width: 100% !important;
+      }
+  }
+
+  /* Flatpickr Calendar Styling */
+  .flatpickr-input {
+      cursor: pointer;
+      background-color: white;
+  }
+  
+  .flatpickr-calendar {
+      z-index: 1050 !important;
   }
 </style>
 {% endblock custom_css %}
@@ -124,7 +173,7 @@
         <!-- Key Metrics Row -->
         <div class="row">
             <!-- Total Employees -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-gradient-primary text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -145,7 +194,7 @@
                 </div>
             </div>
             <!-- Total Managers -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-gradient-success text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -166,7 +215,7 @@
                 </div>
             </div>
             <!-- Total Employee Leave -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-gradient-warning text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -187,7 +236,7 @@
                 </div>
             </div>
             <!-- Total Manager Leave -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-gradient-danger text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -208,7 +257,7 @@
                 </div>
             </div>
             <!-- Employees on Break -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-gradient-info text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -227,7 +276,7 @@
                 </div>
             </div>
             <!-- Managers on Break -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-gradient-secondary text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -246,7 +295,7 @@
                 </div>
             </div>
             <!-- Total Departments -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-pattern-1 text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -267,7 +316,7 @@
                 </div>
             </div>
             <!-- Total Divisions -->
-            <div class="col-md-3 col-sm-6 col-12 mb-4">
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
                 <div class="card bg-pattern-2 text-white h-100 shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
@@ -295,8 +344,8 @@
             <div class="col-lg-12 mb-4">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-dark text-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Manager & Employee Breaks</h5>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
+                            <h5 class="card-title mb-2 mb-md-0">Manager & Employee Breaks</h5>
                             <form method="get" id="breakFilterForm" class="date-filter-group">
                                 <div class="form-group">
                                     <select id="department" name="department" class="form-control form-control-sm">
@@ -307,12 +356,14 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <input type="text" name="start_date" id="break_start_date" class="form-control form-control-sm" 
-                                           value="{{ start_date }}" placeholder="YYYY-MM-DD">
+                                    <label for="break_start_date">From:</label>
+                                    <input type="text" name="start_date" id="break_start_date" class="form-control form-control-sm flatpickr-input" 
+                                           value="{{ start_date }}" placeholder="Select Date" readonly>
                                 </div>
                                 <div class="form-group">
-                                    <input type="text" name="end_date" id="break_end_date" class="form-control form-control-sm" 
-                                           value="{{ end_date }}" placeholder="YYYY-MM-DD">
+                                    <label for="break_end_date">To:</label>
+                                    <input type="text" name="end_date" id="break_end_date" class="form-control form-control-sm flatpickr-input" 
+                                           value="{{ end_date }}" placeholder="Select Date" readonly>
                                 </div>
                             </form>
                         </div>
@@ -403,25 +454,44 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 $(document).ready(function() {
-    // Initialize Flatpickr for break filter dates
-    flatpickr("#break_start_date", {
+    const breakStartDate = flatpickr("#break_start_date", {
         dateFormat: "Y-m-d",
         defaultDate: "{{ start_date }}",
+        allowInput: true,
+        clickOpens: true,
+        onOpen: function(selectedDates, dateStr, instance) {
+            instance.set('maxDate', breakEndDate.selectedDates[0] || null);
+        },
         onChange: function(selectedDates, dateStr) {
+            breakEndDate.set('minDate', selectedDates[0] || null);
+            submitBreakFilters();
             if (dateStr) submitBreakFilters();
         }
     });
 
-    flatpickr("#break_end_date", {
+    const breakEndDate = flatpickr("#break_end_date", {
         dateFormat: "Y-m-d",
         defaultDate: "{{ end_date }}",
+        allowInput: true,
+        clickOpens: true,
+        onOpen: function(selectedDates, dateStr, instance) {
+            instance.set('minDate', breakStartDate.selectedDates[0] || null);
+        },
         onChange: function(selectedDates, dateStr) {
+            breakStartDate.set('maxDate', selectedDates[0] || null);
+            submitBreakFilters();
             if (dateStr) submitBreakFilters();
         }
     });
 
-    $('#department').on('change', function() {
-        submitBreakFilters();
+    $('.flatpickr-input').on('click', function(e) {
+        if (e.target === this) {
+            $(this).siblings('.flatpickr-calendar').length || $(this).next().trigger('click');
+        }
+    });
+
+    $('.flatpickr-calendar').on('click', function(e) {
+        $(this).prev('.flatpickr-input').trigger('click');
     });
 
     function submitBreakFilters() {
@@ -435,6 +505,7 @@ $(document).ready(function() {
         if (endDate) urlParams.set('end_date', endDate);
         urlParams.set('page', '1'); // Reset to first page on filter change
 
+        $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading data...</p></div>');
         $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
 
         $.ajax({
@@ -445,6 +516,20 @@ $(document).ready(function() {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(html) {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const container = doc.querySelector('#break-entries-container');
+                    if (container) {
+                        $('#break-entries-container').html(container.innerHTML);
+                        attachPaginationListeners();
+                    } else {
+                        $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
+                    }
+                } catch (e) {
+                    console.error('Error parsing response:', e);
+                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error processing data</div>');
+                }
                 try {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
@@ -461,6 +546,7 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 console.error('AJAX error:', xhr.status, xhr.statusText);
+                $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>');
                 $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
             }
         });
@@ -481,6 +567,11 @@ $(document).ready(function() {
             if (page) urlParams.set('page', page);
 
             $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            urlParams.set('page', page);
+            
+            $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading page...</p></div>');
 
             $.ajax({
                 url: window.location.pathname,
@@ -490,6 +581,15 @@ $(document).ready(function() {
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 success: function(html) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    $('#break-entries-container').html(doc.querySelector('#break-entries-container').innerHTML);
+                    attachPaginationListeners();
+                    
+                    // Scroll to top of table
+                    $('html, body').animate({
+                        scrollTop: $('#break-entries-container').offset().top - 20
+                    }, 200);
                     try {
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
@@ -506,6 +606,7 @@ $(document).ready(function() {
                 },
                 error: function(xhr) {
                     console.error('AJAX error:', xhr.status, xhr.statusText);
+                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading page</div>');
                     $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
                 }
             });
@@ -514,6 +615,19 @@ $(document).ready(function() {
 
     // Initial attachment of pagination listeners
     attachPaginationListeners();
+    
+    // Error handling for date range validation
+    $(document).ajaxError(function(event, jqxhr, settings, thrownError) {
+        if (settings.url.includes(window.location.pathname)) {
+            $('#break-entries-container').html(`
+                <div class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Error loading data. Please check your date range and try again.</p>
+                    <button onclick="location.reload()" class="btn btn-sm btn-primary">Reload Page</button>
+                </div>
+            `);
+        }
+    });
 });
 </script>
 {% endblock custom_js %}

@@ -40,6 +40,18 @@
                         </p>
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    {% url 'admin_view_profile' as admin_view_profile %}
+                    <a href="{{admin_view_profile}}" class="nav-link {% if admin_view_profile == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-edit"></i>
+                        <p>
+                            View/Edit Profile
+
+                        </p>
+                    </a>
+                </li>
+
                 <li class="nav-item">
                     {% url 'generate_performance_report' as generate_report %}
                     <a href="{{generate_report}}" class="nav-link {% if generate_report == request.path %} active {% endif %}">
