@@ -44,10 +44,10 @@
                                         <td data-title="Division">{{ employee.employee.division.name }}</td>
                                         <td data-title="Avatar">
                                            {% if employee.profile_pic %}
-  <img class="img img-fluid rounded-circle" height="40" width="40" src="{{ employee.profile_pic.url }}" alt="Avatar">
-{% else %}
-  <span class="text-muted">No Image</span>
-{% endif %}
+                                            <img class="img img-fluid rounded-circle" height="40" width="40" src="{{ employee.profile_pic.url }}" alt="Avatar">
+                                            {% else %}
+                                            <span class="text-muted">No Image</span>
+                                            {% endif %}
                                         </td>
                                         <td data-title="Action">
                                             <button data-toggle="modal" 

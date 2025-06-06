@@ -103,12 +103,12 @@
                                         <th class="d-none d-lg-table-cell">Department</th>
                                         <th style="width: 80px">Avatar</th>
                                         <th style="width: 100px">Assets</th>
-                                        <th style="width: 120px">Actions</th>
+                                        <th style="width: 150px">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="employee-body">
                                     {% for employee in employees %}
-                                    <tr data-href="{% url 'edit_employee' employee.employee.id %}">
+                                    <tr>
                                         <td>{{ forloop.counter }}</td>
                                         <td>
                                             <div>
@@ -143,13 +143,16 @@
                                         </td>
                                         <td class="text-nowrap">
                                             <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'view_employee' employee.employee.id %}" class="btn btn-info" title="View">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
                                                 <a href="{% url 'edit_employee' employee.employee.id %}" class="btn btn-primary" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                                 <a href="{% url 'delete_employee' employee.employee.id %}" 
-                                                   class="btn btn-danger" 
-                                                   title="Delete"
-                                                   onclick="return confirm('Are you sure you want to delete this employee?');">
+                                                class="btn btn-danger" 
+                                                title="Delete"
+                                                onclick="return confirm('Are you sure you want to delete this employee?');">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
                                             </div>
@@ -409,11 +412,6 @@ $(document).ready(function() {
             
             // Re-attach event listeners
             $('[title]').tooltip();
-            $('tr[data-href]').click(function(e) {
-                if (!$(e.target).is('a, button, input, i, .btn')) {
-                    window.location = $(this).attr('data-href');
-                }
-            });
             
             // Update browser URL
             window.history.pushState({}, '', url);
