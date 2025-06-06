@@ -54,9 +54,6 @@ class CustomUserForm(FormSettings):
         fields = ['first_name', 'last_name', 'email', 'gender',  'password','profile_pic', 'address' ]
 
 
-from datetime import date
-
-
 
 class EmployeeForm(CustomUserForm):
     emergency_name = forms.CharField(label="Emergency Contact Name", required=False)

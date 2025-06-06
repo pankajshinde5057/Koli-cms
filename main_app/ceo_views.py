@@ -14,7 +14,7 @@ from datetime import datetime,timedelta
 from decimal import Decimal
 from django.template.loader import get_template
 from django.contrib.auth.decorators import login_required
-from asset_app.models import AssetIssue,Assets,AssetsIssuance,AssetAssignmentHistory
+from asset_app.models import AssetIssue,AssetsIssuance,AssetAssignmentHistory
 from django.db.models import Count,Q
 from django.core.paginator import Paginator,EmptyPage,PageNotAnInteger
 from main_app.notification_badge import send_notification
@@ -24,8 +24,12 @@ from .models import AttendanceRecord, Holiday, Employee, Manager
 from xhtml2pdf import pisa
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.core.paginator import Paginator
+from datetime import date, datetime, timedelta
+from django.utils import timezone
 from dateutil.parser import parse
-
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -50,22 +54,14 @@ def admin_home(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
     
+    # Date parsing and validation
     try:
-        start_date = parse_date(start_date_str) if start_date_str else today
-        end_date = parse_date(end_date_str) if end_date_str else today
-        
-        if not isinstance(start_date, date):
-            start_date = today
-        if not isinstance(end_date, date):
-            end_date = today
-            
+        start_date = parse(start_date_str).date() if start_date_str else today
+        end_date = parse(end_date_str).date() if end_date_str else today
         if start_date > end_date:
             start_date, end_date = end_date, start_date
     except (ValueError, TypeError):
         start_date = end_date = today
-
-    if start_date > end_date:
-        start_date, end_date = end_date, start_date
 
     employees = CustomUser.objects.filter(user_type=3)  # Employees
     managers = CustomUser.objects.filter(user_type=2)   # Managers
@@ -82,25 +78,25 @@ def admin_home(request):
     manager_ids = managers.values_list('id', flat=True)
     all_user_ids = list(employee_ids) + list(manager_ids)
 
+    # Filter breaks within the date range and active/ongoing breaks
     employee_breaks_today = Break.objects.filter(
         attendance_record__user_id__in=employee_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date,
-    ).filter(
-        models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)
+        break_end__isnull=True  # Only ongoing breaks
     ).distinct()
     
     manager_breaks_today = Break.objects.filter(
         attendance_record__user_id__in=manager_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date,
-    ).filter(
-        models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)
+        break_end__isnull=True  # Only ongoing breaks
     ).distinct()
     
     total_employee_on_break = employee_breaks_today.count()
     total_manager_on_break = manager_breaks_today.count()
 
+    # Filter leave reports within the date range
     total_employee_leave = LeaveReportEmployee.objects.filter(
         employee__admin_id__in=employee_ids,
         start_date__lte=end_date,
@@ -119,9 +115,8 @@ def admin_home(request):
         break_start__date__gte=start_date,
         break_start__date__lte=end_date
     ).select_related('attendance_record__user').order_by('-break_start')
-    ).select_related('attendance_record__user')  
     
-    for b in break_queryset.order_by('-break_start'):
+    for b in break_queryset:
         user = b.attendance_record.user 
         user_type = 'Employee' if user.user_type == '3' else 'Manager' if user.user_type == '2' else 'Unknown'
         
@@ -139,7 +134,7 @@ def admin_home(request):
         duration = 0
         if b.break_end:
             duration = int((b.break_end - b.break_start).total_seconds() / 60)
-        elif b.break_start:
+        else:
             duration = int((current_time - b.break_start).total_seconds() / 60)
             
         break_entries.append({
@@ -335,13 +330,12 @@ def admin_view_profile(request):
     if request.method == 'POST':
         try:
             if form.is_valid():
-
                 first_name = form.cleaned_data.get('first_name')
                 last_name = form.cleaned_data.get('last_name')
                 password = form.cleaned_data.get('password') or None
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
-                profile_pic = form.profile_pic('profile_pic') or None
+                profile_pic = form.cleaned_data.get('profile_pic')  # Fix: Access from cleaned_data
                 
                 user = request.user
                 if password:

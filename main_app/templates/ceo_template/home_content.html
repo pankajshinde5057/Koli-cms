@@ -270,7 +270,7 @@
                             </div>
                         </div>
                         <div class="mt-4">
-                            <a href="#" class="text-white text-decoration-none small"> </a>
+                            <a href="#" class="text-white text-decoration-none small"> </a>
                         </div>
                     </div>
                 </div>
@@ -289,7 +289,7 @@
                             </div>
                         </div>
                         <div class="mt-4">
-                            <a href="#" class="text-white text-decoration-none small"> </a>
+                            <a href="#" class="text-white text-decoration-none small"> </a>
                         </div>
                     </div>
                 </div>
@@ -345,7 +345,7 @@
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-dark text-white">
                         <div class="d-flex justify-content-between align-items-center flex-wrap">
-                            <h5 class="card-title mb-2 mb-md-0">Manager & Employee Breaks</h5>
+                            <h5 class="card-title mb-2 mb-md-0"> Today's Manager & Employee Breaks</h5>
                             <form method="get" id="breakFilterForm" class="date-filter-group">
                                 <div class="form-group">
                                     <select id="department" name="department" class="form-control form-control-sm">
@@ -459,12 +459,8 @@ $(document).ready(function() {
         defaultDate: "{{ start_date }}",
         allowInput: true,
         clickOpens: true,
-        onOpen: function(selectedDates, dateStr, instance) {
-            instance.set('maxDate', breakEndDate.selectedDates[0] || null);
-        },
         onChange: function(selectedDates, dateStr) {
             breakEndDate.set('minDate', selectedDates[0] || null);
-            submitBreakFilters();
             if (dateStr) submitBreakFilters();
         }
     });
@@ -474,25 +470,13 @@ $(document).ready(function() {
         defaultDate: "{{ end_date }}",
         allowInput: true,
         clickOpens: true,
-        onOpen: function(selectedDates, dateStr, instance) {
-            instance.set('minDate', breakStartDate.selectedDates[0] || null);
-        },
         onChange: function(selectedDates, dateStr) {
             breakStartDate.set('maxDate', selectedDates[0] || null);
-            submitBreakFilters();
             if (dateStr) submitBreakFilters();
         }
     });
 
-    $('.flatpickr-input').on('click', function(e) {
-        if (e.target === this) {
-            $(this).siblings('.flatpickr-calendar').length || $(this).next().trigger('click');
-        }
-    });
-
-    $('.flatpickr-calendar').on('click', function(e) {
-        $(this).prev('.flatpickr-input').trigger('click');
-    });
+    $('#department').on('change', submitBreakFilters);
 
     function submitBreakFilters() {
         const urlParams = new URLSearchParams();
@@ -505,7 +489,6 @@ $(document).ready(function() {
         if (endDate) urlParams.set('end_date', endDate);
         urlParams.set('page', '1'); // Reset to first page on filter change
 
-        $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading data...</p></div>');
         $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
 
         $.ajax({
@@ -516,20 +499,6 @@ $(document).ready(function() {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(html) {
-                try {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const container = doc.querySelector('#break-entries-container');
-                    if (container) {
-                        $('#break-entries-container').html(container.innerHTML);
-                        attachPaginationListeners();
-                    } else {
-                        $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
-                    }
-                } catch (e) {
-                    console.error('Error parsing response:', e);
-                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error processing data</div>');
-                }
                 try {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
@@ -545,8 +514,6 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                console.error('AJAX error:', xhr.status, xhr.statusText);
-                $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>');
                 $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
             }
         });
@@ -567,11 +534,6 @@ $(document).ready(function() {
             if (page) urlParams.set('page', page);
 
             $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
-            const urlParams = new URLSearchParams(window.location.search);
-            
-            urlParams.set('page', page);
-            
-            $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading page...</p></div>');
 
             $.ajax({
                 url: window.location.pathname,
@@ -581,15 +543,6 @@ $(document).ready(function() {
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 success: function(html) {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    $('#break-entries-container').html(doc.querySelector('#break-entries-container').innerHTML);
-                    attachPaginationListeners();
-                    
-                    // Scroll to top of table
-                    $('html, body').animate({
-                        scrollTop: $('#break-entries-container').offset().top - 20
-                    }, 200);
                     try {
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
@@ -597,6 +550,9 @@ $(document).ready(function() {
                         if (newContent) {
                             $('#break-entries-container').html(newContent.innerHTML);
                             attachPaginationListeners();
+                            $('html, body').animate({
+                                scrollTop: $('#break-entries-container').offset().top - 20
+                            }, 200);
                         } else {
                             $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
                         }
@@ -605,8 +561,6 @@ $(document).ready(function() {
                     }
                 },
                 error: function(xhr) {
-                    console.error('AJAX error:', xhr.status, xhr.statusText);
-                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading page</div>');
                     $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
                 }
             });
