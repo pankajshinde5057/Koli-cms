@@ -44,23 +44,27 @@ def admin_home(request):
     today = date.today()
     current_time = timezone.now()
 
-    # Get filter parameters
     selected_department = request.GET.get('department', 'all').strip().lower()
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
     
-    # Parse dates with fallback to today
     try:
-        start_date = parse_date(start_date).date() if start_date else today
-        end_date = parse_date(end_date).date() if end_date else today
-    except ValueError:
+        start_date = parse_date(start_date_str) if start_date_str else today
+        end_date = parse_date(end_date_str) if end_date_str else today
+        
+        if not isinstance(start_date, date):
+            start_date = today
+        if not isinstance(end_date, date):
+            end_date = today
+            
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+    except (ValueError, TypeError):
         start_date = end_date = today
 
-    # Ensure end_date is not before start_date
     if start_date > end_date:
         start_date, end_date = end_date, start_date
 
-    # Filter employees and managers
     employees = CustomUser.objects.filter(user_type=3)  # Employees
     managers = CustomUser.objects.filter(user_type=2)   # Managers
     
@@ -68,12 +72,10 @@ def admin_home(request):
         employees = employees.filter(employee__department__name__iexact=selected_department)
         managers = managers.filter(manager__department__name__iexact=selected_department)
 
-    # IDs for querying
     employee_ids = employees.values_list('id', flat=True)
     manager_ids = managers.values_list('id', flat=True)
     all_user_ids = list(employee_ids) + list(manager_ids)
 
-    # Break data for today (for cards)
     employee_breaks_today = Break.objects.filter(
         attendance_record__user_id__in=employee_ids,
         break_start__date__gte=start_date,
@@ -91,7 +93,6 @@ def admin_home(request):
     total_employee_on_break = employee_breaks_today.count()
     total_manager_on_break = manager_breaks_today.count()
 
-    # Leave data
     total_employee_leave = LeaveReportEmployee.objects.filter(
         employee__admin_id__in=employee_ids,
         start_date__lte=end_date,
@@ -104,19 +105,17 @@ def admin_home(request):
         end_date__gte=start_date
     ).count()
 
-    # Combined break entries
     break_entries = []
     break_queryset = Break.objects.filter(
         attendance_record__user_id__in=all_user_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date
-    ).select_related('attendance_record__user')  # Optimize query with select_related
+    ).select_related('attendance_record__user')  
     
     for b in break_queryset.order_by('-break_start'):
-        user = b.attendance_record.user  # Access user directly from attendance_record
+        user = b.attendance_record.user 
         user_type = 'Employee' if user.user_type == '3' else 'Manager' if user.user_type == '2' else 'Unknown'
         
-        # Get department with proper error handling
         department = 'N/A'
         try:
             if user_type == 'Employee':
@@ -128,7 +127,6 @@ def admin_home(request):
         except (Employee.DoesNotExist, Manager.DoesNotExist):
             department = 'N/A'
             
-        # Calculate duration
         duration = 0
         if b.break_end:
             duration = int((b.break_end - b.break_start).total_seconds() / 60)
@@ -145,12 +143,10 @@ def admin_home(request):
             'break_duration': duration,
         })
 
-    # Paginate break entries
     paginator = Paginator(break_entries, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Context
     context = {
         'page_title': "Administrative Dashboard",
         'total_employees': total_employees,

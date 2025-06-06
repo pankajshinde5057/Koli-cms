@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <style>
+  /* Base Styles */
   .bg-gradient-primary {
       background: linear-gradient(135deg, #667eea 0%, rgb(64, 11, 117) 100%) !important;
   }
@@ -51,6 +52,7 @@
       overflow: hidden;
       border: none;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
   }
   
   .card:hover {
@@ -62,6 +64,7 @@
       font-weight: 500;
       padding: 5px 10px;
       border-radius: 20px;
+      font-size: 0.85rem;
   }
   
   .btn {
@@ -93,6 +96,7 @@
       position: relative;
       overflow: hidden;
       transition: all 0.3s;
+      height: 100%;
   }
   
   .small-box:hover {
@@ -117,12 +121,14 @@
   .table {
       border-collapse: separate;
       border-spacing: 0;
+      width: 100%;
   }
   
   .table thead th {
       border-top: none;
       background-color: #f8f9fa;
       font-weight: 600;
+      white-space: nowrap;
   }
   
   .table-striped tbody tr:nth-of-type(odd) {
@@ -155,8 +161,10 @@
 
   .date-filter-group {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
+      margin-bottom: 10px;
   }
   .date-filter-group .form-group {
       margin-bottom: 0;
@@ -168,10 +176,12 @@
       color: white;
       font-weight: 500;
       margin-bottom: 0;
+      font-size: 0.9rem;
   }
   .date-filter-group input {
-      width: 150px;
+      width: 120px;
       border-radius: 5px;
+      font-size: 0.9rem;
   }
 
   .pagination-container {
@@ -179,11 +189,12 @@
       justify-content: center;
       align-items: center;
       width: 100%;
+      overflow-x: auto;
   }
 
   .clocked-status {
       font-size: 0.8rem;
-      margin-left: 10px;
+      margin-left: 5px;
   }
   .clocked-in {
       color: white;
@@ -196,26 +207,136 @@
       margin-left: 5px;
   }
 
- .btn-loading {
-        position: relative;
-        pointer-events: none;
-    }
- .btn-loading::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 16px;
-        height: 16px;
-        margin: -8px 0 0 -8px;
-        border: 2px solid rgba(255,255,255,0.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+  .btn-loading {
+      position: relative;
+      pointer-events: none;
+  }
+  .btn-loading::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 16px;
+      height: 16px;
+      margin: -8px 0 0 -8px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+      to { transform: rotate(360deg); }
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 1200px) {
+      .small-box .icon {
+          font-size: 60px;
+      }
+      .small-box .inner h3 {
+          font-size: 1.8rem;
+      }
+  }
+
+  @media (max-width: 992px) {
+      .small-box .icon {
+          font-size: 50px;
+      }
+      .small-box .inner h3 {
+          font-size: 1.6rem;
+      }
+      .date-filter-group {
+          flex-direction: column;
+          align-items: flex-start;
+      }
+      .date-filter-group .form-group {
+          width: 100%;
+      }
+      .date-filter-group input {
+          width: 100%;
+      }
+  }
+
+  @media (max-width: 768px) {
+      .small-box .icon {
+          font-size: 40px;
+      }
+      .small-box .inner h3 {
+          font-size: 1.4rem;
+      }
+      .small-box .inner p {
+          font-size: 0.9rem;
+      }
+      .alert-info h5 {
+          font-size: 1.1rem;
+      }
+      .alert-info p {
+          font-size: 0.9rem;
+      }
+      .table th, .table td {
+          padding: 0.5rem;
+          font-size: 0.85rem;
+      }
+      .badge {
+          font-size: 0.8rem;
+          padding: 4px 8px;
+      }
+  }
+
+  @media (max-width: 576px) {
+      .col-6 {
+          width: 100%;
+      }
+      .small-box {
+          margin-bottom: 15px;
+      }
+      .small-box .icon {
+          font-size: 35px;
+      }
+      .small-box .inner h3 {
+          font-size: 1.3rem;
+      }
+      .alert-info p {
+          display: flex;
+          flex-direction: column;
+      }
+      .alert-info p strong {
+          margin-bottom: 5px;
+      }
+      .alert-info p .badge {
+          margin-left: 0 !important;
+          margin-top: 5px;
+      }
+      .table-responsive {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+      }
+      .table th, .table td {
+          white-space: nowrap;
+      }
+      .card-header .d-flex {
+          flex-direction: column;
+          align-items: flex-start;
+      }
+      .card-header .btn-group {
+          margin-top: 10px;
+      }
+  }
+
+  @media (max-width: 400px) {
+      .small-box .inner h3 {
+          font-size: 1.2rem;
+      }
+      .small-box .inner p {
+          font-size: 0.8rem;
+      }
+      .alert-info h5 {
+          font-size: 1rem;
+      }
+      .badge {
+          font-size: 0.75rem;
+      }
+  }
 </style>
 {% endblock custom_css %}
 
@@ -253,7 +374,7 @@
                 <span class="badge bg-secondary">Half Day</span>
             {% endif %}
             
-            <strong class="ml-3">Total Hours:</strong> 
+            <strong>Total Hours:</strong> 
             <span class="badge bg-info ml-2">
                 {{ today_duration_str|default:"0 hours 0 minutes" }}
             </span>
@@ -274,18 +395,18 @@
                 <span class="badge bg-dark-gray ml-2">Lunch Not Taken</span>
             {% endif %}
             
-            <strong class="ml-3">Lunch Taken Time:</strong>
+            <strong>Lunch Taken Time:</strong>
             <span class="badge bg-warning ml-2">
                 {% if lunch_taken_time %}
-                    {{ lunch_taken_time|time:"h:i:s A" }}
+                    {{ lunch_taken_time|time:"h:i A" }}
                 {% else %}
                     Not Taken
                 {% endif %}
             </span>
-            <strong class="ml-3">Break Taken Time:</strong>
+            <strong>Break Taken Time:</strong>
             <span class="badge bg-primary ml-2">
                 {% if break_taken_time %}
-                    {{ break_taken_time|time:"h:i:s A" }}
+                    {{ break_taken_time|time:"h:i A" }}
                 {% else %}
                     Not Taken
                 {% endif %}
@@ -296,7 +417,7 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Present Days -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-gradient-success">
                     <div class="inner">
                         <h3>{{ attendance_stats.present_days }}</h3>
@@ -309,7 +430,7 @@
             </div>
 
             <!-- Late Days -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-gradient-warning">
                     <div class="inner">
                         <h3>{{ attendance_stats.late_days }}</h3>
@@ -322,7 +443,7 @@
             </div>
 
             <!-- Half Days -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-gradient-secondary">
                     <div class="inner">
                         <h3>{{ attendance_stats.half_days }}</h3>
@@ -335,7 +456,7 @@
             </div>
             
             <!-- Absent Days -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-gradient-danger">
                     <div class="inner">
                         <h3>{{ attendance_stats.absent_days }}</h3>
@@ -348,7 +469,7 @@
             </div>
             
             <!-- Attendance Percentage -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-gradient-primary">
                     <div class="inner">
                         <h3>{{ attendance_stats.attendance_percentage }}<sup style="font-size: 20px">%</sup></h3>
@@ -361,7 +482,7 @@
             </div>
 
             <!-- Today's Total Breaks -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-pattern-3">
                     <div class="inner">
                         <h3>{{ attendance_stats.todays_total_breaks }}</h3>
@@ -374,7 +495,7 @@
             </div>
 
             <!-- Monthly Total Breaks -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-pattern-4">
                     <div class="inner">
                         <h3>{{ attendance_stats.total_breaks_in_month }}</h3>
@@ -387,7 +508,7 @@
             </div>
 
             <!-- Total Days -->
-            <div class="col-lg-3 col-6 mb-4">
+            <div class="col-lg-3 col-md-6 col-12 mb-4">
                 <div class="small-box bg-gradient-info">
                     <div class="inner">
                         <h3>{{ attendance_stats.total_days }}</h3>
@@ -400,200 +521,162 @@
             </div>
         </div>
 
-        <div class="col">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">Time History</h5>
-                        <div class="d-flex align-items-center gap-3">
-                            <form method="get" id="dateRangeForm" class="date-filter-group">
-                                <div class="form-group">
-                                    <input type="text" name="start_date" id="start_date" class="form-control form-control-sm" 
-                                           value="{{ current_filters.start_date|default_if_none:'' }}" placeholder="YYYY-MM-DD">
-                                </div>
-                                <div class="form-group">
-                                    <input type="text" name="end_date" id="end_date" class="form-control form-control-sm" 
-                                           value="{{ current_filters.end_date|default_if_none:'' }}" placeholder="YYYY-MM-DD">
-                                </div>
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-dark text-white">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                            <h5 class="card-title mb-2 mb-md-0">Time History</h5>
+                            <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+                                <form method="get" id="dateRangeForm" class="date-filter-group">
+                                    <div class="form-group">
+                                        <input type="text" name="start_date" id="start_date" class="form-control form-control-sm" 
+                                               value="{{ current_filters.start_date|default_if_none:'' }}" placeholder="YYYY-MM-DD">
+                                    </div>
+                                    <div class="form-group">
+                                        <input type="text" name="end_date" id="end_date" class="form-control form-control-sm" 
+                                               value="{{ current_filters.end_date|default_if_none:'' }}" placeholder="YYYY-MM-DD">
+                                    </div>
+                                    {% if request.user.is_staff %}
+                                        <input type="hidden" name="user" value="{{ request.GET.user }}">
+                                        <input type="hidden" name="department" value="{{ request.GET.department }}">
+                                    {% endif %}
+                                </form>
+
                                 {% if request.user.is_staff %}
-                                    <input type="hidden" name="user" value="{{ request.GET.user }}">
-                                    <input type="hidden" name="department" value="{{ request.GET.department }}">
+                                <div class="d-flex gap-2">
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            {% if request.GET.user %}User: {{ request.GET.user }}{% else %}All Users{% endif %}
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}">All Users</a></li>
+                                            {% for user in users %}
+                                            <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}user={{ user.id }}">{{ user.get_full_name }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            {% if request.GET.department %}Dept: {{ request.GET.department }}{% else %}All Departments{% endif %}
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}">All Departments</a></li>
+                                            {% for dept in departments %}
+                                            <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}department={{ dept.id }}">{{ dept.name }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                                 {% endif %}
-                            </form>
-
-                            {% if request.user.is_staff %}
-                            <div class="btn-group">
-                                <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    {% if request.GET.user %}User: {{ request.GET.user }}{% else %}All Users{% endif %}
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}">All Users</a></li>
-                                    {% for user in users %}
-                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}user={{ user.id }}">{{ user.get_full_name }}</a></li>
-                                    {% endfor %}
-                                </ul>
                             </div>
-
-                            <div class="btn-group ms-2">
-                                <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    {% if request.GET.department %}Dept: {{ request.GET.department }}{% else %}All Departments{% endif %}
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}">All Departments</a></li>
-                                    {% for dept in departments %}
-                                    <li><a class="dropdown-item" href="?{% if current_filters.start_date %}start_date={{ current_filters.start_date }}&end_date={{ current_filters.end_date }}&{% endif %}department={{ dept.id }}">{{ dept.name }}</a></li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="tab-content" id="timesheetTabsContent">
-                        <div class="tab-pane fade show active" id="daily" role="tabpanel">
-                            <div class="table-responsive" id="timeHistoryTable">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Type</th>
-                                            <th>Start Time</th>
-                                            <th>End Time</th>
-                                            <th>Duration</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for entry in detailed_time_entries %}
-                                        <tr>
-                                            <td>{{ entry.date|date:"M d, Y" }}</td>
-                                            <td>
-                                                {% if entry.type == 'clock_in' %}
-                                                    <span class="badge bg-primary">Clock In</span>
-                                                {% elif entry.type == 'clock_out' %}
-                                                    <span class="badge bg-secondary">Clock Out</span>
-                                                {% else %}
-                                                    <span class="badge bg-warning">Break</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>{{ entry.start_time|time:"h:i:s A" }}</td>
-                                            <td>
-                                                {% if entry.end_time %}
-                                                    {{ entry.end_time|time:"h:i:s A" }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if entry.duration %}
-                                                    {{ entry.duration|duration_to_hours_minutes }}
-                                                {% else %}
-                                                    -
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                <span class="badge 
-                                                    {% if entry.status == 'Clocked In' %}bg-success
-                                                    {% elif entry.status == 'Clocked Out' %}bg-secondary
-                                                    {% elif entry.status == 'Break Start' %}bg-warning
-                                                    {% elif entry.status == 'Break End' %}bg-warning
-                                                    {% else %}bg-info
-                                                    {% endif %}">
-                                                    {{ entry.status }}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        {% empty %}
-                                        <tr>
-                                            <td colspan="6" class="text-center">No records found for the selected date range.</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                <div class="pagination-container mt-3">
-                                    <nav>
-                                        <ul class="pagination mb-0" id="paginationContainer">
-                                            {% if detailed_time_entries.has_previous %}
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" data-page="{{ detailed_time_entries.previous_page_number }}" aria-label="Previous">
-                                                        <span aria-hidden="true">«</span>
-                                                    </a>
-                                                </li>
-                                            {% else %}
-                                                <li class="page-item disabled">
-                                                    <span class="page-link">«</span>
-                                                </li>
-                                            {% endif %}
-
-                                            {% for num in detailed_time_entries.paginator.page_range %}
-                                                {% if detailed_time_entries.number == num %}
-                                                    <li class="page-item active">
-                                                        <span class="page-link">{{ num }}</span>
-                                                    </li>
-                                                {% elif num > detailed_time_entries.number|add:'-3' and num < detailed_time_entries.number|add:'3' %}
-                                                    <li class="page-item">
-                                                        <a class="page-link" href="?page={{ num }}" data-page="{{ num }}">{{ num }}</a>
-                                                    </li>
-                                                {% endif %}
+                    <div class="card-body">
+                        <div class="tab-content" id="timesheetTabsContent">
+                            <div class="tab-pane fade show active" id="daily" role="tabpanel">
+                                <div class="table-responsive" id="timeHistoryTable">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Type</th>
+                                                <th>Start Time</th>
+                                                <th>End Time</th>
+                                                <th>Duration</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for entry in detailed_time_entries %}
+                                            <tr>
+                                                <td>{{ entry.date|date:"M d, Y" }}</td>
+                                                <td>
+                                                    {% if entry.type == 'clock_in' %}
+                                                        <span class="badge bg-primary">Clock In</span>
+                                                    {% elif entry.type == 'clock_out' %}
+                                                        <span class="badge bg-secondary">Clock Out</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning">Break</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ entry.start_time|time:"h:i A" }}</td>
+                                                <td>
+                                                    {% if entry.end_time %}
+                                                        {{ entry.end_time|time:"h:i A" }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if entry.duration %}
+                                                        {{ entry.duration|duration_to_hours_minutes }}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <span class="badge 
+                                                        {% if entry.status == 'Clocked In' %}bg-success
+                                                        {% elif entry.status == 'Clocked Out' %}bg-secondary
+                                                        {% elif entry.status == 'Break Start' %}bg-warning
+                                                        {% elif entry.status == 'Break End' %}bg-warning
+                                                        {% else %}bg-info
+                                                        {% endif %}">
+                                                        {{ entry.status }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="6" class="text-center">No records found for the selected date range.</td>
+                                            </tr>
                                             {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    <div class="pagination-container mt-3">
+                                        <nav>
+                                            <ul class="pagination mb-0" id="paginationContainer">
+                                                {% if detailed_time_entries.has_previous %}
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page={{ detailed_time_entries.previous_page_number }}" data-page="{{ detailed_time_entries.previous_page_number }}" aria-label="Previous">
+                                                            <span aria-hidden="true">«</span>
+                                                        </a>
+                                                    </li>
+                                                {% else %}
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link">«</span>
+                                                    </li>
+                                                {% endif %}
 
-                                            {% if detailed_time_entries.has_next %}
-                                                <li class="page-item">
-                                                    <a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" data-page="{{ detailed_time_entries.next_page_number }}" aria-label="Next">
-                                                        <span aria-hidden="true">»</span>
-                                                    </a>
-                                                </li>
-                                            {% else %}
-                                                <li class="page-item disabled">
-                                                    <span class="page-link">»</span>
-                                                </li>
-                                            {% endif %}
-                                        </ul>
-                                    </nav>
+                                                {% for num in detailed_time_entries.paginator.page_range %}
+                                                    {% if detailed_time_entries.number == num %}
+                                                        <li class="page-item active">
+                                                            <span class="page-link">{{ num }}</span>
+                                                        </li>
+                                                    {% elif num > detailed_time_entries.number|add:'-3' and num < detailed_time_entries.number|add:'3' %}
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?page={{ num }}" data-page="{{ num }}">{{ num }}</a>
+                                                        </li>
+                                                    {% endif %}
+                                                {% endfor %}
+
+                                                {% if detailed_time_entries.has_next %}
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" data-page="{{ detailed_time_entries.next_page_number }}" aria-label="Next">
+                                                            <span aria-hidden="true">»</span>
+                                                        </a>
+                                                    </li>
+                                                {% else %}
+                                                    <li class="page-item disabled">
+                                                        <span class="page-link">»</span>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
+                                        </nav>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="weekly" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Week</th>
-                                            <th>Total Hours</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for week in weekly_view %}
-                                        <tr>
-                                            <td>Week of {{ week.week|date:"M d, Y" }}</td>
-                                            <td>{{ week.total_hours|duration_to_hours_minutes }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="tab-pane fade" id="monthly" role="tabpanel">
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Month</th>
-                                            <th>Total Hours</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for month in monthly_view %}
-                                        <tr>
-                                            <td>{{ month.month|date:"F Y" }}</td>
-                                            <td>{{ month.total_hours|duration_to_hours_minutes }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
                     </div>
