@@ -48,14 +48,64 @@
                     <a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a>
                 </li>
             </ul>
-        
+    
+            <!-- Notification Dropdown -->
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link" data-toggle="dropdown" href="#">
+                        <i class="far fa-bell"></i>
+                        {% if total_unread_notifications > 0 %}
+                        <span class="badge badge-danger navbar-badge">{{ total_unread_notifications }}</span>
+                        {% endif %}
+                    </a>
+                    {% if request.user.user_type  == '2' %}
+                        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'manager_view_notification' %}?type=asset" class="dropdown-item">
+                                <i class="fas fa-laptop mr-2"></i> {{ manager_general_count }} General
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'manager_view_notification' %}?type=leave" class="dropdown-item">
+                                <i class="fas fa-envelope mr-2"></i> {{ employee_leave_request_to_manager_count }} Leave Requests
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'manager_view_notification' %}?type=clockout" class="dropdown-item">
+                                <i class="fas fa-clock mr-2"></i> {{ employee_clockout_request_to_manager_count }} Clockout Requests
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'manager_view_notification' %}?type=asset" class="dropdown-item">
+                                <i class="fas fa-laptop mr-2"></i> {{ total_asset_unread_notifications }} Asset
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'employee_view_notification' %}?type=asset" class="dropdown-item">
+                                <i class="fas fa-laptop mr-2"></i> {{ employee_notification_from_manager_count }} General
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'employee_requests' %}?type=leave" class="dropdown-item">
+                                <i class="fas fa-envelope mr-2"></i> {{ employee_leave_approved_or_rejected_notification_count }} Leave Requests
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'early_clock_out_request_page' %}?type=clockout" class="dropdown-item">
+                                <i class="fas fa-clock mr-2"></i> {{ employee_clockout_request_to_manager_count }} Clockout Requests
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'manager_view_notification' %}?type=asset" class="dropdown-item">
+                                <i class="fas fa-laptop mr-2"></i> {{ total_asset_unread_notifications }} Asset
+                            </a>
+                        </div>
+                    {% endif %}
+                </li>
+            </ul>
+    
             <!-- Right-aligned Clock Action buttons -->
             {% if user.user_type != '1' %}
                 {% url 'employee_home' as  employee_home %}
                 {% url 'manager_home' as  manager_home %}
                 {% if request.path == employee_home or request.path == manager_home %}
-                    <ul class="navbar-nav ml-auto">
-                    
+                    <ul class="navbar-nav">
                         {% include "main_app/timesheet_clock.html" %}
                     </ul>
                 {% endif %}

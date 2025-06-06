@@ -100,7 +100,7 @@
                                 </thead>
                                 <tbody id="employee-body">
                                     {% for employee in employees %}
-                                    <tr data-href="{% url 'edit_employee_by_manager' employee.id %}">
+                                    <tr>
                                         <td>{{ forloop.counter }}</td>
                                         <td>
                                             <div>

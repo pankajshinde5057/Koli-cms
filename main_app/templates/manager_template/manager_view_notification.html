@@ -112,9 +112,10 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th style="width: 20%">Date</th>
-                                <th style="width: 20%">Time</th>
+                                <th style="width: 10%">Date</th>
+                                <th style="width: 10%">Time</th>
                                 <th style="width: 60%">Message</th>
+                                <th style="width: 20%">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -130,10 +131,22 @@
                                             {% endif %}
                                         </div>
                                     </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <form method="post">
+                                                <button type="button" class="btn btn-info" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }} , 'general-notification' )">
+                                                    <i class="fas fa-eye"></i> View Details
+                                                </button>
+                                            </form>
+                                            {% if notification.id in notification_from_admin_ids %}
+                                                <i class="fas fa-circle unread-dot" title="Unread"></i>
+                                            {% endif %}
+                                        </div>
+                                    </td>
                                 </tr>
                                 
                                 <!-- Notification Modal -->
-                                <div class="modal fade" id="notificationModal-{{ notification.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                <div class="modal fade leave-modal" id="notificationModal-{{ notification.id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content shadow-lg">
                                             <div class="modal-header bg-gradient-primary text-white">
@@ -287,23 +300,11 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <form method="post" action="{% url 'approve_leave_request' leave.id %}" class="d-inline">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-success" title="Approve" onclick="markNotificationRead({{ leave.id }})">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                            </form>
-                                            <form method="post" action="{% url 'reject_leave_request' leave.id %}" class="d-inline" onclick="markNotificationRead({{ leave.id }})">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-danger" title="Reject">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </form>
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
                                                     data-target="#messageModal-{{ leave.id }}" title="View Details">
-                                                <i class="fas fa-eye"></i>
+                                                <i class="fas fa-eye"></i> View Details
                                             </button>
-                                            {% if leave.id in manager_unread_ids %}
+                                            {% if leave.id in leave_unread_ids %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>
@@ -311,7 +312,7 @@
                                 </tr>
                                 
                                 <!-- Message Modal -->
-                                <div class="modal fade" id="messageModal-{{ leave.id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                                <div class="modal fade leave-modal" id="messageModal-{{ leave.id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content shadow-lg">
                                             <div class="modal-header bg-gradient-primary text-white">
@@ -341,13 +342,13 @@
                                             <div class="modal-footer bg-light">
                                                 <form method="post" action="{% url 'approve_leave_request' leave.id %}" class="d-inline">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-success">
+                                                    <button type="submit" class="btn btn-success" title="Approve">
                                                         <i class="fas fa-check-circle mr-1"></i> Approve
                                                     </button>
                                                 </form>
                                                 <form method="post" action="{% url 'reject_leave_request' leave.id %}" class="d-inline">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-danger">
+                                                    <button type="submit" class="btn btn-danger" title="Reject">
                                                         <i class="fas fa-times-circle mr-1"></i> Reject
                                                     </button>
                                                 </form>
@@ -434,7 +435,7 @@
                                                     data-target="#earlyClockOutModal-{{ request.id }}" title="View Details">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
-                                            {% if request.id in manager_unread_ids %}
+                                            {% if request.id in pending_early_clockout_ids %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>
@@ -899,6 +900,19 @@
 
 {% block custom_js %}
 <script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const modals = document.querySelectorAll('.modal.fade-notifications');
+        modals.forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', function() {
+                // Remove mark_read parameter to prevent re-marking
+                const url = new URL(window.location.href);
+                url.searchParams.delete('mark_read');
+                window.location.href = url.toString();
+            });
+        });
+    });
+
     function getCSRFToken() {
         const name = 'csrftoken';
         const cookieValue = document.cookie
@@ -908,31 +922,57 @@
         return cookieValue;
     }
 
-    function markNotificationRead(notifId) {
-        fetch(`/notification/read/${notifId}/leave/manager/`, {
+    function markNotificationRead(notificationId, notificationType) {
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+
+        fetch('{% url "mark_notification_read" %}', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
+            body: new URLSearchParams({
+                'notification_id': notificationId,
+                'notification_type': notificationType
+            })
         })
-        .then(response => {
-            if (response.ok) {
-                console.log(`Notification ${notifId} marked as read.`);
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Remove unread dot
+                const unreadDot = document.querySelector(`tr[data-notification-id="${notificationId}"] .unread-dot`);
+                if (unreadDot) {
+                    unreadDot.style.display = 'none';
+                }
             } else {
-                console.error(`Failed to mark notification ${notifId} as read.`);
+                console.error('Failed to mark notification as read:', data.message);
             }
         })
         .catch(error => {
-            console.error("Error:", error);
+            console.error('Error:', error);
         });
     }
 
     // Reload page when any modal with class `leave-modal` is closed
     document.addEventListener('DOMContentLoaded', function () {
-        $('.leave-modal').on('hidden.bs.modal', function () {
+       $('.leave-modal').on('hidden.bs.modal', function () {
             location.reload();
-        });
+         });
     });
 </script>
 {% endblock custom_js %}
