@@ -698,6 +698,7 @@ def leave_balance(request):
         'total_available_leaves': round(total_available_leaves, 1),
     }
     return render(request, 'employee_template/leave_balance.html', context)
+    
 
 @login_required
 def employee_apply_leave(request):
@@ -749,16 +750,14 @@ def employee_apply_leave(request):
         # Check leave balance for each day
         leave_amount = 0.5 if leave_type == 'Half-Day' else 1.0
         current_date = start_date
+
         while current_date <= end_date:
             balance = LeaveBalance.get_balance(employee, current_date.year, current_date.month)
             if not balance:
                 balance = LeaveBalance.create_balance(employee, current_date.year, current_date.month)
-            # if balance.total_available_leaves() < leave_amount:
-            #     messages.error(request, f"Insufficient leave balance for {current_date.strftime('%B %Y')}.")
                 return redirect('employee_apply_leave')
             current_date += timedelta(days=1)
 
-        # Save leave request and send notification
         try:
             leave_request = LeaveReportEmployee.objects.create(
                 employee=employee,
