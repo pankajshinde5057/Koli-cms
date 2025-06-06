@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
@@ -11,7 +10,7 @@ from asset_app.models import Notify_Manager,LOCATION_CHOICES
 from main_app.notification_badge import mark_notification_read, send_notification
 from .forms import *
 from .models import *
-from django.db.models import Sum, F,Q, DurationField, ExpressionWrapper
+from django.db.models import Sum, F, DurationField, ExpressionWrapper
 from django.db.models.functions import Coalesce
 from datetime import timedelta
 from asset_app.models import Notify_Manager,AssetIssue
@@ -24,23 +23,57 @@ from django.contrib.auth.decorators import login_required
 import openpyxl
 from openpyxl.styles import Font, Alignment
 from io import BytesIO
+from .context_processors import leave_balance_context
+from zoneinfo import ZoneInfo
 
+from django.db import transaction
+from django.http import JsonResponse
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db.models.functions import Coalesce
+from django.contrib import messages
+from datetime import datetime, timedelta, time, date
+from calendar import monthrange
 import logging
+
 
 logger = logging.getLogger(__name__)
 
-def get_ist_date():
-    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
-
-@login_required   
+@login_required
+@transaction.atomic
 def employee_home(request):
-    today = timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
+    today = timezone.now().astimezone(ZoneInfo('Asia/Kolkata')).date()
     current_time = timezone.now()
     employee = get_object_or_404(Employee, admin=request.user)
+    
+    logger.info(f"Employee {request.user.username} accessing dashboard on {today}")
+
+    # Check for the first clock-in across all time
+    first_clock_in = AttendanceRecord.objects.filter(
+        user=request.user,
+        status__in=['present', 'late', 'half_day']
+    ).order_by('date').first()
+    first_clock_in_date = first_clock_in.date if first_clock_in else None
+    logger.debug(f"First clock-in date: {first_clock_in_date}")
+
+    # Initialize leave balance variables
+    balance = None
+    total_available_leaves = 0.0
+
+    if first_clock_in_date:
+        # If there's a clock-in, initialize LeaveBalance records if not already done
+        LeaveBalance.initialize_balances(employee, today)
+        balance = LeaveBalance.get_balance(employee, today.year, today.month)
+        if balance:
+            logger.debug(f"Original Leave balance for {today.year}-{today.month}: Allocated={balance.allocated_leaves}, Carried Forward={balance.carried_forward}, Used={balance.used_leaves}, Available={balance.total_available_leaves()}")
+        else:
+            logger.warning(f"No LeaveBalance found for {today.year}-{today.month} after initialization")
+
+    # Get filters from request
     date_filter = request.GET.get('date', "today")
     department_filter = request.GET.get('department')
     status_filter = request.GET.get('status')
 
+    # Set date ranges for current month
     current_month = today.month
     current_year = today.year
     start_date = today.replace(day=1)
@@ -48,9 +81,13 @@ def employee_home(request):
         next_month = today.replace(year=today.year + 1, month=1, day=1)
     else:
         next_month = today.replace(month=today.month + 1, day=1)
-
     end_date = next_month - timedelta(days=1)
+    logger.debug(f"Date range for calculation: {start_date} to {end_date}")
+
+    # Get attendance records with filters
     records = AttendanceRecord.objects.filter(user=request.user).select_related('department')
+    
+    # Apply date range filter if provided
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
     if start_date_str and end_date_str:
@@ -68,59 +105,51 @@ def employee_home(request):
     else:
         records = records.filter(date__month=current_month, date__year=current_year)
 
-    if department_filter:
-        records = records.filter(department_id=department_filter)
-    if status_filter:
-        records = records.filter(status=status_filter)
-
-    # Log all records for debugging
-    for record in records:
-        ist_clock_in = record.clock_in.astimezone(pytz.timezone('Asia/Kolkata')) if record.clock_in else None
-        logger.debug(f"Record for {record.date}: status={record.status}, clock_in={ist_clock_in}")
-
+    # Prepare detailed time entries for display
     detailed_time_entries = []
     for record in records.order_by('date', 'clock_in'):
         detailed_time_entries.append({
             'type': 'clock_in',
             'date': record.date,
-            'start_time': record.clock_in,  
+            'start_time': record.clock_in,
             'end_time': record.clock_out if record.clock_out else None,
             'time': record.clock_in,
             'record': record,
             'status': 'Clocked In' if not record.clock_out else 'Clocked Out',
             'duration': record.clock_out - record.clock_in if record.clock_out else None
         })
-        
         breaks = record.breaks.all().order_by('break_start')
         for brk in breaks:
             detailed_time_entries.append({
                 'type': 'break',
                 'date': record.date,
-                'start_time': brk.break_start,  
-                'end_time': brk.break_end,     
-                'time': brk.break_start,        
+                'start_time': brk.break_start,
+                'end_time': brk.break_end,
+                'time': brk.break_start,
                 'duration': brk.duration,
                 'record': record,
                 'status': 'Break End' if brk.break_end else 'Break Start'
             })
-        
         if record.clock_out:
             detailed_time_entries.append({
                 'type': 'clock_out',
                 'date': record.date,
-                'start_time': record.clock_in,   
-                'end_time': record.clock_out,     
-                'time': record.clock_out,         
+                'start_time': record.clock_in,
+                'end_time': record.clock_out,
+                'time': record.clock_out,
                 'record': record,
                 'status': 'Clocked Out',
                 'duration': record.clock_out - record.clock_in
             })
-    
-    detailed_time_entries.sort(key=lambda x: (x['date'], x['time']), reverse=True)
 
+    # Sort entries by date and time
+    ist = ZoneInfo('Asia/Kolkata')
+    min_datetime = datetime(1, 1, 1, tzinfo=ist)
+    detailed_time_entries.sort(key=lambda x: (x['date'], x['time'] or min_datetime), reverse=True)
+
+    # Pagination
     paginator = Paginator(detailed_time_entries, 10)
     page = request.GET.get('page', 1)
-
     try:
         paginated_entries = paginator.page(page)
     except PageNotAnInteger:
@@ -128,6 +157,7 @@ def employee_home(request):
     except EmptyPage:
         paginated_entries = paginator.page(paginator.num_pages)
 
+    # Daily view with break time calculations
     daily_view = records.annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -140,6 +170,7 @@ def employee_home(request):
         )
     ).order_by('-date')
 
+    # Weekly and monthly views
     completed_records = records.filter(clock_out__isnull=False).annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -147,9 +178,10 @@ def employee_home(request):
         )
     )
 
+    # Weekly data aggregation
     weekly_data = {}
     for record in completed_records:
-        week = record.date.isocalendar()[1]
+        week = record.date.isocalendar().week
         if week not in weekly_data:
             weekly_data[week] = {
                 'total_hours': timedelta(),
@@ -157,7 +189,6 @@ def employee_home(request):
                 'overtime_hours': timedelta(),
                 'week_start': record.date - timedelta(days=record.date.weekday())
             }
-
         net_worked = record.total_worked - record.total_break_time
         weekly_data[week]['total_hours'] += net_worked
         weekly_data[week]['regular_hours'] += record.regular_hours
@@ -170,6 +201,7 @@ def employee_home(request):
         'overtime_hours': data['overtime_hours']
     } for week, data in sorted(weekly_data.items(), reverse=True)]
 
+    # Monthly data aggregation
     monthly_data = {}
     for record in completed_records:
         month_start_date = record.date.replace(day=1)
@@ -182,13 +214,10 @@ def employee_home(request):
                 'late_days': 0,
                 'half_days': 0
             }
-
         net_worked = record.total_worked - record.total_break_time
         monthly_data[month_start_date]['total_hours'] += net_worked
         monthly_data[month_start_date]['regular_hours'] += record.regular_hours
         monthly_data[month_start_date]['overtime_hours'] += record.overtime_hours
-
-        # Increment counts based on status
         if record.status == 'present':
             monthly_data[month_start_date]['present_days'] += 1
         elif record.status == 'late':
@@ -196,7 +225,20 @@ def employee_home(request):
             monthly_data[month_start_date]['late_days'] += 1
         elif record.status == 'half_day':
             monthly_data[month_start_date]['present_days'] += 1
-            monthly_data[month_start_date]['half_days'] += 0.5
+            monthly_data[month_start_date]['half_days'] += 1
+        elif record.status == 'leave':
+            leave = LeaveReportEmployee.objects.filter(
+                employee=employee,
+                start_date__lte=record.date,
+                end_date__gte=record.date,
+                status=1
+            ).first()
+            if leave:
+                leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
+                monthly_data[month_start_date]['present_days'] += leave_amount
+                if leave.leave_type == 'Half-Day':
+                    monthly_data[month_start_date]['half_days'] += 1
+                logger.debug(f"Monthly view - Date {record.date}: Leave processed, Type={leave.leave_type}, Present Days={monthly_data[month_start_date]['present_days']}")
 
     monthly_view = [{
         'month': month,
@@ -208,10 +250,204 @@ def employee_home(request):
         'half_days': data['half_days']
     } for month, data in sorted(monthly_data.items(), reverse=True)]
 
+    # Get holidays for current month
+    holidays = Holiday.objects.filter(
+        date__month=current_month,
+        date__year=current_year
+    ).values_list('date', flat=True)
+    logger.debug(f"Holidays in {current_month}/{current_year}: {list(holidays)}")
+
+    # Calculate working days and attendance stats
+    days_in_month = monthrange(current_year, current_month)[1]
+    total_working_days = 0
+    weekend_days_list = []
+    absent_days = 0
+    present_days = 0
+    late_days = 0
+    half_days = 0
+    absent_dates = []
+
+    logger.info(f"Calculating attendance stats for {current_month}/{current_year}")
+
+    # Pre-fetch leaves and records for the month
+    leaves = LeaveReportEmployee.objects.filter(
+        employee=employee,
+        status=1,  # Approved
+        start_date__lte=end_date,
+        end_date__gte=start_date
+    ).order_by('start_date', 'id')
+    logger.info(f"Found {leaves.count()} approved leaves: {[(l.id, l.start_date, l.end_date, l.leave_type) for l in leaves]}")
+
+    # Fetch attendance records for the month
+    month_records = AttendanceRecord.objects.filter(
+        user=request.user,
+        date__gte=start_date,
+        date__lte=end_date
+    ).select_related('department')
+    logger.info(f"Found {month_records.count()} attendance records: {[(r.id, r.date, r.status) for r in month_records]}")
+
+    # First Pass: Calculate total working days
+    if first_clock_in_date:
+        # Calculate total working days for the entire month (from start_date to end_date)
+        for day in range(1, days_in_month + 1):
+            date = datetime(current_year, current_month, day).date()
+            weekday = date.weekday()
+            is_sunday = weekday == 6
+            is_saturday = weekday == 5
+            week_number = (day - 1) // 7  # 0-based week number (0 for days 1-7, 1 for days 8-14, etc.)
+            is_2nd_or_4th_saturday = is_saturday and week_number in [1, 3]  # 2nd Saturday (week 1), 4th Saturday (week 3)
+
+            if not is_sunday and not is_2nd_or_4th_saturday and date not in holidays:
+                total_working_days += 1
+                logger.debug(f"Working day: {date}, Total Working Days: {total_working_days}")
+            else:
+                weekend_days_list.append(str(date))
+                logger.debug(f"Date {date} - Skipped (weekend/holiday)")
+    else:
+        # Before first clock-in, set total working days to 0
+        total_working_days = 0
+        logger.debug("No clock-in yet, setting Total Working Days to 0")
+
+    # Second Pass: Calculate present and absent days
+    if first_clock_in_date:
+        # Initialize leave balance tracking
+        joining_date = employee.date_of_joining
+        joining_year = joining_date.year
+        joining_month = joining_date.month
+
+        # Calculate initial available leaves at the start of the current month
+        available_leaves = 0.0
+        total_allocated = 0.0
+        total_used_up_to_prev_month = 0.0
+
+        # Sum allocated leaves and carried forward from joining month to previous month
+        if current_year >= joining_year:
+            start_month = joining_month if current_year == joining_year else 1
+            for month in range(start_month, current_month):
+                leave_balance = LeaveBalance.get_balance(employee, current_year, month)
+                if leave_balance:
+                    total_allocated += leave_balance.allocated_leaves
+                    total_used_up_to_prev_month += leave_balance.used_leaves
+            # Include current month's allocation but not its used leaves yet
+            current_balance = LeaveBalance.get_balance(employee, current_year, current_month)
+            if current_balance:
+                total_allocated += current_balance.allocated_leaves
+        available_leaves = total_allocated - total_used_up_to_prev_month
+        logger.debug(f"Initial available leaves at start of {current_month}/{current_year}: Total Allocated={total_allocated}, Used up to prev month={total_used_up_to_prev_month}, Available={available_leaves}")
+
+        # Process leaves in chronological order to reconstruct available leaves at each point
+        leave_history = []
+        for leave in leaves:
+            start = max(leave.start_date, start_date)
+            end = min(leave.end_date, end_date)
+            leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
+            current_date = start
+            while current_date <= end:
+                if current_date.month == current_month:
+                    # Check if the date is a working day
+                    weekday = current_date.weekday()
+                    is_sunday = weekday == 6
+                    is_saturday = weekday == 5
+                    week_number = (current_date.day - 1) // 7
+                    is_2nd_or_4th_saturday = is_saturday and week_number in [1, 3]
+                    if not is_sunday and not is_2nd_or_4th_saturday and current_date not in holidays:
+                        leave_history.append({
+                            'date': current_date,
+                            'leave_amount': leave_amount_per_day,
+                            'leave_id': leave.id,
+                            'leave_type': leave.leave_type,
+                        })
+                current_date += timedelta(days=1)
+
+        # Sort leave history by date to process in order
+        leave_history.sort(key=lambda x: x['date'])
+        logger.debug(f"Leave history to process: {[entry for entry in leave_history]}")
+
+        # Track available leaves as we process each leave
+        for entry in leave_history:
+            date = entry['date']
+            leave_amount = entry['leave_amount']
+            leave_id = entry['leave_id']
+            leave_type = entry['leave_type']
+
+            logger.debug(f"Processing historical leave on {date} - Leave ID={leave_id}, Type={leave_type}, Amount={leave_amount}, Available Before={available_leaves}")
+
+            if available_leaves >= leave_amount:
+                # Sufficient leaves at the time of this leave
+                available_leaves -= leave_amount
+                entry['was_sufficient'] = True
+                logger.debug(f"Leave on {date} - Sufficient leaves, Available After={available_leaves}")
+            else:
+                # Insufficient leaves
+                available_leaves = max(0, available_leaves - leave_amount)
+                entry['was_sufficient'] = False
+                logger.debug(f"Leave on {date} - Insufficient leaves, Available After={available_leaves}")
+
+        # Now calculate present and absent days
+        for day in range(1, days_in_month + 1):
+            date = datetime(current_year, current_month, day).date()
+            weekday = date.weekday()
+            is_sunday = weekday == 6
+            is_saturday = weekday == 5
+            week_number = (day - 1) // 7
+            is_2nd_or_4th_saturday = is_saturday and week_number in [1, 3]
+            if is_sunday or is_2nd_or_4th_saturday or date in holidays:
+                continue  # Skip weekends and holidays
+
+            # Check for attendance record
+            record = month_records.filter(date=date).first()
+            # Check for approved leave
+            leave_entry = next((entry for entry in leave_history if entry['date'] == date), None)
+
+            if record and record.status in ['present', 'late', 'half_day']:
+                if record.status == 'present':
+                    present_days += 1
+                    logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}")
+                elif record.status == 'late':
+                    present_days += 1
+                    late_days += 1
+                    logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}, Late Days={late_days}")
+                elif record.status == 'half_day':
+                    present_days += 1
+                    half_days += 1
+                    logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}, Half Days={half_days}")
+            elif leave_entry:
+                leave_amount = leave_entry['leave_amount']
+                leave_id = leave_entry['leave_id']
+                was_sufficient = leave_entry['was_sufficient']
+                
+                if was_sufficient:
+                    # Sufficient leaves at the time of application
+                    present_days += leave_amount
+                    if leave_entry['leave_type'] == 'Half-Day':
+                        half_days += 0.5
+                    logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Sufficient Leaves, Present Days={present_days}")
+                else:
+                    # Insufficient leaves at the time of application
+                    absent_days += 1
+                    logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Insufficient Leaves, Absent Days={absent_days}")
+            elif date < first_clock_in_date and date < today:
+                absent_days += 1
+                absent_dates.append(date)
+                logger.debug(f"Date {date} - Marked as absent (before first clock-in), Absent Days={absent_days}")
+
+    # Update total available leaves for context
+    if balance:
+        total_available_leaves = balance.total_available_leaves()
+        logger.debug(f"After adjustments - Leave balance for {today.year}-{today.month}: Allocated={balance.allocated_leaves}, Carried Forward={balance.carried_forward}, Used={balance.used_leaves}, Available={balance.total_available_leaves()}")
+
+    # Get leave balance context after adjustments
+    leave_context = leave_balance_context(request)
+    yearly_leave_data = leave_context['yearly_leave_data']
+    employee_name = leave_context.get('employee_name', employee.admin.get_full_name())
+    department = leave_context.get('department', employee.department.name if employee.department else 'N/A')
+
+    # Check current clock-in status
     current_record = AttendanceRecord.objects.filter(
         user=request.user,
         clock_out__isnull=True,
-        date=today
+        date=today,
+        status__in=['present', 'late', 'half_day']
     ).first()
 
     current_break = None
@@ -221,6 +457,7 @@ def employee_home(request):
             break_end__isnull=True
         ).first()
 
+    # Break statistics
     total_breaks_in_month = Break.objects.filter(
         attendance_record__date__month=current_month,
         attendance_record__date__year=current_year,
@@ -232,113 +469,20 @@ def employee_home(request):
         attendance_record__user=request.user
     ).count()
 
-    holidays = Holiday.objects.filter(
-        date__month=current_month,
-        date__year=current_year
-    ).values_list('date', flat=True)
+    logger.info(f"Final Attendance Stats - Total Working Days: {total_working_days}, Present Days: {present_days}, Late Days: {late_days}, Half Days: {half_days}, Absent Days: {absent_days}")
 
-    days_in_month = monthrange(current_year, current_month)[1]
-    total_working_days = 0
-    weekend_days_list = []
+    # Calculate attendance percentage
+    attendance_percentage = round((present_days / total_working_days * 100) if total_working_days > 0 else 0, 1)
+    logger.debug(f"Attendance Percentage: {attendance_percentage}%")
 
-    month_record = AttendanceRecord.objects.filter(
-        user_id=request.user,  
-        date__range=(start_date, end_date)
-    )
-    record_dict = {rec.date: rec.status for rec in month_record}
-
-    absent_days = 0
-    current_date = start_date
-    while current_date <= today:
-        weekday = current_date.weekday()
-        is_sunday = weekday == 6
-        is_saturday = weekday == 5
-        is_1st_or_3rd_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
-        
-        is_working_day = not is_sunday and not is_1st_or_3rd_saturday and current_date not in holidays
-        
-        if is_working_day:
-            record_exists = AttendanceRecord.objects.filter(
-                user=request.user,
-                date=current_date
-            ).exists()
-            
-            leave_exists = LeaveReportEmployee.objects.filter(
-                employee=employee,
-                status=1,
-                start_date__lte=current_date,
-                end_date__gte=current_date
-            ).exists()
-            
-            if not record_exists and not leave_exists:
-                absent_days += 1
-            elif (LeaveReportEmployee.objects.filter(
-                    employee=employee,
-                    status=1,
-                    leave_type="Half-Day",
-                    start_date__lte=current_date,
-                    end_date__gte=current_date
-                ).exists()):
-                absent_days += 0.5
-        
-        current_date += timedelta(days=1)
-
-    for day in range(1, days_in_month + 1):
-        date = timezone.datetime(current_year, current_month, day).date()
-        weekday = date.weekday()
-        is_sunday = weekday == 6
-        is_saturday = weekday == 5
-        is_1st_or_3rd_saturday = is_saturday and ((day - 1) // 7) in [1, 3]
-        
-        if not is_sunday and not is_1st_or_3rd_saturday and date not in holidays:
-            total_working_days += 1
-        
-        if is_1st_or_3rd_saturday or is_sunday or date in holidays:
-            weekend_days_list.append(str(date))
-
-    attended_dates = records.values_list('date', flat=True).distinct()
-    present_dates = records.filter(
-        status__in=['present', 'late', 'half_day']
-    ).values_list('date', flat=True).distinct().count()
-
-    # Calculate late and half days based on status
-    late_dates = records.filter(status='late').values_list('date', flat=True).distinct().count()
-    half_days_records = records.filter(status='half_day')
-    half_days = half_days_records.values_list('date', flat=True).distinct().count()
-    half_day_details = [
-        f"{rec.date}: clock_in={(rec.clock_in.astimezone(pytz.timezone('Asia/Kolkata')) if rec.clock_in else 'None')}"
-        for rec in half_days_records
-    ]
-    logger.debug(f"Half days count: {half_days}, Records with status='half_day': {half_day_details}")
-
-    present_days = present_dates
-    approved_leaves = LeaveReportEmployee.objects.filter(
-        employee=employee,
-        status=1,
-        start_date__month=current_month,
-        start_date__year=current_year,
-    )
-    leave_half_days = approved_leaves.filter(leave_type='Half-Day').count()
-
-    if total_working_days > 0:
-        effective_present_days = present_days + (leave_half_days * 0.5)
-        attendance_percentage = (effective_present_days / total_working_days) * 100
-    else:
-        attendance_percentage = 0
-
-    attendance_percentage = round(attendance_percentage, 1)
-    recent_activities = ActivityFeed.objects.filter(
-        user=request.user
-    ).order_by('-timestamp').first()
-
-    # Today's Summary Section
+    # Today's time tracking
     today_records = AttendanceRecord.objects.filter(
         user=request.user,
         date=today
     ).order_by('clock_in')
 
     today_total_worked = timedelta()
-    today_status = None
+    today_status = 'Not Clocked In Today'
     today_late = False
     today_half_day = False
     today_duration_str = None
@@ -356,29 +500,21 @@ def employee_home(request):
         today_clock_in_time = today_record.clock_in
         last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
         today_clock_out_time = last_clock_out_record.clock_out if last_clock_out_record else None
-        
-        ist = pytz.timezone('Asia/Kolkata')
+
         clock_in_ist = today_record.clock_in.astimezone(ist) if today_record.clock_in else None
-        office_start = datetime.combine(clock_in_ist.date(), time(9, 0)).replace(tzinfo=ist) if clock_in_ist else None
-        late_threshold = datetime.combine(clock_in_ist.date(), time(9, 15)).replace(tzinfo=ist) if clock_in_ist else None
+        office_start = datetime.combine(today, time(9, 0)).replace(tzinfo=ist) if clock_in_ist else None
 
-        logger.debug(f"Today's record: date={today}, status={today_record.status}, clock_in={clock_in_ist}")
-
-        # Determine clocked-in/out state for the title
-        if today_clock_out_time:
-            today_status = 'Clocked Out'
-        elif current_record:
+        if current_record:
             today_status = 'Clocked In'
+        elif today_clock_out_time:
+            today_status = 'Clocked Out'
         else:
             today_status = 'Not Clocked In Today'
 
-        # Set late and half-day flags based on status
         today_late = today_record.status == 'late'
         today_half_day = today_record.status == 'half_day'
 
-        logger.debug(f"Today's summary: status={today_status}, today_late={today_late}, today_half_day={today_half_day}")
-
-        # Calculate late duration (always relative to 9:00 AM, regardless of status)
+        # Calculate late duration if applicable
         if clock_in_ist and clock_in_ist > office_start:
             late_duration = clock_in_ist - office_start
             total_seconds = late_duration.total_seconds()
@@ -388,15 +524,14 @@ def employee_home(request):
         else:
             today_late_duration_str = "0 hours 0 minutes"
 
-        # Calculate total worked time
+        # Calculate worked duration
         first_clock_in = today_record.clock_in
         last_clock_out = today_clock_out_time
-        
+
         if first_clock_in and last_clock_out:
             today_total_worked = last_clock_out - first_clock_in
             total_break_time = sum(
-                (brk.duration for record in today_records 
-                for brk in record.breaks.all() if brk.duration),
+                (brk.duration for record in today_records for brk in record.breaks.all() if brk.duration),
                 timedelta()
             )
             today_total_worked -= total_break_time
@@ -407,8 +542,7 @@ def employee_home(request):
         elif first_clock_in and not last_clock_out:
             current_duration = current_time - first_clock_in
             total_break_time = sum(
-                (brk.duration for record in today_records 
-                for brk in record.breaks.all() if brk.duration),
+                (brk.duration for record in today_records for brk in record.breaks.all() if brk.duration),
                 timedelta()
             )
             current_duration -= total_break_time
@@ -418,13 +552,12 @@ def employee_home(request):
             hours = int(total_seconds // 3600)
             minutes = int((total_seconds % 3600) // 60)
             today_current_duration_str = f"{hours} hours {minutes} minutes" if total_seconds > 0 else "0 hours 0 minutes"
-            today_duration_str = today_current_duration_str  # Use current duration for display
+            today_duration_str = today_current_duration_str
         else:
-            today_status = 'Not Clocked In Today'
             today_duration_str = "0 hours 0 minutes"
             today_late_duration_str = "0 hours 0 minutes"
 
-    # Lunch and Break Status
+    # Check break status
     lunch_taken = Break.objects.filter(
         attendance_record__user=request.user,
         attendance_record__date=today,
@@ -448,15 +581,23 @@ def employee_home(request):
     if recent_break:
         break_taken_time = recent_break.break_start
 
+    # Get recent activity
+    recent_activities = ActivityFeed.objects.filter(
+        user=request.user
+    ).order_by('-timestamp').first()
+
+    # Prepare context
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
+        'employee_name': employee_name,
+        'department': department,
         'today_total_worked': today_total_worked,
         'today_duration_str': today_duration_str,
         'today_current_duration_str': today_current_duration_str,
         'today_late_duration_str': today_late_duration_str,
         'today_status': today_status,
-        'today_record': today_records.first() if today_records.exists() else None,  # Pass the record for status
+        'today_record': today_records.first() if today_records.exists() else None,
         'today_late': today_late,
         'today_half_day': today_half_day,
         'today_clock_in_time': today_clock_in_time,
@@ -471,13 +612,15 @@ def employee_home(request):
         'attendance_stats': {
             'total_days': total_working_days,
             'present_days': present_days,
-            'late_days': late_dates,
+            'late_days': late_days,
             'half_days': half_days,
             'absent_days': absent_days,
             'attendance_percentage': attendance_percentage,
             'total_breaks_in_month': total_breaks_in_month,
             'todays_total_breaks': todays_breaks,
         },
+        'yearly_leave_data': yearly_leave_data,
+        'total_available_leaves': round(total_available_leaves, 1),
         'detailed_time_entries': paginated_entries,
         'daily_view': daily_view,
         'weekly_view': weekly_view,
@@ -488,30 +631,77 @@ def employee_home(request):
             'status': status_filter,
             'month': str(current_month),
             'year': str(current_year),
+            'start_date': start_date_str,
+            'end_date': end_date_str,
         },
         'status_choices': AttendanceRecord.STATUS_CHOICES,
     }
 
+    # Handle AJAX requests
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.method == 'GET':
-        html = render_to_string('employee_template/home_content.html', context, request=request)
-        return JsonResponse({
-            'html': html,
-            'current_page': paginated_entries.number,
-            'num_pages': paginator.num_pages,
-            'has_previous': paginated_entries.has_previous(),
-            'has_next': paginated_entries.has_next(),
-            'previous_page_number': paginated_entries.previous_page_number() if paginated_entries.has_previous() else None,
-            'next_page_number': paginated_entries.next_page_number() if paginated_entries.has_next() else None,
-        })
+        try:
+            html = render_to_string('employee_template/home_content.html', context, request=request)
+            return JsonResponse({
+                'html': html,
+                'current_page': paginated_entries.number,
+                'num_pages': paginator.num_pages,
+                'has_previous': paginated_entries.has_previous(),
+                'has_next': paginated_entries.has_next(),
+                'previous_page_number': paginated_entries.previous_page_number() if paginated_entries.has_previous() else None,
+                'next_page_number': paginated_entries.next_page_number() if paginated_entries.has_next() else None,
+            })
+        except Exception as e:
+            logger.error(f"Error rendering AJAX response for {request.user}: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': 'Error loading data.'}, status=500)
 
+    logger.debug(f"Rendering dashboard with context: Present Days={present_days}, Absent Days={absent_days}")
     return render(request, 'employee_template/home_content.html', context)
 
 
+@login_required
+def leave_balance(request):
+    employee = get_object_or_404(Employee, admin=request.user)
+    today = get_ist_date()
+    current_year = today.year
+    current_month = today.month
+    leave_balances = LeaveBalance.objects.filter(employee=employee, year=current_year).order_by('month')
+    joining_date = employee.date_of_joining
+    yearly_leave_data = []
+    total_available_leaves = 0.0
 
+    if joining_date:
+        joining_year = joining_date.year
+        joining_month = joining_date.month
+        for month in range(1, 13):
+            if current_year < joining_year or (current_year == joining_year and month < joining_month):
+                continue
+            balance = leave_balances.filter(month=month).first()
+            if not balance and month <= current_month:
+                balance = LeaveBalance.get_balance(employee, current_year, month)
+                if not balance:
+                    balance = LeaveBalance.create_balance(employee, current_year, month)
+            if balance:
+                yearly_leave_data.append({
+                    'month': datetime(current_year, month, 1).strftime('%B'),
+                    'allocated_leaves': balance.allocated_leaves,
+                    'carried_forward': balance.carried_forward,
+                    'used_leaves': balance.used_leaves,
+                    'available_leaves': balance.total_available_leaves()
+                })
+                if month == current_month:
+                    total_available_leaves = balance.total_available_leaves()
 
-@login_required   
+    context = {
+        'page_title': 'Leave Balance',
+        'employee': employee,
+        'yearly_leave_data': yearly_leave_data,
+        'total_available_leaves': round(total_available_leaves, 1),
+    }
+    return render(request, 'employee_template/leave_balance.html', context)
+
+@login_required
 def employee_apply_leave(request):
-    employee = get_object_or_404(Employee, admin_id=request.user.id)
+    employee = get_object_or_404(Employee, admin=request.user)
     unread_ids = Notification.objects.filter(
         user=request.user,
         role="employee",
@@ -520,73 +710,87 @@ def employee_apply_leave(request):
     ).values_list('leave_or_notification_id', flat=True)
 
     leave_list = LeaveReportEmployee.objects.filter(employee=employee).order_by('-created_at')
-    paginator = Paginator(leave_list, 5)  # Show 5 leave records per page
-
+    paginator = Paginator(leave_list, 5)
     page_number = request.GET.get('page')
     leave_page = paginator.get_page(page_number)
 
     if request.method == 'POST':
-        leave_type_ = request.POST.get('leave_type')
-        half_day_type_ = request.POST.get('half_day_type')
-        start_date_ = request.POST.get('start_date')
-        end_date_ = request.POST.get('end_date')
-        message_ = request.POST.get('message')
+        leave_type = request.POST.get('leave_type')
+        half_day_type = request.POST.get('half_day_type') if leave_type == 'Half-Day' else None
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+        message = request.POST.get('message')
 
-        if not all([leave_type_, start_date_, message_]):
-            messages.error(request, "All fields are required")
-            return redirect(reverse('employee_apply_leave'))
-
-        existing_leaves = LeaveReportEmployee.objects.filter(
-            employee=employee,
-            start_date__lte=end_date_ if end_date_ else start_date_,
-            end_date__gte=start_date_,
-            status__in=[0, 1]
-        ).exists()
-
-        if existing_leaves:
-            messages.error(request, "You already applied or have approved leave for these dates.")
-            return redirect(reverse('employee_apply_leave'))
+        if not all([leave_type, start_date_str, message]):
+            messages.error(request, "All fields are required.")
+            return redirect('employee_apply_leave')
 
         try:
-            start_date = date.fromisoformat(start_date_)
-            end_date = date.fromisoformat(end_date_ if end_date_ else start_date_)
+            start_date = date.fromisoformat(start_date_str)
+            end_date = date.fromisoformat(end_date_str) if end_date_str else start_date
             if end_date < start_date:
                 messages.error(request, "End date cannot be before start date.")
-                return redirect(reverse('employee_apply_leave'))
+                return redirect('employee_apply_leave')
         except ValueError:
             messages.error(request, "Invalid date format.")
-            return redirect(reverse('employee_apply_leave'))
+            return redirect('employee_apply_leave')
+
+        # Check for overlapping leaves
+        existing_leaves = LeaveReportEmployee.objects.filter(
+            employee=employee,
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+            status__in=[0, 1]
+        ).exists()
+        if existing_leaves:
+            messages.error(request, "You already have a leave request for these dates.")
+            return redirect('employee_apply_leave')
+
+        # Check leave balance
+        leave_amount = 0.5 if leave_type == 'Half-Day' else 1.0
+        current_date = start_date
+        while current_date <= end_date:
+            balance = LeaveBalance.get_balance(employee, current_date.year, current_date.month)
+            if not balance:
+                balance = LeaveBalance.create_balance(employee, current_date.year, current_date.month)
+            if balance.total_available_leaves() < leave_amount:
+                messages.error(request, f"Insufficient leave balance for {current_date.strftime('%B %Y')}.")
+                return redirect('employee_apply_leave')
+            current_date += timedelta(days=1)
 
         try:
-            obj = LeaveReportEmployee.objects.create(
+            leave_request = LeaveReportEmployee.objects.create(
                 employee=employee,
-                leave_type=leave_type_,
-                half_day_type=half_day_type_ if half_day_type_ else None,
-                start_date=start_date_,
-                end_date=end_date_ if end_date_ else start_date_,
-                message=message_
+                leave_type=leave_type,
+                half_day_type=half_day_type,
+                start_date=start_date,
+                end_date=end_date,
+                message=message
             )
             messages.success(request, "Your leave request has been submitted.")
             user = CustomUser.objects.get(id=employee.team_lead.admin.id)
             send_notification(user, "Leave Applied", "leave-notification", obj.id, "manager")
             return redirect(reverse('employee_apply_leave'))
+            if employee.team_lead:
+                Notification.objects.create(
+                    user=employee.team_lead.admin,
+                    message=f"Leave request from {employee.admin.get_full_name}",
+                    notification_type="leave",
+                    leave_or_notification_id=leave_request.id,
+                    role="manager"
+                )
+            return redirect('employee_apply_leave')
         except Exception as e:
             messages.error(request, f"Error submitting leave: {str(e)}")
-            return redirect(reverse('employee_apply_leave'))
+            return redirect('employee_apply_leave')
 
     context = {
         'leave_page': leave_page,
         'unread_ids': list(unread_ids),
         'page_title': 'Apply for Leave',
     }
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        # Just render part of the existing template using a specific block
-        html = render_to_string("employee_template/employee_apply_leave.html", context, request=request)
-        # Extract only the inner HTML of #leave-history-container
-        # (We'll handle this in JS by selecting it from the rendered template)
-        return HttpResponse(html)
+    return render(request, 'employee_template/employee_apply_leave.html', context)
 
-    return render(request, "employee_template/employee_apply_leave.html", context)
 
 
 @login_required   
