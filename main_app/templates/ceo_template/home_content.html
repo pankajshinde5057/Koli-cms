@@ -270,7 +270,7 @@
                             </div>
                         </div>
                         <div class="mt-4">
-                            <a href="#" class="text-white text-decoration-none small"> </a>
+                            <a href="#" class="text-white text-decoration-none small"> </a>
                         </div>
                     </div>
                 </div>
@@ -289,7 +289,7 @@
                             </div>
                         </div>
                         <div class="mt-4">
-                            <a href="#" class="text-white text-decoration-none small"> </a>
+                            <a href="#" class="text-white text-decoration-none small"> </a>
                         </div>
                     </div>
                 </div>
@@ -345,7 +345,7 @@
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-dark text-white">
                         <div class="d-flex justify-content-between align-items-center flex-wrap">
-                            <h5 class="card-title mb-2 mb-md-0">Manager & Employee Breaks</h5>
+                            <h5 class="card-title mb-2 mb-md-0"> Today's Manager & Employee Breaks</h5>
                             <form method="get" id="breakFilterForm" class="date-filter-group">
                                 <div class="form-group">
                                     <select id="department" name="department" class="form-control form-control-sm">
@@ -386,7 +386,7 @@
                                     {% for entry in break_entries %}
                                         <tr>
                                             <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                            <td>{{ entry.user_name }}</td>
+                                            <td>{{ entry.user_name|default:"Unknown" }}</td>
                                             <td>{{ entry.user_type }}</td>
                                             <td>{{ entry.department }}</td>
                                             <td>{{ entry.break_start }}</td>
@@ -459,12 +459,9 @@ $(document).ready(function() {
         defaultDate: "{{ start_date }}",
         allowInput: true,
         clickOpens: true,
-        onOpen: function(selectedDates, dateStr, instance) {
-            instance.set('maxDate', breakEndDate.selectedDates[0] || null);
-        },
         onChange: function(selectedDates, dateStr) {
             breakEndDate.set('minDate', selectedDates[0] || null);
-            submitBreakFilters();
+            if (dateStr) submitBreakFilters();
         }
     });
 
@@ -473,24 +470,13 @@ $(document).ready(function() {
         defaultDate: "{{ end_date }}",
         allowInput: true,
         clickOpens: true,
-        onOpen: function(selectedDates, dateStr, instance) {
-            instance.set('minDate', breakStartDate.selectedDates[0] || null);
-        },
         onChange: function(selectedDates, dateStr) {
             breakStartDate.set('maxDate', selectedDates[0] || null);
-            submitBreakFilters();
+            if (dateStr) submitBreakFilters();
         }
     });
 
-    $('.flatpickr-input').on('click', function(e) {
-        if (e.target === this) {
-            $(this).siblings('.flatpickr-calendar').length || $(this).next().trigger('click');
-        }
-    });
-
-    $('.flatpickr-calendar').on('click', function(e) {
-        $(this).prev('.flatpickr-input').trigger('click');
-    });
+    $('#department').on('change', submitBreakFilters);
 
     function submitBreakFilters() {
         const urlParams = new URLSearchParams();
@@ -503,7 +489,7 @@ $(document).ready(function() {
         if (endDate) urlParams.set('end_date', endDate);
         urlParams.set('page', '1'); // Reset to first page on filter change
 
-        $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading data...</p></div>');
+        $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
 
         $.ajax({
             url: window.location.pathname,
@@ -516,21 +502,19 @@ $(document).ready(function() {
                 try {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    const container = doc.querySelector('#break-entries-container');
-                    if (container) {
-                        $('#break-entries-container').html(container.innerHTML);
+                    const newContent = doc.querySelector('#break-entries-container');
+                    if (newContent) {
+                        $('#break-entries-container').html(newContent.innerHTML);
                         attachPaginationListeners();
                     } else {
                         $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
                     }
                 } catch (e) {
-                    console.error('Error parsing response:', e);
-                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error processing data</div>');
+                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error processing response</div>');
                 }
             },
             error: function(xhr) {
-                console.error('AJAX error:', xhr.status, xhr.statusText);
-                $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data. Please try again.</div>');
+                $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
             }
         });
     }
@@ -539,11 +523,17 @@ $(document).ready(function() {
         $('#break-entries-pagination a.page-link').off('click').on('click', function(e) {
             e.preventDefault();
             const page = $(this).data('page');
-            const urlParams = new URLSearchParams(window.location.search);
-            
-            urlParams.set('page', page);
-            
-            $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading page...</p></div>');
+            const urlParams = new URLSearchParams();
+            const department = $('#department').val();
+            const startDate = $('#break_start_date').val();
+            const endDate = $('#break_end_date').val();
+
+            if (department) urlParams.set('department', department);
+            if (startDate) urlParams.set('start_date', startDate);
+            if (endDate) urlParams.set('end_date', endDate);
+            if (page) urlParams.set('page', page);
+
+            $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
 
             $.ajax({
                 url: window.location.pathname,
@@ -553,19 +543,25 @@ $(document).ready(function() {
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 success: function(html) {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    $('#break-entries-container').html(doc.querySelector('#break-entries-container').innerHTML);
-                    attachPaginationListeners();
-                    
-                    // Scroll to top of table
-                    $('html, body').animate({
-                        scrollTop: $('#break-entries-container').offset().top - 20
-                    }, 200);
+                    try {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContent = doc.querySelector('#break-entries-container');
+                        if (newContent) {
+                            $('#break-entries-container').html(newContent.innerHTML);
+                            attachPaginationListeners();
+                            $('html, body').animate({
+                                scrollTop: $('#break-entries-container').offset().top - 20
+                            }, 200);
+                        } else {
+                            $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
+                        }
+                    } catch (e) {
+                        $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error processing response</div>');
+                    }
                 },
                 error: function(xhr) {
-                    console.error('AJAX error:', xhr.status, xhr.statusText);
-                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading page</div>');
+                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
                 }
             });
         });

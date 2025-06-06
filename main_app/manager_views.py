@@ -1998,7 +1998,7 @@ def approve_assest_request(request, notification_id):
 
     return redirect('manager_asset_view_notification')
 
-
+from django.db import transaction
 @login_required   
 def reject_assest_request(request, notification_id):
     notification = get_object_or_404(Notify_Manager, id=notification_id)
@@ -2017,9 +2017,94 @@ def reject_assest_request(request, notification_id):
     return redirect('manager_asset_view_notification')
 
 
-@login_required   
+import logging
+from datetime import timedelta
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect
+from .models import LeaveReportEmployee, LeaveBalance, AttendanceRecord, Notification, Employee
+
+logger = logging.getLogger(__name__)
+
+@login_required
 def approve_leave_request(request, leave_id):
     if request.method == 'POST':
+        try:
+            leave = get_object_or_404(LeaveReportEmployee, id=leave_id)
+            logger.info(f"Processing leave approval for ID {leave_id}, Employee: {leave.employee.employee_id}, Dates: {leave.start_date} to {leave.end_date or leave.start_date}")
+
+            if leave.status != 0:  # 0 = Pending
+                logger.warning(f"Leave ID {leave_id} already processed with status {leave.status}")
+                messages.info(request, "This leave request has already been processed.")
+                return redirect('manager_view_notification')
+
+            employee = leave.employee
+            start_date = leave.start_date
+            end_date = leave.end_date or start_date
+            leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
+            logger.debug(f"Leave details - Start Date: {start_date}, End Date: {end_date}, Type: {leave.leave_type}, Amount: {leave_amount}")
+
+            # Check leave balance for all dates
+            current_date = start_date
+            while current_date <= end_date:
+                balance = LeaveBalance.get_balance(employee, current_date.year, current_date.month)
+                if not balance:
+                    balance = LeaveBalance.create_balance(employee, current_date.year, current_date.month)
+                available_leaves = balance.total_available_leaves()
+                logger.debug(f"Checking balance for {current_date}: Allocated={balance.allocated_leaves}, Used={balance.used_leaves}, Carried Forward={balance.carried_forward}, Available={available_leaves}")
+                if available_leaves < leave_amount:
+                    logger.error(f"Insufficient leave balance on {current_date}: Available={available_leaves}, Required={leave_amount}")
+                    messages.error(request, f"Insufficient leave balance for {current_date.strftime('%d-%m-%Y')}. Available: {available_leaves}")
+                    return redirect('manager_view_notification')
+                current_date += timedelta(days=1)
+
+            # Process leave approval
+            with transaction.atomic():
+                current_date = start_date
+                while current_date <= end_date:
+                    # Deduct leave
+                    success, remaining_leaves = LeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
+                    if not success:
+                        logger.error(f"Failed to deduct leave for {current_date}")
+                        messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
+                        return redirect('manager_view_notification')
+                    logger.info(f"Deducted leave for {current_date}, Remaining Leaves: {remaining_leaves}")
+
+                    # Update or create attendance record
+                    record, created = AttendanceRecord.objects.update_or_create(
+                        user=employee.admin,
+                        date=current_date,
+                        defaults={
+                            'status': 'half_day' if leave.leave_type == 'Half-Day' else 'leave',
+                            'department': employee.department,
+                            'clock_in': None,
+                            'clock_out': None,
+                            'total_worked': None,
+                            'regular_hours': None,
+                            'overtime_hours': None
+                        }
+                    )
+                    logger.info(f"Attendance record for {current_date} {'created' if created else 'updated'}: Status={record.status}")
+                    current_date += timedelta(days=1)
+
+                # Update leave status to Approved
+                leave.status = 1
+                leave.save()
+                logger.info(f"Leave ID {leave_id} approved successfully")
+
+                # Notify employee
+                Notification.objects.create(
+                    user=employee.admin,
+                    message=f"Your leave request from {start_date} to {end_date} has been approved",
+                    notification_type="leave",
+                    leave_or_notification_id=leave.id,
+                    role="employee"
+                )
+                logger.debug(f"Notification sent to employee {employee.admin.username}")
+
+                messages.success(request, "Leave approved successfully")
+                return redirect('manager_view_notification')
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
 
         if leave_request.status == 0:
@@ -2057,6 +2142,12 @@ def approve_leave_request(request, leave_id):
             messages.info(request, "This leave request has already been processed.")
     return redirect('manager_view_notification')
 
+        except Exception as e:
+            logger.error(f"Error approving leave ID {leave_id}: {str(e)}")
+            messages.error(request, "Error approving leave")
+            return redirect('manager_view_notification')
+    logger.warning(f"Invalid request method for leave approval: {request.method}")
+    return redirect('manager_view_notification')
 
 @login_required   
 def reject_leave_request(request, leave_id):

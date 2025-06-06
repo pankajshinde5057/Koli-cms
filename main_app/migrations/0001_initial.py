@@ -78,7 +78,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('date', models.DateField()),
-                ('clock_in', models.DateTimeField()),
+                ('clock_in', models.DateTimeField(blank=True, null=True)),
                 ('clock_out', models.DateTimeField(blank=True, null=True)),
                 ('status', models.CharField(choices=[('present', 'Present'), ('late', 'Late'), ('half_day', 'Half Day')], default='present', max_length=20)),
                 ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
@@ -87,19 +87,11 @@ class Migration(migrations.Migration):
                 ('total_worked', models.DurationField(blank=True, null=True)),
                 ('regular_hours', models.DurationField(blank=True, null=True)),
                 ('overtime_hours', models.DurationField(blank=True, null=True)),
-                ('is_primary_record', models.BooleanField(default=False)),
-                ('requires_verification', models.BooleanField(default=False)),
-                ('is_verified', models.BooleanField(default=False)),
-                ('verification_time', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attendance_records', to=settings.AUTH_USER_MODEL)),
-                ('verified_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='verified_attendances', to=settings.AUTH_USER_MODEL)),
                 ('department', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='main_app.department')),
             ],
-            options={
-                'ordering': ['-date', 'user__email'],
-            },
         ),
         migrations.CreateModel(
             name='Break',
@@ -179,6 +171,7 @@ class Migration(migrations.Migration):
                 ('designation', models.CharField(max_length=50)),
                 ('phone_number', models.CharField(max_length=10)),
                 ('emergency_contact', models.JSONField(blank=True, null=True)),
+                ('date_of_joining', models.DateField(blank=True, null=True)),
                 ('admin', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='employee', to=settings.AUTH_USER_MODEL)),
                 ('department', models.ForeignKey(null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='main_app.department')),
                 ('division', models.ForeignKey(null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='main_app.division')),
@@ -228,13 +221,27 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
+            name='LeaveBalance',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('year', models.PositiveIntegerField()),
+                ('month', models.PositiveIntegerField()),
+                ('allocated_leaves', models.FloatField(default=0.0)),
+                ('carried_forward', models.FloatField(default=0.0)),
+                ('used_leaves', models.FloatField(default=0.0)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+                ('employee', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='leave_balances', to='main_app.employee')),
+            ],
+        ),
+        migrations.CreateModel(
             name='LeaveReportEmployee',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('leave_type', models.CharField(blank=True, choices=[('Half-Day', 'Half-Day'), ('Full-Day', 'Full-Day')], default='Full-Day', max_length=100)),
+                ('leave_type', models.CharField(choices=[('Half-Day', 'Half-Day'), ('Full-Day', 'Full-Day')], default='Full-Day', max_length=100)),
                 ('half_day_type', models.CharField(blank=True, choices=[('First Half', 'First Half'), ('Second Half', 'Second Half')], max_length=100, null=True)),
-                ('start_date', models.DateField(blank=True, default=None, null=True)),
-                ('end_date', models.DateField(blank=True, null=True)),
+                ('start_date', models.DateField()),
+                ('end_date', models.DateField()),
                 ('message', models.TextField()),
                 ('status', models.SmallIntegerField(default=0)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -373,7 +380,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name='attendancerecord',
-            unique_together={('user', 'date', 'clock_in')},
+            unique_together={('user', 'date')},
         ),
         migrations.AddIndex(
             model_name='earylyclockoutrequest',
@@ -390,5 +397,13 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='dailyschedule',
             unique_together={('employee', 'date')},
+        ),
+        migrations.AddIndex(
+            model_name='leavebalance',
+            index=models.Index(fields=['employee', 'year', 'month'], name='main_app_le_employe_1f3704_idx'),
+        ),
+        migrations.AlterUniqueTogether(
+            name='leavebalance',
+            unique_together={('employee', 'year', 'month')},
         ),
     ]

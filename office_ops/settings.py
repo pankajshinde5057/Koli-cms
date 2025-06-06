@@ -76,6 +76,7 @@ TEMPLATES = [
                 'main_app.context_processors.unread_notification_count',
                 'main_app.context_processors.asset_notification_count',
                 'main_app.context_processors.admin_notification_count',
+                'main_app.context_processors.leave_balance_context',
             ],
         },
     },
