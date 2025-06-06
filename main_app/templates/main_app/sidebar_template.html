@@ -580,6 +580,15 @@
                         </p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    {% url 'leave_balance' as leave_balance %}
+                    <a href="{{ leave_balance }}" class="nav-link {% if leave_balance == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <p>
+                            Leave Balance
+                        </p>
+                    </a>
+                </li>
 
                 <li class="nav-item">
                     {% url 'daily_schedule' as daily_schedule %}

@@ -182,8 +182,9 @@ urlpatterns = [
      path('approve-early-clock-out/<int:request_id>/', views.approve_early_clock_out, name='approve_early_clock_out'),
      path('deny-early-clock-out/<int:request_id>/', views.deny_early_clock_out, name='deny_early_clock_out'),
      path('dearly_clock_out_request_page/', employee_views.early_clock_out_request_page, name='early_clock_out_request_page'),
-     
+     path('leave-balance/', employee_views.leave_balance, name='leave_balance'),
+
 
      path('all_employees_schedules/', views.all_employees_schedules, name='all_employees_schedules'),
-
+    
 ]

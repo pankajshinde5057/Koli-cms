@@ -217,6 +217,38 @@
             100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
         
+        /* Date Input Styling */
+        input[type="date"] {
+            position: relative;
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 1rem;
+            color: #495057;
+            background-color: #fff;
+            cursor: pointer;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        input[type="date"]:hover {
+            border-color: #80bdff;
+        }
+
+        input[type="date"]:focus {
+            outline: none;
+            border-color: #3897f0;
+            box-shadow: 0 0 5px rgba(56, 151, 240, 0.3);
+        }
+
+        /* Ensure the calendar icon is visible and clickable */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 1;
+            cursor: pointer;
+            padding: 5px;
+            margin-left: 5px;
+        }
+
         /* Responsive Adjustments */
         @media (max-width: 768px) {
             .profile-pic-container {
@@ -291,7 +323,7 @@
                                             <span class="username">{{ user_object.admin.get_full_name }}</span>
                                         {% endif %}
                                     </div>
-                                    <button class="modal-close" aria-label="Close">&times;</button>
+                                    <button class="modal-close" aria-label="Close">×</button>
                                 </div>
                                 
                                 <div class="modal-image-wrapper">
@@ -321,7 +353,7 @@
                                         <div class="form-group">
                                             <label for="{{ field.id_for_label }}">
                                                 {{ field.label }}
-                                                {% if field.errors %}
+                                                {% if field.field.required %}
                                                     <span class="required-asterisk">*</span>
                                                 {% endif %}
                                             </label>
@@ -350,7 +382,7 @@
                                                 <div class="form-group">
                                                     <label for="{{ field.id_for_label }}">
                                                         {{ field.label }}
-                                                        {% if field.errors %}
+                                                        {% if field.field.required %}
                                                             <span class="required-asterisk">*</span>
                                                         {% endif %}
                                                     </label>
@@ -384,7 +416,8 @@
         const profileModal = document.getElementById("profileModal");
         const enlargedPhoto = document.getElementById("enlargedPhoto");
         const spinner = document.querySelector('.spinner');
-        
+        const dateOfJoiningInput = document.getElementById("id_date_of_joining");
+
         // Open Modal Function
         function openModal(src) {
             if (!src) return;
@@ -453,6 +486,21 @@
         function getScrollbarWidth() {
             return window.innerWidth - document.documentElement.clientWidth;
         }
+
+        // Trigger Date Picker on Click
+        function triggerDatePicker() {
+            if (dateOfJoiningInput) {
+                dateOfJoiningInput.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    dateOfJoiningInput.showPicker(); // Programmatically open the date picker
+                });
+
+                // Ensure the date picker opens on focus as well
+                dateOfJoiningInput.addEventListener('focus', () => {
+                    dateOfJoiningInput.showPicker();
+                });
+            }
+        }
         
         // Event Listeners
         function initEventListeners() {
@@ -485,6 +533,9 @@
                 enlargedPhoto.src = "{% static 'dist/img/avatar-placeholder.jpeg' %}";
                 enlargedPhoto.style.display = 'block';
             });
+
+            // Initialize date picker trigger
+            triggerDatePicker();
         }
         
         // Form Submission Confirmation

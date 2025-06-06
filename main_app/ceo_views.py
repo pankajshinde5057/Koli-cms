@@ -24,7 +24,7 @@ from .models import AttendanceRecord, Holiday, Employee, Manager
 from xhtml2pdf import pisa
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.utils.dateparse import parse_date
+from dateutil.parser import parse
 
 
 LOCATION_CHOICES = (
@@ -33,8 +33,10 @@ LOCATION_CHOICES = (
     ("Main Office", "Main Office"),
 )
 
+
 @login_required
 def admin_home(request):
+    # Count totals
     total_managers = Manager.objects.all().count()
     total_employees = Employee.objects.all().count()
     departments = Department.objects.all()
@@ -51,9 +53,9 @@ def admin_home(request):
     
     # Parse dates with fallback to today
     try:
-        start_date = parse_date(start_date).date() if start_date else today
-        end_date = parse_date(end_date).date() if end_date else today
-    except ValueError:
+        start_date = parse(start_date).date() if start_date else today
+        end_date = parse(end_date).date() if end_date else today
+    except (ValueError, TypeError):
         start_date = end_date = today
 
     # Ensure end_date is not before start_date
@@ -61,12 +63,16 @@ def admin_home(request):
         start_date, end_date = end_date, start_date
 
     # Filter employees and managers
-    employees = CustomUser.objects.filter(user_type=3)  # Employees
-    managers = CustomUser.objects.filter(user_type=2)   # Managers
+    employees = CustomUser.objects.filter(user_type='3')  # Employees
+    managers = CustomUser.objects.filter(user_type='2')   # Managers
     
     if selected_department != 'all':
-        employees = employees.filter(employee__department__name__iexact=selected_department)
-        managers = managers.filter(manager__department__name__iexact=selected_department)
+        try:
+            employees = employees.filter(employee__department__name__iexact=selected_department)
+            managers = managers.filter(manager__department__name__iexact=selected_department)
+        except Department.DoesNotExist:
+            employees = CustomUser.objects.none()
+            managers = CustomUser.objects.none()
 
     # IDs for querying
     employee_ids = employees.values_list('id', flat=True)
@@ -78,15 +84,17 @@ def admin_home(request):
         attendance_record__user_id__in=employee_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date,
-        break_start__lte=current_time,
-    ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
+    ).filter(
+        models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)
+    ).distinct()
     
     manager_breaks_today = Break.objects.filter(
         attendance_record__user_id__in=manager_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date,
-        break_start__lte=current_time,
-    ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
+    ).filter(
+        models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)
+    ).distinct()
     
     total_employee_on_break = employee_breaks_today.count()
     total_manager_on_break = manager_breaks_today.count()
@@ -110,10 +118,10 @@ def admin_home(request):
         attendance_record__user_id__in=all_user_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date
-    ).select_related('attendance_record__user')  # Optimize query with select_related
+    ).select_related('attendance_record__user').order_by('-break_start')
     
-    for b in break_queryset.order_by('-break_start'):
-        user = b.attendance_record.user  # Access user directly from attendance_record
+    for b in break_queryset:
+        user = b.attendance_record.user
         user_type = 'Employee' if user.user_type == '3' else 'Manager' if user.user_type == '2' else 'Unknown'
         
         # Get department with proper error handling
@@ -137,7 +145,7 @@ def admin_home(request):
             
         break_entries.append({
             'user_id': user.id,
-            'user_name': user.get_full_name() or 'Unknown',
+            'user_name': user.get_full_name() or user.username,
             'user_type': user_type,
             'department': department,
             'break_start': timezone.localtime(b.break_start).strftime('%Y-%m-%d %H:%M'),
@@ -147,7 +155,7 @@ def admin_home(request):
 
     # Paginate break entries
     paginator = Paginator(break_entries, 10)
-    page_number = request.GET.get('page')
+    page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
     # Context
@@ -165,13 +173,16 @@ def admin_home(request):
         'page_obj': page_obj,
         'departments': departments,
         'selected_department': selected_department,
-        'start_date': start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else start_date,
-        'end_date': end_date.strftime('%Y-%m-%d') if isinstance(end_date, date) else end_date,
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': end_date.strftime('%Y-%m-%d'),
     }
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        html = render_to_string('ceo_template/home_content.html', context, request=request)
-        return HttpResponse(html)
+        try:
+            html = render_to_string('ceo_template/home_content.html', context, request=request)
+            return HttpResponse(html)
+        except Exception as e:
+            return HttpResponse(f'<div class="text-center py-4 text-danger">Error loading data: {str(e)}</div>', status=500)
     
     return render(request, 'ceo_template/home_content.html', context)
 
@@ -191,8 +202,7 @@ def add_manager(request):
             password = form.cleaned_data.get('password')
             division = form.cleaned_data.get('division')
             department = form.cleaned_data.get('department')
-
-            # Emergency contact fields
+            date_of_joining = form.cleaned_data.get('date_of_joining')
             emergency_name = form.cleaned_data.get('emergency_name')
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
             emergency_phone = form.cleaned_data.get('emergency_phone')
@@ -207,11 +217,11 @@ def add_manager(request):
 
             try:
                 user = CustomUser.objects.create_user(
-                    email=email, 
-                    password=password, 
+                    email=email,
+                    password=password,
                     user_type=2,  # Manager
-                    first_name=first_name, 
-                    last_name=last_name, 
+                    first_name=first_name,
+                    last_name=last_name,
                     profile_pic=passport_url if passport_url else ""
                 )
                 user.gender = gender
@@ -221,14 +231,13 @@ def add_manager(request):
                 manager = user.manager
                 manager.division = division
                 manager.department = department
-
+                manager.date_of_joining = date_of_joining
                 manager.emergency_contact = {
                     'name': emergency_name,
                     'relationship': emergency_relationship,
                     'phone': emergency_phone,
                     'address': emergency_address
                 }
-
                 manager.save()
 
                 messages.success(request, "Successfully Added")
@@ -236,7 +245,6 @@ def add_manager(request):
 
             except Exception as e:
                 messages.error(request, "Could Not Add: " + str(e))
-
         else:
             messages.error(request, "Please fill all the details correctly.")
 
@@ -256,13 +264,13 @@ def add_employee(request):
             address = employee_form.cleaned_data.get('address')
             email = employee_form.cleaned_data.get('email')
             gender = employee_form.cleaned_data.get('gender')
-            password = employee_form.cleaned_data.get('password')
+            password = employee_form.cleaned_data.get('password')  
             division = employee_form.cleaned_data.get('division')
             department = employee_form.cleaned_data.get('department')
             designation = employee_form.cleaned_data.get('designation')
             phone_number = employee_form.cleaned_data.get('phone_number')
             team_lead = employee_form.cleaned_data.get('team_lead')
-
+            date_of_joining = employee_form.cleaned_data.get('date_of_joining')
             emergency_name = employee_form.cleaned_data.get('emergency_name')
             emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
             emergency_phone = employee_form.cleaned_data.get('emergency_phone')
@@ -293,6 +301,7 @@ def add_employee(request):
                 employee.department = department
                 employee.phone_number = phone_number
                 employee.designation = designation
+                employee.date_of_joining = date_of_joining
                 if team_lead:
                     employee.team_lead = team_lead
 

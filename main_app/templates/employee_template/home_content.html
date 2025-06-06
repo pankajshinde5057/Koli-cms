@@ -6,144 +6,34 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <style>
-  .bg-gradient-primary {
-      background: linear-gradient(135deg, #667eea 0%, rgb(64, 11, 117) 100%) !important;
-  }
-  .bg-gradient-success {
-      background: linear-gradient(135deg, rgb(14, 121, 73) 0%, rgb(12, 107, 166) 100%) !important;
-  }
-  .bg-gradient-info {
-      background: linear-gradient(135deg, rgb(92, 28, 141) 0%, rgb(110, 113, 94) 100%) !important;
-  }
-  .bg-gradient-warning {
-      background: linear-gradient(135deg, rgb(189, 108, 104) 0%, rgb(63, 61, 4) 100%) !important;
-  }
-  .bg-pattern-1 {
-      background: linear-gradient(135deg, rgb(29, 85, 134) 0%, rgb(230, 98, 28) 100%) !important;
-  }
-  .bg-pattern-2 {
-      background: linear-gradient(135deg, rgb(187, 34, 204) 0%, rgb(24, 192, 49) 100%) !important;
-  }
-  .bg-pattern-3 {
-      background: linear-gradient(135deg, rgb(59, 48, 60) 0%, rgb(21, 143, 40) 100%) !important;
-  }
-  .bg-pattern-4 {
-      background: linear-gradient(135deg, rgb(146, 89, 99) 0%, rgb(179, 151, 11) 100%) !important;
-  }
-  
-  .icon-circle {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-  }
-  
-  .bg-white-20 {
-      background-color: rgba(255,255,255,0.2);
-  }
-  
-  .card {
-      transition: all 0.3s ease;
-      border-radius: 10px;
-      overflow: hidden;
-      border: none;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  }
-  
-  .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-  }
-  
-  .badge {
-      font-weight: 500;
-      padding: 5px 10px;
-      border-radius: 20px;
-  }
-  
-  .btn {
-      border-radius: 8px;
-      padding: 10px 15px;
-      font-weight: 500;
-      transition: all 0.3s;
-  }
-  
-  .btn:hover {
-      transform: translateY(-2px);
-  }
-  
-  .alert-info {
-      background: linear-gradient(135deg, rgba(23, 162, 184, 0.9) 0%, rgba(23, 162, 184, 0.7) 100%);
-      color: white;
-      border: none;
-      border-radius: 10px;
-  }
-  
-  .alert-info .close {
-      color: white;
-      opacity: 0.8;
-  }
-  
-  .small-box {
-      border-radius: 10px;
-      color: white;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.3s;
-  }
-  
-  .small-box:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-  }
-  
-  .small-box .icon {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      font-size: 70px;
-      opacity: 0.2;
-      transition: all 0.3s;
-  }
-  
-  .small-box:hover .icon {
-      opacity: 0.3;
-      transform: scale(1.1);
-  }
-  
-  .table {
-      border-collapse: separate;
-      border-spacing: 0;
-  }
-  
-  .table thead th {
-      border-top: none;
-      background-color: #f8f9fa;
-      font-weight: 600;
-  }
-  
-  .table-striped tbody tr:nth-of-type(odd) {
-      background-color: rgba(0,0,0,0.02);
-  }
-  
-  .pagination .page-item.active .page-link {
-      background-color: #667eea;
-      border-color: #667eea;
-  }
-  
-  .pagination .page-link {
-      color: #667eea;
-  }
-  
-  .card-header {
-      border-radius: 10px 10px 0 0 !important;
-      background-color: white;
-      border-bottom: 1px solid rgba(0,0,0,0.1);
-  }
-  
+  /* Your provided CSS styles remain unchanged */
+  .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, rgb(64, 11, 117) 100%) !important; }
+  .bg-gradient-success { background: linear-gradient(135deg, rgb(14, 121, 73) 0%, rgb(12, 107, 166) 100%) !important; }
+  .bg-gradient-info { background: linear-gradient(135deg, rgb(92, 28, 141) 0%, rgb(110, 113, 94) 100%) !important; }
+  .bg-gradient-warning { background: linear-gradient(135deg, rgb(189, 108, 104) 0%, rgb(63, 61, 4) 100%) !important; }
+  .bg-pattern-1 { background: linear-gradient(135deg, rgb(29, 85, 134) 0%, rgb(230, 98, 28) 100%) !important; }
+  .bg-pattern-2 { background: linear-gradient(135deg, rgb(187, 34, 204) 0%, rgb(24, 192, 49) 100%) !important; }
+  .bg-pattern-3 { background: linear-gradient(135deg, rgb(59, 48, 60) 0%, rgb(21, 143, 40) 100%) !important; }
+  .bg-pattern-4 { background: linear-gradient(135deg, rgb(146, 89, 99) 0%, rgb(179, 151, 11) 100%) !important; }
+  .icon-circle { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .bg-white-20 { background-color: rgba(255,255,255,0.2); }
+  .card { transition: all 0.3s ease; border-radius: 10px; overflow: hidden; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+  .badge { font-weight: 500; padding: 5px 10px; border-radius: 20px; }
+  .btn { border-radius: 8px; padding: 10px 15px; font-weight: 500; transition: all 0.3s; }
+  .btn:hover { transform: translateY(-2px); }
+  .alert-info { background: linear-gradient(135deg, rgba(23, 162, 184, 0.9) 0%, rgba(23, 162, 184, 0.7) 100%); color: white; border: none; border-radius: 10px; }
+  .alert-info .close { color: white; opacity: 0.8; }
+  .small-box { border-radius: 10px; color: white; position: relative; overflow: hidden; transition: all 0.3s; }
+  .small-box:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+  .small-box .icon { position: absolute; top: 10px; right: 10px; font-size: 70px; opacity: 0.2; transition: all 0.3s; }
+  .small-box:hover .icon { opacity: 0.3; transform: scale(1.1); }
+  .table { border-collapse: separate; border-spacing: 0; }
+  .table thead th { border-top: none; background-color: #f8f9fa; font-weight: 600; }
+  .table-striped tbody tr:nth-of-type(odd) { background-color: rgba(0,0,0,0.02); }
+  .pagination .page-item.active .page-link { background-color: #667eea; border-color: #667eea; }
+  .pagination .page-link { color: #667eea; }
+  .card-header { border-radius: 10px 10px 0 0 !important; background-color: white; border-bottom: 1px solid rgba(0,0,0,0.1); }
   .badge.bg-success { background-color: #28a745 !important; }
   .badge.bg-dark-gray { background-color: #5A6268 !important; }
   .badge.bg-warning { background-color: #ffc107 !important; color: #212529; }
@@ -152,80 +42,27 @@
   .badge.bg-primary { background-color: #007bff !important; }
   .badge.bg-info { background-color: #17a2b8 !important; }
   .badge.bg-orange { background-color: #fd7e14 !important; color: #212529; }
-
-  .date-filter-group {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-  }
-  .date-filter-group .form-group {
-      margin-bottom: 0;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-  }
-  .date-filter-group label {
-      color: white;
-      font-weight: 500;
-      margin-bottom: 0;
-  }
-  .date-filter-group input {
-      width: 150px;
-      border-radius: 5px;
-  }
-
-  .pagination-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-  }
-
-  .clocked-status {
-      font-size: 0.8rem;
-      margin-left: 10px;
-  }
-  .clocked-in {
-      color: white;
-  }
-  .clocked-out {
-      color: white;
-  }
-
-  .late-by-badge {
-      margin-left: 5px;
-  }
-
- .btn-loading {
-        position: relative;
-        pointer-events: none;
-    }
- .btn-loading::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 16px;
-        height: 16px;
-        margin: -8px 0 0 -8px;
-        border: 2px solid rgba(255,255,255,0.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+  .date-filter-group { display: flex; align-items: center; gap: 15px; }
+  .date-filter-group .form-group { margin-bottom: 0; display: flex; align-items: center; gap: 5px; }
+  .date-filter-group label { color: white; font-weight: 500; margin-bottom: 0; }
+  .date-filter-group input { width: 150px; border-radius: 5px; }
+  .pagination-container { display: flex; justify-content: center; align-items: center; width: 100%; }
+  .clocked-status { font-size: 0.8rem; margin-left: 10px; }
+  .clocked-in { color: white; }
+  .clocked-out { color: white; }
+  .late-by-badge { margin-left: 5px; }
+  .btn-loading { position: relative; pointer-events: none; }
+  .btn-loading::after { content: ""; position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 {% endblock custom_css %}
 
 {% block content %}
 <section class="content">
-    <!-- Today's Work Summary -->
-    <div class="alert alert-info alert-dismissible shadow">
-        <button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>
+    <div class="alert alert-info alert-dismissible shadow-sm">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">×</button>
         <h5>
-            <i class="icon fas fa-info-circle"></i> Today's Work Summary :-
+            <i class="icon fas fa-info-circle"></i> Today’s Work Summary :-
             {% if today_status == 'Clocked In' %}
                 <span class="badge bg-success clocked-status clocked-in">currently clocked in</span>
             {% elif today_status == 'Clocked Out' %}
@@ -240,62 +77,27 @@
                 {% elif today_record.status == 'late' %}
                     <span class="badge bg-orange">Late</span>
                 {% elif today_record.status == 'half_day' %}
-                    <span class="badge bg-secondary">Half Day</span>
+                    <span class="badge bg-secondary">Half-Day</span>
+                {% elif today_record.status == 'absent' %}
+                    <span class="badge bg-danger">Absent</span>
                 {% endif %}
             {% else %}
                 <span class="badge bg-danger">Not Clocked In Today</span>
             {% endif %}
-            
             {% if today_late and today_record.status != 'late' %}
                 <span class="badge bg-orange">Late</span>
             {% endif %}
             {% if today_half_day and today_record.status != 'half_day' %}
                 <span class="badge bg-secondary">Half Day</span>
             {% endif %}
-            
-            <strong class="ml-3">Total Hours:</strong> 
-            <span class="badge bg-info ml-2">
-                {{ today_duration_str|default:"0 hours 0 minutes" }}
-            </span>
             <span class="badge bg-orange late-by-badge">
                 Late by: {{ today_late_duration_str|default:"0 hours 0 minutes" }}
-            </span>
-        </p>
-        <p>
-            <strong>Break Status:</strong>
-            {% if on_break %}
-                <span class="badge bg-primary ml-2">On Break</span>
-            {% else %}
-                <span class="badge bg-dark-gray ml-2">Not On Break</span>
-            {% endif %}
-            {% if lunch_taken %}
-                <span class="badge bg-warning ml-2">Lunch Taken</span>
-            {% else %}
-                <span class="badge bg-dark-gray ml-2">Lunch Not Taken</span>
-            {% endif %}
-            
-            <strong class="ml-3">Lunch Taken Time:</strong>
-            <span class="badge bg-warning ml-2">
-                {% if lunch_taken_time %}
-                    {{ lunch_taken_time|time:"h:i:s A" }}
-                {% else %}
-                    Not Taken
-                {% endif %}
-            </span>
-            <strong class="ml-3">Break Taken Time:</strong>
-            <span class="badge bg-primary ml-2">
-                {% if break_taken_time %}
-                    {{ break_taken_time|time:"h:i:s A" }}
-                {% else %}
-                    Not Taken
-                {% endif %}
             </span>
         </p>
     </div>
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Present Days -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-gradient-success">
                     <div class="inner">
@@ -307,8 +109,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Late Days -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-gradient-warning">
                     <div class="inner">
@@ -320,8 +120,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Half Days -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-gradient-secondary">
                     <div class="inner">
@@ -333,8 +131,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Absent Days -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-gradient-danger">
                     <div class="inner">
@@ -346,8 +142,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Attendance Percentage -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-gradient-primary">
                     <div class="inner">
@@ -359,21 +153,28 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Today's Total Breaks -->
+            <div class="col-lg-3 col-6 mb-4">
+                <div class="small-box bg-pattern-1">
+                    <div class="inner">
+                        <h3>{{ total_available_leaves|floatformat:1 }}</h3>
+                        <p>Total Available Leaves</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                </div>
+            </div>
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-pattern-3">
                     <div class="inner">
                         <h3>{{ attendance_stats.todays_total_breaks }}</h3>
-                        <p>Today's Total Breaks</p>
+                        <p>Today’s Total Breaks</p>
                     </div>
                     <div class="icon">
                         <i class="fas fa-user-minus"></i>
                     </div>
                 </div>
             </div>
-
-            <!-- Monthly Total Breaks -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-pattern-4">
                     <div class="inner">
@@ -385,8 +186,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Total Days -->
             <div class="col-lg-3 col-6 mb-4">
                 <div class="small-box bg-gradient-info">
                     <div class="inner">
@@ -399,6 +198,7 @@
                 </div>
             </div>
         </div>
+
 
         <div class="col">
             <div class="card shadow-sm">
@@ -420,7 +220,6 @@
                                     <input type="hidden" name="department" value="{{ request.GET.department }}">
                                 {% endif %}
                             </form>
-
                             {% if request.user.is_staff %}
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -433,7 +232,6 @@
                                     {% endfor %}
                                 </ul>
                             </div>
-
                             <div class="btn-group ms-2">
                                 <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                     {% if request.GET.department %}Dept: {{ request.GET.department }}{% else %}All Departments{% endif %}
@@ -525,7 +323,6 @@
                                                     <span class="page-link">«</span>
                                                 </li>
                                             {% endif %}
-
                                             {% for num in detailed_time_entries.paginator.page_range %}
                                                 {% if detailed_time_entries.number == num %}
                                                     <li class="page-item active">
@@ -537,7 +334,6 @@
                                                     </li>
                                                 {% endif %}
                                             {% endfor %}
-
                                             {% if detailed_time_entries.has_next %}
                                                 <li class="page-item">
                                                     <a class="page-link" href="?page={{ detailed_time_entries.next_page_number }}" data-page="{{ detailed_time_entries.next_page_number }}" aria-label="Next">
@@ -554,7 +350,6 @@
                                 </div>
                             </div>
                         </div>
-
                         <div class="tab-pane fade" id="weekly" role="tabpanel">
                             <div class="table-responsive">
                                 <table class="table table-striped">
@@ -575,7 +370,6 @@
                                 </table>
                             </div>
                         </div>
-
                         <div class="tab-pane fade" id="monthly" role="tabpanel">
                             <div class="table-responsive">
                                 <table class="table table-striped">
@@ -600,8 +394,8 @@
                 </div>
             </div>
         </div>
-    </div>
-</section>
+
+        
 {% endblock content %}
 
 {% block custom_js %}
@@ -644,7 +438,6 @@ $(document).ready(function() {
     function checkAndSubmit() {
         const startDate = $("#start_date").val();
         const endDate = $("#end_date").val();
-
         if (startDate && endDate) {
             submitFilters();
         }
@@ -652,7 +445,6 @@ $(document).ready(function() {
 
     function submitFilters(params = null) {
         const urlParams = params || new URLSearchParams(window.location.search);
-        
         const startDate = $("#start_date").val();
         const endDate = $("#end_date").val();
         if (startDate) urlParams.set('start_date', startDate);
@@ -661,14 +453,14 @@ $(document).ready(function() {
         else urlParams.delete('end_date');
 
         {% if request.user.is_staff %}
-            const user = $('#dateRangeForm input[name="user"]').val();
-            const department = $('#dateRangeForm input[name="department"]').val();
-            if (user) urlParams.set('user', user);
-            else urlParams.delete('user');
-            if (department) urlParams.set('department', department);
-            else urlParams.delete('department');
+        const user = $('#dateRangeForm input[name="user"]').val();
+        const department = $('#dateRangeForm input[name="department"]').val();
+        if (user) urlParams.set('user', user);
+        else urlParams.delete('user');
+        if (department) urlParams.set('department', department);
+        else urlParams.delete('department');
         {% endif %}
-        const status = '{{ request.GET.status|default_if_none:'' }}';
+        const status = '{{ current_filters.status|default_if_none:'' }}';
         if (status) urlParams.set('status', status);
         else urlParams.delete('status');
 
@@ -682,9 +474,7 @@ $(document).ready(function() {
             url: window.location.pathname,
             type: 'GET',
             data: urlParams.toString(),
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
             success: function(response) {
                 $('#timeHistoryTable').html($(response.html).find('#timeHistoryTable').html());
                 $("#start_date").val(response.html.match(/name="start_date"[^>]*value="([^"]*)"/)?.[1] || '');
@@ -698,7 +488,7 @@ $(document).ready(function() {
                 window.history.pushState({}, '', window.location.pathname + '?' + urlParams.toString());
             },
             error: function(xhr) {
-                console.error('AJAX error gard:', xhr.status, xhr.statusText);
+                console.error('AJAX error:', xhr.status, xhr.statusText);
                 try {
                     const error = JSON.parse(xhr.responseText);
                     console.error('Error message:', error.message || 'Unknown error');
@@ -712,7 +502,6 @@ $(document).ready(function() {
 
     $(document).on('click', '#paginationContainer a.page-link[data-page]', function(e) {
         e.preventDefault();
-        e.stopPropagation();
         const page = $(this).data('page');
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set('page', page);
@@ -720,14 +509,11 @@ $(document).ready(function() {
     });
 
     {% if request.user.is_staff %}
-    $(document).on('click', '.dropdown-menu a.dropdown-item', function(e) {
+    $(document).on('click', '.dropdown-item', function(e) {
         e.preventDefault();
-        e.stopPropagation();
         const href = $(this).attr('href');
         const newParams = new URLSearchParams(href.split('?')[1] || '');
-        
         const urlParams = new URLSearchParams(window.location.search);
-        
         if (newParams.has('user')) {
             const user = newParams.get('user');
             if (user) urlParams.set('user', user);
@@ -740,22 +526,65 @@ $(document).ready(function() {
             else urlParams.delete('department');
             $('#dateRangeForm input[name="department"]').val(department || '');
         }
-
         submitFilters(urlParams);
     });
     {% endif %}
 
+    // Handle clock-in/out forms
+    $('.clock-form').on('submit', function(e) {
+        e.preventDefault();
+        const $form = $(this);
+        const $button = $form.find('button[type="submit"]');
+        $button.prop('disabled', true).addClass('btn-loading');
+
+        $.ajax({
+            url: $form.attr('action'),
+            type: 'POST',
+            data: $form.serialize(),
+            headers: {'X-CSRFToken': '{{ csrf_token }}'},
+            success: function(response) {
+                if (response.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success',
+                        text: response.message,
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else if (response.redirect_url) {
+                    window.location.href = response.redirect_url;
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message,
+                        confirmButtonText: 'OK'
+                    });
+                }
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred. Please try again.',
+                    confirmButtonText: 'OK'
+                });
+            },
+            complete: function() {
+                $button.prop('disabled', false).removeClass('btn-loading');
+            }
+        });
+    });
+
     window.addEventListener('popstate', function(event) {
         const urlParams = new URLSearchParams(window.location.search);
         $('#timeHistoryTable').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
-
         $.ajax({
             url: window.location.pathname,
             type: 'GET',
             data: urlParams.toString(),
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
             success: function(response) {
                 $('#timeHistoryTable').html($(response.html).find('#timeHistoryTable').html());
                 $("#start_date").val(response.html.match(/name="start_date"[^>]*value="([^"]*)"/)?.[1] || '');
@@ -775,6 +604,7 @@ $(document).ready(function() {
     });
 });
 
+// Firebase messaging (unchanged)
 var firebaseConfig = {
     apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
     authDomain: "sms-with-django.firebaseapp.com",
@@ -785,10 +615,8 @@ var firebaseConfig = {
     appId: "1:945324593139:web:03fa99a8854bbd38420c86",
     measurementId: "G-2F2RXTL9GT"
 };
-
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
-
 function initializeFirebaseMessaging() {
     messaging.requestPermission()
         .then(() => messaging.getToken())
@@ -797,13 +625,11 @@ function initializeFirebaseMessaging() {
         })
         .catch(err => console.error("Permission denied", err));
 }
-
 messaging.onMessage(payload => {
     const notificationOptions = {
         body: payload.notification.body,
         icon: payload.notification.icon
     };
-
     if (Notification.permission === "granted") {
         const notification = new Notification(payload.notification.title, notificationOptions);
         notification.onclick = event => {
@@ -813,14 +639,12 @@ messaging.onMessage(payload => {
         };
     }
 });
-
 messaging.onTokenRefresh(() => {
     messaging.getToken().then(newToken => {
         console.log("New Token: ", newToken);
         sendToServer(newToken);
     }).catch(console.error);
 });
-
 function sendToServer(token) {
     $.ajax({
         url: "{% url 'employee_fcmtoken' %}",
@@ -833,7 +657,6 @@ function sendToServer(token) {
         console.error("Failed to send token", err);
     });
 }
-
 initializeFirebaseMessaging();
 </script>
 {% endblock custom_js %}

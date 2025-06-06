@@ -54,15 +54,25 @@ class CustomUserForm(FormSettings):
         fields = ['first_name', 'last_name', 'email', 'gender',  'password','profile_pic', 'address' ]
 
 
+from datetime import date
+
+
+
 class EmployeeForm(CustomUserForm):
     emergency_name = forms.CharField(label="Emergency Contact Name", required=False)
     emergency_relationship = forms.CharField(label="Emergency Contact Relationship", required=False)
     emergency_phone = forms.CharField(label="Emergency Contact Phone", max_length=10, required=False)
     emergency_address = forms.CharField(label="Emergency Contact Address", required=False, widget=forms.Textarea)
+    date_of_joining = forms.DateField(
+        label="Date of Joining",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=True
+    )
 
     def __init__(self, *args, **kwargs):
-        super(EmployeeForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
+        # Initialize emergency contact fields
         if self.instance and self.instance.emergency_contact:
             ec = self.instance.emergency_contact
             self.fields['emergency_name'].initial = ec.get('name', '')
@@ -70,9 +80,20 @@ class EmployeeForm(CustomUserForm):
             self.fields['emergency_phone'].initial = ec.get('phone', '')
             self.fields['emergency_address'].initial = ec.get('address', '')
 
+        # Initialize date_of_joining field
+        if self.instance and self.instance.pk and self.instance.date_of_joining:
+            self.fields['date_of_joining'].initial = self.instance.date_of_joining
+
+    def clean_date_of_joining(self):
+        date_of_joining = self.cleaned_data.get('date_of_joining')
+        if not date_of_joining:
+            raise ValidationError("Date of Joining is required.")
+        return date_of_joining
+
     def save(self, commit=True):
         instance = super().save(commit=False)
 
+        # Save emergency contact details
         instance.emergency_contact = {
             'name': self.cleaned_data.get('emergency_name'),
             'relationship': self.cleaned_data.get('emergency_relationship'),
@@ -80,14 +101,27 @@ class EmployeeForm(CustomUserForm):
             'address': self.cleaned_data.get('emergency_address'),
         }
 
+        # Save date_of_joining
+        date_of_joining = self.cleaned_data.get('date_of_joining')
+        if date_of_joining:
+            instance.date_of_joining = date_of_joining
+        else:
+            print("Error: date_of_joining is missing in cleaned_data")  # Debugging
+
         if commit:
-            instance.save()
+            try:
+                instance.save()
+                if hasattr(instance, 'admin'):
+                    instance.admin.save()
+                print(f"Saved Employee: {instance}, date_of_joining: {instance.date_of_joining}")  # Debugging
+            except Exception as e:
+                print(f"Error saving employee: {e}")  # Debugging
         return instance
 
     class Meta(CustomUserForm.Meta):
         model = Employee
         fields = CustomUserForm.Meta.fields + [
-            'division', 'department', 'designation', 'team_lead', 'phone_number'
+            'division', 'department', 'designation', 'team_lead', 'phone_number', 'date_of_joining'
         ]
 
 
@@ -105,6 +139,11 @@ class ManagerForm(CustomUserForm):
     emergency_relationship = forms.CharField(label="Emergency Contact Relationship", required=False)
     emergency_phone = forms.CharField(label="Emergency Contact Phone", max_length=10, required=False)
     emergency_address = forms.CharField(label="Emergency Contact Address", required=False, widget=forms.Textarea)
+    date_of_joining = forms.DateField(
+        label="Date of Joining",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=True
+    )
 
     def __init__(self, *args, **kwargs):
         super(ManagerForm, self).__init__(*args, **kwargs)
@@ -116,6 +155,9 @@ class ManagerForm(CustomUserForm):
             self.fields['emergency_phone'].initial = ec.get('phone', '')
             self.fields['emergency_address'].initial = ec.get('address', '')
 
+        if self.instance and hasattr(self.instance, 'date_of_joining'):
+            self.fields['date_of_joining'].initial = self.instance.date_of_joining
+
     def save(self, commit=True):
         instance = super().save(commit=False)
 
@@ -125,6 +167,7 @@ class ManagerForm(CustomUserForm):
             'phone': self.cleaned_data.get('emergency_phone'),
             'address': self.cleaned_data.get('emergency_address'),
         }
+        instance.date_of_joining = self.cleaned_data.get('date_of_joining')
 
         if commit:
             instance.save()
@@ -132,7 +175,7 @@ class ManagerForm(CustomUserForm):
 
     class Meta(CustomUserForm.Meta):
         model = Manager
-        fields = CustomUserForm.Meta.fields + ['division', 'department']
+        fields = CustomUserForm.Meta.fields + ['division', 'department', 'date_of_joining']
 
 
 
