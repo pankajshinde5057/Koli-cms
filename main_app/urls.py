@@ -139,7 +139,7 @@ urlpatterns = [
           name='approve_leave_request'),
      path('manager/leave-reject/<int:leave_id>/', manager_views.reject_leave_request,
           name='reject_leave_request'),
-     path('notification/read/<int:notification_id>/<str:type>/<str:role>/', mark_notification_read, name='mark_notification_read'),
+     path('notification/read/', mark_notification_read, name='mark_notification_read'),
      path('manager-todays-attendance/', manager_views.manager_todays_attendance, name='manager_todays_attendance'),
 
      path('get_asset_categories/', manager_views.get_asset_categories, name='get_asset_categories'),

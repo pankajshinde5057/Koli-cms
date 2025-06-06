@@ -34,7 +34,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import AttendanceRecord, Employee, Holiday, LeaveReportEmployee
 from calendar import monthrange
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
+from django.db import transaction
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -1683,32 +1683,12 @@ def manager_send_employee_notification(request):
         # Retrieve CustomUser and corresponding Employee
         user = get_object_or_404(CustomUser, id=id, user_type=3)
         employee = get_object_or_404(Employee, admin=user)
-        
-        if user.fcm_token:
-            url = "https://fcm.googleapis.com/fcm/send"
-            body = {
-                'notification': {
-                    'title': "OfficeOps",
-                    'body': message,
-                    'click_action': reverse('employee_view_notification'),
-                    'icon': static('dist/img/AdminLTELogo.png')
-                },
-                'to': user.fcm_token
-            }
-            headers = {
-                'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                'Content-Type': 'application/json'
-            }
-            response = requests.post(url, data=json.dumps(body), headers=headers)
-            if response.status_code != 200:
-                print(f"FCM request failed: {response.text}")
-        
         notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
         notification.save()
         
         # Assuming send_notification is a custom function; ensure it's defined
         try:
-            send_notification(user, message, "notification", notification.id, "employee")
+            send_notification(user, message, "notification-from-manager", notification.id, "employee")
         except Exception as e:
             print(f"send_notification failed: {str(e)}")
         
@@ -1734,27 +1714,13 @@ def send_bulk_employee_notification_by_manager(request):
             return JsonResponse({'success': False, 'message': 'No employees found'}, status=400)
         
         for employee in employees:
-            if employee.admin.fcm_token:
-                url = "https://fcm.googleapis.com/fcm/send"
-                body = {
-                    'notification': {
-                        'title': "KoliInfoTech",
-                        'body': message,
-                        'click_action': reverse('employee_view_notification'),
-                        'icon': static('dist/img/AdminLTELogo.png')
-                    },
-                    'to': employee.admin.fcm_token
-                }
-                headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                    'Content-Type': 'application/json'
-                }
-                response = requests.post(url, data=json.dumps(body), headers=headers)
-                if response.status_code != 200:
-                    print(f"FCM request failed for employee {employee.id}: {response.text}")
-            
+            user = employee.admin
             notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
             notification.save()
+            try:
+                send_notification(user, message, "notification-from-manager", notification.id, "employee")
+            except Exception as e:
+                print(f"send_notification failed: {str(e)}")
         
         return JsonResponse({'success': True, 'message': 'Bulk notification sent successfully'})
     except Exception as e:
@@ -1782,27 +1748,14 @@ def send_selected_employee_notification_by_manager(request):
     try:
         for emp_id in employee_ids:
             employee = get_object_or_404(Employee, admin_id=emp_id)
-            if employee.admin.fcm_token:
-                url = "https://fcm.googleapis.com/fcm/send"
-                body = {
-                    'notification': {
-                        'title': "KoliInfoTech",
-                        'body': message,
-                        'click_action': reverse('employee_view_notification'),
-                        'icon': static('dist/img/AdminLTELogo.png')
-                    },
-                    'to': employee.admin.fcm_token
-                }
-                headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                    'Content-Type': 'application/json'
-                }
-                response = requests.post(url, data=json.dumps(body), headers=headers)
-                if response.status_code != 200:
-                    print(f"FCM request failed for employee {employee.id}: {response.text}")
-            
+            user = employee.admin
             notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
             notification.save()
+
+            try:
+                send_notification(user, message, "notification-from-manager", notification.id, "employee")
+            except Exception as e:
+                print(f"send_notification failed: {str(e)}")
         
         return JsonResponse({'success': True, 'message': 'Notification sent to selected employees'})
     except Exception as e:
@@ -1879,20 +1832,29 @@ def manager_view_notification(request):
         is_read=False
     ).order_by('-timestamp')
 
+    leave_request_from_employee_notification = unread_notifications.filter(notification_type='leave-notification')
+
+    general_request_from_admin_notification = unread_notifications.filter(notification_type='general-notification',user=request.user)
+
+    clockout_request_from_employee_notification = unread_notifications.filter(notification_type='clockout-notification')
+
+    # Handle "Mark All as Read"
+    if request.method == 'POST' and request.POST.get('mark_all_read'):
+        with transaction.atomic():
+            Notification.objects.filter(
+                user=request.user,
+                role="manager",
+                notification_type="general-notification",
+                is_read=False
+            ).update(is_read=True)
+
     # Pending and history for early clock-out requests
     pending_early_clock_out_requests = EarylyClockOutRequest.objects.filter(status='pending').order_by('-submitted_at')
     early_clock_out_history = EarylyClockOutRequest.objects.filter(status__in=['approved', 'denied']).order_by('-reviewed_at')
 
-    # Separate types
-    # leave_notifications = unread_notifications.filter(notification_type="leave")
-    # general_notifications = unread_notifications.filter(notification_type="notification")
-
     # Pending and history
     pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
-
-    # Mark as read
-    # unread_notifications.update(is_read=True)
 
     # Pagination
     notification_from_admin_paginator = Paginator(notification_from_admin, 3)
@@ -1900,17 +1862,27 @@ def manager_view_notification(request):
     early_clock_out_paginator = Paginator(early_clock_out_history, 3)
     early_clock_out_requests_paginator = Paginator(pending_early_clock_out_requests, 3)
 
-
+    # Get page Numbers
     notification_from_admin_obj = request.GET.get('notification_from_admin_obj')
     leave_notification_page = request.GET.get('leave_notification_page')
-    # general_notification_page = request.GET.get('general_notification_page')
     leave_page_number = request.GET.get('leave_history_page')
     early_clock_out_page_number = request.GET.get('early_clock_out_history_page')
     early_clock_out_requests_page = request.GET.get('early_clock_out_requests_page')
 
+    # IDs for Highlighting
+    leave_unread_ids = pending_leave_requests.values_list('id',flat=True)
+    pending_early_clockout_ids = pending_early_clock_out_requests.values_list('id',flat=True)
+    # notification_from_admin_ids = notification_from_admin.values_list('id',flat=True)
+
+    notification_unread_ids = Notification.objects.filter(
+        user=request.user,
+        role="manager",
+        notification_type="general-notification",
+        is_read=False
+    ).values_list('leave_or_notification_id', flat=True)
+
     context = {
-        # 'leave_notifications': leave_notification_paginator.get_page(leave_notification_page),
-        # 'general_notifications': general_notification_paginator.get_page(general_notification_page),
+        
         'notification_from_admin_obj' : notification_from_admin_paginator.get_page(notification_from_admin_obj),
         'pending_leave_requests': pending_leave_requests,
         'leave_history': leave_paginator.get_page(leave_page_number),
@@ -1918,6 +1890,10 @@ def manager_view_notification(request):
         'early_clock_out_history': early_clock_out_paginator.get_page(early_clock_out_page_number),
         'page_title': "View Notifications",
         'LOCATION_CHOICES': LOCATION_CHOICES,
+
+        'leave_unread_ids' : list(leave_unread_ids),
+        'pending_early_clockout_ids' : list(pending_early_clockout_ids),
+        'notification_from_admin_ids' : list(notification_unread_ids),
     }
 
     return render(request, "manager_template/manager_view_notification.html", context)
@@ -2129,6 +2105,42 @@ def approve_leave_request(request, leave_id):
 
                 messages.success(request, "Leave approved successfully")
                 return redirect('manager_view_notification')
+        leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
+
+        if leave_request.status == 0:
+            if not leave_request.end_date:
+                leave_request.end_date = leave_request.start_date
+                leave_request.save()
+
+            leave_request.status = 1
+            leave_request.save()
+
+            if leave_request.leave_type == 'Half-Day':
+                messages.success(request, "Half-Day leave approved.")
+            else:
+                messages.success(request, "Full-Day leave approved.")
+            msg = "Leave request Approved."
+
+            # Update existing notifications for the employee to mark as read
+            Notification.objects.filter(
+                notification_type = 'leave-notification',
+                leave_or_notification_id = leave_request.id,
+                role = 'manager'
+            ).update(is_read=True)
+            
+             # Send notification to employee
+            employee_user = leave_request.employee.admin
+            Notification.objects.create(
+                user=employee_user,
+                message=msg,
+                notification_type="leave-notification",
+                leave_or_notification_id=leave_id,
+                role="employee"
+            )
+
+        else:
+            messages.info(request, "This leave request has already been processed.")
+    return redirect('manager_view_notification')
 
         except Exception as e:
             logger.error(f"Error approving leave ID {leave_id}: {str(e)}")
@@ -2141,51 +2153,30 @@ def approve_leave_request(request, leave_id):
 def reject_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportEmployee, id=leave_id)
-        msg = "Please check the Leave Request"
-        msg = "Please check the Leave Request"
+        
         if leave_request.status == 0:
             leave_request.status = 2
             leave_request.save()
             msg = "Leave request rejected."
-            messages.warning(request, "Leave request rejected.")
-            
+            messages.warning(request, msg)
+
+            # Update existing notifications for the employee to mark as read
+            Notification.objects.filter(
+                notification_type = 'leave-notification',
+                leave_or_notification_id = leave_request.id,
+                role = 'manager'
+            ).update(is_read=True)
+
             # Send notification to employee
             employee_user = leave_request.employee.admin
             Notification.objects.create(
                 user=employee_user,
                 message=msg,
-                notification_type="leave",
+                notification_type="leave-notification",
                 leave_or_notification_id=leave_id,
                 role="employee"
             )
             
-            # Also create notification for manager (optional)
-            Notification.objects.create(
-                user=request.user,
-                message=f"You rejected leave for {leave_request.employee.admin.username}",
-                notification_type="leave",
-                leave_or_notification_id=leave_id,
-                role="manager"
-            )
-            
-            # Send notification to employee
-            employee_user = leave_request.employee.admin
-            Notification.objects.create(
-                user=employee_user,
-                message=msg,
-                notification_type="leave",
-                leave_or_notification_id=leave_id,
-                role="employee"
-            )
-            
-            # Also create notification for manager (optional)
-            Notification.objects.create(
-                user=request.user,
-                message=f"You rejected leave for {leave_request.employee.admin.username}",
-                notification_type="leave",
-                leave_or_notification_id=leave_id,
-                role="manager"
-            )
         else:
             messages.info(request, "This leave request has already been processed.")
     return redirect('manager_view_notification')

@@ -89,6 +89,104 @@ def clock_times(request):
 
     return context
 
+def unread_notification_count(request):
+    employee_leave_request_to_manager_count = 0
+    manager_general_count = 0
+    employee_clockout_request_to_manager_count = 0
+    employee_asset_claim_request_to_manager_count = 0
+    employee_notification_from_manager_count = 0
+    employee_leave_approved_or_rejected_notification_count = 0
+
+    if request.user.is_authenticated:
+        if request.user.user_type == '2':
+            manager_general_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='general-notification',
+                role="manager"
+            ).count()
+
+            employee_leave_request_to_manager_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='leave-notification',
+                role="manager"
+            ).count()
+
+            employee_clockout_request_to_manager_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='clockout-notification',
+                role="manager"
+            ).count()
+
+            employee_asset_claim_request_to_manager_count = Notification.objects.filter(
+                is_read=False,
+                notification_type='asset-notification',
+                role="manager"
+            ).count()
+
+            total_unread_notifications = (
+                manager_general_count +
+                employee_leave_request_to_manager_count +
+                employee_clockout_request_to_manager_count +
+                employee_asset_claim_request_to_manager_count
+            )
+
+            return {
+                'total_unread_notifications': total_unread_notifications,
+                'manager_general_count': manager_general_count,
+                'employee_leave_request_to_manager_count': employee_leave_request_to_manager_count,
+                'employee_clockout_request_to_manager_count': employee_clockout_request_to_manager_count,
+                'total_asset_unread_notifications': employee_asset_claim_request_to_manager_count,
+            }
+        else:
+            employee_notification_from_manager_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type__in=['notification-from-manager', 'notification-from-admin'],
+                role="employee"
+            ).count()
+
+            employee_leave_approved_or_rejected_notification_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='leave-notification',
+                role="employee"
+            ).count()
+
+            employee_clockout_request_to_manager_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='clockout-notification',
+                role="employee"
+            ).count()
+
+            total_unread_notifications = (
+                employee_notification_from_manager_count +
+                employee_leave_approved_or_rejected_notification_count +
+                employee_clockout_request_to_manager_count
+            )
+
+            return {
+                'total_unread_notifications': total_unread_notifications,
+                'employee_notification_from_manager_count': employee_notification_from_manager_count,
+                'employee_leave_approved_or_rejected_notification_count': employee_leave_approved_or_rejected_notification_count,
+                'employee_clockout_request_to_manager_count': employee_clockout_request_to_manager_count
+            }
+    
+    # Add a default return dictionary if the user is not authenticated
+    return {
+        'total_unread_notifications': 0,
+        'manager_general_count': 0,
+        'employee_leave_request_to_manager_count': 0,
+        'employee_clockout_request_to_manager_count': 0,
+        'total_asset_unread_notifications': 0,
+        'employee_notification_from_manager_count': 0,
+        'employee_leave_approved_or_rejected_notification_count': 0,
+        'employee_clockout_request_to_manager_count': 0
+    }
+       
 
 
 

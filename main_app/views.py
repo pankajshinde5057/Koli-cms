@@ -24,6 +24,7 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.http import HttpResponseForbidden
 from django.db.models import Q
 from django.contrib.auth.models import User
+from main_app.notification_badge import mark_notification_read, send_notification
 
 load_dotenv()
 
@@ -548,11 +549,14 @@ def early_clock_out_request(request):
                         'status': 'error', 
                         'message': 'An early clock-out request is already pending or approved for this shift'
                     }, status=400)
-            EarylyClockOutRequest.objects.create(
+            obj = EarylyClockOutRequest.objects.create(
                 attendance_record=attendance_record,
                 user=request.user,
                 reason=reason
             )
+            employee = get_object_or_404(Employee, admin_id=request.user.id)
+            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
+            send_notification(user, reason, "clockout-notification", obj.id, "manager")
             return JsonResponse({'status': 'success', 'message': 'Request submitted'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
@@ -597,6 +601,18 @@ def approve_early_clock_out(request, request_id):
         early_request.reviewed_by = request.user
         early_request.notes = notes
         early_request.save()
+        
+        obj = Notification.objects.filter(
+            notification_type = 'clockout-notification',
+            leave_or_notification_id = early_request.id,
+            role = 'manager'
+        ).update(is_read=True)
+
+        try:
+            send_notification(early_request.user, notes, "clockout-notification", early_request.id, "employee")
+        except Exception as e:
+            print(f"send_notification failed: {str(e)}")
+        
         return redirect('manager_view_notification')
 
     return HttpResponseForbidden("Invalid request")
@@ -611,6 +627,18 @@ def deny_early_clock_out(request, request_id):
         early_request.reviewed_by = request.user
         early_request.notes = notes
         early_request.save()
+
+        obj = Notification.objects.filter(
+            notification_type = 'clockout-notification',
+            leave_or_notification_id = early_request.id,
+            role = 'manager'
+        ).update(is_read=True)
+
+        try:
+            send_notification(early_request.user, notes, "clockout-notification", early_request.id, "employee")
+        except Exception as e:
+            print(f"send_notification failed: {str(e)}")
+
         return redirect('manager_view_notification')
 
     return HttpResponseForbidden("Invalid request")

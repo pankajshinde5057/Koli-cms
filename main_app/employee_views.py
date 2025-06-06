@@ -768,6 +768,9 @@ def employee_apply_leave(request):
                 message=message
             )
             messages.success(request, "Your leave request has been submitted.")
+            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
+            send_notification(user, "Leave Applied", "leave-notification", obj.id, "manager")
+            return redirect(reverse('employee_apply_leave'))
             if employee.team_lead:
                 Notification.objects.create(
                     user=employee.team_lead.admin,
@@ -812,7 +815,7 @@ def employee_feedback(request):
         'page_title': 'Employee Feedback'
     }
 
-    mark_notification_read(request, 0, "feedback", "employee")
+    # mark_notification_read(request, 0, "feedback", "employee")
 
     if request.method == 'POST':
         if form.is_valid():
@@ -1023,43 +1026,11 @@ def employee_view_salary(request):
 @login_required   
 def employee_view_notification(request):
     employee = get_object_or_404(Employee, admin=request.user)
+    
     all_notifications = NotificationEmployee.objects.filter(
         employee=employee
     ).order_by('-created_at')
-    notification_from_admin = all_notifications.filter(
-        created_by__is_superuser=True
-    )
-    
-    notification_from_manager = all_notifications.filter(
-        created_by__is_superuser=False
-    )
-    
-    notification_ids = Notification.objects.filter(
-        user=request.user,
-        is_read=False,
-    ).values_list('leave_or_notification_id', flat=True)
-    unread_ids = list(notification_ids)
-    admin_paginator = Paginator(notification_from_admin, 10)
-    admin_page_number = request.GET.get('notification_page')
-    notification_from_admin_obj = admin_paginator.get_page(admin_page_number)
-    manager_paginator = Paginator(notification_from_manager, 10)
-    manager_page_number = request.GET.get('manager_page')
-    notification_from_manager_obj = manager_paginator.get_page(manager_page_number)
-    
-    context = {
-        'notification_from_admin_obj': notification_from_admin_obj,
-        'notification_from_manager_obj': notification_from_manager_obj,
-        'total_notifications': notification_from_admin.count(),
-        'total_manager_notifications': notification_from_manager.count(),
-        'page_title': "View Notifications",
-        'manager_unread_ids': unread_ids,
-        'LOCATION_CHOICES': LOCATION_CHOICES,
-    }
 
-    employee = get_object_or_404(Employee, admin=request.user)
-    all_notifications = NotificationEmployee.objects.filter(
-        employee=employee
-    ).order_by('-created_at')
     notification_from_admin = all_notifications.filter(
         created_by__is_superuser=True
     )
@@ -1068,11 +1039,24 @@ def employee_view_notification(request):
         created_by__is_superuser=False
     )
     
-    notification_ids = Notification.objects.filter(
-        user=request.user,
+    # get all unread notification 
+    unread_notifications = Notification.objects.filter(
+        user = request.user,
+        role = 'employee',
         is_read=False,
+    ).order_by('-timestamp')
+
+    # notification from manager/admin(general-notification)
+    general_notification = unread_notifications.filter(
+        notification_type__in = ['notification-from-manager' , 'notification-from-admin']
     ).values_list('leave_or_notification_id', flat=True)
-    unread_ids = list(notification_ids)
+
+    # leave_request notification(is it approved/rejected ?)
+    leave_notification = unread_notifications.filter(
+        notification_type = 'leave-notification'
+    )
+    
+    # unread_ids = list(notification_ids)
     admin_paginator = Paginator(notification_from_admin, 10)
     admin_page_number = request.GET.get('notification_page')
     notification_from_admin_obj = admin_paginator.get_page(admin_page_number)
@@ -1086,8 +1070,10 @@ def employee_view_notification(request):
         'total_notifications': notification_from_admin.count(),
         'total_manager_notifications': notification_from_manager.count(),
         'page_title': "View Notifications",
-        'manager_unread_ids': unread_ids,
+        # 'manager_unread_ids': unread_ids,
         'LOCATION_CHOICES': LOCATION_CHOICES,
+        'general_notification' : general_notification,
+        'leave_notification' : leave_notification
     }
 
     return render(request, "employee_template/employee_view_notification.html", context)
@@ -1119,11 +1105,17 @@ def employee_requests(request):
     issue_page_number = request.GET.get('issue_page')
     asset_issues_page = issue_paginator.get_page(issue_page_number)
 
+    unread_notifications = Notification.objects.filter(
+        user = request.user,
+        is_read = False
+    ).values_list('leave_or_notification_id' , flat=True)
+
     context = {
         'leave_requests': leave_requests_page,
         'asset_claims': asset_claims_page,
         'asset_issues': asset_issues_page,
-        'page_title': 'My Requests'
+        'page_title': 'My Requests',
+        'unread_notifications' : list(unread_notifications)
     }
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
