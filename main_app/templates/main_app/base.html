@@ -213,10 +213,38 @@
     <script src="{% static 'dist/js/pages/dashboard.js'%} "></script>
     <!-- AdminLTE for demo purposes -->
     <script src="{% static 'dist/js/demo.js'%} "></script>
+
+    <script>
+    // Function to play notification sound
+        function playNotificationSound() {
+            var sound = document.getElementById('notificationSound');
+            sound.play().catch(function(error) {
+                console.log("Error playing sound:", error);
+            });
+        }
+
+        // Play sound when alerts are present
+        document.addEventListener('DOMContentLoaded', function() {
+            var alerts = document.querySelectorAll('.alert');
+            if (alerts.length > 0) {
+                playNotificationSound();
+            }
+        });
+
+        // Play sound when notification dropdown is opened
+        document.querySelector('.dropdown-toggle').addEventListener('click', function() {
+            var dropdownMenu = document.querySelector('.dropdown-menu');
+            if (dropdownMenu.classList.contains('show')) {
+                playNotificationSound();
+            }
+        });
+    </script>
     
     {% block custom_js %}
 
     {% endblock custom_js %}
+
+    <audio id="notificationSound" src="{% static 'audio/notification.mp3' %}" preload="auto"></audio>
 </body>
 
 </html>
