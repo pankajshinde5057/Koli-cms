@@ -426,8 +426,8 @@
                         <i class="nav-icon fas fa-bell"></i>
                         <p>
                            View Notifications
-                           {% if unread_manager_general_notification_count > 0 %}
-                           <span class="right badge badge-danger">{{ unread_manager_general_notification_count }}</span>
+                           {% if total_unread_notifications > 0 %}
+                           <span class="badge badge-danger">{{ total_unread_notifications }}</span>
                             {% endif %}
                         </p>
                     </a>

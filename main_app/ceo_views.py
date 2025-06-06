@@ -1086,22 +1086,12 @@ def send_manager_notification(request):
     
     try:
         manager = get_object_or_404(Manager, admin_id=id)
-        # url = "https://fcm.googleapis.com/fcm/send"
-        # body = {
-        #     'notification': {
-        #         'title': "OfficeOps",
-        #         'body': message,
-        #         'click_action': reverse('manager_view_notification'),
-        #         'icon': static('dist/img/AdminLTELogo.png')
-        #     },
-        #     'to': manager.admin.fcm_token
-        # }
-        # headers = {'Authorization':
-        #            'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-        #            'Content-Type': 'application/json'}
-        # data = requests.post(url, data=json.dumps(body), headers=headers)
+        
+        # Create NotificationManager entry
         notification = NotificationManager(manager=manager, message=message)
         notification.save()
+        user = CustomUser.objects.get(id=manager.admin.id)
+        send_notification(user, message, "general-notification", notification.id, "manager")
         
         return JsonResponse({'success': True, 'message': 'Notification sent successfully'})
     except Exception as e:
@@ -1248,25 +1238,14 @@ def send_employee_notification(request):
     
     try:
         employee = get_object_or_404(Employee, admin_id=id)
-        if employee.admin.fcm_token:
-            url = "https://fcm.googleapis.com/fcm/send"
-            body = {
-                'notification': {
-                    'title': "KoliInfoTech",
-                    'body': message,
-                    'click_action': reverse('employee_view_notification'),
-                    'icon': static('dist/img/AdminLTELogo.png')
-                },
-                'to': employee.admin.fcm_token
-            }
-            headers = {
-                'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlUkZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                'Content-Type': 'application/json'
-            }
-            requests.post(url, data=json.dumps(body), headers=headers)
-        
+        user = employee.admin
         notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
         notification.save()
+
+        try:
+            send_notification(user, message, "notification-from-admin", notification.id, "employee")
+        except Exception as e:
+            print(f"send_notification failed: {str(e)}")
         
         return JsonResponse({'success': True, 'message': 'Notification sent successfully'})
     except Exception as e:
@@ -1291,25 +1270,14 @@ def send_bulk_employee_notification(request):
             return JsonResponse({'success': False, 'message': 'No employees found'}, status=400)
         
         for employee in employees:
-            if employee.admin.fcm_token:
-                url = "https://fcm.googleapis.com/fcm/send"
-                body = {
-                    'notification': {
-                        'title': "KoliInfoTech",
-                        'body': message,
-                        'click_action': reverse('employee_view_notification'),
-                        'icon': static('dist/img/AdminLTELogo.png')
-                    },
-                    'to': employee.admin.fcm_token
-                }
-                headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlUkZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                    'Content-Type': 'application/json'
-                }
-                requests.post(url, data=json.dumps(body), headers=headers)
-            
+            user = employee.admin
             notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
             notification.save()
+
+            try:
+                send_notification(user, message, "notification-from-admin", notification.id, "employee")
+            except Exception as e:
+                print(f"send_notification failed: {str(e)}")
         
         return JsonResponse({'success': True, 'message': 'Bulk notification sent successfully'})
     except Exception as e:
@@ -1338,26 +1306,15 @@ def send_selected_employee_notification(request):
     try:
         for emp_id in employee_ids:
             employee = get_object_or_404(Employee, admin_id=emp_id)
-            if employee.admin.fcm_token:
-                url = "https://fcm.googleapis.com/fcm/send"
-                body = {
-                    'notification': {
-                        'title': "KoliInfoTech",
-                        'body': message,
-                        'click_action': reverse('employee_view_notification'),
-                        'icon': static('dist/img/AdminLTELogo.png')
-                    },
-                    'to': employee.admin.fcm_token
-                }
-                headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlUkZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                    'Content-Type': 'application/json'
-                }
-                requests.post(url, data=json.dumps(body), headers=headers)
-            
+            user = employee.admin
             notification = NotificationEmployee(employee=employee, message=message, created_by=request.user)
             notification.save()
-        
+
+            try:
+                send_notification(user, message, "notification-from-admin", notification.id, "employee")
+            except Exception as e:
+                print(f"send_notification failed: {str(e)}")
+                
         return JsonResponse({'success': True, 'message': 'Notification sent to selected employees'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)

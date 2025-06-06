@@ -73,7 +73,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'main_app.context_processors.clock_times',
-                # 'main_app.context_processors.unread_notification_count',
+                'main_app.context_processors.unread_notification_count',
                 'main_app.context_processors.asset_notification_count',
                 'main_app.context_processors.admin_notification_count',
             ],
