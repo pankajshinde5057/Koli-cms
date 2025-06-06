@@ -753,8 +753,8 @@ def employee_apply_leave(request):
             balance = LeaveBalance.get_balance(employee, current_date.year, current_date.month)
             if not balance:
                 balance = LeaveBalance.create_balance(employee, current_date.year, current_date.month)
-            if balance.total_available_leaves() < leave_amount:
-                messages.error(request, f"Insufficient leave balance for {current_date.strftime('%B %Y')}.")
+            # if balance.total_available_leaves() < leave_amount:
+            #     messages.error(request, f"Insufficient leave balance for {current_date.strftime('%B %Y')}.")
                 return redirect('employee_apply_leave')
             current_date += timedelta(days=1)
 

@@ -2069,10 +2069,10 @@ def approve_leave_request(request, leave_id):
                 f"Available={available_leaves}"
             )
 
-            if available_leaves < leave_amount:
-                logger.error(f"Insufficient leave balance on {current_date}: Available={available_leaves}, Required={leave_amount}")
-                messages.error(request, f"Insufficient leave balance for {current_date.strftime('%d-%m-%Y')}. Available: {available_leaves}")
-                return redirect('manager_view_notification')
+            # if available_leaves < leave_amount:
+            #     logger.error(f"Insufficient leave balance on {current_date}: Available={available_leaves}, Required={leave_amount}")
+            #     messages.error(request, f"Insufficient leave balance for {current_date.strftime('%d-%m-%Y')}. Available: {available_leaves}")
+            #     return redirect('manager_view_notification')
 
             current_date += timedelta(days=1)
 
