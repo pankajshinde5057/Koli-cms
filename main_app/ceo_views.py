@@ -44,23 +44,27 @@ def admin_home(request):
     today = date.today()
     current_time = timezone.now()
 
-    # Get filter parameters
     selected_department = request.GET.get('department', 'all').strip().lower()
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
     
-    # Parse dates with fallback to today
     try:
-        start_date = parse_date(start_date).date() if start_date else today
-        end_date = parse_date(end_date).date() if end_date else today
-    except ValueError:
+        start_date = parse_date(start_date_str) if start_date_str else today
+        end_date = parse_date(end_date_str) if end_date_str else today
+        
+        if not isinstance(start_date, date):
+            start_date = today
+        if not isinstance(end_date, date):
+            end_date = today
+            
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+    except (ValueError, TypeError):
         start_date = end_date = today
 
-    # Ensure end_date is not before start_date
     if start_date > end_date:
         start_date, end_date = end_date, start_date
 
-    # Filter employees and managers
     employees = CustomUser.objects.filter(user_type=3)  # Employees
     managers = CustomUser.objects.filter(user_type=2)   # Managers
     
@@ -68,12 +72,10 @@ def admin_home(request):
         employees = employees.filter(employee__department__name__iexact=selected_department)
         managers = managers.filter(manager__department__name__iexact=selected_department)
 
-    # IDs for querying
     employee_ids = employees.values_list('id', flat=True)
     manager_ids = managers.values_list('id', flat=True)
     all_user_ids = list(employee_ids) + list(manager_ids)
 
-    # Break data for today (for cards)
     employee_breaks_today = Break.objects.filter(
         attendance_record__user_id__in=employee_ids,
         break_start__date__gte=start_date,
@@ -91,7 +93,6 @@ def admin_home(request):
     total_employee_on_break = employee_breaks_today.count()
     total_manager_on_break = manager_breaks_today.count()
 
-    # Leave data
     total_employee_leave = LeaveReportEmployee.objects.filter(
         employee__admin_id__in=employee_ids,
         start_date__lte=end_date,
@@ -104,19 +105,17 @@ def admin_home(request):
         end_date__gte=start_date
     ).count()
 
-    # Combined break entries
     break_entries = []
     break_queryset = Break.objects.filter(
         attendance_record__user_id__in=all_user_ids,
         break_start__date__gte=start_date,
         break_start__date__lte=end_date
-    ).select_related('attendance_record__user')  # Optimize query with select_related
+    ).select_related('attendance_record__user')  
     
     for b in break_queryset.order_by('-break_start'):
-        user = b.attendance_record.user  # Access user directly from attendance_record
+        user = b.attendance_record.user 
         user_type = 'Employee' if user.user_type == '3' else 'Manager' if user.user_type == '2' else 'Unknown'
         
-        # Get department with proper error handling
         department = 'N/A'
         try:
             if user_type == 'Employee':
@@ -128,7 +127,6 @@ def admin_home(request):
         except (Employee.DoesNotExist, Manager.DoesNotExist):
             department = 'N/A'
             
-        # Calculate duration
         duration = 0
         if b.break_end:
             duration = int((b.break_end - b.break_start).total_seconds() / 60)
@@ -145,12 +143,10 @@ def admin_home(request):
             'break_duration': duration,
         })
 
-    # Paginate break entries
     paginator = Paginator(break_entries, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Context
     context = {
         'page_title': "Administrative Dashboard",
         'total_employees': total_employees,
@@ -316,6 +312,52 @@ def add_employee(request):
 
 
 
+@login_required   
+def admin_view_profile(request):
+    admin = get_object_or_404(Admin, admin=request.user)
+    form = AdminForm(request.POST or None, request.FILES or None, instance=admin)
+    context = {
+        'form': form, 
+        'page_title': 'View/Update Profile',
+        'user_object': request.user,
+    }
+
+    if request.method == 'POST':
+        try:
+            if form.is_valid():
+
+                first_name = form.cleaned_data.get('first_name')
+                last_name = form.cleaned_data.get('last_name')
+                password = form.cleaned_data.get('password') or None
+                address = form.cleaned_data.get('address')
+                gender = form.cleaned_data.get('gender')
+                profile_pic = form.profile_pic('profile_pic') or None
+                
+                user = request.user
+                if password:
+                    user.set_password(password)
+                if profile_pic:
+                    fs = FileSystemStorage()
+                    filename = fs.save(profile_pic.name, profile_pic)
+                    passport_url = fs.url(filename)
+                    user.profile_pic = passport_url
+                
+                user.first_name = first_name
+                user.last_name = last_name
+                user.address = address
+                user.gender = gender
+                user.save()
+                
+                messages.success(request, "Profile Updated!")
+                return redirect(reverse('admin_view_profile'))
+            else:
+                messages.error(request, "Invalid Data Provided")
+        except Exception as e:
+            messages.error(request, f"Error Occurred While Updating Profile: {str(e)}")
+    
+    return render(request, "ceo_template/admin_view_profile.html", context)
+
+
 @login_required
 def add_division(request):
     form = DivisionForm(request.POST or None)
@@ -407,6 +449,17 @@ def manage_manager(request):
         return HttpResponse(html)
 
     return render(request, "ceo_template/manage_manager.html", context)
+
+
+@login_required
+def view_manager(request, manager_id):
+    manager = get_object_or_404(Manager, id=manager_id)
+    context = {
+        'manager': manager,
+        'page_title': f'Profile - {manager}'
+    }
+    print("iiiiiiiiiiiiii",manager)
+    return render(request, 'ceo_template/view_manager.html', context)
 
 
 @login_required
@@ -1012,42 +1065,6 @@ def get_admin_attendance(request):
         return JsonResponse(json.dumps(json_data), safe=False)
     except Exception as e:
         return None
-
-
-@login_required
-def admin_view_profile(request):
-    admin = get_object_or_404(Admin, admin=request.user)
-    form = AdminForm(request.POST or None, request.FILES or None,
-                     instance=admin)
-    context = {'form': form,
-               'page_title': 'View/Edit Profile'
-               }
-    if request.method == 'POST':
-        try:
-            if form.is_valid():
-                first_name = form.cleaned_data.get('first_name')
-                last_name = form.cleaned_data.get('last_name')
-                password = form.cleaned_data.get('password') or None
-                passport = request.FILES.get('profile_pic') or None
-                custom_user = admin.admin
-                if password != None:
-                    custom_user.set_password(password)
-                if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    custom_user.profile_pic = passport_url
-                custom_user.first_name = first_name
-                custom_user.last_name = last_name
-                custom_user.save()
-                messages.success(request, "Profile Updated!")
-                return redirect(reverse('admin_view_profile'))
-            else:
-                messages.error(request, "Invalid Data Provided")
-        except Exception as e:
-            messages.error(
-                request, "Error Occured While Updating Profile " + str(e))
-    return render(request, "ceo_template/admin_view_profile.html", context)
 
 
 @login_required

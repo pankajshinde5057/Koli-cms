@@ -132,7 +132,7 @@ class ManagerForm(CustomUserForm):
 
     class Meta(CustomUserForm.Meta):
         model = Manager
-        fields = CustomUserForm.Meta.fields + ['division', 'department']
+        fields = CustomUserForm.Meta.fields + ['division', 'department','address','phone_number','designation']
 
 
 
