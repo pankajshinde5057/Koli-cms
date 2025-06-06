@@ -6,20 +6,20 @@
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header">
                         <h3 class="card-title">{{ page_title }}</h3>
                     </div>
                     <!-- /.card-header -->
-                    <div class="card-body" id="department-table-container">
-                        <table id="example2" class="table table-bordered table-hover">
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover text-nowrap">
                             <thead>
                                 <tr>
                                     <th>SN</th>
                                     <th>Department Name</th>
                                     <th>Division Name</th>
-                                    <th>Edit</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -29,10 +29,16 @@
                                     <td>{{ department.name }}</td>
                                     <td>{{ department.division.name }}</td>
                                     <td>
-                                        <a href="{% url 'edit_department' department.id %}" class="btn btn-primary">Edit</a> -
-                                        <a href="{% url 'delete_department' department.id %}" 
-                                           onclick="return confirm('Are you sure you want to delete this department?')" 
-                                           class="btn btn-danger">Delete</a>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'edit_department' department.id %}" class="btn btn-info" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'delete_department' department.id %}" 
+                                               onclick="return confirm('Are you sure you want to delete this department?')" 
+                                               class="btn btn-danger" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -43,13 +49,12 @@
                             </tbody>
                         </table>
                         <!-- Pagination -->
+                        {% if departments.paginator.num_pages > 1 %}
                         <div class="card-footer d-flex justify-content-center">
-                            <ul class="pagination pagination custom-pagination">
+                            <ul class="pagination pagination-sm m-0">
                                 {% if departments.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link pagination-link" 
-                                           href="?page={{ departments.previous_page_number }}" 
-                                           data-page="{{ departments.previous_page_number }}">«</a>
+                                        <a class="page-link" href="?page={{ departments.previous_page_number }}">«</a>
                                     </li>
                                 {% else %}
                                     <li class="page-item disabled">
@@ -64,18 +69,14 @@
                                         </li>
                                     {% elif num > departments.number|add:'-2' and num < departments.number|add:'2' %}
                                         <li class="page-item">
-                                            <a class="page-link pagination-link" 
-                                               href="?page={{ num }}" 
-                                               data-page="{{ num }}">{{ num }}</a>
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
                                         </li>
                                     {% endif %}
                                 {% endfor %}
 
                                 {% if departments.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link pagination-link" 
-                                           href="?page={{ departments.next_page_number }}" 
-                                           data-page="{{ departments.next_page_number }}">»</a>
+                                        <a class="page-link" href="?page={{ departments.next_page_number }}">»</a>
                                     </li>
                                 {% else %}
                                     <li class="page-item disabled">
@@ -84,6 +85,7 @@
                                 {% endif %}
                             </ul>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -95,41 +97,11 @@
 {% block custom_js %}
 <script>
 $(document).ready(function() {
-    // Handle pagination clicks
-    $(document).on('click', '.pagination-link', function(e) {
+    // Simple page reload for pagination (no AJAX needed)
+    $(document).on('click', '.page-link:not(.disabled)', function(e) {
         e.preventDefault();
-        var page = $(this).data('page');
-
-        $.ajax({
-            url: "{% url 'manage_department' %}",
-            type: 'GET',
-            data: {
-                page: page
-            },
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            success: function(html) {
-                // Create a temporary container to parse the full HTML
-                var $temp = $('<div>').html(html);
-                // Extract only the #department-table-container content
-                var $newContent = $temp.find('#department-table-container').html();
-                // Update the existing container
-                $('#department-table-container').html($newContent);
-                // Update browser URL without reloading
-                window.history.pushState({}, '', '?page=' + page);
-            },
-            error: function(xhr, status, error) {
-                console.error('Pagination AJAX failed:', error);
-                alert('Error loading page. Please try again.');
-            }
-        });
+        window.location.href = $(this).attr('href');
     });
-
-    // Handle browser back/forward buttons
-    window.onpopstate = function(event) {
-        window.location.reload(); // Reload to ensure correct state
-    };
 });
 </script>
 {% endblock custom_js %}
