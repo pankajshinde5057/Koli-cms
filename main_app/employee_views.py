@@ -740,13 +740,13 @@ def employee_apply_leave(request):
             employee=employee,
             start_date__lte=end_date,
             end_date__gte=start_date,
-            status__in=[0, 1]
+            status__in=[0, 1]  # Pending or Approved
         ).exists()
         if existing_leaves:
             messages.error(request, "You already have a leave request for these dates.")
             return redirect('employee_apply_leave')
 
-        # Check leave balance
+        # Check leave balance for each day
         leave_amount = 0.5 if leave_type == 'Half-Day' else 1.0
         current_date = start_date
         while current_date <= end_date:
@@ -758,6 +758,7 @@ def employee_apply_leave(request):
                 return redirect('employee_apply_leave')
             current_date += timedelta(days=1)
 
+        # Save leave request and send notification
         try:
             leave_request = LeaveReportEmployee.objects.create(
                 employee=employee,
@@ -768,18 +769,20 @@ def employee_apply_leave(request):
                 message=message
             )
             messages.success(request, "Your leave request has been submitted.")
-            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
-            send_notification(user, "Leave Applied", "leave-notification", obj.id, "manager")
-            return redirect(reverse('employee_apply_leave'))
+
             if employee.team_lead:
                 Notification.objects.create(
                     user=employee.team_lead.admin,
-                    message=f"Leave request from {employee.admin.get_full_name}",
+                    message=f"Leave request from {employee.admin.get_full_name()}",
                     notification_type="leave",
                     leave_or_notification_id=leave_request.id,
                     role="manager"
                 )
+                user = employee.team_lead.admin
+                send_notification(user, "Leave Applied", "leave-notification", leave_request.id, "manager")
+
             return redirect('employee_apply_leave')
+
         except Exception as e:
             messages.error(request, f"Error submitting leave: {str(e)}")
             return redirect('employee_apply_leave')
@@ -790,7 +793,6 @@ def employee_apply_leave(request):
         'page_title': 'Apply for Leave',
     }
     return render(request, 'employee_template/employee_apply_leave.html', context)
-
 
 
 @login_required   
