@@ -66,7 +66,7 @@
                     <a class="nav-link" data-toggle="dropdown" href="#">
                         <i class="far fa-bell"></i>
                         {% if total_unread_notifications > 0 %}
-                        <span class="badge badge-danger navbar-badge">{{ total_unread_notifications }}</span>
+                            <span class="badge badge-danger navbar-badge">{{ total_unread_notifications }}</span>
                         {% endif %}
                     </a>
                     {% if request.user.user_type  == '2' %}
@@ -80,12 +80,23 @@
                                 <i class="fas fa-envelope mr-2"></i> {{ employee_leave_request_to_manager_count }} Leave Requests
                             </a>
                             <div class="dropdown-divider"></div>
+                            <a href="{% url 'manager_apply_leave' %}?type=leave" class="dropdown-item">
+                                <i class="fas fa-envelope mr-2"></i> {{ manager_leave_request_from_ceo_count }} My Leave Requests
+                            </a>
+                            <div class="dropdown-divider"></div>
                             <a href="{% url 'manager_view_notification' %}?type=clockout" class="dropdown-item">
                                 <i class="fas fa-clock mr-2"></i> {{ employee_clockout_request_to_manager_count }} Clockout Requests
                             </a>
-                            <div class="dropdown-divider"></div>
+                            {% comment %} <div class="dropdown-divider"></div>
                             <a href="{% url 'manager_view_notification' %}?type=asset" class="dropdown-item">
                                 <i class="fas fa-laptop mr-2"></i> {{ total_asset_unread_notifications }} Asset
+                            </a> {% endcomment %}
+                        </div>
+                    {% elif request.user.user_type == '1' %}
+                        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+                            <div class="dropdown-divider"></div>
+                            <a href="{% url 'admin_view_notification' %}?type=leave" class="dropdown-item">
+                                <i class="fas fa-envelope mr-2"></i> {{ ceo_notification_from_manager_leave_request }} Leave Requests
                             </a>
                         </div>
                     {% else %}
@@ -98,10 +109,10 @@
                             <a href="{% url 'employee_requests' %}?type=leave" class="dropdown-item">
                                 <i class="fas fa-envelope mr-2"></i> {{ employee_leave_approved_or_rejected_notification_count }} Leave Requests
                             </a>
-                            <div class="dropdown-divider"></div>
+                            {% comment %} <div class="dropdown-divider"></div>
                             <a href="{% url 'early_clock_out_request_page' %}?type=clockout" class="dropdown-item">
                                 <i class="fas fa-clock mr-2"></i> {{ employee_clockout_request_to_manager_count }} Clockout Requests
-                            </a>
+                            </a> {% endcomment %}
                             <div class="dropdown-divider"></div>
                             <a href="{% url 'manager_view_notification' %}?type=asset" class="dropdown-item">
                                 <i class="fas fa-laptop mr-2"></i> {{ total_asset_unread_notifications }} Asset
@@ -224,10 +235,36 @@
     <script src="{% static 'dist/js/pages/dashboard.js'%} "></script>
     <!-- AdminLTE for demo purposes -->
     <script src="{% static 'dist/js/demo.js'%} "></script>
-    
+    <script>
+    // Function to play notification sound
+        {% comment %} function playNotificationSound() {
+            var sound = document.getElementById('notificationSound');
+            sound.play().catch(function(error) {
+                console.log("Error playing sound:", error);
+            });
+        }
+
+        // Play sound when alerts are present
+        document.addEventListener('DOMContentLoaded', function() {
+            var alerts = document.querySelectorAll('.alert');
+            if (alerts.length > 0) {
+                playNotificationSound();
+            }
+        });
+
+        // Play sound when notification dropdown is opened
+        document.querySelector('.dropdown-toggle').addEventListener('click', function() {
+            var dropdownMenu = document.querySelector('.dropdown-menu');
+            if (dropdownMenu.classList.contains('show')) {
+                playNotificationSound();
+            }
+        }); {% endcomment %}
+</script>
     {% block custom_js %}
 
     {% endblock custom_js %}
+
+    {% comment %} <audio id="notificationSound" src="{% static 'audio/notification.mp3' %}" preload="auto"></audio> {% endcomment %}
 </body>
 
 </html>

@@ -16,6 +16,11 @@
     .hidden-field {
         display: none;
     }
+    .disabled-select {
+        opacity: 0.6;
+        pointer-events: none;
+        background-color: #e9ecef;
+    }
 </style>
 {% endblock %}
 
@@ -100,6 +105,10 @@
           const deptId = $(this).val();
           
           if (deptId && deptId !== 'all') {
+              // Enable both selectors
+              $('#employee').removeClass('disabled-select').prop('disabled', false);
+              $('#manager').removeClass('disabled-select').prop('disabled', false);
+              
               // Get department data including user types
               $.ajax({
                   url: '{% url "get_department_data" %}',
@@ -168,16 +177,22 @@
                   }
               });
           } else if (deptId === 'all') {
-              // Handle "All Departments" case - show both
+              // Handle "All Departments" case - disable both selectors
               $('#employee-group').show();
               $('#manager-group').show();
-              $('#employee').empty().append('<option value="all">All Employees</option>');
-              $('#manager').empty().append('<option value="all">All Managers</option>');
+              $('#employee').empty().append('<option value="all" selected>All Employees</option>');
+              $('#manager').empty().append('<option value="all" selected>All Managers</option>');
+              
+              // Disable both selectors
+              $('#employee').addClass('disabled-select').prop('disabled', true).trigger('change');
+              $('#manager').addClass('disabled-select').prop('disabled', true).trigger('change');
           } else {
-              // No department selected - clear both
+              // No department selected - clear both and enable
               $('#employee-group').show();
               $('#manager-group').show();
               $('#employee, #manager').empty().append('<option value="">-- Select --</option>');
+              $('#employee').removeClass('disabled-select').prop('disabled', false);
+              $('#manager').removeClass('disabled-select').prop('disabled', false);
           }
       });
   

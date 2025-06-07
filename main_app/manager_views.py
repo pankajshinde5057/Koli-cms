@@ -1009,11 +1009,12 @@ def get_employee_attendance(request):
 @login_required   
 def manager_apply_leave(request):
     manager = get_object_or_404(Manager, admin_id=request.user.id)
+    
     unread_ids = Notification.objects.filter(
         user=request.user,
         role="manager",
         is_read=False,
-        notification_type="leave"
+        notification_type="manager-leave-notification"
     ).values_list('leave_or_notification_id', flat=True)
 
     leave_list = LeaveReportManager.objects.filter(manager=manager).order_by('-created_at')
@@ -1056,7 +1057,7 @@ def manager_apply_leave(request):
             return redirect(reverse('manager_apply_leave'))
 
         try:
-            obj = LeaveReportManager.objects.create(
+            leave_request = LeaveReportManager.objects.create(
                 manager=manager,
                 leave_type=leave_type_,
                 half_day_type=half_day_type_ if half_day_type_ else None,
@@ -1068,7 +1069,7 @@ def manager_apply_leave(request):
             admin_users = CustomUser.objects.filter(is_superuser=True)
             if admin_users.exists():
                 for admin_user in admin_users:
-                    send_notification(admin_user, "Leave Applied", "notification", obj.id, "manager")
+                    send_notification(admin_user, "Leave Applied", "leave-notification", leave_request.id, "ceo")
             
             return redirect(reverse('manager_apply_leave'))
         except Exception as e:
@@ -1921,6 +1922,134 @@ def manager_view_notification(request):
 
     return render(request, "manager_template/manager_view_notification.html", context)
 
+@login_required
+@csrf_exempt
+def manager_view_by_employee_feedback_message(request):
+    if request.method != 'POST':
+        # Handle GET request to display feedback list
+        feedback_list = FeedbackEmployee.objects.all().order_by('-id')
+        page = request.GET.get('page', 1)
+        paginator = Paginator(feedback_list, 10)
+        try:
+            feedbacks = paginator.page(page)
+        except PageNotAnInteger:
+            feedbacks = paginator.page(1)
+        except EmptyPage:
+            feedbacks = paginator.page(paginator.num_pages)
+
+        unread_ids = list(
+            Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='employee feedback'
+            ).values_list('leave_or_notification_id', flat=True)
+        )
+
+        context = {
+            'feedbacks': feedbacks,
+            'page_title': 'Employee Feedback Messages',
+            'unread_ids': unread_ids
+        }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(
+                'manager_template/manager_view_by_employee_feedback_template.html',
+                context,
+                request=request
+            )
+            return JsonResponse({'success': True, 'html': html})
+
+        return render(request, 'manager_template/manager_view_by_employee_feedback_template.html', context)
+
+    # Handle POST request
+    if request.POST.get('_method') == 'DELETE':
+        feedback_ids = request.POST.getlist('ids[]')
+        action = request.POST.get('action')
+
+        try:
+            if action == 'delete_all':
+                FeedbackEmployee.objects.all().delete()
+                Notification.objects.filter(
+                    notification_type='employee feedback'
+                ).delete()
+                return JsonResponse({'success': True, 'message': 'All feedback deleted successfully'})
+            elif feedback_ids:
+                FeedbackEmployee.objects.filter(id__in=feedback_ids).delete()
+                Notification.objects.filter(
+                    leave_or_notification_id__in=feedback_ids,
+                    notification_type='employee feedback'
+                ).delete()
+                return JsonResponse({'success': True, 'message': f'Deleted {len(feedback_ids)} feedback entries'})
+            else:
+                return JsonResponse({'success': False, 'message': 'No feedback IDs provided'}, status=400)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+    # Handle feedback reply
+    feedback_id = request.POST.get('id')
+    try:
+        feedback = get_object_or_404(FeedbackEmployee, id=feedback_id)
+        reply = request.POST.get('reply')
+        feedback.reply = reply
+        feedback.updated_at = timezone.now()
+        feedback.save()
+        
+        notify = Notification.objects.filter(
+            user=request.user,
+            role="admin",
+            is_read=False,
+            leave_or_notification_id=feedback_id,
+            notification_type='employee feedback'
+        ).first()
+        
+        if notify:
+            notify.is_read = True
+            notify.save()
+            
+        return JsonResponse({
+            'success': True,
+            'message': 'Reply sent successfully',
+            'reply': feedback.reply,
+            'updated_at': feedback.updated_at.strftime('%b %d, %Y %H:%M')
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    
+@login_required
+@csrf_exempt
+def manager_view_by_employee_leave(request):
+    if request.method != 'POST':
+        all_leave = LeaveReportEmployee.objects.all().order_by('-created_at')
+        paginator = Paginator(all_leave, 10)  
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        context = {
+            'allLeave': page_obj,
+            'page_title': 'Leave Applications From Employees'
+        }
+
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string(
+                "manager_template/manager_view_by_employee_leave_view.html",
+                context,
+                request=request
+            )
+            return HttpResponse(html)
+
+        return render(request, "manager_template/manager_view_by_employee_leave_view.html", context)
+    else:
+        id = request.POST.get('id')
+        status = request.POST.get('status')
+        status = 1 if status == '1' else -1
+        try:
+            leave = get_object_or_404(LeaveReportEmployee, id=id)
+            leave.status = status
+            leave.save()
+            return HttpResponse("True")
+        except Exception:
+            return HttpResponse("False")
+
 
 @login_required   
 def manager_asset_view_notification(request):
@@ -2040,121 +2169,88 @@ def reject_assest_request(request, notification_id):
     return redirect('manager_asset_view_notification')
 
 
-import logging
-from datetime import timedelta
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.shortcuts import get_object_or_404, redirect
-from .models import LeaveReportEmployee, LeaveBalance, AttendanceRecord, Notification, Employee
+
 
 logger = logging.getLogger(__name__)
 
 @login_required
 def approve_leave_request(request, leave_id):
-    if request.method != 'POST':
-        logger.warning(f"Invalid request method for leave approval: {request.method}")
-        return redirect('manager_view_notification')
+    if request.method == 'POST':
+        try:
+            leave = get_object_or_404(LeaveReportEmployee, id=leave_id)
 
-    try:
-        leave = get_object_or_404(LeaveReportEmployee, id=leave_id)
-        logger.info(
-            f"Processing leave approval for ID {leave_id}, "
-            f"Employee: {leave.employee.employee_id}, Dates: {leave.start_date} to {leave.end_date or leave.start_date}"
-        )
+            if leave.status != 0:  # 0 = Pending
+                messages.info(request, "This leave request has already been processed.")
+                return redirect('manager_view_notification')
 
-        if leave.status != 0:  # 0 = Pending
-            logger.warning(f"Leave ID {leave_id} already processed with status {leave.status}")
-            messages.info(request, "This leave request has already been processed.")
-            return redirect('manager_view_notification')
+            employee = leave.employee
+            start_date = leave.start_date
+            end_date = leave.end_date or start_date
+            leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
 
-        employee = leave.employee
-        start_date = leave.start_date
-        end_date = leave.end_date or start_date
-        leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
+            # Process leave approval
+            with transaction.atomic():
+                current_date = start_date
+                while current_date <= end_date:
+                    # Deduct leave
+                    success, remaining_leaves = LeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
+                    if not success:
+                        logger.error(f"Failed to deduct leave for {current_date}")
+                        messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
+                        return redirect('manager_view_notification')
 
-        logger.debug(
-            f"Leave details - Start Date: {start_date}, End Date: {end_date}, "
-            f"Type: {leave.leave_type}, Amount: {leave_amount}"
-        )
+                    # Update or create attendance record
+                    record, created = AttendanceRecord.objects.update_or_create(
+                        user=employee.admin,
+                        date=current_date,
+                        defaults={
+                            'status': 'half_day' if leave.leave_type == 'Half-Day' else 'leave',
+                            'department': employee.department,
+                            'clock_in': None,
+                            'clock_out': None,
+                            'total_worked': None,
+                            'regular_hours': None,
+                            'overtime_hours': None
+                        }
+                    )
+                    current_date += timedelta(days=1)
 
-        # Check leave balance for all dates
-        current_date = start_date
-        while current_date <= end_date:
-            balance = LeaveBalance.get_balance(employee, current_date.year, current_date.month)
-            if not balance:
-                balance = LeaveBalance.create_balance(employee, current_date.year, current_date.month)
-            available_leaves = balance.total_available_leaves()
+                # Update leave status to Approved
+                leave.status = 1
+                leave.save()
 
-            logger.debug(
-                f"Checking balance for {current_date}: Allocated={balance.allocated_leaves}, "
-                f"Used={balance.used_leaves}, Carried Forward={balance.carried_forward}, "
-                f"Available={available_leaves}"
-            )
+                if leave.leave_type == 'Half-Day':
+                    messages.success(request, "Half-Day leave approved.")
+                else:
+                    messages.success(request, "Full-Day leave approved.")
+                msg = "Leave request Approved."
 
-            current_date += timedelta(days=1)
-
-        # Process leave approval
-        with transaction.atomic():
-            current_date = start_date
-            while current_date <= end_date:
-                # Deduct leave
-                success, remaining_leaves = LeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
-                if not success:
-                    logger.error(f"Failed to deduct leave for {current_date}")
-                    messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
-                    return redirect('manager_view_notification')
-
-                logger.info(f"Deducted leave for {current_date}, Remaining Leaves: {remaining_leaves}")
-
-                # Update or create attendance record
-                record, created = AttendanceRecord.objects.update_or_create(
-                    user=employee.admin,
-                    date=current_date,
-                    defaults={
-                        'status': 'half_day' if leave.leave_type == 'Half-Day' else 'leave',
-                        'department': employee.department,
-                        'clock_in': None,
-                        'clock_out': None,
-                        'total_worked': None,
-                        'regular_hours': None,
-                        'overtime_hours': None
-                    }
+                # Update existing notifications for the employee to mark as read
+                Notification.objects.filter(
+                    notification_type = 'leave-notification',
+                    leave_or_notification_id = leave.id,
+                    role = 'manager'
+                ).update(is_read=True)
+                
+                # Send notification to employee
+                employee_user = leave.employee.admin
+                Notification.objects.create(
+                    user=employee_user,
+                    message=msg,
+                    notification_type="leave-notification",
+                    leave_or_notification_id=leave_id,
+                    role="employee"
                 )
-                logger.info(f"Attendance record for {current_date} {'created' if created else 'updated'}: Status={record.status}")
-                current_date += timedelta(days=1)
 
-            # Update leave status to Approved
-            leave.status = 1
-            leave.save()
-            logger.info(f"Leave ID {leave_id} approved successfully")
-
-            # Notify employee
-            Notification.objects.create(
-                user=employee.admin,
-                message=f"Your leave request from {start_date} to {end_date} has been approved",
-                notification_type="leave",
-                leave_or_notification_id=leave.id,
-                role="employee"
-            )
-            logger.debug(f"Notification sent to employee {employee.admin.username}")
-
-            # Mark related manager notifications as read
-            Notification.objects.filter(
-                notification_type='leave-notification',
-                leave_or_notification_id=leave.id,
-                role='manager'
-            ).update(is_read=True)
-
-            messages.success(request, "Leave approved successfully")
             return redirect('manager_view_notification')
 
-    except Exception as e:
-        logger.error(f"Error approving leave ID {leave_id}: {str(e)}")
-        messages.error(request, "Error approving leave")
-        return redirect('manager_view_notification')
-    
-   
+        except Exception as e:
+            logger.error(f"Error approving leave ID {leave_id}: {str(e)}")
+            messages.error(request, "Error approving leave")
+            return redirect('manager_view_notification')
+        
+    return redirect('manager_view_notification')
+            
 
 @login_required   
 def reject_leave_request(request, leave_id):
@@ -2258,4 +2354,6 @@ def fetch_employee_salary(request):
         return HttpResponse(json.dumps(salary_data))
     except Exception as e:
         return HttpResponse('False')
+    
+    
     

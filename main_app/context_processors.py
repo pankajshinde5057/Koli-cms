@@ -113,6 +113,13 @@ def unread_notification_count(request):
                 role="manager"
             ).count()
 
+            manager_leave_request_from_ceo_count = Notification.objects.filter(
+                user=request.user,
+                is_read=False,
+                notification_type='manager-leave-notification',
+                role="manager"
+            ).count()
+
             employee_clockout_request_to_manager_count = Notification.objects.filter(
                 user=request.user,
                 is_read=False,
@@ -130,7 +137,7 @@ def unread_notification_count(request):
                 manager_general_count +
                 employee_leave_request_to_manager_count +
                 employee_clockout_request_to_manager_count +
-                employee_asset_claim_request_to_manager_count
+                employee_asset_claim_request_to_manager_count + manager_leave_request_from_ceo_count
             )
 
             return {
@@ -139,7 +146,24 @@ def unread_notification_count(request):
                 'employee_leave_request_to_manager_count': employee_leave_request_to_manager_count,
                 'employee_clockout_request_to_manager_count': employee_clockout_request_to_manager_count,
                 'total_asset_unread_notifications': employee_asset_claim_request_to_manager_count,
+                'manager_leave_request_from_ceo_count' : manager_leave_request_from_ceo_count
             }
+        
+        elif request.user.user_type == '1':
+            ceo_notification_from_manager_leave_request = Notification.objects.filter(
+                user = request.user,
+                is_read = False,
+                notification_type__in = ['leave-notification'],
+                role = 'ceo'
+            ).count()
+
+            total_unread_notifications = (ceo_notification_from_manager_leave_request)
+
+            return {
+                'total_unread_notifications': total_unread_notifications,
+                'ceo_notification_from_manager_leave_request' : ceo_notification_from_manager_leave_request
+            }
+
         else:
             employee_notification_from_manager_count = Notification.objects.filter(
                 user=request.user,
@@ -184,7 +208,8 @@ def unread_notification_count(request):
         'total_asset_unread_notifications': 0,
         'employee_notification_from_manager_count': 0,
         'employee_leave_approved_or_rejected_notification_count': 0,
-        'employee_clockout_request_to_manager_count': 0
+        'employee_clockout_request_to_manager_count': 0,
+        'ceo_notification_from_manager_leave_request' : 0
     }
        
 

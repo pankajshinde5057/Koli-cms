@@ -127,7 +127,7 @@
                                         <div class="message-preview">
                                             {{ notification.message|truncatechars:100 }}
                                             {% if notification.message|length > 100 %}
-                                            <a href="#" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}">Read more</a>
+                                            <a href="#" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}" onclick="markNotificationRead({{ notification.id }} , 'general-notification' )">Read more</a>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -286,9 +286,9 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge badge-info">
-                                            {{ leave.start_date|date:"M d, Y" }}
-                                        </span>
+                                            <span class="badge badge-info">
+                                            {{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}
+                                            </span>
                                     </td>
                                     <td>
                                         <div class="message-preview">
@@ -696,7 +696,9 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <small>{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</small>
+                                            <span class="badge badge-info">
+                                            {{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}
+                                            </span>
                                     </td>
                                     <td>
                                         <span class="badge 
