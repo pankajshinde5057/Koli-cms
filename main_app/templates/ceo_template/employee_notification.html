@@ -29,7 +29,7 @@
                                         <th>Email</th>
                                         <th>Gender</th>
                                         <th>Division</th>
-                                        <th>Avatar</th>
+                                        {% comment %} <th>Avatar</th>/ {% endcomment %}
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -42,13 +42,13 @@
                                         <td data-title="Email">{{ employee.email }}</td>
                                         <td data-title="Gender">{{ employee.gender }}</td>
                                         <td data-title="Division">{{ employee.employee.division.name }}</td>
-                                        <td data-title="Avatar">
+                                        {% comment %} <td data-title="Avatar">
                                            {% if employee.profile_pic %}
                                             <img class="img img-fluid rounded-circle" height="40" width="40" src="{{ employee.profile_pic.url }}" alt="Avatar">
                                             {% else %}
                                             <span class="text-muted">No Image</span>
                                             {% endif %}
-                                        </td>
+                                        </td> {% endcomment %}
                                         <td data-title="Action">
                                             <button data-toggle="modal" 
                                                     data-target="#myModal" 
