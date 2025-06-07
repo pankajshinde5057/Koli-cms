@@ -197,33 +197,33 @@
                             </p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                    {% url 'manager_feedback_message' as manager_feedback_message %}
 
+                        <a href="{{manager_feedback_message}}" class="nav-link   {% if manager_feedback_message == request.path %} active {% endif %}">
+                            <i class="nav-icon fas fa-comments"></i>
+                            <p>
+                                Manager Feedback
+                                
+                            </p>
+                        </a>
+                    </li>
             
                     
                     <li class="nav-item">
-                {% url 'employee_feedback_message' as employee_feedback_message %}
+                    {% url 'employee_feedback_message' as employee_feedback_message %}
 
-                <a href="{{ employee_feedback_message }}" class="nav-link  {% if employee_feedback_message == request.path %} active {% endif %}">
-                    <i class="nav-icon fas fa-comment-alt"></i>
-                    <p>
-                        Employee Feedback
-                        {% if admin_employee_feedback_count > 0 %}
-                        <span class="right badge badge-danger">{{ admin_employee_feedback_count }}</span>
-                         {% endif %}
-                        </p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                {% url 'manager_feedback_message' as manager_feedback_message %}
-
-                    <a href="{{manager_feedback_message}}" class="nav-link   {% if manager_feedback_message == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-comments"></i>
+                    <a href="{{ employee_feedback_message }}" class="nav-link  {% if employee_feedback_message == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comment-alt"></i>
                         <p>
-                            Manager Feedback
-                            
-                        </p>
-                    </a>
-                </li>
+                            Employee Feedback
+                            {% if admin_employee_feedback_count > 0 %}
+                            <span class="right badge badge-danger">{{ admin_employee_feedback_count }}</span>
+                            {% endif %}
+                            </p>
+                        </a>
+                    </li>
+                
                 <li class="nav-item">
                 {% url 'view_manager_leave' as view_manager_leave %}
 
@@ -441,6 +441,30 @@
                            {% if total_unread_notifications > 0 %}
                            <span class="badge badge-danger">{{ total_unread_notifications }}</span>
                             {% endif %}
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'manager_view_by_employee_feedback_message' as manager_view_by_employee_feedback_message %}
+
+                    <a href="{{ manager_view_by_employee_feedback_message }}" class="nav-link  {% if manager_view_by_employee_feedback_message == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comment-alt"></i>
+                        <p>
+                            Employee Feedback
+                            {% if admin_employee_feedback_count > 0 %}
+                            <span class="right badge badge-danger">{{ admin_employee_feedback_count }}</span>
+                            {% endif %}
+                            </p>
+                        </a>
+                </li>
+                <li class="nav-item">
+                {% url 'manager_view_by_employee_leave' as manager_view_by_employee_leave %}
+
+                    <a href="{% url 'manager_view_by_employee_leave' %}" class="nav-link  {% if manager_view_by_employee_leave == request.path %} active {% endif %}">
+                        <i class="nav-icon fas  fa-calendar-day"></i>
+                        <p>
+                            Employee Leave
+                            
                         </p>
                     </a>
                 </li>
