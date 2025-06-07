@@ -6,10 +6,10 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <style>
-  /* Your provided CSS styles remain unchanged */
-  .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, rgb(64, 11, 117) 100%) !important; }
+  /* Core styles */
+  .bg-gradient-primary { background: linear-gradient(135deg, #fd7e14 0%, #138496 100%) !important; }
   .bg-gradient-success { background: linear-gradient(135deg, rgb(14, 121, 73) 0%, rgb(12, 107, 166) 100%) !important; }
-  .bg-gradient-info { background: linear-gradient(135deg, rgb(92, 28, 141) 0%, rgb(110, 113, 94) 100%) !important; }
+  .bg-gradient-info { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important; }
   .bg-gradient-warning { background: linear-gradient(135deg, rgb(189, 108, 104) 0%, rgb(63, 61, 4) 100%) !important; }
   .bg-pattern-1 { background: linear-gradient(135deg, rgb(29, 85, 134) 0%, rgb(230, 98, 28) 100%) !important; }
   .bg-pattern-2 { background: linear-gradient(135deg, rgb(187, 34, 204) 0%, rgb(24, 192, 49) 100%) !important; }
@@ -28,7 +28,7 @@
   .small-box:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
   .small-box .icon { position: absolute; top: 10px; right: 10px; font-size: 70px; opacity: 0.2; transition: all 0.3s; }
   .small-box:hover .icon { opacity: 0.3; transform: scale(1.1); }
-  .table { border-collapse: separate; border-spacing: 0; }
+  .table { border-collapse: separate; border-spacing: 0; width: 100%; }
   .table thead th { border-top: none; background-color: #f8f9fa; font-weight: 600; }
   .table-striped tbody tr:nth-of-type(odd) { background-color: rgba(0,0,0,0.02); }
   .pagination .page-item.active .page-link { background-color: #667eea; border-color: #667eea; }
@@ -42,18 +42,259 @@
   .badge.bg-primary { background-color: #007bff !important; }
   .badge.bg-info { background-color: #17a2b8 !important; }
   .badge.bg-orange { background-color: #fd7e14 !important; color: #212529; }
-  .date-filter-group { display: flex; align-items: center; gap: 15px; }
-  .date-filter-group .form-group { margin-bottom: 0; display: flex; align-items: center; gap: 5px; }
+  .date-filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .date-filter-group .form-group { margin-bottom: 0; display: flex; align-items: center; gap: 5px; flex: 1 1 auto; }
   .date-filter-group label { color: white; font-weight: 500; margin-bottom: 0; }
-  .date-filter-group input { width: 150px; border-radius: 5px; }
+  .date-filter-group input { width: 100%; max-width: 150px; border-radius: 5px; }
   .pagination-container { display: flex; justify-content: center; align-items: center; width: 100%; }
   .clocked-status { font-size: 0.8rem; margin-left: 10px; }
-  .clocked-in { color: white; }
-  .clocked-out { color: white; }
+  .clocked-in, .clocked-out { color: white; }
   .late-by-badge { margin-left: 5px; }
   .btn-loading { position: relative; pointer-events: none; }
-  .btn-loading::after { content: ""; position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite; }
+  .btn-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Dropdown Notification Styling */
+  .navbar-nav .dropdown-menu {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); /* Match bg-gradient-info */
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    margin: 15px 10px 0;
+    padding: 10px;
+    position: absolute;
+    min-width: 280px;
+    max-width: 320px;
+    transition: all 0.3s ease;
+  }
+
+  .dropdown-menu-lg {
+    min-width: 260px;
+    max-width: 400px;
+    overflow-y: auto;
+    max-height: 300px;
+    padding: 8px;
+    background-color: transparent;
+    border-radius: 8px;
+  }
+
+  .dropdown-item {
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 6px;
+    white-space: normal;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s ease;
+  }
+
+  .dropdown-item:hover {
+    background-color: black;
+    color: white;
+    transform: translateX(5px);
+  }
+
+  .dropdown-divider {
+    background-color: rgba(255, 255, 255, 0.3);
+    margin: 6px 0;
+  }
+
+  /* General Responsive Adjustments */
+  .content-wrapper {
+    padding: 15px;
+  }
+
+  .small-box .inner {
+    padding: 15px;
+  }
+
+  .small-box h3 {
+    font-size: 1.8rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table th, .table td {
+    padding: 0.75rem;
+    font-size: 14px;
+  }
+
+  /* Media Queries */
+  @media (max-width: 992px) {
+    .date-filter-group {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .date-filter-group input {
+      max-width: 100%;
+    }
+    .small-box .icon {
+      font-size: 60px;
+    }
+    .small-box:hover .icon {
+      font-size: 65px;
+    }
+    .small-box h3 {
+      font-size: 1.6rem;
+    }
+    .navbar-nav .dropdown-menu {
+      width: 280px;
+      max-width: calc(100vw - 20px);
+      margin: 10px 8px 0;
+    }
+    .dropdown-menu-lg {
+      min-width: 260px;
+      max-width: calc(100vw - 20px);
+      padding: 6px;
+    }
+    .dropdown-item {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .small-box {
+      text-align: center;
+      padding: 10px;
+    }
+    .small-box .icon {
+      font-size: 50px;
+      top: 5px;
+      right: 5px;
+    }
+    .small-box:hover .icon {
+      font-size: 55px;
+    }
+    .small-box h3 {
+      font-size: 1.4rem;
+    }
+    .alert-info h5 {
+      font-size: 1rem;
+    }
+    .card-header .d-flex {
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-group {
+      width: 100%;
+    }
+    .btn-group .btn {
+      width: 100%;
+      text-align: left;
+    }
+    .table th, .table td {
+      padding: 0.5rem;
+      font-size: 13px;
+    }
+    .navbar-nav .dropdown-menu {
+      width: 100%;
+      max-width: calc(100vw - 16px);
+      margin: 8px 8px 0;
+      left: 8px;
+      right: 8px;
+    }
+    .dropdown-menu-lg {
+      min-width: 100%;
+      max-width: calc(100vw - 16px);
+      padding: 6px;
+    }
+    .dropdown-item {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .small-box h3 {
+      font-size: 1.2rem;
+    }
+    .small-box p {
+      font-size: 0.8rem;
+    }
+    .alert-info {
+      padding: 0.75rem;
+    }
+    .alert-info h5 {
+      font-size: 0.9rem;
+    }
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+    }
+    .table th, .table td {
+      padding: 0.4rem;
+      font-size: 12px;
+    }
+    .pagination .page-link {
+      padding: 0.25rem 0.5rem;
+      font-size: 12px;
+    }
+    .navbar-nav .dropdown-menu {
+      width: 100%;
+      max-width: calc(100vw - 16px);
+      margin: 8px 8px 0;
+      left: 8px;
+      right: 8px;
+      box-sizing: border-box;
+    }
+    .dropdown-menu-lg {
+      min-width: 100%;
+      max-width: calc(100vw - 16px);
+      padding: 5px;
+    }
+    .dropdown-item {
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .small-box h3 {
+      font-size: 1rem;
+    }
+    .small-box p {
+      font-size: 0.75rem;
+    }
+    .table th, .table td {
+      padding: 0.3rem;
+      font-size: 11px;
+    }
+    .navbar-nav .dropdown-menu {
+      max-width: calc(100vw - 12px);
+      margin: 6px 6px 0;
+      left: 6px;
+      right: 6px;
+    }
+    .dropdown-menu-lg {
+      max-width: calc(100vw - 12px);
+      padding: 4px;
+    }
+    .dropdown-item {
+      padding: 5px 6px;
+      font-size: 10px;
+    }
+  }
 </style>
 {% endblock custom_css %}
 
@@ -198,7 +439,6 @@
                 </div>
             </div>
         </div>
-
 
         <div class="col">
             <div class="card shadow-sm">
@@ -394,8 +634,8 @@
                 </div>
             </div>
         </div>
-
-        
+    </div>
+</section>
 {% endblock content %}
 
 {% block custom_js %}
@@ -404,26 +644,18 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    {% if show_absent_popup %}
-    Swal.fire({
-        icon: 'warning',
-        title: 'Clock-In Restricted',
-        text: 'Employee cannot clock in after 3:00 PM. It will be counted as absent now.',
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#dc3545'
-    });
-    {% endif %}
+    console.log("Document ready, initializing Flatpickr");
 
-    $('#dateRangeForm').on('submit', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    });
-
+    // Initialize Flatpickr for date inputs
     flatpickr("#start_date", {
         dateFormat: "Y-m-d",
         defaultDate: "{{ current_filters.start_date|default_if_none:'' }}",
         onChange: function(selectedDates, dateStr) {
-            checkAndSubmit();
+            console.log("Start date changed:", dateStr);
+            submitFilters();
+        },
+        onReady: function() {
+            console.log("Flatpickr initialized for #start_date");
         }
     });
 
@@ -431,22 +663,26 @@ $(document).ready(function() {
         dateFormat: "Y-m-d",
         defaultDate: "{{ current_filters.end_date|default_if_none:'' }}",
         onChange: function(selectedDates, dateStr) {
-            checkAndSubmit();
+            console.log("End date changed:", dateStr);
+            submitFilters();
+        },
+        onReady: function() {
+            console.log("Flatpickr initialized for #end_date");
         }
     });
 
-    function checkAndSubmit() {
-        const startDate = $("#start_date").val();
-        const endDate = $("#end_date").val();
-        if (startDate && endDate) {
-            submitFilters();
-        }
-    }
+    // Prevent form submission to avoid page reload
+    $('#dateRangeForm').on('submit', function(e) {
+        e.preventDefault();
+        console.log("Form submission prevented");
+    });
 
     function submitFilters(params = null) {
+        console.log("Submitting filters");
         const urlParams = params || new URLSearchParams(window.location.search);
         const startDate = $("#start_date").val();
         const endDate = $("#end_date").val();
+
         if (startDate) urlParams.set('start_date', startDate);
         else urlParams.delete('start_date');
         if (endDate) urlParams.set('end_date', endDate);
@@ -476,6 +712,7 @@ $(document).ready(function() {
             data: urlParams.toString(),
             headers: {'X-Requested-With': 'XMLHttpRequest'},
             success: function(response) {
+                console.log("AJAX success:", response);
                 $('#timeHistoryTable').html($(response.html).find('#timeHistoryTable').html());
                 $("#start_date").val(response.html.match(/name="start_date"[^>]*value="([^"]*)"/)?.[1] || '');
                 $("#end_date").val(response.html.match(/name="end_date"[^>]*value="([^"]*)"/)?.[1] || '');
@@ -495,13 +732,20 @@ $(document).ready(function() {
                 } catch (e) {
                     console.error('Failed to parse error response');
                 }
-                window.location.href = window.location.pathname + '?' + urlParams.toString();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to load data. Please try again.',
+                    confirmButtonText: 'OK'
+                });
+                $('#timeHistoryTable').html('<div class="text-center py-4">Error loading data</div>');
             }
         });
     }
 
     $(document).on('click', '#paginationContainer a.page-link[data-page]', function(e) {
         e.preventDefault();
+        console.log("Pagination clicked:", $(this).data('page'));
         const page = $(this).data('page');
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.set('page', page);
@@ -511,6 +755,7 @@ $(document).ready(function() {
     {% if request.user.is_staff %}
     $(document).on('click', '.dropdown-item', function(e) {
         e.preventDefault();
+        console.log("Dropdown item clicked:", $(this).attr('href'));
         const href = $(this).attr('href');
         const newParams = new URLSearchParams(href.split('?')[1] || '');
         const urlParams = new URLSearchParams(window.location.search);
@@ -578,6 +823,7 @@ $(document).ready(function() {
     });
 
     window.addEventListener('popstate', function(event) {
+        console.log("Popstate event triggered");
         const urlParams = new URLSearchParams(window.location.search);
         $('#timeHistoryTable').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i></div>');
         $.ajax({
@@ -604,7 +850,7 @@ $(document).ready(function() {
     });
 });
 
-// Firebase messaging (unchanged)
+// Firebase messaging
 var firebaseConfig = {
     apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
     authDomain: "sms-with-django.firebaseapp.com",
@@ -619,20 +865,27 @@ firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 function initializeFirebaseMessaging() {
     messaging.requestPermission()
-        .then(() => messaging.getToken())
+        .then(() => {
+            return messaging.getToken();
+        })
         .then(token => {
+            console.log("Firebase token:", token);
             sendToServer(token);
         })
-        .catch(err => console.error("Permission denied", err));
+        .catch(err => console.error("Permission denied:", err.message));
+    });
 }
 messaging.onMessage(payload => {
+    console.log("Message received:", payload);
     const notificationOptions = {
-        body: payload.notification.body,
-        icon: payload.notification.icon
+        body: {
+            payload.notification.body,
+            icon: payload.notification.icon
+        }
     };
     if (Notification.permission === "granted") {
         const notification = new Notification(payload.notification.title, notificationOptions);
-        notification.onclick = event => {
+        notification.onclick = function(event) {
             event.preventDefault();
             window.open(payload.notification.click_action, "_blank");
             notification.close();
@@ -641,9 +894,9 @@ messaging.onMessage(payload => {
 });
 messaging.onTokenRefresh(() => {
     messaging.getToken().then(newToken => {
-        console.log("New Token: ", newToken);
+        console.log("Token refreshed:", newToken);
         sendToServer(newToken);
-    }).catch(console.error);
+    }).catch(err => console.error("Token refresh error:", err));
 });
 function sendToServer(token) {
     $.ajax({
@@ -654,7 +907,7 @@ function sendToServer(token) {
     }).done(() => {
         console.log("Token sent to server");
     }).fail(err => {
-        console.error("Failed to send token", err);
+        console.error("Failed to send token:", err);
     });
 }
 initializeFirebaseMessaging();
