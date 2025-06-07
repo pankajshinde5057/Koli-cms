@@ -130,8 +130,8 @@ class ManagerForm(CustomUserForm):
 
     def __init__(self, *args, **kwargs):
         super(ManagerForm, self).__init__(*args, **kwargs)
-        # Ensure email field is properly initialized from admin user
-        if self.instance and self.instance.admin:
+        # Only set initial values if the instance exists and has an associated admin
+        if self.instance and self.instance.pk and hasattr(self.instance, 'admin'):
             self.fields['email'].initial = self.instance.admin.email
             self.fields['password'].required = False  # Password is optional for updates
 
@@ -147,8 +147,22 @@ class ManagerForm(CustomUserForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
-        # Update the admin user fields
-        admin = instance.admin
+        # Update or create the admin user
+        if hasattr(instance, 'admin'):
+            admin = instance.admin
+        else:
+            # Create a new CustomUser if no admin exists (new manager)
+            admin = CustomUser(
+                email=self.cleaned_data.get('email'),
+                first_name=self.cleaned_data.get('first_name'),
+                last_name=self.cleaned_data.get('last_name'),
+                user_type=2,  # Manager
+            )
+            if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
+                admin.set_password(self.cleaned_data.get('password'))
+            admin.save()
+            instance.admin = admin
+
         admin.first_name = self.cleaned_data.get('first_name')
         admin.last_name = self.cleaned_data.get('last_name')
         admin.email = self.cleaned_data.get('email')
