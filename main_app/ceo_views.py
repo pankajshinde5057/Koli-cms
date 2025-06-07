@@ -2093,12 +2093,10 @@ def admin_view_notification(request):
 
     notification_ids = Notification.objects.filter(
         user=request.user,
-        role="manager",
         is_read=False,
-        notification_type="notification"
+        role="ceo",
     ).values_list('leave_or_notification_id', flat=True)
 
-    manager_unread_ids = list(notification_ids)
     leave_history = LeaveReportManager.objects.filter(
         status__in=[1, 2]
     ).order_by('-updated_at')
@@ -2111,7 +2109,7 @@ def admin_view_notification(request):
     context = {
         'pending_leave_requests': pending_leave_requests,
         'leave_page_obj': leave_page_obj,
-        'manager_unread_ids': manager_unread_ids,
+        'manager_unread_ids': list(notification_ids),
         'LOCATION_CHOICES': LOCATION_CHOICES,
         'page_title': "View Notifications",
     }
@@ -2136,10 +2134,26 @@ def approve_admin_leave_request(request, leave_id):
             else:
                 messages.success(request, "Full-Day leave approved.")
             msg = "Leave request approved."
+
+            # Update exixsting notification for manager to mark as read
+            Notification.objects.filter(
+                user = request.user,
+                notification_type = 'leave-notification',
+                leave_or_notification_id = leave_request.id,
+                role = 'ceo'
+            ).update(is_read = True)
+
+            # send notification to manager
+            Notification.objects.create(
+                user = leave_request.manager.admin,
+                message = msg,
+                notification_type = 'manager-leave-notification',
+                leave_or_notification_id = leave_request.id,
+                role = 'manager'
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.manager.admin.id)
-        send_notification(user, msg,"leave",leave_id,"manager")
+
     return redirect('admin_view_notification')
 
 @login_required   
@@ -2152,10 +2166,26 @@ def reject_admin_leave_request(request, leave_id):
             leave_request.save()
             msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")
+
+            # update exiting notification for manager:
+            Notification.objects.filter(
+                user = request.user,
+                role = 'ceo',
+                leave_or_notification_id = leave_request.id,
+                notification_type = 'leave-notification'
+            ).update(is_read = True)
+
+            # create notifciation for manager
+            Notification.objects.create(
+                user = leave_request.manager.admin,
+                message = msg,
+                role = 'manager',
+                leave_or_notification_id = leave_request.id,
+                notification_type = 'manager-leave-notification'
+            )
         else:
             messages.info(request, "This leave request has already been processed.")
-        user = CustomUser.objects.get(id = leave_request.manager.admin.id)
-        send_notification(user, msg,"leave",leave_id,"manager")
+
     return redirect('admin_view_notification')
 
 @login_required

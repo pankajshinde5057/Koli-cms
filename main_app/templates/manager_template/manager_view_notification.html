@@ -127,7 +127,7 @@
                                         <div class="message-preview">
                                             {{ notification.message|truncatechars:100 }}
                                             {% if notification.message|length > 100 %}
-                                            <a href="#" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}">Read more</a>
+                                            <a href="#" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}" onclick="markNotificationRead({{ notification.id }} , 'general-notification' )">Read more</a>
                                             {% endif %}
                                         </div>
                                     </td>
