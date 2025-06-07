@@ -209,6 +209,10 @@ class LeaveBalance(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
+
+        if not self.employee.date_of_joining:
+            raise ValidationError("Employee must have a valid date_of_joining to calculate leave balances.")
+        
         joining_date = self.employee.date_of_joining
         joining_year = joining_date.year
         joining_month = joining_date.month

@@ -49,11 +49,12 @@ def mark_notification_read(request):
                     notification.save()
                     return JsonResponse({'status': 'success', 'message': 'Notification marked as read'})
                 return JsonResponse({'status': 'success', 'message': 'Notification already read'})
-            elif notification_type in ['notification-from-manager' , 'notification-from-admin' , 'leave-notification' , 'clockout-notification']:
+            
+            elif notification_type in ['notification-from-manager' , 'notification-from-admin' , 'leave-notification' , 'clockout-notification' , 'manager-leave-notification']:
                 notification = get_object_or_404(
                     Notification,
                     user=request.user,
-                    role='employee',
+                    role__in=['employee' , 'ceo' , 'manager'],
                     notification_type=notification_type,
                     leave_or_notification_id=notification_id
                 )

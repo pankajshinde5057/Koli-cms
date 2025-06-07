@@ -608,10 +608,10 @@ def approve_early_clock_out(request, request_id):
             role = 'manager'
         ).update(is_read=True)
 
-        try:
-            send_notification(early_request.user, notes, "clockout-notification", early_request.id, "employee")
-        except Exception as e:
-            print(f"send_notification failed: {str(e)}")
+        # try:
+        #     send_notification(early_request.user, notes, "clockout-notification", early_request.id, "employee")
+        # except Exception as e:
+        #     print(f"send_notification failed: {str(e)}")
         
         return redirect('manager_view_notification')
 
@@ -634,10 +634,10 @@ def deny_early_clock_out(request, request_id):
             role = 'manager'
         ).update(is_read=True)
 
-        try:
-            send_notification(early_request.user, notes, "clockout-notification", early_request.id, "employee")
-        except Exception as e:
-            print(f"send_notification failed: {str(e)}")
+        # try:
+        #     send_notification(early_request.user, notes, "clockout-notification", early_request.id, "employee")
+        # except Exception as e:
+        #     print(f"send_notification failed: {str(e)}")
 
         return redirect('manager_view_notification')
 

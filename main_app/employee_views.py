@@ -267,6 +267,9 @@ def employee_home(request):
     half_days = 0
     absent_dates = []
 
+    # Get employee's joining date
+    joining_date = employee.date_of_joining
+
     logger.info(f"Calculating attendance stats for {current_month}/{current_year}")
 
     # Pre-fetch leaves and records for the month
@@ -386,6 +389,13 @@ def employee_home(request):
         # Now calculate present and absent days
         for day in range(1, days_in_month + 1):
             date = datetime(current_year, current_month, day).date()
+            # skip dates before joining date
+            if date < joining_date:
+                continue
+            
+            if date > today:
+                continue
+            
             weekday = date.weekday()
             is_sunday = weekday == 6
             is_saturday = weekday == 5
@@ -426,10 +436,11 @@ def employee_home(request):
                     # Insufficient leaves at the time of application
                     absent_days += 1
                     logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Insufficient Leaves, Absent Days={absent_days}")
-            elif date < first_clock_in_date and date < today:
-                absent_days += 1
-                absent_dates.append(date)
-                logger.debug(f"Date {date} - Marked as absent (before first clock-in), Absent Days={absent_days}")
+            else:
+                if date < today:
+                    absent_days += 1
+                    absent_dates.append(date)
+                    logger.debug(f"Date {date} - Marked as absent (before first clock-in), Absent Days={absent_days}")
 
     # Update total available leaves for context
     if balance:
@@ -747,17 +758,6 @@ def employee_apply_leave(request):
             messages.error(request, "You already have a leave request for these dates.")
             return redirect('employee_apply_leave')
 
-        # Check leave balance for each day
-        leave_amount = 0.5 if leave_type == 'Half-Day' else 1.0
-        current_date = start_date
-
-        while current_date <= end_date:
-            balance = LeaveBalance.get_balance(employee, current_date.year, current_date.month)
-            if not balance:
-                balance = LeaveBalance.create_balance(employee, current_date.year, current_date.month)
-                return redirect('employee_apply_leave')
-            current_date += timedelta(days=1)
-
         try:
             leave_request = LeaveReportEmployee.objects.create(
                 employee=employee,
@@ -768,20 +768,10 @@ def employee_apply_leave(request):
                 message=message
             )
             messages.success(request, "Your leave request has been submitted.")
-
-            if employee.team_lead:
-                Notification.objects.create(
-                    user=employee.team_lead.admin,
-                    message=f"Leave request from {employee.admin.get_full_name()}",
-                    notification_type="leave",
-                    leave_or_notification_id=leave_request.id,
-                    role="manager"
-                )
-                user = employee.team_lead.admin
-                send_notification(user, "Leave Applied", "leave-notification", leave_request.id, "manager")
-
-            return redirect('employee_apply_leave')
-
+            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
+            send_notification(user, "Leave Applied", "leave-notification", leave_request.id, "manager")
+            return redirect(reverse('employee_apply_leave'))
+            
         except Exception as e:
             messages.error(request, f"Error submitting leave: {str(e)}")
             return redirect('employee_apply_leave')
