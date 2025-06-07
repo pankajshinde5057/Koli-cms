@@ -34,7 +34,7 @@
                                         <td data-title="Manager">{{ leave.manager }}</td>
                                         <td data-title="Division">{{ leave.manager.division }}</td>
                                         <td data-title="Message">{{ leave.message }}</td>
-                                        <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }}</td>
+                                        <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</td>
                                         <td data-title="Submitted On">{{ leave.created_at|date:"M d, Y H:i" }}</td>
                                         {% if leave.status == 0 %}
                                             <td data-title="Action">

@@ -237,7 +237,7 @@
                                 <tr>
                                     <th>Manager</th>
                                     <th>Status</th>
-                                    <th>Date</th>
+                                    <th>Leave Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -255,7 +255,9 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <small>{{ leave.updated_at|date:"M d, Y" }}</small>
+                                            <span class="badge badge-info">
+                                            {{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}
+                                            </span>
                                         </td>
                                         <td>
                                             <button type="button" class="btn btn-sm btn-info" 

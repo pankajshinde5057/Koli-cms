@@ -31,7 +31,7 @@
                                     <td>{{ leave.employee }}</td>
                                     <td>{{ leave.employee.division }}</td>
                                     <td>{{ leave.message }}</td>
-                                    <td>{{ leave.start_date }}</td>
+                                    <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</td>
                                     <td>{{ leave.created_at }}</td>
                                     <td>
                                         {% if leave.status == 0 %}
