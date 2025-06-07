@@ -20,6 +20,26 @@
             margin-top: 0.25rem;
         }
         
+        
+        .alert {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
         /* Profile Picture Styles */
         .profile-pic-container {
             position: relative;
@@ -206,7 +226,7 @@
             height: 50px;
             border: 4px solid rgba(255, 255, 255, 0.2);
             border-radius: 50%;
-            border-top: 4px solid white;
+            border-top: 4for solid white;
             animation: spin 1s linear infinite;
             z-index: 5;
             display: none;
@@ -238,7 +258,7 @@
         input[type="date"]:focus {
             outline: none;
             border-color: #3897f0;
-            box-shadow: 0 0 5px rgba(56, 151, 240, 0.3);
+            box-shadow: 0 0 5px rgba(56, 151 rins, 240, 0.3);
         }
 
         /* Ensure the calendar icon is visible and clickable */
@@ -247,6 +267,31 @@
             cursor: pointer;
             padding: 5px;
             margin-left: 5px;
+        }
+
+        /* Password Toggle Styles */
+        .password-field-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-field-container .form-control {
+            padding-right: 40px; /* Space for the eye icon */
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #6c757d;
+            font-size: 1.1rem;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: #343a40;
         }
 
         /* Responsive Adjustments */
@@ -264,6 +309,8 @@
     </style>
 </head>
 <body>
+  
+
     <section class="content">
         <div class="container-fluid">
             <form id="profile-form" method="POST" enctype="multipart/form-data">
@@ -312,6 +359,8 @@
                                                 <img src="{{ user_object.profile_pic }}" class="user-avatar" alt="User Avatar">
                                             {% else %}
                                                 <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="user-avatar" alt="User Avatar">
+
+
                                             {% endif %}
                                             <span class="username">{{ user_object.get_full_name }}</span>
                                         {% elif page_title != "Add Employee" and page_title != 'Add Manager' %}
@@ -357,7 +406,11 @@
                                                     <span class="required-asterisk">*</span>
                                                 {% endif %}
                                             </label>
-                                            {{ field }}
+                                            {% if field.name == 'email' %}
+                                                <input type="email" name="email" id="{{ field.id_for_label }}" class="form-control" value="{{ user_object.email }}" required>
+                                            {% else %}
+                                                {{ field }}
+                                            {% endif %}
                                             {% if field.errors %}
                                                 <div class="text-danger">{{ field.errors|striptags }}</div>
                                             {% endif %}
@@ -379,14 +432,21 @@
                                     {% for field in form %}
                                         {% if field.name not in "profile_pic email phone_number address" %}
                                             <div class="col-md-6">
-                                                <div class="form-group">
+                                                <div class="form-group {% if field.name == 'password' %}password-field-container{% endif %}">
                                                     <label for="{{ field.id_for_label }}">
                                                         {{ field.label }}
                                                         {% if field.field.required %}
                                                             <span class="required-asterisk">*</span>
                                                         {% endif %}
                                                     </label>
-                                                    {{ field }}
+                                                    {% if field.name == 'password' %}
+                                                        <div class="password-field-container">
+                                                            {{ field }}
+                                                            <i class="fas fa-eye password-toggle" id="passwordToggle" aria-label="Toggle password visibility"></i>
+                                                        </div>
+                                                    {% else %}
+                                                        {{ field }}
+                                                    {% endif %}
                                                     {% if field.errors %}
                                                         <div class="text-danger">{{ field.errors|striptags }}</div>
                                                     {% endif %}
@@ -411,12 +471,24 @@
     </section>
 
     <script>
+        // Suppress popups
+        window.alert = function() {};
+        if (window.Swal) {
+            Swal.close();
+        }
+
         // DOM Elements
         const profilePic = document.getElementById("profilePic");
         const profileModal = document.getElementById("profileModal");
         const enlargedPhoto = document.getElementById("enlargedPhoto");
         const spinner = document.querySelector('.spinner');
         const dateOfJoiningInput = document.getElementById("id_date_of_joining");
+        const passwordToggle = document.getElementById('passwordToggle');
+        const passwordField = document.getElementById('id_password');
+
+        // Debug: Log DOM elements
+        console.log('Password toggle element:', passwordToggle);
+        console.log('Password field element:', passwordField);
 
         // Open Modal Function
         function openModal(src) {
@@ -474,7 +546,6 @@
                     url: enlargedPhoto.src
                 }).catch(err => {
                     console.error('Error sharing:', err);
-                    alert('Sharing failed. Please try again.');
                 });
             } else {
                 // Fallback for browsers that don't support Web Share API
@@ -499,6 +570,36 @@
                 dateOfJoiningInput.addEventListener('focus', () => {
                     dateOfJoiningInput.showPicker();
                 });
+            }
+        }
+
+        // Password Toggle Functionality
+        function setupPasswordToggle() {
+            if (passwordToggle && passwordField) {
+                console.log('Setting up password toggle event listener');
+                passwordToggle.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    console.log('Eye button clicked at:', new Date().toISOString());
+                    try {
+                        const currentType = passwordField.getAttribute('type');
+                        const newType = currentType === 'password' ? 'text' : 'password';
+                        passwordField.setAttribute('type', newType);
+                        console.log('Password field type changed from', currentType, 'to', newType);
+                        if (newType === 'text') {
+                            this.classList.remove('fa-eye');
+                            this.classList.add('fa-eye-slash');
+                        } else {
+                            this.classList.remove('fa-eye-slash');
+                            this.classList.add('fa-eye');
+                        }
+                        console.log('Eye icon classes after toggle:', this.classList.toString());
+                    } catch (error) {
+                        console.error('Error in password toggle:', error);
+                    }
+                });
+            } else {
+                console.error('Password toggle or field not found:', { passwordToggle, passwordField });
             }
         }
         
@@ -536,6 +637,9 @@
 
             // Initialize date picker trigger
             triggerDatePicker();
+
+            // Initialize password toggle
+            setupPasswordToggle();
         }
         
         // Form Submission Confirmation
@@ -556,7 +660,15 @@
         }
         
         // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', initEventListeners);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Debug: Check for popup sources
+            console.log('Checking for popup sources...');
+            if (window.Swal) console.log('SweetAlert is present');
+            if (window.toastr) console.log('Toastr is present');
+            console.log('window.alert overridden:', window.alert.toString());
+
+            initEventListeners();
+        });
     </script>
 </body>
 </html>

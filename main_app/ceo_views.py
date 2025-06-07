@@ -30,6 +30,9 @@ from django.core.paginator import Paginator
 from datetime import date, datetime, timedelta
 from django.utils import timezone
 from dateutil.parser import parse
+from django.contrib.auth import update_session_auth_hash
+import logging
+from django.utils.text import get_valid_filename
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -316,13 +319,14 @@ def add_employee(request):
     return render(request, 'ceo_template/add_employee_template.html', context)
 
 
+logger = logging.getLogger(__name__)
 
-@login_required   
+@login_required
 def admin_view_profile(request):
     admin = get_object_or_404(Admin, admin=request.user)
     form = AdminForm(request.POST or None, request.FILES or None, instance=admin)
     context = {
-        'form': form, 
+        'form': form,
         'page_title': 'View/Update Profile',
         'user_object': request.user,
     }
@@ -330,36 +334,51 @@ def admin_view_profile(request):
     if request.method == 'POST':
         try:
             if form.is_valid():
-                first_name = form.cleaned_data.get('first_name')
-                last_name = form.cleaned_data.get('last_name')
-                password = form.cleaned_data.get('password') or None
-                address = form.cleaned_data.get('address')
-                gender = form.cleaned_data.get('gender')
-                profile_pic = form.cleaned_data.get('profile_pic')  # Fix: Access from cleaned_data
-                
                 user = request.user
-                if password:
-                    user.set_password(password)
+                cleaned_data = form.cleaned_data
+
+                # Update user fields
+                user.first_name = cleaned_data.get('first_name')
+                user.last_name = cleaned_data.get('last_name')
+                user.email = cleaned_data.get('email').lower()
+                user.address = cleaned_data.get('address')
+                user.gender = cleaned_data.get('gender')
+
+                # Update password if provided
+                password_changed = False
+                if cleaned_data.get('password'):
+                    user.set_password(cleaned_data['password'])
+                    password_changed = True
+                    user.save()
+                    logger.info(f"Password updated for user {user.username}")
+                    update_session_auth_hash(request, user)
+                    logger.info(f"Session updated for user {user.username} after password change")
+                else:
+                    user.save()
+
+                # Handle profile picture
+                profile_pic = cleaned_data.get('profile_pic')
                 if profile_pic:
                     fs = FileSystemStorage()
-                    filename = fs.save(profile_pic.name, profile_pic)
-                    passport_url = fs.url(filename)
-                    user.profile_pic = passport_url
-                
-                user.first_name = first_name
-                user.last_name = last_name
-                user.address = address
-                user.gender = gender
-                user.save()
-                
-                messages.success(request, "Profile Updated!")
-                return redirect(reverse('admin_view_profile'))
+                    safe_filename = get_valid_filename(profile_pic.name)
+                    filename = fs.save(safe_filename, profile_pic)
+                    user.profile_pic = fs.url(filename)
+                    logger.info(f"Profile picture updated for user {user.username}: {user.profile_pic}")
+                    user.save()
+
+                admin.save()
+
+                messages.success(request, "Profile updated successfully!")
+                logger.info(f"Profile update successful for user {user.username}, session should persist")
+                return redirect('admin_view_profile')
             else:
-                messages.error(request, "Invalid Data Provided")
+                messages.error(request, "Invalid data provided. Please check the form.")
         except Exception as e:
-            messages.error(request, f"Error Occurred While Updating Profile: {str(e)}")
-    
+            logger.error(f"Error updating profile for user {request.user.username}: {str(e)}")
+            messages.error(request, f"Error occurred while updating profile: {str(e)}")
+
     return render(request, "ceo_template/admin_view_profile.html", context)
+    
 
 
 @login_required

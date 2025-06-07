@@ -35,6 +35,9 @@ from .models import AttendanceRecord, Employee, Holiday, LeaveReportEmployee
 from calendar import monthrange
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
+from django.contrib.auth import update_session_auth_hash
+import logging
+from django.utils.text import get_valid_filename
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -1763,42 +1766,62 @@ def send_selected_employee_notification_by_manager(request):
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
+logger = logging.getLogger(__name__)
+
 @login_required   
 def manager_view_profile(request):
     manager = get_object_or_404(Manager, admin=request.user)
-    form = ManagerEditForm(request.POST or None, request.FILES or None,instance=manager)
-    context = {'form': form, 'page_title': 'View/Update Profile','user_object': manager.admin, }
+    form = ManagerEditForm(request.POST or None, request.FILES or None, instance=manager)
+    context = {'form': form, 'page_title': 'View/Update Profile', 'user_object': manager.admin}
+    
     if request.method == 'POST':
         try:
             if form.is_valid():
                 first_name = form.cleaned_data.get('first_name')
                 last_name = form.cleaned_data.get('last_name')
+                email = form.cleaned_data.get('email')  # Added email field
                 password = form.cleaned_data.get('password') or None
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
                 passport = request.FILES.get('profile_pic') or None
                 admin = manager.admin
-                if password != None:
+                
+                # Update email
+                if email and email != admin.email:
+                    admin.email = email
+                    logger.info(f"Email updated for user {admin.username} to {email}")
+                
+                # Update password only if provided and non-empty
+                if password and password.strip():
                     admin.set_password(password)
-                if passport != None:
+                    update_session_auth_hash(request, admin)  # Prevent session termination
+                    logger.info(f"Password updated for user {admin.username}, session updated")
+                
+                if passport is not None:
                     fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
+                    safe_filename = get_valid_filename(passport.name)
+                    filename = fs.save(safe_filename, passport)
                     passport_url = fs.url(filename)
                     admin.profile_pic = passport_url
+                    logger.info(f"Profile picture updated for user {admin.username}: {passport_url}")
+                
                 admin.first_name = first_name
                 admin.last_name = last_name
                 admin.address = address
                 admin.gender = gender
                 admin.save()
                 manager.save()
-                messages.success(request, "Profile Updated!")
+                
+                messages.success(request, "Profile updated successfully!")
+                logger.info(f"Profile update successful for user {admin.username}")
                 return redirect(reverse('manager_view_profile'))
             else:
                 messages.error(request, "Invalid Data Provided")
+                logger.warning(f"Invalid form data for user {request.user.username}")
                 return render(request, "manager_template/manager_view_profile.html", context)
         except Exception as e:
-            messages.error(
-                request, "Error Occured While Updating Profile " + str(e))
+            logger.error(f"Error updating profile for user {request.user.username}: {str(e)}")
+            messages.error(request, "Error Occurred While Updating Profile: " + str(e))
             return render(request, "manager_template/manager_view_profile.html", context)
 
     return render(request, "manager_template/manager_view_profile.html", context)

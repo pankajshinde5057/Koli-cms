@@ -3,13 +3,11 @@ from django.forms.widgets import DateInput
 from datetime import date
 from .models import *
 
-
 class FormSettings(forms.ModelForm):
     def __init__(self, *args, **kwargs):
-        super(FormSettings, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         for field in self.visible_fields():
             field.field.widget.attrs['class'] = 'form-control'
-
 
 class CustomUserForm(FormSettings):
     email = forms.EmailField(required=True)
@@ -17,41 +15,39 @@ class CustomUserForm(FormSettings):
     first_name = forms.CharField(required=True)
     last_name = forms.CharField(required=True)
     address = forms.CharField(widget=forms.Textarea)
-    password = forms.CharField(widget=forms.PasswordInput)
-    widget = {
-        'password': forms.PasswordInput(),
-    }
-    profile_pic = forms.ImageField(required=False)
+    password = forms.CharField(widget=forms.PasswordInput, required=False)
+    profile_pic = forms.ImageField(required=False, widget=forms.FileInput)
 
     def __init__(self, *args, **kwargs):
-        super(CustomUserForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            self.fields['password'].widget.attrs['placeholder'] = "Fill this only if you wish to update password"
+            user = self.instance.admin
+            self.fields['first_name'].initial = user.first_name
+            self.fields['last_name'].initial = user.last_name
+            self.fields['email'].initial = user.email
+            self.fields['address'].initial = user.address
+            self.fields['gender'].initial = user.gender
+            self.fields['profile_pic'].initial = user.profile_pic
 
-        if kwargs.get('instance'):
-            instance = kwargs.get('instance').admin.__dict__
-            self.fields['password'].required = False
-            for field in CustomUserForm.Meta.fields:
-                self.fields[field].initial = instance.get(field)
-            if self.instance.pk is not None:
-                self.fields['password'].widget.attrs['placeholder'] = "Fill this only if you wish to update password"
-
-    def clean_email(self, *args, **kwargs):
-        formEmail = self.cleaned_data['email'].lower()
-        if self.instance.pk is None:  
-            if CustomUser.objects.filter(email=formEmail).exists():
-                raise forms.ValidationError(
-                    "The given email is already registered")
-        else: 
-            dbEmail = self.Meta.model.objects.get(
-                id=self.instance.pk).admin.email.lower()
-            if dbEmail != formEmail:  
-                if CustomUser.objects.filter(email=formEmail).exists():
-                    raise forms.ValidationError("The given email is already registered")
-
-        return formEmail
+    def clean_email(self):
+        email = self.cleaned_data['email'].lower()
+        if self.instance.pk:
+            if CustomUser.objects.exclude(id=self.instance.admin.id).filter(email=email).exists():
+                raise forms.ValidationError("This email is already registered.")
+        else:
+            if CustomUser.objects.filter(email=email).exists():
+                raise forms.ValidationError("This email is already registered.")
+        return email
 
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'gender',  'password','profile_pic', 'address' ]
+        fields = ['first_name', 'last_name', 'email', 'gender', 'password', 'profile_pic', 'address']
+
+class AdminForm(CustomUserForm):
+    class Meta(CustomUserForm.Meta):
+        model = Admin
+        fields = CustomUserForm.Meta.fields
 
 
 
@@ -121,16 +117,6 @@ class EmployeeForm(CustomUserForm):
             'division', 'department', 'designation', 'team_lead', 'phone_number', 'date_of_joining'
         ]
 
-
-class AdminForm(CustomUserForm):
-    def __init__(self, *args, **kwargs):
-        super(AdminForm, self).__init__(*args, **kwargs)
-
-    class Meta(CustomUserForm.Meta):
-        model = Admin
-        fields = CustomUserForm.Meta.fields
-
-
 class ManagerForm(CustomUserForm):
     emergency_name = forms.CharField(label="Emergency Contact Name", required=False)
     emergency_relationship = forms.CharField(label="Emergency Contact Relationship", required=False)
@@ -144,6 +130,10 @@ class ManagerForm(CustomUserForm):
 
     def __init__(self, *args, **kwargs):
         super(ManagerForm, self).__init__(*args, **kwargs)
+        # Only set initial values if the instance exists and has an associated admin
+        if self.instance and self.instance.pk and hasattr(self.instance, 'admin'):
+            self.fields['email'].initial = self.instance.admin.email
+            self.fields['password'].required = False  # Password is optional for updates
 
         if self.instance and self.instance.emergency_contact:
             ec = self.instance.emergency_contact
@@ -157,6 +147,28 @@ class ManagerForm(CustomUserForm):
 
     def save(self, commit=True):
         instance = super().save(commit=False)
+        # Update or create the admin user
+        if hasattr(instance, 'admin'):
+            admin = instance.admin
+        else:
+            # Create a new CustomUser if no admin exists (new manager)
+            admin = CustomUser(
+                email=self.cleaned_data.get('email'),
+                first_name=self.cleaned_data.get('first_name'),
+                last_name=self.cleaned_data.get('last_name'),
+                user_type=2,  # Manager
+            )
+            if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
+                admin.set_password(self.cleaned_data.get('password'))
+            admin.save()
+            instance.admin = admin
+
+        admin.first_name = self.cleaned_data.get('first_name')
+        admin.last_name = self.cleaned_data.get('last_name')
+        admin.email = self.cleaned_data.get('email')
+        if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
+            admin.set_password(self.cleaned_data.get('password'))
+        admin.save()
 
         instance.emergency_contact = {
             'name': self.cleaned_data.get('emergency_name'),
@@ -266,9 +278,28 @@ class EmployeeEditForm(CustomUserForm):
         fields = CustomUserForm.Meta.fields 
 
 
+
 class ManagerEditForm(CustomUserForm):
     def __init__(self, *args, **kwargs):
         super(ManagerEditForm, self).__init__(*args, **kwargs)
+        # Ensure email field is properly initialized from admin user
+        if self.instance and self.instance.admin:
+            self.fields['email'].initial = self.instance.admin.email
+            self.fields['password'].required = False  # Password is optional for updates
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            # Update the admin user fields
+            admin = instance.admin
+            admin.first_name = self.cleaned_data.get('first_name')
+            admin.last_name = self.cleaned_data.get('last_name')
+            admin.email = self.cleaned_data.get('email')
+            if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
+                admin.set_password(self.cleaned_data.get('password'))
+            admin.save()
+            instance.save()
+        return instance
 
     class Meta(CustomUserForm.Meta):
         model = Manager
