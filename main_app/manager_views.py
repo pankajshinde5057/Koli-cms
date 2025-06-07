@@ -2053,7 +2053,6 @@ def approve_leave_request(request, leave_id):
                         logger.error(f"Failed to deduct leave for {current_date}")
                         messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
                         return redirect('manager_view_notification')
-                    logger.info(f"Deducted leave for {current_date}, Remaining Leaves: {remaining_leaves}")
 
                     # Update or create attendance record
                     record, created = AttendanceRecord.objects.update_or_create(

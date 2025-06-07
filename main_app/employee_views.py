@@ -709,6 +709,7 @@ def leave_balance(request):
         'total_available_leaves': round(total_available_leaves, 1),
     }
     return render(request, 'employee_template/leave_balance.html', context)
+    
 
 @login_required
 def employee_apply_leave(request):
@@ -751,7 +752,7 @@ def employee_apply_leave(request):
             employee=employee,
             start_date__lte=end_date,
             end_date__gte=start_date,
-            status__in=[0, 1]
+            status__in=[0, 1]  # Pending or Approved
         ).exists()
         if existing_leaves:
             messages.error(request, "You already have a leave request for these dates.")
@@ -781,7 +782,6 @@ def employee_apply_leave(request):
         'page_title': 'Apply for Leave',
     }
     return render(request, 'employee_template/employee_apply_leave.html', context)
-
 
 
 @login_required   
