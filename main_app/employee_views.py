@@ -26,15 +26,20 @@ from io import BytesIO
 from .context_processors import leave_balance_context
 from zoneinfo import ZoneInfo
 
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db.models import Sum, F, ExpressionWrapper, DurationField
 from django.db.models.functions import Coalesce
 from django.contrib import messages
 from datetime import datetime, timedelta, time, date
+from zoneinfo import ZoneInfo
 from calendar import monthrange
 import logging
-
+from .models import Employee, AttendanceRecord, Break, LeaveReportEmployee, Holiday, ActivityFeed, LeaveBalance
 
 logger = logging.getLogger(__name__)
 
@@ -267,9 +272,6 @@ def employee_home(request):
     half_days = 0
     absent_dates = []
 
-    # Get employee's joining date
-    joining_date = employee.date_of_joining
-
     logger.info(f"Calculating attendance stats for {current_month}/{current_year}")
 
     # Pre-fetch leaves and records for the month
@@ -389,13 +391,6 @@ def employee_home(request):
         # Now calculate present and absent days
         for day in range(1, days_in_month + 1):
             date = datetime(current_year, current_month, day).date()
-            # skip dates before joining date
-            if date < joining_date:
-                continue
-            
-            if date > today:
-                continue
-            
             weekday = date.weekday()
             is_sunday = weekday == 6
             is_saturday = weekday == 5
@@ -436,11 +431,10 @@ def employee_home(request):
                     # Insufficient leaves at the time of application
                     absent_days += 1
                     logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Insufficient Leaves, Absent Days={absent_days}")
-            else:
-                if date < today:
-                    absent_days += 1
-                    absent_dates.append(date)
-                    logger.debug(f"Date {date} - Marked as absent (before first clock-in), Absent Days={absent_days}")
+            elif date < first_clock_in_date and date < today:
+                absent_days += 1
+                absent_dates.append(date)
+                logger.debug(f"Date {date} - Marked as absent (before first clock-in), Absent Days={absent_days}")
 
     # Update total available leaves for context
     if balance:

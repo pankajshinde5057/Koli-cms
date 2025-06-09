@@ -1062,10 +1062,71 @@ def view_employee_leave(request):
         status = 1 if status == '1' else -1
         try:
             leave = get_object_or_404(LeaveReportEmployee, id=id)
-            leave.status = status
-            leave.save()
-            return HttpResponse("True")
-        except Exception:
+
+            if leave.status != 0:  # 0 = Pending
+                return HttpResponse("False")
+
+            with transaction.atomic():
+                if status == 1:  # Approved
+                    employee = leave.employee
+                    start_date = leave.start_date
+                    end_date = leave.end_date or start_date
+                    leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
+
+                    # Process leave approval
+                    current_date = start_date
+                    while current_date <= end_date:
+                        # Deduct leave
+                        success, remaining_leaves = LeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
+                        if not success:
+                            logger.error(f"Failed to deduct leave for {current_date}")
+                            return HttpResponse("False")
+
+                        # Update or create attendance record
+                        record, created = AttendanceRecord.objects.update_or_create(
+                            user=employee.admin,
+                            date=current_date,
+                            defaults={
+                                'status': 'half_day' if leave.leave_type == 'Half-Day' else 'leave',
+                                'department': employee.department,
+                                'clock_in': None,
+                                'clock_out': None,
+                                'total_worked': None,
+                                'regular_hours': None,
+                                'overtime_hours': None
+                            }
+                        )
+                        current_date += timedelta(days=1)
+
+                    # Prepare notification message
+                    if leave.leave_type == 'Half-Day':
+                        msg = "Half-Day leave approved by Admin."
+                    else:
+                        msg = "Full-Day leave approved by Admin."
+
+                    # Update existing notifications to mark as read
+                    Notification.objects.filter(
+                        notification_type='leave-notification',
+                        leave_or_notification_id=leave.id,
+                        role='ceo'  # Assuming 'ceo' is the role for admin
+                    ).update(is_read=True)
+                    
+                    # Send notification to employee
+                    employee_user = leave.employee.admin
+                    Notification.objects.create(
+                        user=employee_user,
+                        message=msg,
+                        notification_type="leave-notification",
+                        leave_or_notification_id=id,
+                        role="employee"
+                    )
+
+                # Update leave status
+                leave.status = status
+                leave.save()
+                return HttpResponse("True")
+        except Exception as e:
+            logger.error(f"Error processing leave ID {id}: {str(e)}")
             return HttpResponse("False")
 
 
