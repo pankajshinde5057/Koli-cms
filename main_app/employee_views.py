@@ -954,8 +954,8 @@ def employee_view_attendance(request):
                 json_data.append({
                     "date": date_str,
                     "status": day['status'],
-                    "clock_in": localtime(day['first_clock_in']).strftime('%I:%M %p') if day['first_clock_in'] else '--',
-                    "clock_out": localtime(day['last_clock_out']).strftime('%I:%M %p') if day['last_clock_out'] else '--',
+                    "clock_in": (day['first_clock_in']).strftime('%I:%M %p') if day['first_clock_in'] else '--',
+                    "clock_out": (day['last_clock_out']).strftime('%I:%M %p') if day['last_clock_out'] else '--',
                     "total_worked": total_worked_str,
                     "records_count": day['records_count']
                 })
