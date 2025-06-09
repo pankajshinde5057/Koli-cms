@@ -86,6 +86,7 @@ def admin_home(request):
         break_start__date__gte=start_date,
         break_start__date__lte=end_date,
         break_end__isnull=True  # Only ongoing breaks
+        
     ).distinct()
     
     manager_breaks_today = Break.objects.filter(
@@ -144,8 +145,8 @@ def admin_home(request):
             'user_name': user.get_full_name() or user.username,
             'user_type': user_type,
             'department': department,
-            'break_start': b.break_start.strftime('%Y-%m-%d %H:%M'),
-            'break_end': b.break_end.strftime('%Y-%m-%d %H:%M') if b.break_end else 'Ongoing',
+            'break_start': b.break_start.strftime('%H:%M'),
+            'break_end': b.break_end.strftime('%H:%M') if b.break_end else 'Ongoing',
             'break_duration': duration,
         })
 
@@ -1812,7 +1813,7 @@ def admin_todays_attendance(request):
     if not request.user.is_superuser:
         return redirect('admin_home')
     
-    today = timezone.localdate()
+    today = timezone.now()
     
     # Get all employees
     today_attendances = AttendanceRecord.objects.filter(

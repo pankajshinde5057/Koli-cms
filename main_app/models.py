@@ -377,19 +377,19 @@ class AttendanceRecord(models.Model):
             raise ValidationError("Clock out time must be on the same date as the attendance record.")
 
     def save(self, *args, **kwargs):
-        ist = pytz.timezone('Asia/Kolkata')
+        # ist = pytz.timezone('Asia/Kolkata')
         if self.clock_in:
-            ist_time = self.clock_in.astimezone(ist)
-            late_time = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            half_day_time = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
-            after_3pm_time = datetime.combine(ist_time.date(), time(15, 0)).replace(tzinfo=ist)
+            # ist_time = self.clock_in.astimezone(ist)
+            late_time = datetime.combine(self.clock_in.date(), time(9, 15))
+            half_day_time = datetime.combine(self.clock_in.date(), time(13, 0))
+            after_3pm_time = datetime.combine(self.clock_in.date(), time(15, 0))
 
             if self.status not in ['leave', 'absent']:
-                if ist_time > after_3pm_time:
+                if self.clock_in > after_3pm_time:
                     self.status = 'present'
-                elif ist_time > half_day_time:
+                elif self.clock_in > half_day_time:
                     self.status = 'half_day'
-                elif ist_time > late_time:
+                elif self.clock_in > late_time:
                     self.status = 'late'
                 else:
                     self.status = 'present'
@@ -633,6 +633,9 @@ class Break(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f'{self.attendance_record}'
+
     class Meta:
         ordering = ['break_start']
     
@@ -734,7 +737,7 @@ class Holiday(models.Model):
 
 
 def get_ist_date():
-    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata')).date()
+    return datetime.now().date()
 
 class DailySchedule(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='schedules')
