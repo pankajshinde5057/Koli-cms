@@ -1182,9 +1182,14 @@ def employee_requests(request):
 
 
 
+logger = logging.getLogger(__name__)
+
+def get_ist_date():
+    ist = pytz.timezone('Asia/Kolkata')
+    return timezone.now().astimezone(ist).date()
+
 def get_ist_datetime():
     return timezone.now().astimezone(pytz.timezone('Asia/Kolkata'))
-
 
 @login_required
 def daily_schedule(request):
@@ -1192,7 +1197,7 @@ def daily_schedule(request):
     today = get_ist_date()
     now = get_ist_datetime()
 
-     # Check if employee has clocked in today, redirect to home if not
+    # Check if employee has clocked in today, redirect to home if not
     attendance_record = AttendanceRecord.objects.filter(
         user=request.user,
         date=today,
@@ -1209,7 +1214,9 @@ def daily_schedule(request):
     # Check if editing is allowed (within 30 minutes of creation)
     allow_edit = True
     if schedule:
-        edit_window = schedule.created_at + timedelta(minutes=30)  # Changed to 30 minutes for clarity
+        # Ensure created_at is timezone-aware
+        created_at_aware = schedule.created_at.astimezone(pytz.timezone('Asia/Kolkata')) if schedule.created_at.tzinfo is None else schedule.created_at
+        edit_window = created_at_aware + timedelta(minutes=30)
         allow_edit = now <= edit_window
 
     if request.method == 'POST' and allow_edit:
@@ -1226,7 +1233,6 @@ def daily_schedule(request):
         # Parse tasks and calculate total minutes
         total_minutes = 0
         for line in tasks:
-            time_part = line.split('|')[1].strip().lower()
             try:
                 time_part = line.split('|')[1].strip().lower()
                 if 'h' in time_part:
@@ -1237,7 +1243,7 @@ def daily_schedule(request):
                     total_minutes += float(time_part.replace('s', '')) / 60
                 else:
                     total_minutes += float(time_part)
-            except ValueError:
+            except (ValueError, IndexError):
                 messages.error(request, f"Invalid time value in task: {line}")
                 return redirect('daily_schedule')
 

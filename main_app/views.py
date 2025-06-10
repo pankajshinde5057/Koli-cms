@@ -164,84 +164,6 @@ class AttendanceActionView(APIView):
             return Response({'error': 'Invalid action'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# @login_required
-# def clock_in_out(request):
-#     if request.method == 'POST':
-#         now = timezone.now()
-#         current_record = AttendanceRecord.objects.filter(
-#             user=request.user, 
-#             clock_out__isnull=True
-#         ).first()
-
-#         if current_record:
-#             # Clock out
-#             current_record.clock_out = now
-#             current_record.notes = request.POST.get('notes', '')
-#             current_record.save()
-#             ActivityFeed.objects.create(
-#                 user=request.user,
-#                 activity_type='clock_out',
-#                 related_record=current_record
-#             )
-#         else:
-#             department_id = request.POST.get('department')
-#             department = Department.objects.get(id=department_id) if department_id else None
-#             # Convert to IST
-#             ist = pytz.timezone('Asia/Kolkata')
-#             ist_time = now.astimezone(ist)
-
-#             # Create 9:15 AM and 1:00 PM on the same IST date
-#             late_time = ist.localize(datetime.combine(ist_time.date(), time(9, 15)))
-#             half_day_time = ist.localize(datetime.combine(ist_time.date(), time(13, 0)))  # 1:00 PM
-
-#             print("Current IST Time:", ist_time)
-#             print("Late Time Threshold:", late_time)
-#             print("Half Day Threshold:", half_day_time)
-
-#             # Compare
-#             if ist_time > half_day_time:
-#                 status = 'half_day'
-#             elif ist_time > late_time:
-#                 status = 'late'
-#             else:
-#                 status = 'present'
-
-#             new_record = AttendanceRecord.objects.create(
-#                 user=request.user,
-#                 date = now.date(),
-#                 clock_in=now,
-#                 department=department,
-#                 notes=request.POST.get('notes', ''),
-#                 ip_address=get_router_ip(),
-#                 status=status
-#             )
-
-#             ActivityFeed.objects.create(
-#                 user=request.user,
-#                 activity_type='clock_in',
-#                 related_record=new_record
-#             )
-
-#         return JsonResponse({'status': 'success'})
-#     return redirect('home')
-
-import logging
-
-
-
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404
-from django.utils import timezone
-from datetime import datetime, time, timedelta
-from calendar import monthrange
-from django.db.models import Sum, F, ExpressionWrapper, DurationField
-from django.db.models.functions import Coalesce
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.contrib import messages
-from .models import AttendanceRecord, Employee, Department, DailySchedule, ActivityFeed, Break, Holiday, LeaveReportEmployee
-import pytz
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -341,6 +263,29 @@ def clock_in_out(request):
                 return JsonResponse({
                     'status': 'error',
                     'message': 'No active clock-in record found to clock out.'
+                }, status=400)
+
+            # Check if today's update has been submitted
+            employee = get_object_or_404(Employee, admin=request.user)
+            schedule = DailySchedule.objects.filter(
+                employee=employee,
+                date=today
+            ).first()
+
+            if schedule:
+                has_submitted_update = DailyUpdate.objects.filter(
+                    schedule=schedule,
+                    updated_at__date=today
+                ).exists()
+                if not has_submitted_update:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Cannot clock out without submitting today’s update.'
+                    }, status=400)
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'No schedule found for today. Cannot clock out without a schedule and update.'
                 }, status=400)
 
             # Keep existing clock-out validation logic
