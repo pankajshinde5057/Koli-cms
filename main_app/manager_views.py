@@ -38,6 +38,7 @@ from django.db import transaction
 from django.contrib.auth import update_session_auth_hash
 import logging
 from django.utils.text import get_valid_filename
+from django.contrib.auth import get_user_model 
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -640,17 +641,9 @@ def update_attendance(request):
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
 
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.core.paginator import Paginator
-from django.db.models import Q
-from datetime import datetime, timedelta
-from calendar import monthrange
-import logging
-
 logger = logging.getLogger(__name__)
 
+User = get_user_model() 
 @login_required
 @csrf_exempt
 def get_employee_attendance(request):

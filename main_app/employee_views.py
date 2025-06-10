@@ -39,19 +39,6 @@ from datetime import datetime, timedelta, time
 from calendar import monthrange
 import logging
 
-from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.shortcuts import get_object_or_404, render
-from django.http import JsonResponse
-from django.template.loader import render_to_string
-from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
-from django.db.models import Sum, F, ExpressionWrapper, DurationField
-from django.db.models.functions import Coalesce
-from django.utils import timezone
-from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta, time
-from calendar import monthrange
-import logging
 
 logger = logging.getLogger(__name__)
 

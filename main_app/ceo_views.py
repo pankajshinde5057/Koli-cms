@@ -33,6 +33,7 @@ from dateutil.parser import parse
 from django.contrib.auth import update_session_auth_hash
 import logging
 from django.utils.text import get_valid_filename
+from django.contrib.auth import get_user_model 
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -2307,21 +2308,11 @@ def admin_view_attendance(request):
 
 
 
-import logging
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.contrib.auth import get_user_model  # Use dynamic user model
-from django.db.models import Q
-from datetime import datetime, timedelta
-from calendar import monthrange
-from django.core.paginator import Paginator
-from .models import AttendanceRecord, Employee, Manager, Holiday, LeaveReportEmployee  # Adjust imports as needed
+
 
 logger = logging.getLogger(__name__)
 
-# Get the custom user model
-User = get_user_model()  # This will resolve to main_app.CustomUser
+User = get_user_model() 
 
 @login_required
 @csrf_exempt
