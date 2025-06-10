@@ -172,15 +172,14 @@ def clock_in_out(request):
     if request.method == 'POST':
         now = timezone.now()
         today = now.date()
-        ist = pytz.timezone('Asia/Kolkata')
-        ist_time = now.astimezone(ist)
+    
 
         if 'clock_in' in request.POST:
             # Check if already clocked in
             existing_record = AttendanceRecord.objects.filter(
                 user=request.user,
                 date=today,
-                clock_out__isnull=True
+                clock_out__isnull=False
             ).first()
             
             if existing_record:
@@ -204,25 +203,25 @@ def clock_in_out(request):
                 }, status=400)
 
             # Determine status
-            on_time_threshold = datetime.combine(ist_time.date(), time(9, 0)).replace(tzinfo=ist)
-            late_threshold = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            half_day_threshold = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
-            after_3pm_threshold = datetime.combine(ist_time.date(), time(15, 0)).replace(tzinfo=ist)
+            on_time_threshold = datetime.combine(today, time(9, 0))
+            late_threshold = datetime.combine(today, time(9, 15))
+            half_day_threshold = datetime.combine(today, time(13, 0))
+            after_3pm_threshold = datetime.combine(today, time(15, 0))
 
-            earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 45))) if request.user.user_type == "3" else ist.localize(datetime.combine(ist_time.date(), time(8, 30)))
+            earliest_clock_in =datetime.combine(today, time(8, 45)) if request.user.user_type == "3" else datetime.combine(today, time(8, 30))
 
-            if ist_time < earliest_clock_in:
+            if now < earliest_clock_in:
                 return JsonResponse({
                     'status': 'error',
                     'message': f"Clock-in is not allowed before {'8:45 AM' if request.user.user_type == '3' else '8:30 AM'} IST."
                 }, status=400)
 
             status = 'present'
-            if ist_time > after_3pm_threshold:
+            if now > after_3pm_threshold:
                 status = 'present'
-            elif ist_time > half_day_threshold:
+            elif now > half_day_threshold:
                 status = 'half_day'
-            elif ist_time > late_threshold:
+            elif now > late_threshold:
                 status = 'late'
 
             # Create record only on successful validation
