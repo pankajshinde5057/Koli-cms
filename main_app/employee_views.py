@@ -1324,7 +1324,7 @@ def daily_schedule(request):
     
     
 def get_ist_date():
-    ist = timezone.get_current_timezone()
+    ist = pytz.timezone('Asia/Kolkata')
     return timezone.now().astimezone(ist).date()
 
 @login_required
@@ -1333,6 +1333,7 @@ def todays_update(request):
     today = get_ist_date()
     schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
 
+    # Check if employee has clocked out
     attendance_record = AttendanceRecord.objects.filter(
         user=request.user,
         date=today,
@@ -1341,7 +1342,7 @@ def todays_update(request):
     ).first()
 
     if attendance_record:
-        messages.error(request,"Can't update record after clock-out.  Only can view in your All Schedules")
+        messages.error(request, "Can't update record after clock-out. Only view in your All Schedules.")
         return redirect('employee_home')
     
     if not schedule:
@@ -1349,18 +1350,15 @@ def todays_update(request):
         return redirect('daily_schedule')
 
     existing_update = schedule.updates.first()
-    is_editable = not existing_update or existing_update.updated_at.date() == today
+    is_editable = not existing_update or existing_update.updated_at.astimezone(pytz.timezone('Asia/Kolkata')).date() == today
 
     if request.method == 'POST' and is_editable:
-        update_description = request.POST.get('update_description', '')
-        justification = request.POST.get('justification', '')
-        
-        # Validate updates
-        updates = [line.strip() for line in update_description.split("\n") if line.strip()]
-        invalid_updates = [u for u in updates if '|' not in u or len(u.split('|')) != 2]
-        
-        if invalid_updates:
-            messages.error(request, "Each update must include description and time spent (e.g., 'Completed task|1.5h')")
+        update_description = request.POST.get('update_description', '').strip()
+        justification = request.POST.get('justification', '').strip()
+
+        if not update_description:
+            messages.error(request, "Update description cannot be empty.")
+            logger.error(f"User {request.user.username} attempted to submit empty update_description")
             return render(request, 'employee_template/todays_update.html', {
                 'schedule': schedule,
                 'update': existing_update,
@@ -1369,8 +1367,9 @@ def todays_update(request):
                 'justification': justification,
             })
 
-        # Calculate total time spent and validate time format
+        # Calculate total time spent for validation
         total_minutes = 0
+        updates = [line.strip() for line in update_description.split("\n") if line.strip()]
         for update in updates:
             try:
                 desc, time_part = update.split('|')
@@ -1385,6 +1384,7 @@ def todays_update(request):
                     raise ValueError
             except (ValueError, IndexError):
                 messages.error(request, f"Invalid time format in update: {update}. Use format like 'Task|1.5h'")
+                logger.error(f"User {request.user.username} submitted invalid update: {update}")
                 return render(request, 'employee_template/todays_update.html', {
                     'schedule': schedule,
                     'update': existing_update,
@@ -1396,6 +1396,7 @@ def todays_update(request):
         # Require justification if total time is less than 8 hours (480 minutes)
         if total_minutes < 480 and not justification.strip():
             messages.error(request, "Please provide justification for spending less than 8 hours.")
+            logger.error(f"User {request.user.username} submitted update with total time {total_minutes} minutes without justification")
             return render(request, 'employee_template/todays_update.html', {
                 'schedule': schedule,
                 'update': existing_update,
@@ -1404,43 +1405,47 @@ def todays_update(request):
                 'justification': justification,
             })
 
-        if existing_update:
-            # Update existing
-            existing_update.update_description = update_description
-            existing_update.justification = justification
-            try:
-                existing_update.full_clean()
-                existing_update.save()
-                messages.success(request, "Update modified successfully!")
-            except ValidationError as e:
-                messages.error(request, f"Error updating: {e}")
-                return render(request, 'employee_template/todays_update.html', {
-                    'schedule': schedule,
-                    'update': existing_update,
-                    'today': today,
-                    'is_editable': is_editable,
-                    'justification': justification,
-                })
-        else:
-            # Create new
-            update = DailyUpdate(
-                schedule=schedule,
-                update_description=update_description,
-                justification=justification,
-            )
-            try:
-                update.full_clean()
-                update.save()
-                messages.success(request, "Update submitted successfully!")
-            except ValidationError as e:
-                messages.error(request, f"Error submitting: {e}")
-                return render(request, 'employee_template/todays_update.html', {
-                    'schedule': schedule,
-                    'update': existing_update,
-                    'today': today,
-                    'is_editable': is_editable,
-                    'justification': justification,
-                })
+        try:
+            
+                if existing_update:
+                    # Update existing
+                    existing_update.update_description = update_description
+                    existing_update.justification = justification
+                    existing_update.full_clean()
+                    existing_update.save()
+                    logger.info(f"User {request.user.username} successfully updated DailyUpdate ID {existing_update.id}")
+                    messages.success(request, "Update modified successfully!")
+                else:
+                    # Create new
+                    update = DailyUpdate(
+                        schedule=schedule,
+                        update_description=update_description,
+                        justification=justification,
+                    )
+                    update.full_clean()
+                    update.save()
+                    logger.info(f"User {request.user.username} successfully created DailyUpdate ID {update.id}")
+                    messages.success(request, "Update submitted successfully!")
+        except ValidationError as e:
+            messages.error(request, f"Error saving update: {e}")
+            logger.error(f"ValidationError for user {request.user.username}: {e}")
+            return render(request, 'employee_template/todays_update.html', {
+                'schedule': schedule,
+                'update': existing_update,
+                'today': today,
+                'is_editable': is_editable,
+                'justification': justification,
+            })
+        except Exception as e:
+            messages.error(request, "An unexpected error occurred while saving the update. Please try again.")
+            logger.error(f"Unexpected error for user {request.user.username} while saving DailyUpdate: {str(e)}")
+            return render(request, 'employee_template/todays_update.html', {
+                'schedule': schedule,
+                'update': existing_update,
+                'today': today,
+                'is_editable': is_editable,
+                'justification': justification,
+            })
 
         return redirect('todays_update')
 
@@ -1450,7 +1455,6 @@ def todays_update(request):
         'today': today,
         'is_editable': is_editable,
     })
-
 
 
 def view_all_schedules(request):

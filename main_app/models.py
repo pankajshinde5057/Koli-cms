@@ -803,11 +803,12 @@ class DailySchedule(models.Model):
         """Get non-empty task description lines"""
         return [line for line in self.task_description.split("\n") if line.strip()]
 
+
 class DailyUpdate(models.Model):
     schedule = models.ForeignKey(DailySchedule, on_delete=models.CASCADE, related_name='updates')
     update_description = models.TextField()
     updated_at = models.DateTimeField(auto_now=True)
-    justification = models.TextField(blank=True, default='')  # Add justification field
+    justification = models.TextField(blank=True, default='')
 
     class Meta:
         ordering = ['-updated_at']
@@ -818,11 +819,34 @@ class DailyUpdate(models.Model):
     def clean(self):
         if not self.update_description.strip():
             raise ValidationError("Update description cannot be empty.")
-    
+        # Validate format: each line must have description|time
+        for line in self.update_description.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            if '|' not in line or len(line.split('|')) != 2:
+                raise ValidationError(f"Invalid format in update: {line}. Use 'Task|Time' format.")
+            desc, time_part = line.split('|')
+            time_part = time_part.strip().lower()
+            try:
+                if 'h' in time_part:
+                    float(time_part.replace('h', ''))
+                elif 'm' in time_part:
+                    float(time_part.replace('m', ''))
+                elif 's' in time_part:
+                    float(time_part.replace('s', ''))
+                else:
+                    raise ValueError
+            except ValueError:
+                raise ValidationError(f"Invalid time format in update: {line}. Use format like 'Task|1.5h'")
+
     @property
     def updates(self):
         updates = []
         for line in self.update_description.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
             parts = line.split('|', 1)
             if len(parts) == 2:
                 desc, time = parts
