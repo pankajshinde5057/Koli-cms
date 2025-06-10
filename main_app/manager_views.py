@@ -45,6 +45,13 @@ LOCATION_CHOICES = (
     ("Main Office", "Main Office"),
 )
 
+from django.utils.timezone import is_naive, make_aware
+
+def make_aware_if_naive(dt):
+    if dt and is_naive(dt):
+        return make_aware(dt)
+    return dt
+
 
 @login_required   
 def manager_home(request):
@@ -115,8 +122,8 @@ def manager_home(request):
                 'employee_id': employee.id,
                 'employee_name': employee.get_full_name(),
                 'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
-                'break_start': localtime(b.break_start).strftime('%H:%M'),
-                'break_end': localtime(b.break_end).strftime('%H:%M') if b.break_end else 'Ongoing',
+                'break_start': b.break_start.strftime('%H:%M'),
+                'break_end': b.break_end.strftime('%H:%M') if b.break_end else 'Ongoing',
                 'break_duration': duration,
             })
 
@@ -185,7 +192,7 @@ def manager_home(request):
 @login_required
 def manager_todays_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
-    today = timezone.localdate()
+    today = timezone.now()
     
     team_members = Employee.objects.filter(team_lead=manager)
     employee_users = CustomUser.objects.filter(employee__in=team_members)
