@@ -443,5 +443,135 @@
     
     {% block custom_js %}
     {% endblock custom_js %}
+
+    <!-- Add this before </body> -->
+    <audio id="notificationSound" preload="auto">
+        <source src="{% static 'audio/notification.mp3' %}" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Notification Manager
+        class NotificationManager {
+            constructor() {
+                this.currentCounts = {};
+                this.init();
+            }
+            
+            init() {
+                this.checkNotifications();
+                setInterval(() => this.checkNotifications(), 1000); // Check every 5 seconds
+                
+                // Also check when notification dropdown is clicked
+                $('#notificationDropdown').on('click', () => this.checkNotifications());
+            }
+            
+            checkNotifications() {
+                $.ajax({
+                    url: '{% url "check_new_notification" %}',
+                    method: 'GET',
+                    success: (data) => this.handleResponse(data),
+                    error: (xhr) => console.log("Notification check failed:", xhr.statusText)
+                });
+            }
+            
+            handleResponse(data) {
+                // Play sound if new notifications arrived
+                if (data.total > (this.currentCounts.total || 0)) {
+                    this.playNotificationSound();
+                }
+                
+                // Update all counts
+                this.currentCounts = data;
+                this.updateBadge(data.total);
+                this.updateDropdownCounts(data);
+            }
+            
+            playNotificationSound() {
+                const sound = document.getElementById('notificationSound');
+                sound.volume = 0.3;
+                sound.play().catch(e => console.log("Audio play prevented:", e));
+                
+                // Visual feedback
+                $('#notificationDropdown i.fa-bell').addClass('animate-ring');
+                setTimeout(() => {
+                    $('#notificationDropdown i.fa-bell').removeClass('animate-ring');
+                }, 2000);
+            }
+            
+            updateBadge(count) {
+                const badge = $('#notificationDropdown').find('.badge');
+                
+                if (count > 0) {
+                    if (badge.length === 0) {
+                        $('#notificationDropdown').append(
+                            `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger animate-pulse">
+                                ${count}
+                            </span>`
+                        );
+                    } else {
+                        badge.text(count).addClass('animate-pulse');
+                    }
+                } else {
+                    badge.remove();
+                }
+            }
+            
+            updateDropdownCounts(data) {
+                // Update counts in the dropdown if it's open
+                if ($('.dropdown-menu-lg').is(':visible')) {
+                    // Manager updates
+                    if ({% if request.user.user_type == '2' %}true{% else %}false{% endif %}) {
+                        $('.notification-general .count').text(data.general);
+                        $('.notification-leave .count').text(data.leave);
+                        $('.notification-clockout .count').text(data.clockout);
+                        $('.notification-asset .count').text(data.asset);
+                    }
+                    // CEO updates
+                    else if ({% if request.user.user_type == '1' %}true{% else %}false{% endif %}) {
+                        $('.notification-manager-leave .count').text(data.manager_leave);
+                        $('.notification-employee-leave .count').text(data.employee_leave);
+                    }
+                    // Employee updates
+                    else {
+                        $('.notification-from-manager .count').text(data.from_manager);
+                        $('.notification-leave-status .count').text(data.leave_status);
+                        $('.notification-clockout .count').text(data.clockout);
+                    }
+                }
+            }
+        }
+
+        // Initialize when page loads
+        $(document).ready(() => {
+            new NotificationManager();
+        });
+    </script>
+
+    <style>
+        /* Add these animation styles */
+        .animate-pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .animate-ring {
+            animation: ring 0.5s ease;
+            color: #ffc107 !important;
+        }
+
+        @keyframes ring {
+            0% { transform: rotate(0); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(-15deg); }
+            75% { transform: rotate(10deg); }
+            100% { transform: rotate(0); }
+        }
+    </style>
+
 </body>
 </html>
