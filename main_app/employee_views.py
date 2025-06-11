@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 @login_required
 @transaction.atomic
 def employee_home(request):
-    today = timezone.now().astimezone(ZoneInfo('Asia/Kolkata')).date()
+    today = timezone.now().date()
     current_time = timezone.now()
     employee = get_object_or_404(Employee, admin=request.user)
     
@@ -834,6 +834,12 @@ def employee_apply_leave(request):
             messages.success(request, "Your leave request has been submitted.")
             user = CustomUser.objects.get(id=employee.team_lead.admin.id)
             send_notification(user, "Leave Applied", "leave-notification", leave_request.id, "manager")
+            
+            admin_users = CustomUser.objects.filter(is_superuser=True)
+            if admin_users.exists():
+                for admin_user in admin_users:
+                    send_notification(admin_user, "Leave Applied", "employee-leave-notification", leave_request.id, "ceo")
+            
             return redirect(reverse('employee_apply_leave'))
             
         except Exception as e:
@@ -961,7 +967,7 @@ def employee_view_attendance(request):
             start_date = request.POST.get('start_date')
             end_date = request.POST.get('end_date')
             page = request.POST.get('page', 1)
-            
+
             if not all([start_date, end_date]):
                 return JsonResponse({'error': 'Missing required parameters'}, status=400)
             
@@ -972,7 +978,7 @@ def employee_view_attendance(request):
                 user=request.user,
                 date__range=(start_date, end_date)
             ).exclude(clock_in=None).exclude(clock_out=None).order_by('date', 'clock_in')
-        
+
             daily_summaries = {}
             for record in all_records:
                 date_str = record.date.strftime('%Y-%m-%d')

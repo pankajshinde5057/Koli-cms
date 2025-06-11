@@ -60,6 +60,19 @@ MIDDLEWARE = [
     'main_app.middleware.RoleBasedAccessMiddleware',
 ]
 
+
+# MIDDLEWARE = [
+#     'django.middleware.security.SecurityMiddleware',
+#     'django.contrib.sessions.middleware.SessionMiddleware',
+#     'django.middleware.common.CommonMiddleware',
+#     'django.middleware.csrf.CsrfViewMiddleware',
+#     'django.contrib.auth.middleware.AuthenticationMiddleware',
+#     'django.contrib.messages.middleware.MessageMiddleware',
+#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+#     'main_app.middleware.LoginCheckMiddleWare',
+# ]
+    
+#     # 'whitenoise.middleware.WhiteNoiseMiddleware',
 ROOT_URLCONF = 'office_ops.urls'
 
 TEMPLATES = [
@@ -81,6 +94,14 @@ TEMPLATES = [
         },
     },
 ]
+
+# 'django.template.context_processors.request',
+# 'django.contrib.auth.context_processors.auth',
+# 'django.contrib.messages.context_processors.messages',
+# 'main_app.context_processors.clock_times',
+# 'main_app.context_processors.unread_notification_count',
+# 'main_app.context_processors.asset_notification_count',
+# 'main_app.context_processors.admin_notification_count',
 
 WSGI_APPLICATION = 'office_ops.wsgi.application'
 
