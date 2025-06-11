@@ -748,11 +748,10 @@ def leave_balance(request):
             months_in_year = end_month - start_month + 1
             yearly_total_allocated_leaves = months_in_year * 1.0  # 1 leave per month
 
-            # Adjust yearly total allocated leaves by subtracting allocated leaves for current month
+            # Adjust yearly total allocated leaves by subtracting available leaves for current month if fully used
             current_month_balance = leave_balances.filter(month=current_month).first()
             if current_month_balance and current_month_balance.total_available_leaves() == 0.0:
-                    yearly_total_allocated_leaves = max(0.0, yearly_total_allocated_leaves - (current_month_balance.allocated_leaves + current_month_balance.carried_forward))
-                    print(f"Adjusted yearly total allocated leaves for {current_year}: {yearly_total_allocated_leaves}")
+                yearly_total_allocated_leaves = max(0.0, yearly_total_allocated_leaves - (current_month_balance.allocated_leaves + current_month_balance.carried_forward))
 
         # Process monthly leave balances for display in the table
         for month in range(1, 13):
@@ -764,6 +763,13 @@ def leave_balance(request):
                 if not balance:
                     balance = LeaveBalance.create_balance(employee, current_year, month)
             if balance:
+                # Validate used_leaves for the current month
+                if month == current_month:
+                    max_used_leaves = balance.allocated_leaves + balance.carried_forward
+                    if balance.used_leaves > max_used_leaves:
+                        balance.used_leaves = max_used_leaves
+                        balance.save()
+                
                 yearly_leave_data.append({
                     'month': datetime(current_year, month, 1).strftime('%B'),
                     'allocated_leaves': balance.allocated_leaves,
