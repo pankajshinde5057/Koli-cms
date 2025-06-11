@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 @login_required
 @transaction.atomic
 def employee_home(request):
-    today = timezone.now().astimezone(ZoneInfo('Asia/Kolkata')).date()
+    today = timezone.now().date()
     current_time = timezone.now()
     employee = get_object_or_404(Employee, admin=request.user)
     
@@ -843,6 +843,12 @@ def employee_apply_leave(request):
             messages.success(request, "Your leave request has been submitted.")
             user = CustomUser.objects.get(id=employee.team_lead.admin.id)
             send_notification(user, "Leave Applied", "leave-notification", leave_request.id, "manager")
+            
+            admin_users = CustomUser.objects.filter(is_superuser=True)
+            if admin_users.exists():
+                for admin_user in admin_users:
+                    send_notification(admin_user, "Leave Applied", "employee-leave-notification", leave_request.id, "ceo")
+            
             return redirect(reverse('employee_apply_leave'))
             
         except Exception as e:
