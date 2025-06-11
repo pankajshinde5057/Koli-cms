@@ -250,122 +250,232 @@ def clock_in_out(request):
     if request.method == 'POST':
         now = timezone.now()
         today = now.date()
-        ist = pytz.timezone('Asia/Kolkata')
-        ist_time = now.astimezone(ist)
-
+ 
+        # Check for any existing record for today
+        existing_record = AttendanceRecord.objects.filter(
+            user=request.user,
+            date=today,
+            # clock_out__isnull = False
+        ).first()
+ 
         if 'clock_in' in request.POST:
-            # Check if already clocked in
-            existing_record = AttendanceRecord.objects.filter(
-                user=request.user,
-                date=today,
-                clock_out__isnull=True
-            ).first()
-            
             if existing_record:
+                logger.warning(f"User {request.user} attempted to clock in again on {today}. Existing record: {existing_record.id}")
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'You are already clocked in for today.'
+                    'message': 'You can only clock in once per day.'
                 }, status=400)
-
-            # Check leave status
-            leave = LeaveReportEmployee.objects.filter(
-                employee__admin=request.user,
-                start_date__lte=today,
-                end_date__gte=today,
-                status=1
-            ).first()
-
-            if leave:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Cannot clock in on an approved leave day.'
-                }, status=400)
-
-            # Determine status
-            on_time_threshold = datetime.combine(ist_time.date(), time(9, 0)).replace(tzinfo=ist)
-            late_threshold = datetime.combine(ist_time.date(), time(9, 15)).replace(tzinfo=ist)
-            half_day_threshold = datetime.combine(ist_time.date(), time(13, 0)).replace(tzinfo=ist)
-            after_3pm_threshold = datetime.combine(ist_time.date(), time(15, 0)).replace(tzinfo=ist)
-
-            earliest_clock_in = ist.localize(datetime.combine(ist_time.date(), time(8, 45))) if request.user.user_type == "3" else ist.localize(datetime.combine(ist_time.date(), time(8, 30)))
-
-            if ist_time < earliest_clock_in:
+ 
+           
+            late_time = datetime.combine(today, time(9, 15))
+            half_day_time = datetime.combine(today, time(13, 0))
+ 
+ 
+            if request.user.user_type == "3":  # Employee
+                earliest_clock_in = datetime.combine(today, time(8, 45))
+            elif request.user.user_type == "2":  # Manager
+                earliest_clock_in = datetime.combine(today, time(8, 30))
+            else:
+                earliest_clock_in = datetime.combine(today, time(0, 0)) # No restriction for other types
+ 
+            if now < earliest_clock_in:
                 return JsonResponse({
                     'status': 'error',
                     'message': f"Clock-in is not allowed before {'8:45 AM' if request.user.user_type == '3' else '8:30 AM'} IST."
                 }, status=400)
-
-            status = 'present'
-            if ist_time > after_3pm_threshold:
-                status = 'present'
-            elif ist_time > half_day_threshold:
-                status = 'half_day'
-            elif ist_time > late_threshold:
-                status = 'late'
-
-            # Create record only on successful validation
+           
+            # Proceed with clock-in logic
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
+           
+            # Create 9:15 AM and 1:00 PM on the same IST date
+       
+ 
+            # # Determine status
+            # if ist_time > half_day_time:
+            #     status = 'half_day'
+            # elif ist_time > late_time:
+            #     status = 'late'
+            # else:
+            #     status = 'present'
 
+            # Create new attendance record
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
                 date=today,
                 clock_in=now,
                 department=department,
-                status=status,
+                notes=request.POST.get('notes', ''),
                 ip_address=request.META.get('REMOTE_ADDR'),
-                notes=request.POST.get('notes', '')
+                status=  'half_day' if now > half_day_time else 'late' if now > late_time else 'present'
             )
-            new_record.full_clean()
-            new_record.save()
-
+ 
+            # Log activity
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_in',
                 related_record=new_record
             )
-
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Successfully clocked in!'
-            })
-
+ 
+            return JsonResponse({'status': 'success'})
+ 
         elif 'clock_out' in request.POST:
             current_record = AttendanceRecord.objects.filter(
                 user=request.user,
                 date=today,
                 clock_out__isnull=True
             ).first()
-
+ 
             if not current_record:
+                logger.warning(f"User {request.user} attempted to clock out on {today} with no active record")
                 return JsonResponse({
                     'status': 'error',
                     'message': 'No active clock-in record found to clock out.'
                 }, status=400)
-
-            # Keep existing clock-out validation logic
+ 
+            # Clock out
             current_record.clock_out = now
             current_record.notes = request.POST.get('notes', '')
-            current_record.full_clean()
             current_record.save()
-
+ 
+            # Log activity
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_out',
                 related_record=current_record
             )
-
+ 
+            logger.debug(f"User {request.user} clocked out successfully on {today}")
+ 
+            return JsonResponse({'status': 'success'})
+ 
+        else:
+            logger.error(f"Invalid POST request for {request.user}: {request.POST}")
             return JsonResponse({
-                'status': 'success',
-                'message': 'Successfully clocked out!'
-            })
-
-        return JsonResponse({
-            'status': 'error',
-            'message': 'Invalid request.'
-        }, status=400)
-
+                'status': 'error',
+                'message': 'Invalid request.'
+            }, status=400)
+ 
     return HttpResponseRedirect('employee_home')
+
+# @login_required
+# def clock_in_out(request):
+#     if request.method == 'POST':
+#         now = datetime.now()
+
+#         if 'clock_in' in request.POST:
+#             # Check if already clocked in
+#             existing_record = AttendanceRecord.objects.filter(
+#                 user=request.user,
+#                 date=datetime.now().date(),
+#                 clock_out__isnull=False
+#             ).first()
+
+#             if existing_record:
+#                 return JsonResponse({
+#                     'status': 'error',
+#                     'message': 'You are already clocked in for today.'
+#                 }, status=400)
+
+#             # Check leave status
+#             leave = LeaveReportEmployee.objects.filter(
+#                 employee__admin=request.user,
+#                 start_date__lte=today,
+#                 end_date__gte=today,
+#                 status=1
+#             ).first()
+
+#             if leave:
+#                 return JsonResponse({
+#                     'status': 'error',
+#                     'message': 'Cannot clock in on an approved leave day.'
+#                 }, status=400)
+
+#             # Determine status
+#             on_time_threshold = datetime.combine(today, time(9, 0))
+#             late_threshold = datetime.combine(today, time(9, 15))
+#             half_day_threshold = datetime.combine(today, time(13, 0))
+#             after_3pm_threshold = datetime.combine(today, time(15, 0))
+
+#             earliest_clock_in = datetime.combine(today, time(8, 45)) if request.user.user_type == "3" else datetime.combine(today, time(8, 30))
+
+#             if now < earliest_clock_in:
+#                 return JsonResponse({
+#                     'status': 'error',
+#                     'message': f"Clock-in is not allowed before {'8:45 AM' if request.user.user_type == '3' else '8:30 AM'} IST."
+#                 }, status=400)
+
+#             status = 'present'
+#             if now > after_3pm_threshold:
+#                 status = 'present'
+#             elif now > half_day_threshold:
+#                 status = 'half_day'
+#             elif now > late_threshold:
+#                 status = 'late'
+
+#             # Create record only on successful validation
+#             department_id = request.POST.get('department')
+#             department = Department.objects.get(id=department_id) if department_id else None
+
+#             new_record = AttendanceRecord.objects.create(
+#                 user=request.user,
+#                 date=today,
+#                 clock_in=now,
+#                 department=department,
+#                 status=status,
+#                 ip_address=request.META.get('REMOTE_ADDR'),
+#                 notes=request.POST.get('notes', '')
+#             )
+#             new_record.full_clean()
+#             new_record.save()
+
+#             ActivityFeed.objects.create(
+#                 user=request.user,
+#                 activity_type='clock_in',
+#                 related_record=new_record
+#             )
+
+#             return JsonResponse({
+#                 'status': 'success',
+#                 'message': 'Successfully clocked in!'
+#             })
+
+#         elif 'clock_out' in request.POST:
+#             current_record = AttendanceRecord.objects.filter(
+#                 user=request.user,
+#                 date=today,
+#                 clock_out__isnull=True
+#             ).first()
+
+#             if not current_record:
+#                 return JsonResponse({
+#                     'status': 'error',
+#                     'message': 'No active clock-in record found to clock out.'
+#                 }, status=400)
+
+#             # Keep existing clock-out validation logic
+#             current_record.clock_out = now
+#             current_record.notes = request.POST.get('notes', '')
+#             current_record.full_clean()
+#             current_record.save()
+
+#             ActivityFeed.objects.create(
+#                 user=request.user,
+#                 activity_type='clock_out',
+#                 related_record=current_record
+#             )
+
+#             return JsonResponse({
+#                 'status': 'success',
+#                 'message': 'Successfully clocked out!'
+#             })
+
+#         return JsonResponse({
+#             'status': 'error',
+#             'message': 'Invalid request.'
+#         }, status=400)
+
+#     return HttpResponseRedirect('employee_home')
 
 
 

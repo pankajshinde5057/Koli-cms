@@ -63,6 +63,8 @@ def manager_home(request):
     predefined_names = ['Python Department', 'React JS Department', 'Node JS Department']
     all_departments = Department.objects.all()
 
+    leave_request_from_employee = LeaveReportEmployee.objects.filter(status = 0).count()
+
     selected_department = request.GET.get('department', 'all').strip().lower()
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
@@ -179,7 +181,9 @@ def manager_home(request):
         'total_on_break' : total_on_break,
         'break_entries': break_entries,
         'page_obj': page_obj,
-        'current_break' : current_break
+        'current_break' : current_break,
+        'leave_request_from_employee' : leave_request_from_employee
+
     }
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         html = render_to_string('manager_template/home_content.html', context, request=request)
@@ -1076,7 +1080,7 @@ def manager_apply_leave(request):
             admin_users = CustomUser.objects.filter(is_superuser=True)
             if admin_users.exists():
                 for admin_user in admin_users:
-                    send_notification(admin_user, "Leave Applied", "leave-notification", leave_request.id, "ceo")
+                    send_notification(admin_user, "Leave Applied", "manager-leave-notification", leave_request.id, "ceo")
             
             return redirect(reverse('manager_apply_leave'))
         except Exception as e:
@@ -2234,9 +2238,9 @@ def approve_leave_request(request, leave_id):
 
                 # Update existing notifications for the employee to mark as read
                 Notification.objects.filter(
-                    notification_type = 'leave-notification',
+                    notification_type__in = ['leave-notification' , 'employee-leave-notification'],
                     leave_or_notification_id = leave.id,
-                    role = 'manager'
+                    is_read = False 
                 ).update(is_read=True)
                 
                 # Send notification to employee
@@ -2272,9 +2276,9 @@ def reject_leave_request(request, leave_id):
 
             # Update existing notifications for the employee to mark as read
             Notification.objects.filter(
-                notification_type = 'leave-notification',
+                notification_type__in = ['leave-notification' , 'employee-leave-notification'],
                 leave_or_notification_id = leave_request.id,
-                role = 'manager'
+                is_read = False 
             ).update(is_read=True)
 
             # Send notification to employee
