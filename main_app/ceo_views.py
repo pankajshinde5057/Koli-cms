@@ -1922,18 +1922,23 @@ def generate_individual_report(user, year, month):
 
 
 
+
 @login_required
 def admin_todays_attendance(request):
     if not request.user.is_superuser:
         return redirect('admin_home')
     
-    today = timezone.now()
+    today = timezone.now().date()  # Use .date() to match DateField
     
-    # Get all employees
+    # Get attendance records for employees only (user_type="3")
     today_attendances = AttendanceRecord.objects.filter(
-        date=today
+        date=today,
+        user__user_type="3"  # Only include employees
     ).select_related('user__employee__department').order_by('-clock_in')
-
+    
+    # Debug: Print all attendance records for today
+    all_attendances = AttendanceRecord.objects.filter(date=today)
+    
     # Pagination
     page = request.GET.get('page', 1)
     paginator = Paginator(today_attendances, 10)
@@ -1946,7 +1951,7 @@ def admin_todays_attendance(request):
         page_obj = paginator.page(paginator.num_pages)
 
     context = {
-        'page_title': "Today's Clocked-In Employees (All)",
+        'page_title': "Today's Clocked-In Employees",
         'page_obj': page_obj,
         'current_date': today.strftime("%Y-%m-%d"),
         'total_clocked_in': today_attendances.values('user').distinct().count()
