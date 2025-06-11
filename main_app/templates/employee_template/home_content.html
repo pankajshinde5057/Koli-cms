@@ -50,6 +50,7 @@
   .clocked-status { font-size: 0.8rem; margin-left: 10px; }
   .clocked-in, .clocked-out { color: white; }
   .late-by-badge { margin-left: 5px; }
+  .badge-present {background-color: #14635D;color: #ffffff;}
   .btn-loading { position: relative; pointer-events: none; }
   .btn-loading::after {
     content: '';
@@ -348,7 +349,7 @@
             <strong>Status:</strong>
             {% if today_record %}
                 {% if today_record.status == 'present' %}
-                    <span class="badge bg-success">Present</span>
+                    <span class="badge badge-present">Present</span>
                 {% elif today_record.status == 'late' %}
                     <span class="badge bg-orange">Late</span>
                 {% elif today_record.status == 'half_day' %}
@@ -365,7 +366,7 @@
             {% if today_half_day and today_record.status != 'half_day' %}
                 <span class="badge bg-secondary">Half Day</span>
             {% endif %}
-            <span class="badge bg-orange late-by-badge">
+            <span class="badge bg-warning late-by-badge">
                 Late by: {{ today_late_duration_str|default:"0 hours 0 minutes" }}
             </span>
         </p>
