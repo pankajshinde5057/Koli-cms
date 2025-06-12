@@ -1524,16 +1524,23 @@ def add_employee_by_manager(request):
 
     if request.method == 'POST':
         if employee_form.is_valid():
+            email = employee_form.cleaned_data.get('email')
+            address = employee_form.cleaned_data.get('address')
+            phone_number = employee_form.cleaned_data.get('phone_number')
             first_name = employee_form.cleaned_data.get('first_name')
             last_name = employee_form.cleaned_data.get('last_name')
-            address = employee_form.cleaned_data.get('address')
-            email = employee_form.cleaned_data.get('email')
             gender = employee_form.cleaned_data.get('gender')
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
-            designation = employee_form.cleaned_data.get('designation')
-            phone_number = employee_form.cleaned_data.get('phone_number')
             department = employee_form.cleaned_data.get('department')
+            designation = employee_form.cleaned_data.get('designation')
+            
+            date_of_joining = employee_form.cleaned_data.get('date_of_joining')
+            emergency_phone = employee_form.cleaned_data.get('emergency_phone')
+            emergency_name = employee_form.cleaned_data.get('emergency_name')
+            emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
+            emergency_address = employee_form.cleaned_data.get('emergency_address')
+            
 
             passport_url = None
 
@@ -1563,6 +1570,17 @@ def add_employee_by_manager(request):
                 employee.team_lead = manager  # Assign manager as the team lead
                 employee.phone_number = phone_number
                 employee.designation = designation
+                employee.date_of_joining = date_of_joining
+
+                emergency_contact = {
+                    "name" : emergency_name or "",
+                    "relationship" : emergency_relationship or "",
+                    "phone" : emergency_phone or "",
+                    "address" : emergency_address or ""
+                }
+
+                employee.emergency_contact = emergency_contact
+                
                 employee.save()
 
                 messages.success(request, "Successfully Added Employee")

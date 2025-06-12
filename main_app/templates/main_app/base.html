@@ -198,13 +198,13 @@
                         </div>
                         {% if request.user.user_type == '2' %}
                             <!-- Manager notifications -->
-                            <a href="{% url 'manager_view_notification' %}?type=asset" class="dropdown-item d-flex align-items-center py-2 notification-asset">
+                            <a href="{% url 'manager_view_notification' %}?type=general" class="dropdown-item d-flex align-items-center py-2 notification-general">
                                 <div class="me-3">
-                                    <i class="fas fa-laptop"></i>
+                                    <i class="fas fa-envelope"></i>
                                 </div>
                                 <div>
                                     <div class="small text-muted">General</div>
-                                    <span class="font-weight-bold">{{ manager_general_count }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ manager_general_count }} new notifications</span>
                                 </div>
                             </a>
                             <div class="dropdown-divider m-0"></div>
@@ -214,17 +214,17 @@
                                 </div>
                                 <div>
                                     <div class="small text-muted">Leave Requests</div>
-                                    <span class="font-weight-bold">{{ employee_leave_request_to_manager_count }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ employee_leave_request_to_manager_count }} new notifications</span>
                                 </div>
                             </a>
                             <div class="dropdown-divider m-0"></div>
-                            <a href="{% url 'manager_apply_leave' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-leave">
+                            <a href="{% url 'manager_apply_leave' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 manager-notification-leave">
                                 <div class="me-3">
                                     <i class="fas fa-envelope"></i>
                                 </div>
                                 <div>
                                     <div class="small text-muted">My Leave Requests</div>
-                                    <span class="font-weight-bold">{{ manager_leave_request_from_ceo_count }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ manager_leave_request_from_ceo_count }} new notifications</span>
                                 </div>
                             </a>
                             <div class="dropdown-divider m-0"></div>
@@ -234,49 +234,49 @@
                                 </div>
                                 <div>
                                     <div class="small text-muted">Clockout Requests</div>
-                                    <span class="font-weight-bold">{{ employee_clockout_request_to_manager_count }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ employee_clockout_request_to_manager_count }} new notifications</span>
                                 </div>
                             </a>
                         {% elif request.user.user_type == '1' %}
                             <!-- CEO notifications -->
-                            <a href="{% url 'view_manager_leave' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-leave">
+                            <a href="{% url 'view_manager_leave' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-manager-leave">
                                 <div class="me-3">
                                     <i class="fas fa-envelope"></i>
                                 </div>
                                 <div>
                                     <div class="small text-muted">Manager Leave Requests</div>
-                                    <span class="font-weight-bold">{{ ceo_notification_from_manager_leave_request }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ ceo_notification_from_manager_leave_request }} new notifications</span>
                                 </div>
                             </a>
                             <div class="dropdown-divider m-0"></div>
-                            <a href="{% url 'view_employee_leave' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-leave">
+                            <a href="{% url 'view_employee_leave' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-employee-leave">
                                 <div class="me-3">
                                     <i class="fas fa-envelope"></i>
                                 </div>
                                 <div>
                                     <div class="small text-muted">Employee Leave Requests</div>
-                                    <span class="font-weight-bold">{{ ceo_notification_from_employee_leave_request }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ ceo_notification_from_employee_leave_request }} new notifications</span>
                                 </div>
                             </a>
                         {% else %}
                             <!-- Employee notifications -->
-                            <a href="{% url 'employee_view_notification' %}?type=asset" class="dropdown-item d-flex align-items-center py-2 notification-asset">
+                            <a href="{% url 'employee_view_notification' %}?type=general" class="dropdown-item d-flex align-items-center py-2 notification-from-manager">
                                 <div class="me-3">
-                                    <i class="fas fa-laptop"></i>
+                                    <i class="fas fa-envelope"></i>
                                 </div>
                                 <div>
                                     <div class="small text-muted">General</div>
-                                    <span class="font-weight-bold">{{ employee_notification_from_manager_count }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ employee_notification_from_manager_count }} new notifications</span>
                                 </div>
                             </a>
                             <div class="dropdown-divider m-0"></div>
-                            <a href="{% url 'employee_requests' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-leave">
+                            <a href="{% url 'employee_requests' %}?type=leave" class="dropdown-item d-flex align-items-center py-2 notification-leave-status">
                                 <div class="me-3">
                                     <i class="fas fa-envelope"></i>
                                 </div>
                                 <div>
                                     <div class="small text-muted">Leave Requests</div>
-                                    <span class="font-weight-bold">{{ employee_leave_approved_or_rejected_notification_count }} new notifications</span>
+                                    <span class="font-weight-bold count">{{ employee_leave_approved_or_rejected_notification_count }} new notifications</span>
                                 </div>
                             </a>
                         {% endif %}
@@ -450,101 +450,115 @@
     </audio>
 
     <script>
-        // Notification Manager
         class NotificationManager {
-            constructor() {
-                this.currentCounts = {};
-                this.init();
-            }
-            
-            init() {
-                this.checkNotifications();
-                setInterval(() => this.checkNotifications(), 1000); // Check every 5 seconds
-                
-                // Also check when notification dropdown is clicked
-                $('#notificationDropdown').on('click', () => this.checkNotifications());
-            }
-            
-            checkNotifications() {
-                $.ajax({
-                    url: '{% url "check_new_notification" %}',
-                    method: 'GET',
-                    success: (data) => this.handleResponse(data),
-                    error: (xhr) => console.log("Notification check failed:", xhr.statusText)
-                });
-            }
-            
-            handleResponse(data) {
-                // Play sound if new notifications arrived
-                if (data.total > (this.currentCounts.total || 0)) {
-                    this.playNotificationSound();
+    constructor() {
+        this.lastCount = 0;
+        this.init();
+    }
+    
+    init() {
+        // Initial check
+        this.checkNotifications();
+        
+        // Set reasonable polling interval (30 seconds)
+        setInterval(() => this.checkNotifications(), 30000);
+        
+        // Check when dropdown is clicked
+        $('#notificationDropdown').on('click', this.checkNotifications.bind(this));
+    }
+    
+    checkNotifications() {
+        $.ajax({
+            url: '{% url "check_new_notification" %}',
+            method: 'GET',
+            success: (data) => {
+                if (data.success) {
+                    this.handleNotificationData(data);
                 }
-                
-                // Update all counts
-                this.currentCounts = data;
-                this.updateBadge(data.total);
-                this.updateDropdownCounts(data);
+            },
+            error: (xhr) => {
+                console.error("Notification check failed:", xhr.statusText);
             }
-            
-            playNotificationSound() {
-                const sound = document.getElementById('notificationSound');
-                sound.volume = 0.3;
-                sound.play().catch(e => console.log("Audio play prevented:", e));
-                
-                // Visual feedback
-                $('#notificationDropdown i.fa-bell').addClass('animate-ring');
-                setTimeout(() => {
-                    $('#notificationDropdown i.fa-bell').removeClass('animate-ring');
-                }, 2000);
-            }
-            
-            updateBadge(count) {
-                const badge = $('#notificationDropdown').find('.badge');
-                
-                if (count > 0) {
-                    if (badge.length === 0) {
-                        $('#notificationDropdown').append(
-                            `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger animate-pulse">
-                                ${count}
-                            </span>`
-                        );
-                    } else {
-                        badge.text(count).addClass('animate-pulse');
-                    }
-                } else {
-                    badge.remove();
-                }
-            }
-            
-            updateDropdownCounts(data) {
-                // Update counts in the dropdown if it's open
-                if ($('.dropdown-menu-lg').is(':visible')) {
-                    // Manager updates
-                    if ({% if request.user.user_type == '2' %}true{% else %}false{% endif %}) {
-                        $('.notification-general .count').text(data.general);
-                        $('.notification-leave .count').text(data.leave);
-                        $('.notification-clockout .count').text(data.clockout);
-                        $('.notification-asset .count').text(data.asset);
-                    }
-                    // CEO updates
-                    else if ({% if request.user.user_type == '1' %}true{% else %}false{% endif %}) {
-                        $('.notification-manager-leave .count').text(data.manager_leave);
-                        $('.notification-employee-leave .count').text(data.employee_leave);
-                    }
-                    // Employee updates
-                    else {
-                        $('.notification-from-manager .count').text(data.from_manager);
-                        $('.notification-leave-status .count').text(data.leave_status);
-                        $('.notification-clockout .count').text(data.clockout);
-                    }
-                }
-            }
-        }
-
-        // Initialize when page loads
-        $(document).ready(() => {
-            new NotificationManager();
         });
+    }
+    
+    handleNotificationData(data) {
+        // Update badge count
+        this.updateBadge(data.total);
+        
+        // Play sound if new notifications arrived
+        if (data.total > this.lastCount) {
+            this.playNotificationSound();
+        }
+        this.lastCount = data.total;
+        
+        // Update dropdown counts if open
+        if ($('.dropdown-menu-lg').is(':visible')) {
+            this.updateDropdownCounts(data);
+        }
+    }
+    
+    updateBadge(count) {
+        const $badge = $('#notificationDropdown').find('.badge');
+        
+        if (count > 0) {
+            if ($badge.length === 0) {
+                $('#notificationDropdown').append(
+                    `<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger animate-pulse">
+                        ${count}
+                    </span>`
+                );
+            } else {
+                $badge.text(count).addClass('animate-pulse');
+            }
+        } else {
+            $badge.remove();
+        }
+    }
+    
+    updateDropdownCounts(data) {
+        // Manager view
+        if ({% if request.user.user_type == '2' %}true{% else %}false{% endif %}) {
+            $('.notification-general .count').text((data.general + " new notifications") || 0);
+            $('.notification-leave .count').text((data.leave + " new notifications") || 0);
+            $('.manager-notification-leave .count').text((data.manager_leave + " new notifications") || 0);
+            $('.notification-clockout .count').text((data.clockout + " new notification") || 0);
+            $('.notification-asset .count').text((data.asset + " new notifications") || 0);
+        }
+        // CEO view
+        else if ({% if request.user.user_type == '1' %}true{% else %}false{% endif %}) {
+            $('.notification-manager-leave .count').text((data.manager_leave + " new notifications") || 0);
+            $('.notification-employee-leave .count').text((data.employee_leave + " new notifications") || 0);
+        }
+        // Employee view
+        else {
+            $('.notification-from-manager .count').text((data.from_manager + " new notifications") || 0);
+            $('.notification-leave-status .count').text((data.leave_status + " new notifications") || 0);
+        }
+    }
+    
+    playNotificationSound() {
+        const sound = document.getElementById('notificationSound');
+        if (sound) {
+            sound.volume = 0.6;
+            sound.play().catch(e => console.log("Audio play prevented:", e));
+            
+            // Visual feedback
+            $('#notificationDropdown i.fa-bell')
+                .addClass('animate-ring')
+                .delay(2000)
+                .queue(() => {
+                    $(this).removeClass('animate-ring');
+                    $(this).dequeue();
+                });
+        }
+    }
+}
+
+// Initialize when page loads
+$(document).ready(() => {
+    window.notificationManager = new NotificationManager();
+});
     </script>
 
     <style>
