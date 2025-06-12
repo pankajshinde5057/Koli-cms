@@ -767,3 +767,36 @@ def all_employees_schedules(request):
         'departments': departments
     })
 
+
+from .context_processors import unread_notification_count
+@login_required
+def check_new_notification(request):
+    context = unread_notification_count(request)
+    # Map context_processor keys to the script's expected keys
+    response_data = {
+        'success': True,
+        'total': context['total_unread_notifications'],
+        'notifications': [] 
+    }
+
+    if request.user.user_type == '2':
+        response_data.update({
+            'general': context['manager_general_count'],
+            'leave': context['employee_leave_request_to_manager_count'],
+            'clockout': context['employee_clockout_request_to_manager_count'],
+            'asset': context['total_asset_unread_notifications'],
+            'manager_leave': context['manager_leave_request_from_ceo_count']
+        })
+    elif request.user.user_type == '1':
+        response_data.update({
+            'manager_leave': context['ceo_notification_from_manager_leave_request'],
+            'employee_leave': context['ceo_notification_from_employee_leave_request']
+        })
+    else:
+        response_data.update({
+            'from_manager': context['employee_notification_from_manager_count'],
+            'leave_status': context['employee_leave_approved_or_rejected_notification_count'],
+            'clockout': context['employee_clockout_request_to_manager_count']
+        })
+    
+    return JsonResponse(response_data)

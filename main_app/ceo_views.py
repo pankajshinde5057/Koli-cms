@@ -405,14 +405,18 @@ def add_division(request):
     if request.method == 'POST':
         if form.is_valid():
             name = form.cleaned_data.get('name')
-            try:
-                division = Division()
-                division.name = name
-                division.save()
-                messages.success(request, "Successfully Added")
-                return redirect(reverse('manage_division'))
-            except:
-                messages.error(request, "Could Not Add")
+            
+            if Division.objects.filter(name__iexact=name).exists():
+                messages.error(request, "This department already exist")
+            else:
+                try:
+                    division = Division()
+                    division.name = name
+                    division.save()
+                    messages.success(request, "Successfully Added")
+                    return redirect(reverse('manage_division'))
+                except:
+                    messages.error(request, "Could Not Add")
         else:
             messages.error(request, "Could Not Add")
     return render(request, 'ceo_template/add_division_template.html', context)
@@ -429,16 +433,19 @@ def add_department(request):
         if form.is_valid():
             name = form.cleaned_data.get('name')
             division = form.cleaned_data.get('division')
-            try:
-                department = Department()
-                department.name = name
-                department.division = division
-                department.save()
-                messages.success(request, "Successfully Added")
-                return redirect(reverse('manage_department'))
+            if Department.objects.filter(name__iexact=name, division=division):
+                messages.error(request, "This division already exist") 
+            else:
+                try:
+                    department = Department()
+                    department.name = name
+                    department.division = division
+                    department.save()
+                    messages.success(request, "Successfully Added")
+                    return redirect(reverse('manage_department'))
 
-            except Exception as e:
-                messages.error(request, "Could Not Add " + str(e))
+                except Exception as e:
+                    messages.error(request, "Could Not Add " + str(e))
         else:
             messages.error(request, "Fill Form Properly")
 
@@ -1578,9 +1585,14 @@ def delete_division(request, division_id):
 
 @login_required
 def delete_department(request, department_id):
-    department = get_object_or_404(Department, id=department_id)
-    department.delete()
-    messages.success(request, "Department deleted successfully!")
+    try:
+        department = get_object_or_404(Department, id=department_id)
+        department.delete()
+        messages.success(request, "Department deleted successfully!")
+        return redirect(reverse('manage_department'))
+    except Exception:
+        messages.error(
+            request, "Sorry, some employees are assigned to this department already. Kindly change the affected employee division and try again")
     return redirect(reverse('manage_department'))
 
 
@@ -1922,18 +1934,23 @@ def generate_individual_report(user, year, month):
 
 
 
+
 @login_required
 def admin_todays_attendance(request):
     if not request.user.is_superuser:
         return redirect('admin_home')
     
-    today = timezone.now()
+    today = timezone.now().date()  # Use .date() to match DateField
     
-    # Get all employees
+    # Get attendance records for employees only (user_type="3")
     today_attendances = AttendanceRecord.objects.filter(
-        date=today
+        date=today,
+        user__user_type="3"  # Only include employees
     ).select_related('user__employee__department').order_by('-clock_in')
-
+    
+    # Debug: Print all attendance records for today
+    all_attendances = AttendanceRecord.objects.filter(date=today)
+    
     # Pagination
     page = request.GET.get('page', 1)
     paginator = Paginator(today_attendances, 10)
@@ -1946,7 +1963,7 @@ def admin_todays_attendance(request):
         page_obj = paginator.page(paginator.num_pages)
 
     context = {
-        'page_title': "Today's Clocked-In Employees (All)",
+        'page_title': "Today's Clocked-In Employees",
         'page_obj': page_obj,
         'current_date': today.strftime("%Y-%m-%d"),
         'total_clocked_in': today_attendances.values('user').distinct().count()
