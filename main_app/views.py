@@ -1,9 +1,7 @@
 import json
-import pytz
-import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse,HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -20,11 +18,10 @@ from datetime import datetime, time
 from dotenv import load_dotenv
 import os
 from django.urls import reverse
-from django.http import JsonResponse, HttpResponseRedirect
 from django.http import HttpResponseForbidden
 from django.db.models import Q
 from django.contrib.auth.models import User
-from main_app.notification_badge import mark_notification_read, send_notification
+from main_app.notification_badge import send_notification
 from .context_processors import unread_notification_count
 
 
@@ -310,6 +307,9 @@ def clock_in_out(request):
         }, status=400)
  
     return HttpResponseRedirect('employee_home')
+
+
+
 # @login_required
 # def clock_in_out(request):
 #     if request.method == 'POST':
@@ -542,6 +542,8 @@ def get_attendance(request):
  
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+    
+    
 
 def showFirebaseJS(request):
     data = """
@@ -768,6 +770,7 @@ def all_employees_schedules(request):
         'search_name': search_name,
         'departments': departments
     })
+
 
 
 @login_required
