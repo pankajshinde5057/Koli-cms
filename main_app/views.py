@@ -1,9 +1,7 @@
 import json
-import pytz
-import requests
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse,HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -20,11 +18,12 @@ from datetime import datetime, time
 from dotenv import load_dotenv
 import os
 from django.urls import reverse
-from django.http import JsonResponse, HttpResponseRedirect
 from django.http import HttpResponseForbidden
 from django.db.models import Q
 from django.contrib.auth.models import User
-from main_app.notification_badge import mark_notification_read, send_notification
+from main_app.notification_badge import send_notification
+from .context_processors import unread_notification_count
+
 
 load_dotenv()
 
@@ -308,6 +307,9 @@ def clock_in_out(request):
         }, status=400)
  
     return HttpResponseRedirect('employee_home')
+
+
+
 # @login_required
 # def clock_in_out(request):
 #     if request.method == 'POST':
@@ -540,6 +542,8 @@ def get_attendance(request):
  
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
+    
+    
 
 def showFirebaseJS(request):
     data = """
@@ -768,18 +772,21 @@ def all_employees_schedules(request):
     })
 
 
-from .context_processors import unread_notification_count
+
 @login_required
 def check_new_notification(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success' : False , 'error' : 'User is not authenticated.'})
+        
     context = unread_notification_count(request)
     # Map context_processor keys to the script's expected keys
     response_data = {
         'success': True,
         'total': context['total_unread_notifications'],
-        'notifications': [] 
+        'last_updated' : timezone.now(),
     }
 
-    if request.user.user_type == '2':
+    if request.user.user_type == '2':  # Manager
         response_data.update({
             'general': context['manager_general_count'],
             'leave': context['employee_leave_request_to_manager_count'],
@@ -787,12 +794,12 @@ def check_new_notification(request):
             'asset': context['total_asset_unread_notifications'],
             'manager_leave': context['manager_leave_request_from_ceo_count']
         })
-    elif request.user.user_type == '1':
+    elif request.user.user_type == '1':  # CEO
         response_data.update({
             'manager_leave': context['ceo_notification_from_manager_leave_request'],
             'employee_leave': context['ceo_notification_from_employee_leave_request']
         })
-    else:
+    else:  # Employee
         response_data.update({
             'from_manager': context['employee_notification_from_manager_count'],
             'leave_status': context['employee_leave_approved_or_rejected_notification_count'],

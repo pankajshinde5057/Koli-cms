@@ -4,34 +4,19 @@ from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404,redirect, render
 from django.urls import reverse
-from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Count,Q
 from django.db.models import Count,Q
 from main_app.notification_badge import send_notification
 from .forms import *
 from .models import *
-from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory
+from asset_app.models import Notify_Manager,AssetsIssuance,Assets,LOCATION_CHOICES,AssetAssignmentHistory,AssetIssue,AssetCategory
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_POST
-from asset_app.models import AssetIssue
-from .models import CustomUser
-from django.utils.timezone import localtime
-from django.templatetags.static import static
-import requests
-from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from datetime import datetime, time, timedelta
-from django.core.paginator import Paginator
 from django.forms.models import model_to_dict
-from django.http import JsonResponse
-from datetime import datetime
 from django.template.loader import render_to_string
-from asset_app.models import AssetCategory
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.core.paginator import Paginator, EmptyPage
 from django.views.decorators.csrf import csrf_exempt
-from .models import AttendanceRecord, Employee, Holiday, LeaveReportEmployee
 from calendar import monthrange
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
@@ -449,20 +434,6 @@ def save_attendance(request):
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=400)
 
-
-# For displaying the update page
-# def manager_update_attendance(request):
-#     manager = get_object_or_404(Manager, admin=request.user)
-#     # employees = Employee.objects.filter(department__in=departments)
-#     departments = Department.objects.filter(division=manager.division)
-#     context = {
-#         'departments': departments,
-#         # 'employees': employees,
-#         'page_title': 'Update Attendance'
-#     }
-#     return render(request, 'manager_template/manager_update_attendance.html', context)
-
-# from datetime import datetime
 
 
 @login_required   
@@ -1524,16 +1495,23 @@ def add_employee_by_manager(request):
 
     if request.method == 'POST':
         if employee_form.is_valid():
+            email = employee_form.cleaned_data.get('email')
+            address = employee_form.cleaned_data.get('address')
+            phone_number = employee_form.cleaned_data.get('phone_number')
             first_name = employee_form.cleaned_data.get('first_name')
             last_name = employee_form.cleaned_data.get('last_name')
-            address = employee_form.cleaned_data.get('address')
-            email = employee_form.cleaned_data.get('email')
             gender = employee_form.cleaned_data.get('gender')
             password = employee_form.cleaned_data.get('password')
             division = employee_form.cleaned_data.get('division')
-            designation = employee_form.cleaned_data.get('designation')
-            phone_number = employee_form.cleaned_data.get('phone_number')
             department = employee_form.cleaned_data.get('department')
+            designation = employee_form.cleaned_data.get('designation')
+            
+            date_of_joining = employee_form.cleaned_data.get('date_of_joining')
+            emergency_phone = employee_form.cleaned_data.get('emergency_phone')
+            emergency_name = employee_form.cleaned_data.get('emergency_name')
+            emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
+            emergency_address = employee_form.cleaned_data.get('emergency_address')
+            
 
             passport_url = None
 
@@ -1563,6 +1541,17 @@ def add_employee_by_manager(request):
                 employee.team_lead = manager  # Assign manager as the team lead
                 employee.phone_number = phone_number
                 employee.designation = designation
+                employee.date_of_joining = date_of_joining
+
+                emergency_contact = {
+                    "name" : emergency_name or "",
+                    "relationship" : emergency_relationship or "",
+                    "phone" : emergency_phone or "",
+                    "address" : emergency_address or ""
+                }
+
+                employee.emergency_contact = emergency_contact
+                
                 employee.save()
 
                 messages.success(request, "Successfully Added Employee")
@@ -2244,7 +2233,9 @@ def approve_assest_request(request, notification_id):
 
     return redirect('manager_asset_view_notification')
 
-from django.db import transaction
+
+
+
 @login_required   
 def reject_assest_request(request, notification_id):
     notification = get_object_or_404(Notify_Manager, id=notification_id)
