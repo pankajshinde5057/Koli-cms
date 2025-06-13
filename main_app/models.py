@@ -360,8 +360,11 @@ class AttendanceRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.user} - {self.date}"
+
     class Meta:
-        unique_together = [['user', 'date']]
+        unique_together = [['user', 'date' , 'clock_in']]
         indexes = [
             models.Index(fields=['user', 'date']),
             models.Index(fields=['date', 'department']),
@@ -377,17 +380,39 @@ class AttendanceRecord(models.Model):
             raise ValidationError("Clock out time must be on the same date as the attendance record.")
 
     def save(self, *args, **kwargs):
-        # ist = pytz.timezone('Asia/Kolkata')
+        # Auto-close previous records:
+        if not self.pk:
+            open_records = AttendanceRecord.objects.filter(
+                user = self.user,
+                clock_out__isnull = True,
+                date__lt = self.date
+            )
+
+            for record in open_records:
+                record.clock_out = record.clock_in + timedelta(hours=8)
+                record.notes = (
+                    f"{record.notes}\n" if record.notes else ""
+                ) + f"Auto-logged out on {timezone.now().date()} due to new record creation"
+
+                record.total_worked = record.clock_out - record.clock_in
+                regular_hours_limit = timedelta(hours=8)
+                if record.total_worked > regular_hours_limit:
+                    record.regular_hours = regular_hours_limit
+                    record.overtime_hours = record.total_worked - regular_hours_limit
+                else:
+                    record.regular_hours = record.total_worked
+                    record.overtime_hours = timedelta()
+                record.save()
+
         if self.clock_in:
-            # ist_time = self.clock_in.astimezone(ist)
-            late_time = datetime.combine(self.clock_in.date(), time(9, 15))
+            late_time = datetime.combine(self.clock_in.date(), time(9, 30))
             half_day_time = datetime.combine(self.clock_in.date(), time(13, 0))
-            after_3pm_time = datetime.combine(self.clock_in.date(), time(15, 0))
+            # after_3pm_time = datetime.combine(self.clock_in.date(), time(15, 0))
 
             if self.status not in ['leave', 'absent']:
-                if self.clock_in > after_3pm_time:
-                    self.status = 'present'
-                elif self.clock_in > half_day_time:
+                # if self.clock_in > after_3pm_time:
+                #     self.status = 'present'
+                if self.clock_in > half_day_time:
                     self.status = 'half_day'
                 elif self.clock_in > late_time:
                     self.status = 'late'
