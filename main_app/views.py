@@ -224,12 +224,15 @@ def clock_in_out(request):
             # Create record only on successful validation
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
- 
+            
+            employee_ =  Employee.objects.filter(admin=request.user).first() 
+            current_user = employee_ if employee_ else Manager.objects.filter(admin=request.user).first()
+
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
                 date=today,
                 clock_in=now,
-                department=department,
+                department=current_user.department,
                 status=status,
                 ip_address=request.META.get('REMOTE_ADDR'),
                 notes=request.POST.get('notes', '')
