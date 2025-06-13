@@ -1319,27 +1319,12 @@ def send_bulk_manager_notification(request):
             return JsonResponse({'success': False, 'message': 'No managers found'}, status=400)
         
         for manager in managers:
-            # FCM notification (uncommented as in original)
-            if manager.admin.fcm_token:
-                url = "https://fcm.googleapis.com/fcm/send"
-                body = {
-                    'notification': {
-                        'title': "KoliInfoTech",
-                        'body': message,
-                        'click_action': reverse('manager_view_notification'),
-                        'icon': static('dist/img/AdminLTELogo.png')
-                    },
-                    'to': manager.admin.fcm_token
-                }
-                headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                    'Content-Type': 'application/json'
-                }
-                requests.post(url, data=json.dumps(body), headers=headers)
-            
-            # Save notification to database
+            # create NotificationManager entry
             notification = NotificationManager(manager=manager, message=message)
             notification.save()
+
+            user = CustomUser.objects.get(id=manager.admin.id)
+            send_notification(user, message, "general-notification", notification.id, "manager")
         
         return JsonResponse({'success': True, 'message': 'Bulk notification sent successfully'})
     except Exception as e:
@@ -1369,26 +1354,12 @@ def send_selected_manager_notification(request):
     try:
         for manager_id in manager_ids:
             manager = get_object_or_404(Manager, admin_id=manager_id)
-            if manager.admin.fcm_token:
-                url = "https://fcm.googleapis.com/fcm/send"
-                body = {
-                    'notification': {
-                        'title': "KoliInfoTech",
-                        'body': message,
-                        'click_action': reverse('manager_view_notification'),
-                        'icon': static('dist/img/AdminLTELogo.png')
-                    },
-                    'to': manager.admin.fcm_token
-                }
-                headers = {
-                    'Authorization': 'key=AAAA3Bm8j_M:APA91bElZlOLetwV696SoEtgzpJr2qbxBfxVBfDWFiopBWzfCfzQp2nRyC7_A2mlukZEHV4g1AmyC6P_HonvSkY2YyliKt5tT3fe_1lrKod2Daigzhb2xnYQMxUWjCAIQcUexAMPZePB',
-                    'Content-Type': 'application/json'
-                }
-                requests.post(url, data=json.dumps(body), headers=headers)
-            
-            # Save notification to database
+            # create NotificationManager entry
             notification = NotificationManager(manager=manager, message=message)
             notification.save()
+
+            user = CustomUser.objects.get(id=manager.admin.id)
+            send_notification(user, message, "general-notification", notification.id, "manager")
         
         return JsonResponse({'success': True, 'message': 'Notification sent to selected managers'})
     except Exception as e:

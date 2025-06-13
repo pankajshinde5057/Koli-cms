@@ -539,11 +539,11 @@ def employee_home(request):
 
     if today_records.exists():
         today_record = today_records.first()
-        today_clock_in_time = make_aware_if_naive(today_record.clock_in)
+        today_clock_in_time = today_record.clock_in
         last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
-        today_clock_out_time = make_aware_if_naive(last_clock_out_record.clock_out) if last_clock_out_record else None
+        today_clock_out_time = last_clock_out_record.clock_out if last_clock_out_record else None
 
-        clock_in_ist = today_clock_in_time
+        clock_in_ist = today_record.clock_in if today_record.clock_in else None
         office_start = datetime.combine(today, time(9, 0)).replace(tzinfo=ist) if clock_in_ist else None
 
         if current_record:
@@ -557,7 +557,7 @@ def employee_home(request):
         today_half_day = today_record.status == 'half_day'
 
         # Calculate late duration if applicable
-        if clock_in_ist and office_start and clock_in_ist > office_start:
+        if clock_in_ist and office_start:
             try:
                 late_duration = clock_in_ist - office_start
                 total_seconds = late_duration.total_seconds()
