@@ -438,9 +438,8 @@ def break_action(request):
         action_type = data.get('action', 'start_or_end')
         user_id = data.get('user_id', None)
 
-        # Determine the user to check (default to current user)
         target_user = request.user
-        if user_id and request.user.has_perm('your_app.can_manage_employees'):  # Replace with actual permission
+        if user_id and request.user.has_perm('your_app.can_manage_employees'): 
             try:
                 target_user = User.objects.get(id=user_id)
             except User.DoesNotExist:
@@ -448,7 +447,8 @@ def break_action(request):
 
         current_record = AttendanceRecord.objects.filter(
             user=target_user, 
-            clock_out__isnull=True
+            clock_out__isnull=True,
+            date = timezone.now().date()
         ).first()
         
         if not current_record:
