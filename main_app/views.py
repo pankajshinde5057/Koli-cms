@@ -447,7 +447,8 @@ def break_action(request):
 
         current_record = AttendanceRecord.objects.filter(
             user=target_user, 
-            clock_out__isnull=True, date= timezone.now().date()
+            clock_out__isnull=True,
+            date = timezone.now().date()
         ).first()
         
         if not current_record:
