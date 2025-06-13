@@ -775,15 +775,18 @@ def all_employees_schedules(request):
 
 @login_required
 def check_new_notification(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success' : False , 'error' : 'User is not authenticated.'})
+        
     context = unread_notification_count(request)
     # Map context_processor keys to the script's expected keys
     response_data = {
         'success': True,
         'total': context['total_unread_notifications'],
-        'notifications': [] 
+        'last_updated' : timezone.now(),
     }
 
-    if request.user.user_type == '2':
+    if request.user.user_type == '2':  # Manager
         response_data.update({
             'general': context['manager_general_count'],
             'leave': context['employee_leave_request_to_manager_count'],
@@ -791,12 +794,12 @@ def check_new_notification(request):
             'asset': context['total_asset_unread_notifications'],
             'manager_leave': context['manager_leave_request_from_ceo_count']
         })
-    elif request.user.user_type == '1':
+    elif request.user.user_type == '1':  # CEO
         response_data.update({
             'manager_leave': context['ceo_notification_from_manager_leave_request'],
             'employee_leave': context['ceo_notification_from_employee_leave_request']
         })
-    else:
+    else:  # Employee
         response_data.update({
             'from_manager': context['employee_notification_from_manager_count'],
             'leave_status': context['employee_leave_approved_or_rejected_notification_count'],

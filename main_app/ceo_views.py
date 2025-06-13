@@ -400,14 +400,18 @@ def add_division(request):
     if request.method == 'POST':
         if form.is_valid():
             name = form.cleaned_data.get('name')
-            try:
-                division = Division()
-                division.name = name
-                division.save()
-                messages.success(request, "Successfully Added")
-                return redirect(reverse('manage_division'))
-            except:
-                messages.error(request, "Could Not Add")
+            
+            if Division.objects.filter(name__iexact=name).exists():
+                messages.error(request, "This department already exist")
+            else:
+                try:
+                    division = Division()
+                    division.name = name
+                    division.save()
+                    messages.success(request, "Successfully Added")
+                    return redirect(reverse('manage_division'))
+                except:
+                    messages.error(request, "Could Not Add")
         else:
             messages.error(request, "Could Not Add")
     return render(request, 'ceo_template/add_division_template.html', context)
@@ -424,16 +428,19 @@ def add_department(request):
         if form.is_valid():
             name = form.cleaned_data.get('name')
             division = form.cleaned_data.get('division')
-            try:
-                department = Department()
-                department.name = name
-                department.division = division
-                department.save()
-                messages.success(request, "Successfully Added")
-                return redirect(reverse('manage_department'))
+            if Department.objects.filter(name__iexact=name, division=division):
+                messages.error(request, "This division already exist") 
+            else:
+                try:
+                    department = Department()
+                    department.name = name
+                    department.division = division
+                    department.save()
+                    messages.success(request, "Successfully Added")
+                    return redirect(reverse('manage_department'))
 
-            except Exception as e:
-                messages.error(request, "Could Not Add " + str(e))
+                except Exception as e:
+                    messages.error(request, "Could Not Add " + str(e))
         else:
             messages.error(request, "Fill Form Properly")
 
@@ -1575,9 +1582,14 @@ def delete_division(request, division_id):
 
 @login_required
 def delete_department(request, department_id):
-    department = get_object_or_404(Department, id=department_id)
-    department.delete()
-    messages.success(request, "Department deleted successfully!")
+    try:
+        department = get_object_or_404(Department, id=department_id)
+        department.delete()
+        messages.success(request, "Department deleted successfully!")
+        return redirect(reverse('manage_department'))
+    except Exception:
+        messages.error(
+            request, "Sorry, some employees are assigned to this department already. Kindly change the affected employee division and try again")
     return redirect(reverse('manage_department'))
 
 
