@@ -262,7 +262,7 @@
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
-                                                    data-target="#assetClaimModal-{{ claim.id }}" title="View Details" onclick="markNotificationRead({{ claim.id }}, 'asset-claim')">
+                                                    data-target="#assetClaimModal-{{ claim.id }}" title="View Details" onclick="markNotificationRead({{ claim.id }}, 'asset-notification')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             {% if claim.id in unread_notifications %}
@@ -414,14 +414,14 @@
                                         <div class="message-preview">
                                             {{ issue.notes|truncatechars:50 }}
                                             {% if issue.notes|length > 50 %}
-                                            <a href="#" data-toggle="modal" data-target="#assetIssueModal-{{ issue.id }}" onclick="markNotificationRead({{ issue.id }}, 'asset-issue')">Read more</a>
+                                            <a href="#" data-toggle="modal" data-target="#assetIssueModal-{{ issue.id }}" onclick="markNotificationRead({{ issue.id }}, 'asset-notification')">Read more</a>
                                             {% endif %}
                                         </div>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
-                                                    data-target="#assetIssueModal-{{ issue.id }}" title="View Details" onclick="markNotificationRead({{ issue.id }}, 'asset-issue')">
+                                                    data-target="#assetIssueModal-{{ issue.id }}" title="View Details" onclick="markNotificationRead({{ issue.id }}, 'asset-notification')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                             {% if issue.id in unread_notifications %}

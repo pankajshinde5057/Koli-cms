@@ -1125,11 +1125,7 @@ def employee_view_salary(request):
 @login_required   
 def employee_view_notification(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    chat_rooms = ChatRoom.objects.filter(participants=request.user)
     
-    # Add unread_count to each room object
-    for room in chat_rooms:
-        room.unread_count = room.get_unread_count_for_user(request.user)
     
     all_notifications = NotificationEmployee.objects.filter(
         employee=employee
@@ -1169,7 +1165,6 @@ def employee_view_notification(request):
     notification_from_manager_obj = manager_paginator.get_page(manager_page_number)
     
     context = {
-        'chat_rooms': chat_rooms,
         'notification_from_admin_obj': notification_from_admin_obj,
         'notification_from_manager_obj': notification_from_manager_obj,
         'total_notifications': notification_from_admin.count(),

@@ -835,61 +835,6 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-
-class ChatRoom(models.Model):
-    participants = models.ManyToManyField(CustomUser, related_name='chat_rooms')
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_activity = models.DateTimeField(auto_now=True)
-    is_group = models.BooleanField(default=False)
-    name = models.CharField(max_length=100, blank=True, null=True)
-
-    def get_other_participant(self, user):
-        if not self.is_group and self.participants.count() == 2:
-            return self.participants.exclude(id=user.id).first()
-        return None
-
-    def get_unread_count(self, user):
-        return self.messages.filter(read=False).exclude(sender=user).count()
-
-    def get_other_participant(self, user):
-        """
-        For 1-on-1 chats, returns the other participant
-        """
-        if not self.is_group and self.participants.count() == 2:
-            return self.participants.exclude(id=user.id).first()
-        return None
-    
-    def get_unread_count_for_user(self, user):
-        return self.messages.filter(read=False).exclude(sender=user).count()
-
-    def update_last_activity(self):
-        self.last_activity = timezone.now()
-        self.save()
-
-class ChatMessage(models.Model):
-    """
-    Represents a message in a chat room
-    """
-    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    message = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    read = models.BooleanField(default=False)
-    attachment = models.FileField(upload_to='chat_attachments/', null=True, blank=True)
-    attachment_name = models.CharField(max_length=255, blank=True, null=True)
-
-    class Meta:
-        ordering = ['timestamp']
-
-    def __str__(self):
-        return f"{self.sender} at {self.timestamp}: {self.message[:50]}"
-
-    def mark_as_read(self):
-        if not self.read:
-            self.read = True
-            self.save()
-
-
 class DailyUpdate(models.Model):
     schedule = models.ForeignKey(DailySchedule, on_delete=models.CASCADE, related_name='updates')
     update_description = models.TextField()
