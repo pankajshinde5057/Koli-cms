@@ -806,7 +806,8 @@ def check_new_notification(request):
         response_data.update({
             'from_manager': context['employee_notification_from_manager_count'],
             'leave_status': context['employee_leave_approved_or_rejected_notification_count'],
-            'clockout': context['employee_clockout_request_to_manager_count']
+            'clockout': context['employee_clockout_request_to_manager_count'],
+            'asset' : context['employee_asset_request']
         })
     
     return JsonResponse(response_data)

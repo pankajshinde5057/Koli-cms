@@ -427,6 +427,7 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name='attendancerecord',
             unique_together={('user', 'date', 'clock_in')},
+            unique_together={('user', 'date', 'clock_in')},
         ),
         migrations.AddIndex(
             model_name='earylyclockoutrequest',

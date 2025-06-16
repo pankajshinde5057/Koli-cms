@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     'crispy_bootstrap4',
     'django_filters',
     'rest_framework',
-    'channels',
 
 ]
 
@@ -91,7 +90,6 @@ TEMPLATES = [
                 'main_app.context_processors.asset_notification_count',
                 'main_app.context_processors.admin_notification_count',
                 'main_app.context_processors.leave_balance_context',
-                'main_app.context_processors.chat_context',
             ],
         },
     },

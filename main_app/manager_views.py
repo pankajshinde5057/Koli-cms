@@ -2142,13 +2142,20 @@ def manager_asset_view_notification(request):
     all_resolved_recurring = AssetIssue.objects.filter(
         status='resolved',
     ).order_by('-resolved_date')[:5]
-    print(all_resolved_recurring)
 
     # Asset claim notifications pending approval
     pending_asset_notifications = Notify_Manager.objects.filter(
-        manager=request.user,
+        # manager=request.user,
         approved__isnull=True
     ).order_by('-timestamp')
+
+    # Get all unread notifications for manager
+    unread_notifications = Notification.objects.filter(
+        # user=request.user,
+        role="manager",
+        is_read=False,
+        notification_type = 'asset-notification'
+    ).values_list('leave_or_notification_id' , flat=True)
 
     ## Asset claim notification history 
     asset_notification_history = Notify_Manager.objects.filter(
@@ -2191,7 +2198,8 @@ def manager_asset_view_notification(request):
         'unread_asset_notification_count': unread_asset_notification_count,
         'unread_asset_request_count': pending_asset_notifications.count(),
         'unread_asset_issue_count': pending_asset_issues.count(),
-        'asset_history_claim_notication_obj' : asset_history_claim_notication_obj
+        'asset_history_claim_notication_obj' : asset_history_claim_notication_obj,
+        'unread_notifications' : list(unread_notifications)
     }
 
     return render(request, "manager_template/manager_asset_view_notification.html", context)
@@ -2211,20 +2219,36 @@ def approve_assest_request(request, notification_id):
                 AssetsIssuance.objects.create(
                     asset=asset,
                     asset_location=asset_location_,
-                    asset_assignee=employee
+                    asset_assignee=employee,
+                    assigned_by = request.user
                 )
             
                 my_asset = Assets.objects.get(id=asset.id)
-                my_asset.manager = request.user
+                # my_asset.manager = request.user
                 my_asset.is_asset_issued = True
                 my_asset.save()
                 notification.approved = True
                 notification.save()
                 messages.success(request, "Asset request approved successfully.")
-                notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
-                if notify:
-                    notify.is_read = True
-                    notify.save()
+                    
+                # Update existing notifications for the employee to mark as read
+                Notification.objects.filter(
+                    notification_type__in = ['asset-notification'],
+                    leave_or_notification_id = notification.id,
+                    is_read = False 
+                ).update(is_read=True)
+                
+                # Send notification to employee
+                employee_user = notification.employee.id
+
+                Notification.objects.create(
+                    user=get_object_or_404(CustomUser , id=employee_user),
+                    message="Asset request approved.",
+                    notification_type="asset-notification",
+                    leave_or_notification_id=notification.id,
+                    role="employee"
+                )
+
             except:
                 messages.error(request,"This Asset is not Found in Inventry")
 
@@ -2243,10 +2267,24 @@ def reject_assest_request(request, notification_id):
         notification.approved = False
         notification.save()
         messages.success(request, "Asset request rejected successfully.")
-        notify = Notification.objects.filter(leave_or_notification_id=notification_id, user=request.user,role = "manager",notification_type = "notification").first()
-        if notify:
-            notify.is_read = True
-            notify.save()
+        
+        # Update existing notifications for the employee to mark as read
+        Notification.objects.filter(
+            notification_type__in = ['asset-notification'],
+            leave_or_notification_id = notification.id,
+            is_read = False 
+        ).update(is_read=True)
+        
+        # Send notification to employee
+        employee_user_id = notification.employee.id
+
+        Notification.objects.create(
+            user=get_object_or_404(CustomUser , id=employee_user_id),
+            message="Asset request rejected.",
+            notification_type="asset-notification",
+            leave_or_notification_id=notification.id,
+            role="employee"
+        )
         notification.save()
     else:
         messages.info(request, "This request was already approved or rejected.")
@@ -2413,11 +2451,26 @@ def resolve_asset_issue(request,asset_issu_id):
         issue_asset.resolved_date = datetime.now()
         issue_asset.save()
 
-        if issue_asset.status == "resolved":
-            notify = Notification.objects.filter(leave_or_notification_id=asset_issu_id, role = "manager",notification_type = "asset issue").first()
-            if notify:
-                notify.is_read = True
-                notify.save()
+        if issue_asset.status in ["resolved" , 'in_progress']:
+            # Update existing notifications for the employee to mark as read
+            if issue_asset.status == 'resolved':
+                Notification.objects.filter(
+                    notification_type__in = ['asset-notification'],
+                    leave_or_notification_id = issue_asset.id,
+                    is_read = False 
+                ).update(is_read=True)
+            
+            # Send notification to employee
+            employee_user = issue_asset.reported_by
+
+            Notification.objects.create(
+                user=employee_user,
+                message=issue_asset.notes,
+                notification_type="asset-notification",
+                leave_or_notification_id=issue_asset.id,
+                role="employee"
+            
+            )
         messages.success(request,f"Asset Issue {issue_asset.status}!!")
     
     return redirect('manager_asset_view_notification')
