@@ -1,0 +1,31 @@
+<div class="card">
+    <div class="card-header">
+        <h5>Search Results for "{{ query }}"</h5>
+    </div>
+    <div class="card-body">
+        {% if messages %}
+            <div class="list-group">
+                {% for message in messages %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <strong>{{ message.sender.get_full_name }}</strong>
+                            <small class="text-muted ml-2">{{ message.timestamp|date:"M d, Y H:i" }}</small>
+                        </div>
+                        <a href="{% url 'chat_room' room.id %}?highlight={{ message.id }}" class="btn btn-sm btn-outline-primary">
+                            View in Chat
+                        </a>
+                    </div>
+                    <div class="mt-2">{{ message.message }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                <h5 class="text-muted">No messages found</h5>
+                <p>Try a different search term</p>
+            </div>
+        {% endif %}
+    </div>
+</div>

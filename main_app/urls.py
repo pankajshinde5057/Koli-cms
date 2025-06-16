@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.views import LogoutView
 from main_app.EditSalaryView import EditSalaryView
 from main_app.notification_badge import mark_notification_read
-from . import ceo_views, manager_views, employee_views, views
+from . import ceo_views, manager_views, employee_views, views, chat_view
 
 
 
@@ -192,5 +192,15 @@ urlpatterns = [
      path('all_employees_schedules/', views.all_employees_schedules, name='all_employees_schedules'),
 
      path('check-notifications/', views.check_new_notification, name='check_new_notification'),
+    
+
+     path('chat/', chat_view.chat_home, name='chat_home'),
+     path('chat/room/<int:room_id>/', chat_view.chat_room, name='chat_room'),
+     path('chat/start/<int:user_id>/', chat_view.start_chat, name='start_chat'),
+     path('chat/send/<int:room_id>/', chat_view.send_message, name='send_message'),
+     path('chat/get-new-messages/<int:room_id>/<int:last_message_id>/', chat_view.get_new_messages, name='get_new_messages'),
+     path('chat/search-users/', chat_view.search_users, name='search_users'),
+     path('chat/mark-read/<int:room_id>/', chat_view.mark_messages_read, name='mark_messages_read'),
+
     
 ]

@@ -1,0 +1,700 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+    .chat-container {
+        display: flex;
+        height: calc(100vh - 150px);
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+    
+
+    /* Attachment styles */
+    .attachment-preview {
+        max-width: 200px;
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+
+    .attachment-preview img {
+        max-width: 100%;
+        border-radius: 5px;
+    }
+
+    /* Message status indicators */
+    .message-status {
+        font-size: 10px;
+        margin-left: 5px;
+    }
+
+    /* Typing indicator animation */
+    .typing-indicator span {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background-color: #6c757d;
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: typing-bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) {
+        animation-delay: 0s;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes typing-bounce {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-5px); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 576px) {
+        .message {
+            max-width: 90%;
+        }
+        
+        .chat-sidebar {
+            max-height: 250px;
+        }
+        
+        .chat-header-name {
+            font-size: 16px;
+        }
+    }
+    .highlight-message {
+        animation: highlight-fade 3s;
+        background-color: rgba(78, 115, 223, 0.1);
+        border-left: 3px solid #4e73df;
+    }
+
+    @keyframes highlight-fade {
+        0% { background-color: rgba(78, 115, 223, 0.3); }
+        100% { background-color: rgba(78, 115, 223, 0.1); }
+    }
+    .chat-sidebar {
+        width: 300px;
+        border-right: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        overflow-y: auto;
+    }
+    
+    .chat-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background-color: #fff;
+    }
+    
+    .chat-header {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+    }
+    
+    .chat-header-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        margin-right: 10px;
+        object-fit: cover;
+    }
+    
+    .chat-header-info {
+        flex: 1;
+    }
+    
+    .chat-header-name {
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .chat-header-status {
+        font-size: 12px;
+        color: #6c757d;
+        margin: 0;
+    }
+    
+    .chat-messages {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #f5f5f5;
+    }
+    
+    .message {
+        margin-bottom: 15px;
+        max-width: 70%;
+    }
+    
+    .message-sent {
+        margin-left: auto;
+        text-align: right;
+    }
+    
+    .message-received {
+        margin-right: auto;
+    }
+    
+    .message-content {
+        display: inline-block;
+        padding: 10px 15px;
+        border-radius: 18px;
+        position: relative;
+        word-wrap: break-word;
+    }
+    
+    .message-sent .message-content {
+        background-color: #4e73df;
+        color: white;
+        border-top-right-radius: 0;
+    }
+    
+    .message-received .message-content {
+        background-color: #e9ecef;
+        color: #343a40;
+        border-top-left-radius: 0;
+    }
+    
+    .message-time {
+        font-size: 11px;
+        color: #6c757d;
+        margin-top: 5px;
+    }
+    
+    .message-sent .message-time {
+        text-align: right;
+    }
+    
+    .chat-input {
+        padding: 15px;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+    }
+    
+    .chat-input-text {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        border-radius: 20px;
+        outline: none;
+        resize: none;
+    }
+    
+    .chat-input-text:focus {
+        border-color: #4e73df;
+    }
+    
+    .chat-input-btn {
+        margin-left: 10px;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .typing-indicator {
+        font-size: 12px;
+        color: #6c757d;
+        padding: 0 15px 5px;
+        font-style: italic;
+    }
+    
+    .message-day-divider {
+        text-align: center;
+        margin: 15px 0;
+        position: relative;
+    }
+    
+    .message-day-divider::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #dee2e6;
+        z-index: -1;
+    }
+    
+    .message-day-divider span {
+        background-color: #f5f5f5;
+        padding: 0 10px;
+        color: #6c757d;
+        font-size: 12px;
+    }
+    
+    @media (max-width: 768px) {
+        .chat-container {
+            flex-direction: column;
+            height: auto;
+        }
+        
+        .chat-sidebar {
+            width: 100%;
+            border-right: none;
+            border-bottom: 1px solid #dee2e6;
+            max-height: 300px;
+        }
+        
+        .message {
+            max-width: 85%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-comments mr-2"></i>
+                            Messages
+                        </h3>
+                        <div class="card-tools">
+                            <a href="{% url 'chat_home' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left mr-1"></i> Back to Chats
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="chat-container">
+                            <div class="chat-sidebar">
+                                <div class="chat-search">
+                                    <input type="text" class="chat-search-input" placeholder="Search chats..." id="chatSearch">
+                                </div>
+                                <ul class="chat-list">
+                                    {% for r in request.user.chat_rooms.all|dictsortreversed:"last_activity" %}
+                                    <li class="chat-item {% if r.id == room.id %}active{% endif %}" 
+                                        onclick="window.location.href='{% url 'chat_room' r.id %}'">
+                                        <div class="chat-item-header">
+                                            <span class="chat-item-name">
+                                                {% if r.is_group %}
+                                                    {{ r.name }}
+                                                {% else %}
+                                                    {{ r.get_other_participant.request.user.get_full_name }}
+                                                {% endif %}
+                                            </span>
+                                            <span class="chat-item-time">{{ r.last_activity|timesince }} ago</span>
+                                        </div>
+                                        <div class="chat-item-preview">
+                                            {% with last_message=r.messages.last %}
+                                                {% if last_message %}
+                                                    {{ last_message.sender.first_name }}: {{ last_message.message|truncatechars:30 }}
+                                                {% else %}
+                                                    No messages yet
+                                                {% endif %}
+                                            {% endwith %}
+                                            {% if r.messages.filter(read=False).exclude(sender=request.user).count > 0 %}
+                                                <span class="unread-badge">{{ r.messages.filter(read=False).exclude(sender=request.user).count }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="chat-main">
+                                <div class="chat-header">
+                                    {% if room.is_group %}
+                                        <div class="modal fade" id="groupInfoModal" tabindex="-1" role="dialog" aria-labelledby="groupInfoModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog" role="document">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="groupInfoModalLabel">Group Info</h5>
+                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true">&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="form-group">
+                                                            <label>Group Name</label>
+                                                            <input type="text" class="form-control" value="{{ room.name }}" id="groupNameInput">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label>Participants</label>
+                                                            <ul class="list-group">
+                                                                {% for participant in room.participants.all %}
+                                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                    <div>
+                                                                        {% if participant.profile_pic %}
+                                                                            <img src="{{ participant.profile_pic.url }}" class="rounded-circle mr-2" width="30" height="30">
+                                                                        {% else %}
+                                                                            <img src="{% static 'dist/img/avatar.png' %}" class="rounded-circle mr-2" width="30" height="30">
+                                                                        {% endif %}
+                                                                        {{ participant.get_full_name }}
+                                                                        {% if participant == request.user %}
+                                                                            <span class="badge badge-secondary ml-2">You</span>
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    {% if participant != request.user %}
+                                                                    <a href="#" class="btn btn-sm btn-outline-danger remove-participant" data-user-id="{{ participant.id }}">
+                                                                        <i class="fas fa-user-minus"></i>
+                                                                    </a>
+                                                                    {% endif %}
+                                                                </li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label>Add Participants</label>
+                                                            <select class="form-control select2" id="addParticipantSelect" style="width: 100%;">
+                                                                <option></option>
+                                                                {% for user in available_users %}
+                                                                <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                        <button type="button" class="btn btn-primary" id="saveGroupChanges">Save Changes</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    {% else %}
+                                        {% with other_user=room.get_other_participant.request.user %}
+                                            {% if other_user.profile_pic %}
+                                                <img src="{{ other_user.profile_pic.url }}" class="chat-header-avatar" alt="{{ other_user.get_full_name }}">
+                                            {% else %}
+                                                <img src="{% static 'dist/img/avatar.png' %}" class="chat-header-avatar" alt="{{ other_user.get_full_name }}">
+                                            {% endif %}
+                                            <div class="chat-header-info">
+                                                <h5 class="chat-header-name">{{ other_user.get_full_name }}</h5>
+                                                <p class="chat-header-status">
+                                                    {% if other_user.user_type == '1' %}
+                                                        Admin
+                                                    {% elif other_user.user_type == '2' %}
+                                                        Manager
+                                                    {% else %}
+                                                        Employee
+                                                    {% endif %}
+                                                </p>
+                                            </div>
+                                        {% endwith %}
+                                    {% endif %}
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="chatMenuDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="chatMenuDropdown">
+                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#searchMessagesModal">
+                                                <i class="fas fa-search mr-2"></i> Search Messages
+                                            </a>
+                                            {% if not room.is_group %}
+                                            <div class="dropdown-divider"></div>
+                                            <a class="dropdown-item" href="#">
+                                                <i class="fas fa-user-circle mr-2"></i> View Profile
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Search Messages Modal -->
+                                <div class="modal fade" id="searchMessagesModal" tabindex="-1" role="dialog" aria-labelledby="searchMessagesModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="searchMessagesModalLabel">Search Messages</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="form-group">
+                                                    <input type="text" class="form-control" id="messageSearchInput" placeholder="Search messages in this chat...">
+                                                </div>
+                                                <div id="messageSearchResults">
+                                                    <!-- Results will be loaded here via AJAX -->
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-messages" id="chatMessages">
+                                    {% for message in page_obj %}
+                                        {% ifchanged message.timestamp.date %}
+                                            <div class="message-day-divider">
+                                                <span>{{ message.timestamp|date:"F j, Y" }}</span>
+                                            </div>
+                                        {% endifchanged %}
+                                        
+                                        <div class="message {% if message.sender == request.user %}message-sent{% else %}message-received{% endif %}">
+                                            <div class="message-content">
+                                                {{ message.message }}
+                                                {% if message.attachment %}
+                                                <div class="mt-2">
+                                                    <a href="{{ message.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-paperclip mr-1"></i>
+                                                        {{ message.attachment_name }}
+                                                    </a>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="message-time">
+                                                {{ message.timestamp|time:"g:i A" }}
+                                                {% if message.sender == request.user %}
+                                                    {% if message.read %}
+                                                        <i class="fas fa-check-double text-primary ml-1" title="Read"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-check text-muted ml-1" title="Delivered"></i>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="typing-indicator" id="typingIndicator" style="display: none;"></div>
+                                <div class="chat-input">
+                                    <div class="input-group">
+                                        <textarea class="form-control chat-input-text" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+                                        <div class="input-group-append">
+                                            <button class="btn btn-outline-secondary" type="button" id="attachFileBtn" title="Attach File">
+                                                <i class="fas fa-paperclip"></i>
+                                                <input type="file" id="fileInput" style="display: none;">
+                                            </button>
+                                            <button class="btn btn-primary" type="button" id="sendMessageBtn">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="attachmentPreview" class="mt-2" style="display: none;">
+                                        <div class="alert alert-light d-flex justify-content-between align-items-center">
+                                            <span id="attachmentName"></span>
+                                            <button type="button" class="close" id="removeAttachmentBtn">
+                                                <span>&times;</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    const roomId = {{ room.id }};
+    const userId = {{ request.user.id }};
+    let lastMessageId = {% if page_obj %}{{ page_obj.last.id }}{% else %}0{% endif %};
+    
+    // WebSocket connection
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host +
+        '/ws/chat/' + roomId + '/'
+    );
+    
+    const chatMessages = $('#chatMessages');
+    const messageInput = $('#messageInput');
+    const sendMessageBtn = $('#sendMessageBtn');
+    const typingIndicator = $('#typingIndicator');
+
+    // Scroll to bottom of chat on load
+    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+    
+    // Send a message
+    function sendMessage() {
+        const messageText = messageInput.val().trim();
+        if (messageText) {
+            chatSocket.send(JSON.stringify({
+                'message': messageText,
+                'sender_id': userId
+            }));
+            messageInput.val('');
+            messageInput.height('auto'); // Reset height
+        }
+    }
+
+    // Typing indicator logic
+    let typingTimer;
+    const typingTimeout = 2000; // 2 seconds
+
+    messageInput.on('input', function() {
+        // Send typing notification
+        chatSocket.send(JSON.stringify({
+            'typing': true,
+            'sender_id': userId
+        }));
+        
+        // Clear previous timer
+        clearTimeout(typingTimer);
+        
+        // Set timer to stop typing notification
+        typingTimer = setTimeout(function() {
+            chatSocket.send(JSON.stringify({
+                'typing': false,
+                'sender_id': userId
+            }));
+        }, typingTimeout);
+    });
+
+    // Send message on Enter (without Shift)
+    messageInput.keypress(function(e) {
+        if (e.which === 13 && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Send message on button click
+    sendMessageBtn.click(sendMessage);
+
+    // Handle incoming WebSocket messages
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+
+        if (data.typing !== undefined) {
+            // Typing indicator handling
+            if (data.sender_id !== userId) {
+                if (data.typing) {
+                    typingIndicator.text(`${data.sender_name || "Someone"} is typing...`).show();
+                } else {
+                    typingIndicator.hide();
+                }
+            }
+        } else {
+            // Regular message handling
+            if (data.sender_id != userId) {
+                const messageHtml = `
+                    <div class="message message-received">
+                        <div class="message-content">
+                            ${data.message}
+                        </div>
+                        <div class="message-time">
+                            ${data.timestamp}
+                        </div>
+                    </div>
+                `;
+                chatMessages.append(messageHtml);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+                lastMessageId = data.message_id;
+            }
+        }
+    };
+    // Message search
+    $('#messageSearchInput').on('input', function() {
+        const query = $(this).val();
+        if (query.length > 2) {
+            $.ajax({
+                url: '{% url "search_messages" room.id %}',
+                data: { q: query },
+                success: function(data) {
+                    $('#messageSearchResults').html(data);
+                }
+            });
+        } else {
+            $('#messageSearchResults').empty();
+        }
+    });
+
+    // Highlight message when coming from search
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightMessageId = urlParams.get('highlight');
+    if (highlightMessageId) {
+        const messageElement = $(`[data-message-id="${highlightMessageId}"]`);
+        if (messageElement.length) {
+            messageElement.addClass('highlight-message');
+            setTimeout(() => {
+                messageElement.removeClass('highlight-message');
+            }, 3000);
+            $('html, body').animate({
+                scrollTop: messageElement.offset().top - 100
+            }, 500);
+        }
+    }
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly');
+    };
+
+    let fileToUpload = null;
+
+    $('#attachFileBtn').click(function() {
+        $('#fileInput').click();
+    });
+
+    $('#fileInput').change(function() {
+        if (this.files && this.files[0]) {
+            fileToUpload = this.files[0];
+            $('#attachmentName').text(fileToUpload.name);
+            $('#attachmentPreview').show();
+        }
+    });
+
+    $('#removeAttachmentBtn').click(function() {
+        fileToUpload = null;
+        $('#fileInput').val('');
+        $('#attachmentPreview').hide();
+    });
+
+    function sendMessage() {
+        const messageText = $('#messageInput').val().trim();
+        
+        if (messageText || fileToUpload) {
+            const formData = new FormData();
+            formData.append('message', messageText);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            
+            if (fileToUpload) {
+                formData.append('attachment', fileToUpload);
+            }
+            
+            $.ajax({
+                url: '{% url "send_message" room.id %}',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(data) {
+                    if (data.status === 'success') {
+                        appendMessage(data.message);
+                        $('#messageInput').val('');
+                        $('#fileInput').val('');
+                        $('#attachmentPreview').hide();
+                        fileToUpload = null;
+                        lastMessageId = data.message.id;
+                    }
+                }
+            });
+        }
+    }
+
+    // Auto-resize textarea
+    messageInput.on('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+});
+</script>
+{% endblock %}
