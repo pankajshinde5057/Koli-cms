@@ -260,6 +260,9 @@
 </style>
 {% endblock %}
 
+{% extends 'main_app/base.html' %}
+{% load static %}
+
 {% block content %}
 <section class="content">
     <div class="container-fluid">
@@ -267,234 +270,51 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-comments mr-2"></i>
-                            Messages
-                        </h3>
-                        <div class="card-tools">
-                            <a href="{% url 'chat_home' %}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left mr-1"></i> Back to Chats
+                        <div class="d-flex align-items-center">
+                            <a href="{% url 'chat_home' %}" class="btn btn-default mr-3">
+                                <i class="fas fa-arrow-left"></i>
                             </a>
+                            {% with other_user=room.get_other_participant(request.user) %}
+                                {% if other_user.profile_pic %}
+                                    <img src="{{ other_user.profile_pic.url }}" class="rounded-circle mr-3" width="40" height="40">
+                                {% else %}
+                                    <img src="{% static 'dist/img/avatar.png' %}" class="rounded-circle mr-3" width="40" height="40">
+                                {% endif %}
+                                <h3 class="card-title mb-0">{{ other_user.get_full_name }}</h3>
+                            {% endwith %}
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="chat-container">
-                            <div class="chat-sidebar">
-                                <div class="chat-search">
-                                    <input type="text" class="chat-search-input" placeholder="Search chats..." id="chatSearch">
-                                </div>
-                                <ul class="chat-list">
-                                    {% for r in request.user.chat_rooms.all|dictsortreversed:"last_activity" %}
-                                    <li class="chat-item {% if r.id == room.id %}active{% endif %}" 
-                                        onclick="window.location.href='{% url 'chat_room' r.id %}'">
-                                        <div class="chat-item-header">
-                                            <span class="chat-item-name">
-                                                {% if r.is_group %}
-                                                    {{ r.name }}
-                                                {% else %}
-                                                    {{ r.get_other_participant.request.user.get_full_name }}
-                                                {% endif %}
-                                            </span>
-                                            <span class="chat-item-time">{{ r.last_activity|timesince }} ago</span>
-                                        </div>
-                                        <div class="chat-item-preview">
-                                            {% with last_message=r.messages.last %}
-                                                {% if last_message %}
-                                                    {{ last_message.sender.first_name }}: {{ last_message.message|truncatechars:30 }}
-                                                {% else %}
-                                                    No messages yet
-                                                {% endif %}
-                                            {% endwith %}
-                                            {% if r.messages.filter(read=False).exclude(sender=request.user).count > 0 %}
-                                                <span class="unread-badge">{{ r.messages.filter(read=False).exclude(sender=request.user).count }}</span>
-                                            {% endif %}
-                                        </div>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                            <div class="chat-main">
-                                <div class="chat-header">
-                                    {% if room.is_group %}
-                                        <div class="modal fade" id="groupInfoModal" tabindex="-1" role="dialog" aria-labelledby="groupInfoModalLabel" aria-hidden="true">
-                                            <div class="modal-dialog" role="document">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="groupInfoModalLabel">Group Info</h5>
-                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                            <span aria-hidden="true">&times;</span>
-                                                        </button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <div class="form-group">
-                                                            <label>Group Name</label>
-                                                            <input type="text" class="form-control" value="{{ room.name }}" id="groupNameInput">
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Participants</label>
-                                                            <ul class="list-group">
-                                                                {% for participant in room.participants.all %}
-                                                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                                                    <div>
-                                                                        {% if participant.profile_pic %}
-                                                                            <img src="{{ participant.profile_pic.url }}" class="rounded-circle mr-2" width="30" height="30">
-                                                                        {% else %}
-                                                                            <img src="{% static 'dist/img/avatar.png' %}" class="rounded-circle mr-2" width="30" height="30">
-                                                                        {% endif %}
-                                                                        {{ participant.get_full_name }}
-                                                                        {% if participant == request.user %}
-                                                                            <span class="badge badge-secondary ml-2">You</span>
-                                                                        {% endif %}
-                                                                    </div>
-                                                                    {% if participant != request.user %}
-                                                                    <a href="#" class="btn btn-sm btn-outline-danger remove-participant" data-user-id="{{ participant.id }}">
-                                                                        <i class="fas fa-user-minus"></i>
-                                                                    </a>
-                                                                    {% endif %}
-                                                                </li>
-                                                                {% endfor %}
-                                                            </ul>
-                                                        </div>
-                                                        <div class="form-group">
-                                                            <label>Add Participants</label>
-                                                            <select class="form-control select2" id="addParticipantSelect" style="width: 100%;">
-                                                                <option></option>
-                                                                {% for user in available_users %}
-                                                                <option value="{{ user.id }}">{{ user.get_full_name }}</option>
-                                                                {% endfor %}
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                        <button type="button" class="btn btn-primary" id="saveGroupChanges">Save Changes</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endif %}
-                                    {% else %}
-                                        {% with other_user=room.get_other_participant.request.user %}
-                                            {% if other_user.profile_pic %}
-                                                <img src="{{ other_user.profile_pic.url }}" class="chat-header-avatar" alt="{{ other_user.get_full_name }}">
+                    
+                    <div class="card-body chat-messages" style="height: 400px; overflow-y: auto;">
+                        {% for message in messages %}
+                        <div class="mb-3 {% if message.sender == request.user %}text-right{% endif %}">
+                            <div class="d-flex {% if message.sender == request.user %}justify-content-end{% endif %}">
+                                <div class="{% if message.sender == request.user %}bg-primary text-white{% else %}bg-light{% endif %} rounded p-3" style="max-width: 70%;">
+                                    {{ message.message }}
+                                    <div class="text-muted small mt-1">
+                                        {{ message.timestamp|time }}
+                                        {% if message.sender == request.user %}
+                                            {% if message.read %}
+                                            <i class="fas fa-check-double ml-1"></i>
                                             {% else %}
-                                                <img src="{% static 'dist/img/avatar.png' %}" class="chat-header-avatar" alt="{{ other_user.get_full_name }}">
+                                            <i class="fas fa-check ml-1"></i>
                                             {% endif %}
-                                            <div class="chat-header-info">
-                                                <h5 class="chat-header-name">{{ other_user.get_full_name }}</h5>
-                                                <p class="chat-header-status">
-                                                    {% if other_user.user_type == '1' %}
-                                                        Admin
-                                                    {% elif other_user.user_type == '2' %}
-                                                        Manager
-                                                    {% else %}
-                                                        Employee
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                        {% endwith %}
-                                    {% endif %}
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="chatMenuDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="chatMenuDropdown">
-                                            <a class="dropdown-item" href="#" data-toggle="modal" data-target="#searchMessagesModal">
-                                                <i class="fas fa-search mr-2"></i> Search Messages
-                                            </a>
-                                            {% if not room.is_group %}
-                                            <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item" href="#">
-                                                <i class="fas fa-user-circle mr-2"></i> View Profile
-                                            </a>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Search Messages Modal -->
-                                <div class="modal fade" id="searchMessagesModal" tabindex="-1" role="dialog" aria-labelledby="searchMessagesModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog modal-lg" role="document">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="searchMessagesModalLabel">Search Messages</h5>
-                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
-                                                </button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="form-group">
-                                                    <input type="text" class="form-control" id="messageSearchInput" placeholder="Search messages in this chat...">
-                                                </div>
-                                                <div id="messageSearchResults">
-                                                    <!-- Results will be loaded here via AJAX -->
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="chat-messages" id="chatMessages">
-                                    {% for message in page_obj %}
-                                        {% ifchanged message.timestamp.date %}
-                                            <div class="message-day-divider">
-                                                <span>{{ message.timestamp|date:"F j, Y" }}</span>
-                                            </div>
-                                        {% endifchanged %}
-                                        
-                                        <div class="message {% if message.sender == request.user %}message-sent{% else %}message-received{% endif %}">
-                                            <div class="message-content">
-                                                {{ message.message }}
-                                                {% if message.attachment %}
-                                                <div class="mt-2">
-                                                    <a href="{{ message.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                                        <i class="fas fa-paperclip mr-1"></i>
-                                                        {{ message.attachment_name }}
-                                                    </a>
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="message-time">
-                                                {{ message.timestamp|time:"g:i A" }}
-                                                {% if message.sender == request.user %}
-                                                    {% if message.read %}
-                                                        <i class="fas fa-check-double text-primary ml-1" title="Read"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-check text-muted ml-1" title="Delivered"></i>
-                                                    {% endif %}
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                                <div class="typing-indicator" id="typingIndicator" style="display: none;"></div>
-                                <div class="chat-input">
-                                    <div class="input-group">
-                                        <textarea class="form-control chat-input-text" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
-                                        <div class="input-group-append">
-                                            <button class="btn btn-outline-secondary" type="button" id="attachFileBtn" title="Attach File">
-                                                <i class="fas fa-paperclip"></i>
-                                                <input type="file" id="fileInput" style="display: none;">
-                                            </button>
-                                            <button class="btn btn-primary" type="button" id="sendMessageBtn">
-                                                <i class="fas fa-paper-plane"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div id="attachmentPreview" class="mt-2" style="display: none;">
-                                        <div class="alert alert-light d-flex justify-content-between align-items-center">
-                                            <span id="attachmentName"></span>
-                                            <button type="button" class="close" id="removeAttachmentBtn">
-                                                <span>&times;</span>
-                                            </button>
-                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="card-footer">
+                        <form method="post" action="{% url 'chat_room' room.id %}" class="d-flex">
+                            {% csrf_token %}
+                            <input type="text" name="message" class="form-control mr-2" placeholder="Type your message...">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

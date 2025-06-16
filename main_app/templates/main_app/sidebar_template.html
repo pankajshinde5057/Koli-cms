@@ -422,12 +422,7 @@
                     {% url 'chat_home' as chat_home %}
                     <a href="{{ chat_home }}" class="nav-link {% if chat_home == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comments"></i>
-                        <p>
-                            Messages
-                            {% if unread_message_count > 0 %}
-                            <span class="right badge badge-danger">{{ unread_message_count }}</span>
-                            {% endif %}
-                        </p>
+                        <p>Messages</p>
                     </a>
                 </li>
                 <li class="nav-item">

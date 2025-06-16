@@ -834,25 +834,21 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-User = get_user_model()
 
 class ChatRoom(models.Model):
-    """
-    Represents a chat room between users
-    """
-    participants = models.ManyToManyField(User, related_name='chat_rooms')
+    participants = models.ManyToManyField(CustomUser, related_name='chat_rooms')
     created_at = models.DateTimeField(auto_now_add=True)
     last_activity = models.DateTimeField(auto_now=True)
     is_group = models.BooleanField(default=False)
     name = models.CharField(max_length=100, blank=True, null=True)
 
-    def __str__(self):
-        if self.is_group:
-            return f"Group Chat: {self.name}"
-        participants = self.participants.all()
-        if participants.count() == 2:
-            return f"Chat between {participants[0]} and {participants[1]}"
-        return f"Chat with {participants.count()} participants"
+    def get_other_participant(self, user):
+        if not self.is_group and self.participants.count() == 2:
+            return self.participants.exclude(id=user.id).first()
+        return None
+
+    def get_unread_count(self, user):
+        return self.messages.filter(read=False).exclude(sender=user).count()
 
     def get_other_participant(self, user):
         """
@@ -874,7 +870,7 @@ class ChatMessage(models.Model):
     Represents a message in a chat room
     """
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
-    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)

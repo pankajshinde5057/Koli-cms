@@ -7,64 +7,31 @@ from .models import ChatRoom, ChatMessage
 from django.contrib import messages
 from django.core.paginator import Paginator
 
-User = get_user_model()
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from .models import ChatRoom, ChatMessage, CustomUser
+from django.db.models import Q
 
-@login_required   
+@login_required
 def chat_home(request):
     chat_rooms = ChatRoom.objects.filter(participants=request.user).order_by('-last_activity')
     
-    # Add unread counts to each room
     for room in chat_rooms:
-        room.unread_count = ChatMessage.objects.filter(
-            room=room, 
-            read=False
-        ).exclude(sender=request.user).count()
+        room.unread_count = room.get_unread_count(request.user)
+    
+    all_users = CustomUser.objects.exclude(id=request.user.id).order_by('first_name')
     
     context = {
         'chat_rooms': chat_rooms,
-        'page_title': "Chat",
+        'all_users': all_users,
+        'page_title': "Chat"
     }
     return render(request, "chat/chat_home.html", context)
 
 @login_required
-def chat_room(request, room_id):
-    """
-    View for a specific chat room
-    """
-    room = get_object_or_404(ChatRoom, id=room_id, participants=request.user)
-    messages = ChatMessage.objects.filter(room=room).order_by('timestamp')
-    
-    # Mark messages as read when viewing
-    unread_messages = messages.filter(read=False).exclude(sender=request.user)
-    unread_messages.update(read=True)
-    def get_unread_count(self, user):
-        return ChatMessage.objects.filter(
-            room=self,
-            read=False
-        ).exclude(sender=user).count()
-
-    
-    # Pagination
-    paginator = Paginator(messages, 50)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    context = {
-        'room': room,
-        'page_obj': page_obj,
-        'other_user': room.get_other_participant(request.user),
-        'page_title': f"Chat with {room.get_other_participant(request.user)}" if not room.is_group else room.name,
-    }
-    return render(request, "chat/chat_room.html", context)
-
-@login_required
 def start_chat(request, user_id):
-    """
-    Start a new 1-on-1 chat with a user
-    """
-    other_user = get_object_or_404(User, id=user_id)
+    other_user = get_object_or_404(CustomUser, id=user_id)
     
-    # Check if a chat room already exists between these two users
     existing_room = ChatRoom.objects.filter(
         participants=request.user,
         is_group=False
@@ -73,11 +40,25 @@ def start_chat(request, user_id):
     if existing_room:
         return redirect('chat_room', room_id=existing_room.id)
     
-    # Create new chat room
     new_room = ChatRoom.objects.create(is_group=False)
     new_room.participants.add(request.user, other_user)
     
     return redirect('chat_room', room_id=new_room.id)
+
+@login_required
+def chat_room(request, room_id):
+    room = get_object_or_404(ChatRoom, id=room_id, participants=request.user)
+    messages = ChatMessage.objects.filter(room=room).order_by('timestamp')
+    
+    messages.filter(read=False).exclude(sender=request.user).update(read=True)
+    
+    context = {
+        'room': room,
+        'messages': messages,
+        'other_user': room.get_other_participant(request.user),
+        'page_title': f"Chat with {room.get_other_participant(request.user)}"
+    }
+    return render(request, "chat/chat_room.html", context)
 
 @login_required
 def send_message(request, room_id):
