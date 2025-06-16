@@ -146,6 +146,7 @@
                         <p>Generate Report</p>
                     </a>
                 </li>
+
                 <li class="nav-item">
                     {% url 'all_employees_schedules' as all_employees_schedules %}
                     <a href="{{all_employees_schedules}}" class="nav-link {% if all_employees_schedules == request.path %} active {% endif %}">
@@ -542,8 +543,8 @@
                         <i class="nav-icon fas fa-bell"></i>
                         <p>
                             Asset Notifications
-                            {% if unread_asset_notification_count > 0 %}
-                            <span class="right badge badge-danger">{{ unread_asset_notification_count }}</span>
+                            {% if total_asset_unread_notifications > 0 %}
+                            <span class="badge badge-danger">{{ total_asset_unread_notifications }}</span>
                             {% endif %}
                         </p>
                     </a>
@@ -669,6 +670,7 @@
                         </p>
                     </a>
                 </li>
+
                 <li class="nav-item">
                     {% url 'employee_feedback' as employee_feedback %}
                     <a href="{{employee_feedback}}" class="nav-link {% if employee_feedback == request.path %} active {% endif %}">
@@ -689,6 +691,9 @@
                     <a href="{{employee_requests}}" class="nav-link {% if employee_requests == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-tasks"></i>
                         <p>My Requests</p>
+                        {% if total_unread_notifications > 0 %}
+                            <span class="badge badge-danger">{{ total_unread_notifications }}</span>
+                        {% endif %}
                     </a>
                 </li>
                 <li class="nav-item">

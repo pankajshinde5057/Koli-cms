@@ -48,6 +48,16 @@
                     </div>
                 </a>
                 <div class="dropdown-divider m-0"></div>
+                <a href="{% url 'manager_asset_view_notification' %}?type=asset" class="dropdown-item d-flex align-items-center py-2 asset-notification">
+                    <div class="me-3">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Asset Requests</div>
+                        <span class="font-weight-bold count">{{ employee_asset_request_count }} new notifications</span>
+                    </div>
+                </a>
+                <div class="dropdown-divider m-0"></div>
                 <a href="{% url 'manager_view_notification' %}?type=clockout" class="dropdown-item d-flex align-items-center py-2 notification-clockout">
                     <div class="me-3">
                         <i class="fas fa-clock"></i>
@@ -97,6 +107,16 @@
                     <div>
                         <div class="small text-muted">Leave Requests</div>
                         <span class="font-weight-bold count">{{ employee_leave_approved_or_rejected_notification_count }} new notifications</span>
+                    </div>
+                </a>
+                <div class="dropdown-divider m-0"></div>
+                <a href="{% url 'employee_requests' %}?type=asset" class="dropdown-item d-flex align-items-center py-2 asset-notification">
+                    <div class="me-3">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div>
+                        <div class="small text-muted">Asset Requests</div>
+                        <span class="font-weight-bold count">{{ employee_asset_request }} new notifications</span>
                     </div>
                 </a>
             {% endif %}
