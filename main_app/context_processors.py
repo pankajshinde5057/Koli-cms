@@ -551,3 +551,27 @@ def asset_notification_count(request):
         logging.error(f"Error in asset_notification_count context processor: {str(e)}")
     
     return context
+
+
+
+from .models import ChatMessage, ChatRoom
+from django.db.models import Max
+
+def chat_context(request):
+    if request.user.is_authenticated:
+        unread_count = ChatMessage.objects.filter(
+            room__participants=request.user,
+            read=False
+        ).exclude(sender=request.user).count()
+        
+        recent_chats = ChatRoom.objects.filter(
+            participants=request.user
+        ).annotate(
+            last_message_time=Max('messages__timestamp')
+        ).order_by('-last_message_time')[:5]
+        
+        return {
+            'unread_message_count': unread_count,
+            'recent_chats': recent_chats
+        }
+    return {}
