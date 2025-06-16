@@ -544,7 +544,7 @@ def employee_home(request):
         today_clock_out_time = last_clock_out_record.clock_out if last_clock_out_record else None
 
         clock_in_ist = today_record.clock_in if today_record.clock_in else None
-        office_start = datetime.combine(today, time(9, 0)).replace(tzinfo=ist) if clock_in_ist else None
+        office_start = datetime.combine(today, time(9, 30)) if clock_in_ist else None
 
         if current_record:
             today_status = 'Clocked In'
@@ -1233,13 +1233,13 @@ def get_ist_date():
     return timezone.now().astimezone(ist).date()
 
 def get_ist_datetime():
-    return timezone.now().astimezone(pytz.timezone('Asia/Kolkata'))
+    return timezone.now()
 
 @login_required
 def daily_schedule(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    today = get_ist_date()
-    now = get_ist_datetime()
+    today = timezone.now().date()
+    now = timezone.now()
 
     # Check if employee has clocked in today, redirect to home if not
     attendance_record = AttendanceRecord.objects.filter(
@@ -1259,8 +1259,8 @@ def daily_schedule(request):
     allow_edit = True
     if schedule:
         # Ensure created_at is timezone-aware
-        created_at_aware = schedule.created_at.astimezone(pytz.timezone('Asia/Kolkata')) if schedule.created_at.tzinfo is None else schedule.created_at
-        edit_window = created_at_aware + timedelta(minutes=30)
+        created_at = schedule.created_at
+        edit_window = created_at + timedelta(minutes=30)
         allow_edit = now <= edit_window
 
     if request.method == 'POST' and allow_edit:
@@ -1381,7 +1381,7 @@ def get_ist_date():
 @login_required
 def todays_update(request):
     employee = get_object_or_404(Employee, admin=request.user)
-    today = get_ist_date()
+    today = timezone.now().date()
     schedule = DailySchedule.objects.filter(employee=employee, date=today).first()
 
     attendance_record = AttendanceRecord.objects.filter(

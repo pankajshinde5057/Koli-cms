@@ -389,20 +389,21 @@ class AttendanceRecord(models.Model):
             )
 
             for record in open_records:
-                record.clock_out = record.clock_in + timedelta(hours=8)
-                record.notes = (
-                    f"{record.notes}\n" if record.notes else ""
-                ) + f"Auto-logged out on {timezone.now().date()} due to new record creation"
+                if record.clock_in:
+                    record.clock_out = record.clock_in + timedelta(hours=8)
+                    record.notes = (
+                        f"{record.notes}\n" if record.notes else ""
+                    ) + f"Auto-logged out on {timezone.now().date()} due to new record creation"
 
-                record.total_worked = record.clock_out - record.clock_in
-                regular_hours_limit = timedelta(hours=8)
-                if record.total_worked > regular_hours_limit:
-                    record.regular_hours = regular_hours_limit
-                    record.overtime_hours = record.total_worked - regular_hours_limit
-                else:
-                    record.regular_hours = record.total_worked
-                    record.overtime_hours = timedelta()
-                record.save()
+                    record.total_worked = record.clock_out - record.clock_in
+                    regular_hours_limit = timedelta(hours=8)
+                    if record.total_worked > regular_hours_limit:
+                        record.regular_hours = regular_hours_limit
+                        record.overtime_hours = record.total_worked - regular_hours_limit
+                    else:
+                        record.regular_hours = record.total_worked
+                        record.overtime_hours = timedelta()
+                    record.save()
 
         if self.clock_in:
             late_time = datetime.combine(self.clock_in.date(), time(9, 30))

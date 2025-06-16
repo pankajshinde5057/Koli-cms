@@ -59,7 +59,7 @@ def clock_times(request):
                 current_time = datetime.now(ZoneInfo('Asia/Kolkata'))
                 work_duration = current_time - clock_in_time
 
-                fixed_time = timedelta(hours=9)
+                fixed_time = timedelta(hours=8 , minutes=30)
 
                 if work_duration >= fixed_time:
                     context["complete_8Hours"] = True
