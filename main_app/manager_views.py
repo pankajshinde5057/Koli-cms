@@ -2325,19 +2325,34 @@ def approve_leave_request(request, leave_id):
                         return redirect('manager_view_notification')
 
                     # Update or create attendance record
-                    record, created = AttendanceRecord.objects.update_or_create(
-                        user=employee.admin,
-                        date=current_date,
-                        defaults={
-                            'status': 'half_day' if leave.leave_type == 'Half-Day' else 'leave',
-                            'department': employee.department,
-                            'clock_in': None,
-                            'clock_out': None,
-                            'total_worked': None,
-                            'regular_hours': None,
-                            'overtime_hours': None
-                        }
-                    )
+
+                    if leave.leave_type == 'Half-Day':
+                        # for half_day leave
+                        record, created = AttendanceRecord.objects.update_or_create(
+                            user = employee.admin , 
+                            date = current_date ,
+                            defaults = {
+                                'status' : 'half_day',
+                                'department' : employee.department,
+                                'notes': f"Approved half-day leave"
+                            }
+                        )
+                    else:
+                        # for full_day leaves
+                        record, created = AttendanceRecord.objects.update_or_create(
+                            user=employee.admin,
+                            date=current_date,
+                            defaults={
+                                'status': 'leave',
+                                'department': employee.department,
+                                'clock_in': None,
+                                'clock_out': None,
+                                'total_worked': None,
+                                'regular_hours': None,
+                                'overtime_hours': None
+                            }
+                        )
+
                     current_date += timedelta(days=1)
 
                 # Update leave status to Approved

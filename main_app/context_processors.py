@@ -58,8 +58,12 @@ def clock_times(request):
                 clock_in_time = latest_entry.clock_in.astimezone(ZoneInfo('Asia/Kolkata'))
                 current_time = datetime.now(ZoneInfo('Asia/Kolkata'))
                 work_duration = current_time - clock_in_time
-
-                fixed_time = timedelta(hours=8 , minutes=30)
+                
+                # determine worked duration based on the status
+                if latest_entry.status == 'half_day':
+                    fixed_time = timedelta(hours=4 , minutes=30)
+                else:
+                    fixed_time = timedelta(hours=8 , minutes=30)
 
                 if work_duration >= fixed_time:
                     context["complete_8Hours"] = True
