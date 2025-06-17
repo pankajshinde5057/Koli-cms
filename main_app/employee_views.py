@@ -430,6 +430,7 @@ def employee_home(request):
                 elif record.status == 'half_day':
                     present_days += 1
                     half_days += 1
+                    absent_days += 0.5
                     logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}, Half Days={half_days}")
             elif leave_entry:
                 leave_amount = leave_entry['leave_amount']
