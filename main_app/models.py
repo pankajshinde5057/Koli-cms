@@ -408,11 +408,8 @@ class AttendanceRecord(models.Model):
         if self.clock_in:
             late_time = datetime.combine(self.clock_in.date(), time(9, 30))
             half_day_time = datetime.combine(self.clock_in.date(), time(13, 0))
-            # after_3pm_time = datetime.combine(self.clock_in.date(), time(15, 0))
 
-            if self.status not in ['leave', 'absent']:
-                # if self.clock_in > after_3pm_time:
-                #     self.status = 'present'
+            if self.status in ['present', 'late']:
                 if self.clock_in > half_day_time:
                     self.status = 'half_day'
                 elif self.clock_in > late_time:
