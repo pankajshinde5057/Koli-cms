@@ -455,6 +455,32 @@ class AssetNotAssignListView(LoginRequiredMixin, View):
         user = request.user
         not_assign_assets = Assets.objects.filter(is_asset_issued=False)
 
+        # get all categories:
+        categories = AssetCategory.objects.all()
+
+        # search functionality
+        search_ = request.GET.get('search')
+        if search_:
+            not_assign_assets = not_assign_assets.filter(
+                Q(asset_name__icontains=search_) |
+                Q(asset_serial_number__icontains=search_) |
+                Q(asset_brand__icontains=search_) |
+                Q(asset_category__category__icontains=search_)
+            )
+
+        # sorting
+        sort_by = request.GET.get('sort')
+        if sort_by:
+            not_assign_assets = not_assign_assets.order_by(sort_by)
+        else:
+            # Default sorting
+            not_assign_assets = not_assign_assets.order_by('-asset_added_date')
+
+        # Category filter
+        category_id = request.GET.get('category')
+        if category_id:
+            not_assign_assets = not_assign_assets.filter(asset_category_id=category_id)
+
         # pagination
         paginator = Paginator(not_assign_assets, self.paginate_by)
         page_number = request.GET.get('page')
@@ -464,6 +490,7 @@ class AssetNotAssignListView(LoginRequiredMixin, View):
             return render(request, self.template_name, {
                 'assets': page_obj,
                 'page_obj': page_obj,
+                'categories': categories,
                 'page_title': 'Not Assigned Asset List',
             })
         else:
@@ -476,6 +503,7 @@ class AssetNotAssignListView(LoginRequiredMixin, View):
             context = {
                 'assets': page_obj,
                 'page_obj': page_obj,
+                'categories': categories,
                 'pending_requests': list(pending_requests),
                 'page_title': 'Not Assigned Asset List',
             }
@@ -514,23 +542,7 @@ class AssetClaimView(LoginRequiredMixin, View):
         
          # employee view
         else:
-            template_name = 'asset_app/asset_claim.html'
-            unclaimed_assets = Assets.objects.filter(is_asset_issued=False)
-            claimed_assets = AssetsIssuance.objects.filter(asset_assignee=request.user)   
-           
-            pending_requests = Notify_Manager.objects.filter(
-                employee=user,
-                asset__in=unclaimed_assets,
-                manager__isnull=False,
-                approved__isnull=True
-            ).values_list('asset_id', flat=True)
-
-            return render(request, template_name, {
-                'unclaimed_assets': unclaimed_assets,
-                'claimed_assets': claimed_assets,
-                'pending_requests': list(pending_requests),
-                'page_title': 'Claim Asset',
-            })
+            return redirect(reverse('asset_app:not-assign-asset-list'))
         
 
     def post(self, request, *args, **kwargs):

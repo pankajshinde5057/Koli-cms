@@ -1240,7 +1240,7 @@ def get_available_assets(request):
         for category in bundle_categories:
             asset = Assets.objects.filter(
                 is_asset_issued=False,
-                asset_category__category=category.lower()
+                asset_category__category__icontains=category.lower()
             ).select_related('asset_category').first()
             if asset:
                 bundle_assets.append({
@@ -1251,6 +1251,7 @@ def get_available_assets(request):
                     'asset_brand': asset.asset_brand,
                     'status': "Available"
                 })
+        print(bundle_assets)
         
         return JsonResponse({'assets': assets_data,'bundle_assets': bundle_assets, 'success': True})
     except Exception as e:
@@ -1317,6 +1318,7 @@ def assign_assets(request):
                 asset=asset,
                 asset_location=location,
                 asset_assignee=employee.admin,
+                assigned_by = get_object_or_404(CustomUser,id=request.user.id)
             )
             asset.is_asset_issued = True
             asset.save()
