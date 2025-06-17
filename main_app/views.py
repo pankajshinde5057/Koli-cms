@@ -201,9 +201,8 @@ def clock_in_out(request):
  
             # Determine status
             on_time_threshold = datetime.combine(today, time(9, 0))
-            late_threshold = datetime.combine(today, time(9, 15))
+            late_threshold = datetime.combine(today, time(9, 30))
             half_day_threshold = datetime.combine(today, time(13, 0))
-            after_3pm_threshold = datetime.combine(today, time(15, 0))
  
             earliest_clock_in =datetime.combine(today, time(8, 45)) if request.user.user_type == "3" else datetime.combine(today, time(8, 30))
  
@@ -214,9 +213,7 @@ def clock_in_out(request):
                 }, status=400)
  
             status = 'present'
-            if now > after_3pm_threshold:
-                status = 'present'
-            elif now > half_day_threshold:
+            if now > half_day_threshold:
                 status = 'half_day'
             elif now > late_threshold:
                 status = 'late'
