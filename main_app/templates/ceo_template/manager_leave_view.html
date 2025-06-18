@@ -21,6 +21,7 @@
                                         <th>SN</th>
                                         <th>Manager</th>
                                         <th>Division</th>
+                                        <th>Leave Type</th>
                                         <th>Message</th>
                                         <th>Leave Date</th>
                                         <th>Submitted On</th>
@@ -33,6 +34,7 @@
                                         <td data-title="SN">{{ forloop.counter0|add:allLeave.start_index }}</td>
                                         <td data-title="Manager">{{ leave.manager }}</td>
                                         <td data-title="Division">{{ leave.manager.division }}</td>
+                                        <td data-title="Leave Type">{{ leave.leave_type|default:"Not specified" }}</td>
                                         <td data-title="Message">{{ leave.message }}</td>
                                         <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</td>
                                         <td data-title="Submitted On">{{ leave.created_at|date:"M d, Y H:i" }}</td>
@@ -41,6 +43,8 @@
                                                 <button data-toggle="modal" 
                                                         data-target="#reply_modal" 
                                                         value="{{ leave.id }}" 
+                                                        data-leave-type="{{ leave.leave_type|default:'Not specified' }}"
+                                                        data-manager="{{ leave.manager }}"
                                                         class="btn btn-primary btn-sm reply_open_modal">
                                                     <i class="fas fa-reply"></i> <span class="d-none d-md-inline">Reply</span>
                                                 </button>
@@ -56,7 +60,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="7" class="text-center">No leave applications found.</td>
+                                        <td colspan="8" class="text-center">No leave applications found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -287,7 +291,9 @@ $(document).ready(function() {
     $(document).on('click', '.reply_open_modal', function() {
         var id = $(this).val();
         var name = $(this).parents('tr').children('td:eq(1)').text();
+        var leaveType = $(this).data('leave-type');
         $('#reply_name').text(name);
+        $('#leave_type').text(leaveType);
         $('#id').val(id);
         $('#reply_leave_status').val(''); // Reset select dropdown
     });

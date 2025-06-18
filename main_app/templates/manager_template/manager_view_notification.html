@@ -232,7 +232,7 @@
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link" href="?notification_from_admin_obj={{ notification_from_admin_obj.paginator.num_pages }}" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                       <span aria-hidden="true">&raquo;&raquo;</span>
                                     </a>
                                 </li>
                             {% endif %}
@@ -286,9 +286,9 @@
                                         </div>
                                     </td>
                                     <td>
-                                            <span class="badge badge-info">
+                                        <span class="badge badge-info">
                                             {{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}
-                                            </span>
+                                        </span>
                                     </td>
                                     <td>
                                         <div class="message-preview">
@@ -318,7 +318,7 @@
                                             <div class="modal-header bg-gradient-primary text-white">
                                                 <p class="modal-title">Leave Request by: <strong>{{ leave.employee.get_full_name }}</strong></p>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
+                                                     <span aria-hidden="true">&times;</span>
                                                 </button>
                                             </div>
                                             <div class="modal-body">
@@ -332,6 +332,12 @@
                                                         {{ leave.end_date|date:"M d, Y" }}</p>
                                                     </div>
                                                 </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><strong>Leave Type:</strong><br>
+                                                        {{ leave.leave_type|default:"Not specified" }}</p>
+                                                    </div>
+                                                </div>
                                                 <div class="form-group">
                                                     <label>Full Message:</label>
                                                     <div class="p-3 bg-light rounded">
@@ -340,7 +346,7 @@
                                                 </div>
                                             </div>
                                             <div class="modal-footer bg-light">
-                                                <form method="post" action="{% url 'approve_leave_request' leave.id %}" class="d-inline">
+                                                 <form method="post" action="{% url 'approve_leave_request' leave.id %}" class="d-inline">
                                                     {% csrf_token %}
                                                     <button type="submit" class="btn btn-success" title="Approve">
                                                         <i class="fas fa-check-circle mr-1"></i> Approve
@@ -696,9 +702,9 @@
                                         </div>
                                     </td>
                                     <td>
-                                            <span class="badge badge-info">
+                                        <span class="badge badge-info">
                                             {{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}
-                                            </span>
+                                        </span>
                                     </td>
                                     <td>
                                         <span class="badge 
@@ -793,6 +799,12 @@
                                     {{ leave.end_date|date:"M d, Y" }}</p>
                                 </div>
                                 <div class="col-md-4">
+                                    <p><strong>Leave Type:</strong><br>
+                                    {{ leave.leave_type|default:"Not specified" }}</p>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-4">
                                     <p><strong>Status:</strong><br>
                                     <span class="badge 
                                         {% if leave.status == 1 %}badge-resolved
@@ -852,7 +864,7 @@
                                 <div class="col-md-4">
                                     <p><strong>Status:</strong><br>
                                     <span class="badge 
-                                        {% if request.status == 'approved' %}badge-approved
+                                       {% if request.status == 'approved' %}badge-approved
                                         {% else %}badge-denied{% endif %}">
                                         {{ request.get_status_display }}
                                     </span></p>

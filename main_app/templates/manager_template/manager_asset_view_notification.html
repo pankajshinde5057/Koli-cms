@@ -184,7 +184,7 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             {% if asset.employee.profile_pic %}
-                                            <img src="{{ asset.employee.profile_pic.url }}" class="img-circle mr-3" width="40" height="40" alt="User Image">
+                                            <img src="{{ asset.employee.profile_pic }}" class="img-circle mr-3" width="40" height="40" alt="User Image">
                                             {% else %}
                                             <div class="img-circle mr-3 bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                                 <i class="fas fa-user text-white"></i>
@@ -582,7 +582,7 @@
                                         
                                         {% if asset.asset.asset_image %}
                                             <div class="text-center mb-3">
-                                                <img src="{{ asset.asset.asset_image.url }}" class="img-fluid rounded border shadow-sm asset-image" alt="Asset Image">
+                                                <img src="{{ asset.asset.asset_image }}" class="img-fluid rounded border shadow-sm asset-image" alt="Asset Image">
                                             </div>
                                         {% else %}
                                             <div class="text-center mb-3 p-4 bg-white rounded border">
@@ -626,7 +626,7 @@
                                         <div class="employee-details mb-4">
                                             <div class="d-flex align-items-center mb-3">
                                                 {% if asset.employee.profile_pic %}
-                                                <img src="{{ asset.employee.profile_pic.url }}" class="img-circle mr-3" width="60" height="60" alt="User Image">
+                                                <img src="{{ asset.employee.profile_pic }}" class="img-circle mr-3" width="60" height="60" alt="User Image">
                                                 {% else %}
                                                 <div class="img-circle mr-3 bg-secondary d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
                                                     <i class="fas fa-user text-white fa-2x"></i>
@@ -655,7 +655,7 @@
                                         
                                         {% if asset.asset.qr_code %}
                                         <div class="text-center mt-4">
-                                            <img src="{{ asset.asset.qr_code.url }}" class="img-thumbnail" 
+                                            <img src="{{ asset.asset.qr_code }}" class="img-thumbnail" 
                                                 style="max-width: 150px;" alt="QR Code">
                                             <p class="small text-muted mt-2">Scan QR code to verify asset</p>
                                         </div>
