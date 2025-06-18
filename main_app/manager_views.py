@@ -2324,21 +2324,10 @@ def approve_leave_request(request, leave_id):
                         messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
                         return redirect('manager_view_notification')
 
-                    # Update or create attendance record
+                    #  for half-day leaves , just mark as approved but don't create attendance record
 
-                    if leave.leave_type == 'Half-Day':
-                        # for half_day leave
-                        record, created = AttendanceRecord.objects.update_or_create(
-                            user = employee.admin , 
-                            date = current_date ,
-                            defaults = {
-                                'status' : 'half_day',
-                                'department' : employee.department,
-                                'notes': f"Approved half-day leave"
-                            }
-                        )
-                    else:
-                        # for full_day leaves
+                    if leave.leave_type == 'Full-Day':
+                        # for full_day leaves, create attendance record
                         record, created = AttendanceRecord.objects.update_or_create(
                             user=employee.admin,
                             date=current_date,

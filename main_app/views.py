@@ -194,11 +194,28 @@ def clock_in_out(request):
             ).first()
  
             if leave:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Cannot clock in on an approved leave day.'
-                }, status=400)
- 
+                if leave.leave_type == 'Full-Day':
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Cannot clock in on an approved leave day.'
+                    }, status=400)
+                
+                # for half-day leave
+                current_time = now.time()
+                # for first half leave, allow clock-in only after 1:00 pm
+                if leave.half_day_type == 'First Half' and current_time < time(13,0):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'For First Half leave, you can only clock in after 1:00 PM.'
+                    }, status=400)
+
+                # For Second Half leave, allow clock-in only before 1:00 PM
+                elif leave.leave_type == 'Second Half' and current_time >= time(13, 0):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'For Second Half leave, you must clock in before 1:00 PM.'
+                    }, status=400)
+                
             # Determine status
             on_time_threshold = datetime.combine(today, time(9, 0))
             late_threshold = datetime.combine(today, time(9, 30))
@@ -213,7 +230,7 @@ def clock_in_out(request):
                 }, status=400)
  
             status = 'present'
-            if now > half_day_threshold:
+            if now > half_day_threshold or leave:
                 status = 'half_day'
             elif now > late_threshold:
                 status = 'late'
@@ -236,18 +253,18 @@ def clock_in_out(request):
             )
             new_record.full_clean()
             new_record.save()
- 
+
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_in',
                 related_record=new_record
             )
- 
+
             return JsonResponse({
                 'status': 'success',
                 'message': 'Successfully clocked in!'
             })
- 
+
         elif 'clock_out' in request.POST:
             current_record = AttendanceRecord.objects.filter(
                 user=request.user,

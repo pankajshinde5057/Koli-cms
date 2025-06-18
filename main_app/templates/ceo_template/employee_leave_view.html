@@ -28,6 +28,14 @@
             margin-top: 15px;
             color: #dc3545;
         }
+        /* Message truncation */
+        .message-truncate {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
     </style>
 {% endblock %}
 
@@ -59,7 +67,11 @@
                                     <td>{{ forloop.counter0|add:allLeave.start_index }}</td>
                                     <td>{{ leave.employee }}</td>
                                     <td>{{ leave.employee.division }}</td>
-                                    <td>{{ leave.message }}</td>
+                                    <td>
+                                        <div class="message-truncate">
+                                            {{ leave.message }}
+                                        </div>
+                                    </td>
                                     <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</td>
                                     <td>{{ leave.created_at }}</td>
                                     <td>
@@ -67,7 +79,13 @@
                                             <button data-toggle="modal" 
                                                     data-target="#reply_modal" 
                                                     value="{{ leave.id }}" 
-                                                    class="btn btn-primary reply_open_modal">Reply</button>
+                                                    class="btn btn-primary reply_open_modal"
+                                                    data-employee="{{ leave.employee }}"
+                                                    data-division="{{ leave.employee.division }}"
+                                                    data-message="{{ leave.message }}"
+                                                    data-start-date="{{ leave.start_date|date:'Y-m-d' }}"
+                                                    data-end-date="{{ leave.end_date|date:'Y-m-d' }}"
+                                                    data-created-at="{{ leave.created_at }}">Reply</button>
                                                     {% if leave.id in unread_ids %}
                                                         <i class="fas fa-circle unread-dot" title="Unread"></i>
                                                     {% endif %}
@@ -140,26 +158,46 @@
 
 <!-- Reply Modal -->
 <div class="modal fade" id="reply_modal" tabindex="-1" role="dialog" aria-labelledby="replyModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="replyModalLabel">Reply to Leave Request</h5>
+                <h5 class="modal-title" id="replyModalLabel">Leave Request Details</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">×</span>
                 </button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="id">
-                <p>Reply to <strong><span id="reply_name"></span></strong>'s leave request:</p>
-                <select id="reply_leave_status" class="form-control">
-                    <option value="">-- Select --</option>
-                    <option value="1">Approve</option>
-                    <option value="-1">Reject</option>
-                </select>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Employee Information</h6>
+                        <p><strong>Name:</strong> <span id="modal_employee"></span></p>
+                        <p><strong>Division:</strong> <span id="modal_division"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Leave Dates</h6>
+                        <p><strong>From:</strong> <span id="modal_start_date"></span></p>
+                        <p><strong>To:</strong> <span id="modal_end_date"></span></p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <h6>Leave Message</h6>
+                    <div class="p-3 bg-light rounded" id="modal_message"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="reply_leave_status"><strong>Action</strong></label>
+                    <select id="reply_leave_status" class="form-control">
+                        <option value="">-- Select Action --</option>
+                        <option value="1">Approve</option>
+                        <option value="-1">Reject</option>
+                    </select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                <button id="reply_btn" class="btn btn-success">Submit</button>
+                <button id="reply_btn" class="btn btn-success">Submit Response</button>
             </div>
         </div>
     </div>
@@ -180,6 +218,15 @@ $(document).ready(function() {
         "timeOut": "3000"
     };
 
+    // Handle message truncation click to open the action modal
+    $(document).on('click', '.message-truncate', function() {
+        var row = $(this).closest('tr');
+        var btn = row.find('.reply_open_modal');
+        if (btn.length) {
+            btn.click();
+        }
+    });
+
     // Handle pagination clicks
     $(document).on('click', '.pagination-link', function(e) {
         e.preventDefault();
@@ -195,13 +242,9 @@ $(document).ready(function() {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(html) {
-                // Create a temporary container to parse the full HTML
                 var $temp = $('<div>').html(html);
-                // Extract only the #leave-table-container content
                 var $newContent = $temp.find('#leave-table-container').html();
-                // Update the existing container
                 $('#leave-table-container').html($newContent);
-                // Update browser URL without reloading
                 window.history.pushState({}, '', '?page=' + page);
             },
             error: function(xhr, status, error) {
@@ -213,16 +256,35 @@ $(document).ready(function() {
 
     // Handle browser back/forward buttons
     window.onpopstate = function(event) {
-        window.location.reload(); // Reload to ensure correct state
+        window.location.reload();
     };
 
     // Handle reply modal open
     $(document).on('click', '.reply_open_modal', function() {
         var id = $(this).val();
-        var name = $(this).closest('tr').find('td:eq(1)').text();
-        $('#reply_name').text(name);
+        var employee = $(this).data('employee');
+        var division = $(this).data('division');
+        var message = $(this).data('message');
+        var startDate = $(this).data('start-date');
+        var endDate = $(this).data('end-date');
+        
+        // Format dates
+        var formattedStartDate = new Date(startDate).toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'short', day: 'numeric' 
+        });
+        var formattedEndDate = new Date(endDate).toLocaleDateString('en-US', { 
+            year: 'numeric', month: 'short', day: 'numeric' 
+        });
+
+        // Populate modal
         $('#id').val(id);
-        $('#reply_leave_status').val(''); // Reset select dropdown
+        $('#modal_employee').text(employee);
+        $('#modal_division').text(division);
+        $('#modal_message').text(message);
+        $('#modal_start_date').text(formattedStartDate);
+        $('#modal_end_date').text(formattedEndDate);
+        $('#modal_created_at').text(formattedCreatedAt);
+        $('#reply_leave_status').val('');
     });
 
     // Handle reply submission
@@ -240,7 +302,7 @@ $(document).ready(function() {
                     csrfmiddlewaretoken: '{{ csrf_token }}'
                 },
                 beforeSend: function() {
-                    $('#reply_btn').prop('disabled', true);
+                    $('#reply_btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
                 },
                 success: function(response) {
                     if (response == "True") {
@@ -256,7 +318,7 @@ $(document).ready(function() {
                     toastr.error("An error occurred while processing your request.");
                 },
                 complete: function() {
-                    $('#reply_btn').prop('disabled', false);
+                    $('#reply_btn').prop('disabled', false).text('Submit Response');
                 }
             });
         } else {

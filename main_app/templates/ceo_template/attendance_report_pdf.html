@@ -56,7 +56,7 @@
             padding: 0.3rem 0.5rem;
             font-size: 8.5pt;
             border: 1px solid #dee2e6;
-            text-align: center; /* Center all columns */
+            text-align: center;
         }
         .attendance-table th {
             background-color: #f1f1f1;
@@ -90,6 +90,19 @@
             text-align: center;
             margin-top: 6px;
         }
+        .fixed-back-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .fixed-print-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
         @media print {
             .no-print {
                 display: none !important;
@@ -113,6 +126,9 @@
                 <div class="col-8 text-center">
                     <div class="report-title">Attendance Report</div>
                     <div class="sub-title">{{ month_name }} {{ year }}</div>
+                    <div class="generated-info mt-1">
+                        Generated on {% now "M j, Y H:i" %}
+                    </div>
                 </div>
                 <div class="col-2">
                     <img src="{% static 'admin/img/koli_logo.svg' %}" class="logo" alt="Company Logo">
@@ -191,23 +207,29 @@
         </div>
 
         <!-- Footer -->
-        <div class="footer mt-3">
+        <div class="footer mt-1">
             <div class="legend d-flex justify-content-center">
                 <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <span class="badge bg-danger">A</span> = Absent &nbsp;
-                    <span class="badge bg-success">P</span> = Present &nbsp;
-                    <span class="badge bg-warning text-dark">Late</span> = Late Arrival &nbsp;
-                    <span class="badge bg-primary">HF</span> = Half-Day &nbsp;
-                    <span class="badge bg-info">LV</span> = Full-Day Leave &nbsp;
-                    <span class="badge bg-secondary">WO</span> = Weekly Off
+                    <span>A</span> = Absent  
+                    <span>P</span> = Present  
+                    <span>Late</span> = Late Arrival  
+                    <span>HF</span> = Half-Day  
+                    <span>LV</span> = Full-Day Leave  
+                    <span>WO</span> = Weekly Off
                 </div>
             </div>
-            <div class="generated-info mt-2">
-                Generated on {% now "M j, Y H:i" %}<br>
-                <button class="btn btn-sm btn-outline-secondary mt-1 no-print" onclick="window.print()">Print Report</button>
-            </div>
+            
         </div>
 
     </div>
+
+    <!-- Fixed Buttons -->
+    <div class="fixed-print-button no-print">
+        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Print Report</button>
+    </div>
+    <div class="fixed-back-button no-print">
+        <button class="btn btn-sm btn-outline-primary" onclick="history.back()">Back</button>
+    </div>
+
 </body>
 </html>
