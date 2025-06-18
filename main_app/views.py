@@ -208,7 +208,7 @@ def clock_in_out(request):
                         'status': 'error',
                         'message': 'For First Half leave, you can only clock in after 1:00 PM.'
                     }, status=400)
-
+ 
                 # For Second Half leave, allow clock-in only before 1:00 PM
                 elif leave.leave_type == 'Second Half' and current_time >= time(13, 0):
                     return JsonResponse({
@@ -239,9 +239,9 @@ def clock_in_out(request):
             department_id = request.POST.get('department')
             department = Department.objects.get(id=department_id) if department_id else None
             
-            employee_ =  Employee.objects.filter(admin=request.user).first() 
+            employee_ =  Employee.objects.filter(admin=request.user).first()
             current_user = employee_ if employee_ else Manager.objects.filter(admin=request.user).first()
-
+ 
             new_record = AttendanceRecord.objects.create(
                 user=request.user,
                 date=today,

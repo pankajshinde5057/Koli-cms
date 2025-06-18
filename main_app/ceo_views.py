@@ -1176,18 +1176,8 @@ def view_employee_leave(request):
 
                         # Update or create attendance record
                         
-                        if leave.leave_type == 'Half-Day':
-                            # for half_day leave
-                            record, created = AttendanceRecord.objects.update_or_create(
-                                user = employee.admin , 
-                                date = current_date ,
-                                defaults = {
-                                    'status' : 'half_day',
-                                    'department' : employee.department,
-                                    'notes': f"Approved half-day leave"
-                                }
-                            )
-                        else:
+                        if leave.leave_type == 'Full-Day':
+                            
                             record, created = AttendanceRecord.objects.update_or_create(
                                 user=employee.admin,
                                 date=current_date,

@@ -2296,23 +2296,21 @@ def reject_assest_request(request, notification_id):
 
 
 
-logger = logging.getLogger(__name__)
-
 @login_required
 def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         try:
             leave = get_object_or_404(LeaveReportEmployee, id=leave_id)
-
+ 
             if leave.status != 0:  # 0 = Pending
                 messages.info(request, "This leave request has already been processed.")
                 return redirect('manager_view_notification')
-
+ 
             employee = leave.employee
             start_date = leave.start_date
             end_date = leave.end_date or start_date
             leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
-
+ 
             # Process leave approval
             with transaction.atomic():
                 current_date = start_date
@@ -2323,9 +2321,9 @@ def approve_leave_request(request, leave_id):
                         logger.error(f"Failed to deduct leave for {current_date}")
                         messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
                         return redirect('manager_view_notification')
-
+ 
                     #  for half-day leaves , just mark as approved but don't create attendance record
-
+ 
                     if leave.leave_type == 'Full-Day':
                         # for full_day leaves, create attendance record
                         record, created = AttendanceRecord.objects.update_or_create(
@@ -2341,24 +2339,24 @@ def approve_leave_request(request, leave_id):
                                 'overtime_hours': None
                             }
                         )
-
+ 
                     current_date += timedelta(days=1)
-
+ 
                 # Update leave status to Approved
                 leave.status = 1
                 leave.save()
-
+ 
                 if leave.leave_type == 'Half-Day':
                     messages.success(request, "Half-Day leave approved.")
                 else:
                     messages.success(request, "Full-Day leave approved.")
                 msg = "Leave request Approved."
-
+ 
                 # Update existing notifications for the employee to mark as read
                 Notification.objects.filter(
                     notification_type__in = ['leave-notification' , 'employee-leave-notification'],
                     leave_or_notification_id = leave.id,
-                    is_read = False 
+                    is_read = False
                 ).update(is_read=True)
                 
                 # Send notification to employee
@@ -2370,15 +2368,18 @@ def approve_leave_request(request, leave_id):
                     leave_or_notification_id=leave_id,
                     role="employee"
                 )
-
+ 
             return redirect('manager_view_notification')
-
+ 
         except Exception as e:
             logger.error(f"Error approving leave ID {leave_id}: {str(e)}")
             messages.error(request, "Error approving leave")
             return redirect('manager_view_notification')
         
     return redirect('manager_view_notification')
+            
+ 
+ 
             
 
 @login_required   
