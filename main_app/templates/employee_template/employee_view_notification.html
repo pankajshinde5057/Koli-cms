@@ -21,9 +21,18 @@
             border-top: none;
             background-color: #f8f9fa;
         }
-        .img-circle {
-            border-radius: 50%;
+        .manager-avatar {
+            width: 40px;
+            height: 40px;
             object-fit: cover;
+            border-radius: 50%;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .sender-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .modal-content {
             border: none;
@@ -49,16 +58,13 @@
         .card-footer {
             background-color: rgba(0, 0, 0, 0.03);
         }
-        /* Notification text styles */
         .notification-text {
             font-weight: normal !important;
         }
-        /* Filter form styles */
         .form-inline label {
             justify-content: left;
             margin-bottom: 0;
         }
-         /* Status Badges */
         .badge-pending {
             background-color: #ffc107;
             color: #212529;
@@ -75,14 +81,18 @@
             background-color: #dc3545;
             color: white;
         }
-        /* Unread dot */
         .unread-dot {
             font-size: 8px;
             margin-left: 5px;
             margin-top: 15px;
             color: #dc3545;
         }
-        @media (max-width: 768px) {
+        /* Responsive table styles */
+        @media (max-width: 767.98px) {
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
             .form-inline .form-group {
                 display: block;
                 margin-bottom: 0.5rem;
@@ -112,46 +122,67 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th style="width: 10%">Date</th>
-                                <th style="width: 10%">Time</th>
-                                <th style="width: 60%">Message</th>
-                                <th style="width: 20%">Actions</th>
+                                <th style="width: 10%" data-title="Date">Date</th>
+                                <th style="width: 10%" data-title="Time">Time</th>
+                                <th style="width: 15%" data-title="Sender">Sender</th>
+                                <th style="width: 45%" data-title="Message">Message</th>
+                                <th style="width: 20%" data-title="Actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for notification in notification_from_admin_obj %}
-                                <tr class="notification-text">
-                                    <td>{{ notification.created_at|date:"M d, Y" }}</td>
-                                    <td>{{ notification.created_at|time:"H:i" }}</td>
-                                    <td>
+                                <tr class="notification-text" data-notification-id="{{ notification.id }}">
+                                    <td data-title="Date">{{ notification.created_at|date:"M d, Y" }}</td>
+                                    <td data-title="Time">{{ notification.created_at|time:"H:i" }}</td>
+                                    <td data-title="Sender">
+                                        {% if notification.created_by %}
+                                            <div class="sender-container">
+                                                {% if notification.created_by.profile_pic and notification.created_by.profile_pic %}
+                                                    <img src="{{ notification.created_by.profile_pic }}" alt="Profile" class="manager-avatar" onerror="this.src='{% static 'dist/img/avatar.png' %}'">
+                                                {% else %}
+                                                    {% if notification.created_by.gender|default:'other' == 'F' %}
+                                                        <img src="{% static 'dist/img/avatar_female.png' %}" alt="Default Female Profile" class="manager-avatar">
+                                                    {% elif notification.created_by.gender|default:'other' == 'M' %}
+                                                        <img src="{% static 'dist/img/avatar_male.png' %}" alt="Default Male Profile" class="manager-avatar">
+                                                    {% else %}
+                                                        <img src="{% static 'dist/img/avatar.png' %}" alt="Default Profile" class="manager-avatar">
+                                                    {% endif %}
+                                                {% endif %}
+                                                <span>{{ notification.created_by.get_full_name|default:"Admin" }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span>System Admin</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-title="Message">
                                         <div class="message-preview">
                                             {{ notification.message|truncatechars:100 }}
                                             {% if notification.message|length > 100 %}
-                                            <a href="#" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}" onclick="markNotificationRead({{ notification.id }} , 'notification-from-admin' )">Read more</a>
+                                                <a href="#" data-toggle="modal" data-target="#notificationModal-{{ notification.id }}" onclick="markNotificationRead({{ notification.id }}, 'notification-from-admin')">Read more</a>
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-title="Actions">
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
-                                                    data-target="#notificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }} , 'notification-from-admin' )">
+                                                    data-target="#notificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }}, 'notification-from-admin')">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
-                                            {% if notification.id in general_notification %}
+                                            {% if notification.id in general_notification_ids %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>
                                     </td>
                                 </tr>
-                                
-                                <!-- Notification Modal -->
+
+                                <!-- Admin Notification Modal -->
                                 <div class="modal fade leave-modal" id="notificationModal-{{ notification.id }}" tabindex="-1" role="dialog" aria-hidden="true">
-                                    <div class="modal-dialog" role="document">
+                                    <div class="modal-dialog" role="document-currently active document.documentElement.classList.add('modal-open');document.body.style.paddingRight = '17px';document" aria-label="Close">
                                         <div class="modal-content">
                                             <div class="modal-header bg-dark text-white">
-                                                <p class="modal-title">Notification from Admin</p>
+                                                <h5 class="modal-title">Notification from Admin</h5>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
+                                                    <span aria-hidden="true">×</span>
                                                 </button>
                                             </div>
                                             <div class="modal-body">
@@ -160,6 +191,23 @@
                                                         <span class="badge badge-primary">
                                                             {{ notification.created_at|date:"M d, Y H:i" }}
                                                         </span>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Sent by:</label>
+                                                    <div class="d-flex align-items-center">
+                                                        {% if notification.created_by.profile_pic and notification.created_by.profile_pic %}
+                                                            <img src="{{ notification.created_by.profile_pic }}" alt="Profile" class="manager-avatar" onerror="this.src='{% static 'dist/img/avatar.png' %}'">
+                                                        {% else %}
+                                                            {% if notification.created_by.gender|default:'other' == 'F' %}
+                                                                <img src="{% static 'dist/img/avatar_female.png' %}" alt="Default Female Profile" class="manager-avatar">
+                                                            {% elif notification.created_by.gender|default:'other' == 'M' %}
+                                                                <img src="{% static 'dist/img/avatar_male.png' %}" alt="Default Male Profile" class="manager-avatar">
+                                                            {% else %}
+                                                                <img src="{% static 'dist/img/avatar.png' %}" alt="Default Profile" class="manager-avatar">
+                                                            {% endif %}
+                                                        {% endif %}
+                                                        <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ notification.created_by.get_full_name|default:"System Admin" }} (Admin)</span>
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
@@ -179,7 +227,7 @@
                                 </div>
                             {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4">
                                         <i class="fas fa-bell-slash fa-2x text-muted mb-3"></i>
                                         <h5 class="text-muted">No notifications from admin</h5>
                                         <p class="small">You have no notifications at this time</p>
@@ -190,25 +238,24 @@
                     </table>
                 </div>
             </div>
-            
-            <!-- Pagination -->
+
+            <!-- Admin Pagination -->
             {% if notification_from_admin_obj.paginator.num_pages > 1 %}
                 <div class="card-footer">
-                    <nav aria-label="Notifications pagination">
+                    <nav aria-label="Admin notifications pagination">
                         <ul class="pagination justify-content-center mb-0">
                             {% if notification_from_admin_obj.has_previous %}
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1" aria-label="First">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    <a class="page-link" href="?notification_page=1" aria-label="First">
+                                        <span aria-hidden="true">««</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link" href="?notification_page={{ notification_from_admin_obj.previous_page_number }}" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
+                                        <span aria-hidden="true">«</span>
                                     </a>
                                 </li>
                             {% endif %}
-                            
                             {% for num in notification_from_admin_obj.paginator.page_range %}
                                 {% if notification_from_admin_obj.number == num %}
                                     <li class="page-item active">
@@ -220,16 +267,15 @@
                                     </li>
                                 {% endif %}
                             {% endfor %}
-                            
                             {% if notification_from_admin_obj.has_next %}
                                 <li class="page-item">
                                     <a class="page-link" href="?notification_page={{ notification_from_admin_obj.next_page_number }}" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
+                                        <span aria-hidden="true">»</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link" href="?notification_page={{ notification_from_admin_obj.paginator.num_pages }}" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                        <span aria-hidden="true">»»</span>
                                     </a>
                                 </li>
                             {% endif %}
@@ -258,46 +304,67 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
-                                <th style="width: 10%">Date</th>
-                                <th style="width: 10%">Time</th>
-                                <th style="width: 60%">Message</th>
-                                <th style="width: 20%">Actions</th>
+                                <th style="width: 10%" data-title="Date">Date</th>
+                                <th style="width: 10%" data-title="Time">Time</th>
+                                <th style="width: 15%" data-title="Sender">Sender</th>
+                                <th style="width: 45%" data-title="Message">Message</th>
+                                <th style="width: 20%" data-title="Actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for notification in notification_from_manager_obj %}
-                                <tr class="notification-text">
-                                    <td>{{ notification.created_at|date:"M d, Y" }}</td>
-                                    <td>{{ notification.created_at|time:"H:i" }}</td>
-                                    <td>
+                                <tr class="notification-text" data-notification-id="{{ notification.id }}">
+                                    <td data-title="Date">{{ notification.created_at|date:"M d, Y" }}</td>
+                                    <td data-title="Time">{{ notification.created_at|time:"H:i" }}</td>
+                                    <td data-title="Sender">
+                                        {% if notification.created_by %}
+                                            <div class="sender-container">
+                                                {% if notification.created_by.profile_pic and notification.created_by.profile_pic %}
+                                                    <img src="{{ notification.created_by.profile_pic }}" alt="Profile" class="manager-avatar" onerror="this.src='{% static 'dist/img/avatar.png' %}'">
+                                                {% else %}
+                                                    {% if notification.created_by.gender|default:'other' == 'F' %}
+                                                        <img src="{% static 'dist/img/avatar_female.png' %}" alt="Default Female Profile" class="manager-avatar">
+                                                    {% elif notification.created_by.gender|default:'other' == 'M' %}
+                                                        <img src="{% static 'dist/img/avatar_male.png' %}" alt="Default Male Profile" class="manager-avatar">
+                                                    {% else %}
+                                                        <img src="{% static 'dist/img/avatar.png' %}" alt="Default Profile" class="manager-avatar">
+                                                    {% endif %}
+                                                {% endif %}
+                                                <span>{{ notification.created_by.get_full_name|default:"Manager" }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span>Unknown Manager</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-title="Message">
                                         <div class="message-preview">
                                             {{ notification.message|truncatechars:100 }}
                                             {% if notification.message|length > 100 %}
-                                            <a href="#" data-toggle="modal" data-target="#managerNotificationModal-{{ notification.id }}" onclick="markNotificationRead({{ notification.id }} , 'notification-from-manager' )">Read more</a>
+                                                <a href="#" data-toggle="modal" data-target="#managerNotificationModal-{{ notification.id }}" onclick="markNotificationRead({{ notification.id }}, 'notification-from-manager')">Read more</a>
                                             {% endif %}
                                         </div>
                                     </td>
-                                    <td>
+                                    <td data-title="Actions">
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
-                                                    data-target="#managerNotificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }} , 'notification-from-manager' )">
-                                                <i class="fas fa-eye"></i> View Details
+                                                    data-target="#managerNotificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }}, 'notification-from-manager')">
+                                                <i class="fas fa-eye"></i> View
                                             </button>
-                                            {% if notification.id in general_notification %}
+                                            {% if notification.id in general_notification_ids %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>
                                     </td>
                                 </tr>
-                                
+
                                 <!-- Manager Notification Modal -->
                                 <div class="modal fade leave-modal" id="managerNotificationModal-{{ notification.id }}" tabindex="-1" role="dialog" aria-hidden="true">
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content">
                                             <div class="modal-header bg-dark text-white">
-                                                <p class="modal-title">Notification from Manager</p>
+                                                <h5 class="modal-title">Notification from Manager</h5>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                                                    <span aria-hidden="true">&times;</span>
+                                                    <span aria-hidden="true">×</span>
                                                 </button>
                                             </div>
                                             <div class="modal-body">
@@ -309,24 +376,28 @@
                                                     </div>
                                                 </div>
                                                 <div class="form-group">
+                                                    <label>Sent by:</label>
+                                                    <div class="d-flex align-items-center">
+                                                        {% if notification.created_by.profile_pic and notification.created_by.profile_pic %}
+                                                            <img src="{{ notification.created_by.profile_pic }}" alt="Profile" class="manager-avatar" onerror="this.src='{% static 'dist/img/avatar.png' %}'">
+                                                        {% else %}
+                                                            {% if notification.created_by.gender|default:'other' == 'F' %}
+                                                                <img src="{% static 'dist/img/avatar_female.png' %}" alt="Default Female Profile" class="manager-avatar">
+                                                            {% elif notification.created_by.gender|default:'other' == 'M' %}
+                                                                <img src="{% static 'dist/img/avatar_male.png' %}" alt="Default Male Profile" class="manager-avatar">
+                                                            {% else %}
+                                                                <img src="{% static 'dist/img/avatar.png' %}" alt="Default Profile" class="manager-avatar">
+                                                            {% endif %}
+                                                        {% endif %}
+                                                        <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{{ notification.created_by.get_full_name|default:"Manager" }} (Manager)</span>
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
                                                     <label>Full Message:</label>
                                                     <div class="p-3 bg-light rounded">
                                                         {{ notification.message }}
                                                     </div>
                                                 </div>
-                                                {% if notification.sender %}
-                                                <div class="form-group mt-3">
-                                                    <label>Sent by:</label>
-                                                    <div class="d-flex align-items-center">
-                                                        {% if notification.sender.profile_pic %}
-                                                        <img src="{{ notification.sender.profile_pic.url }}" alt="Profile" class="img-circle mr-2" width="30" height="30">
-                                                        {% else %}
-                                                        <img src="{% static 'dist/img/avatar.png' %}" alt="Profile" class="img-circle mr-2" width="30" height="30">
-                                                        {% endif %}
-                                                        <span>{{ notification.sender.get_full_name }}</span>
-                                                    </div>
-                                                </div>
-                                                {% endif %}
                                             </div>
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">
@@ -338,7 +409,7 @@
                                 </div>
                             {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4">
+                                    <td colspan="5" class="text-center py-4">
                                         <i class="fas fa-bell-slash fa-2x text-muted mb-3"></i>
                                         <h5 class="text-muted">No notifications from managers</h5>
                                         <p class="small">You have no notifications at this time</p>
@@ -349,8 +420,8 @@
                     </table>
                 </div>
             </div>
-            
-            <!-- Pagination -->
+
+            <!-- Manager Pagination -->
             {% if notification_from_manager_obj.paginator.num_pages > 1 %}
                 <div class="card-footer">
                     <nav aria-label="Manager notifications pagination">
@@ -358,16 +429,15 @@
                             {% if notification_from_manager_obj.has_previous %}
                                 <li class="page-item">
                                     <a class="page-link" href="?manager_page=1" aria-label="First">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                        <span aria-hidden="true">««</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link" href="?manager_page={{ notification_from_manager_obj.previous_page_number }}" aria-label="Previous">
-                                        <span aria-hidden="true">&laquo;</span>
+                                        <span aria-hidden="true">«</span>
                                     </a>
                                 </li>
                             {% endif %}
-                            
                             {% for num in notification_from_manager_obj.paginator.page_range %}
                                 {% if notification_from_manager_obj.number == num %}
                                     <li class="page-item active">
@@ -379,16 +449,15 @@
                                     </li>
                                 {% endif %}
                             {% endfor %}
-                            
                             {% if notification_from_manager_obj.has_next %}
                                 <li class="page-item">
                                     <a class="page-link" href="?manager_page={{ notification_from_manager_obj.next_page_number }}" aria-label="Next">
-                                        <span aria-hidden="true">&raquo;</span>
+                                        <span aria-hidden="true">»</span>
                                     </a>
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link" href="?manager_page={{ notification_from_manager_obj.paginator.num_pages }}" aria-label="Last">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                        <span aria-hidden="true">»»</span>
                                     </a>
                                 </li>
                             {% endif %}
@@ -400,14 +469,11 @@
                 </div>
             {% endif %}
         </div>
-    
-    </div>
 </section>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Initialize Select2 for location dropdowns
     $(document).ready(function() {
         $('.select2').select2({
             theme: 'bootstrap4',
@@ -419,31 +485,11 @@
 
 {% block custom_js %}
 <script>
-    function getCSRFToken() {
-        const name = 'csrftoken';
-        const cookieValue = document.cookie
-            .split('; ')
-            .find(row => row.startsWith(name + '='))
-            ?.split('=')[1];
-        return cookieValue;
-    }
-
     function markNotificationRead(notificationId, notificationType) {
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-        const csrftoken = getCookie('csrftoken');
+        const csrftoken = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
 
         fetch('{% url "mark_notification_read" %}', {
             method: 'POST',
@@ -460,7 +506,6 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // Remove unread dot
                 const unreadDot = document.querySelector(`tr[data-notification-id="${notificationId}"] .unread-dot`);
                 if (unreadDot) {
                     unreadDot.style.display = 'none';
@@ -473,17 +518,11 @@
             console.error('Error:', error);
         });
     }
-    // Attach click handler to all mark-read buttons
-    $(document).on('click', '.mark-read-btn', function() {
-        const notifId = $(this).data('notif-id');
-        markNotificationRead(notifId);
-    });
 
-    // Reload page when any modal with class `leave-modal` is closed
     document.addEventListener('DOMContentLoaded', function () {
-       $('.leave-modal').on('hidden.bs.modal', function () {
+        $('.leave-modal').on('hidden.bs.modal', function () {
             location.reload();
-         });
+        });
     });
 </script>
 {% endblock custom_js %}

@@ -47,6 +47,7 @@
                                     <th>SN</th>
                                     <th>Employee</th>
                                     <th>Division</th>
+                                    <th>Leave Type</th>
                                     <th>Message</th>
                                     <th>Leave Date</th>
                                     <th>Submitted On</th>
@@ -59,6 +60,7 @@
                                     <td>{{ forloop.counter0|add:allLeave.start_index }}</td>
                                     <td>{{ leave.employee }}</td>
                                     <td>{{ leave.employee.division }}</td>
+                                    <td>{{ leave.leave_type|default:"Not specified" }}</td>
                                     <td>{{ leave.message }}</td>
                                     <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</td>
                                     <td>{{ leave.created_at }}</td>
@@ -67,6 +69,8 @@
                                             <button data-toggle="modal" 
                                                     data-target="#reply_modal" 
                                                     value="{{ leave.id }}" 
+                                                    data-leave-type="{{ leave.leave_type|default:'Not specified' }}"
+                                                    data-employee="{{ leave.employee }}"
                                                     class="btn btn-primary reply_open_modal">Reply</button>
                                                     {% if leave.id in unread_ids %}
                                                         <i class="fas fa-circle unread-dot" title="Unread"></i>
@@ -80,7 +84,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center">No leave requests found.</td>
+                                    <td colspan="8" class="text-center">No leave requests found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -150,7 +154,7 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="id">
-                <p>Reply to <strong><span id="reply_name"></span></strong>'s leave request:</p>
+                <p>Reply to <span id="reply_name"></span>'s Leave Request</p>
                 <select id="reply_leave_status" class="form-control">
                     <option value="">-- Select --</option>
                     <option value="1">Approve</option>
@@ -220,7 +224,9 @@ $(document).ready(function() {
     $(document).on('click', '.reply_open_modal', function() {
         var id = $(this).val();
         var name = $(this).closest('tr').find('td:eq(1)').text();
+        var leaveType = $(this).data('leave-type');
         $('#reply_name').text(name);
+        $('#leave_type').text(leaveType);
         $('#id').val(id);
         $('#reply_leave_status').val(''); // Reset select dropdown
     });

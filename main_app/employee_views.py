@@ -27,6 +27,8 @@ from django.utils.timezone import make_aware, now
 
 
 
+
+
 logger = logging.getLogger(__name__)
 
 def make_aware_if_naive(dt, timezone=ZoneInfo('Asia/Kolkata')):
@@ -63,7 +65,6 @@ def employee_home(request):
     total_available_leaves = 0.0
 
     if first_clock_in_date:
-        # If there's a clock-in, initialize LeaveBalance records if not already done
         LeaveBalance.initialize_balances(employee, today)
         balance = LeaveBalance.get_balance(employee, today.year, today.month)
         if balance:
@@ -146,11 +147,9 @@ def employee_home(request):
                 'duration': make_aware_if_naive(record.clock_out) - make_aware_if_naive(record.clock_in)
             })
 
-    # Sort entries by date and time
     min_datetime = datetime(1, 1, 1, tzinfo=ist)
     detailed_time_entries.sort(key=lambda x: (x['date'], x['time'] if x['time'] is not None else min_datetime), reverse=True)
 
-    # Pagination
     paginator = Paginator(detailed_time_entries, 10)
     page = request.GET.get('page', 1)
     try:
@@ -160,7 +159,6 @@ def employee_home(request):
     except EmptyPage:
         paginated_entries = paginator.page(paginator.num_pages)
 
-    # Daily view with break time calculations
     daily_view = records.annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -173,7 +171,6 @@ def employee_home(request):
         )
     ).order_by('-date')
 
-    # Weekly and monthly views
     completed_records = records.filter(clock_out__isnull=False).annotate(
         total_break_time=Coalesce(
             Sum('breaks__duration', output_field=DurationField()),
@@ -181,7 +178,6 @@ def employee_home(request):
         )
     )
 
-    # Weekly data aggregation
     weekly_data = {}
     for record in completed_records:
         week = record.date.isocalendar().week
@@ -204,8 +200,8 @@ def employee_home(request):
         'overtime_hours': data['overtime_hours']
     } for week, data in sorted(weekly_data.items(), reverse=True)]
 
-    # Monthly data aggregation
     monthly_data = {}
+    leave_history = []
     for record in completed_records:
         month_start_date = record.date.replace(day=1)
         if month_start_date not in monthly_data:
@@ -221,27 +217,38 @@ def employee_home(request):
         monthly_data[month_start_date]['total_hours'] += net_worked
         monthly_data[month_start_date]['regular_hours'] += record.regular_hours
         monthly_data[month_start_date]['overtime_hours'] += record.overtime_hours
+        leave = LeaveReportEmployee.objects.filter(
+            employee=employee,
+            start_date__lte=record.date,
+            end_date__gte=record.date,
+            status=1
+        ).first()
         if record.status == 'present':
             monthly_data[month_start_date]['present_days'] += 1
         elif record.status == 'late':
             monthly_data[month_start_date]['present_days'] += 1
             monthly_data[month_start_date]['late_days'] += 1
-        elif record.status == 'half_day':
-            monthly_data[month_start_date]['present_days'] += 1
-            monthly_data[month_start_date]['half_days'] += 1
-        elif record.status == 'leave':
-            leave = LeaveReportEmployee.objects.filter(
-                employee=employee,
-                start_date__lte=record.date,
-                end_date__gte=record.date,
-                status=1
-            ).first()
-            if leave:
-                leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
-                monthly_data[month_start_date]['present_days'] += leave_amount
-                if leave.leave_type == 'Half-Day':
-                    monthly_data[month_start_date]['half_days'] += 1
-                logger.debug(f"Monthly view - Date {record.date}: Leave processed, Type={leave.leave_type}, Present Days={monthly_data[month_start_date]['present_days']}")
+        elif record.status == 'half_day' and leave and leave.leave_type == 'Half-Day':
+            leave_entry = next((entry for entry in leave_history if entry['date'] == record.date and entry['leave_id'] == leave.id), None)
+            if leave_entry and leave_entry.get('was_sufficient', False):
+                monthly_data[month_start_date]['present_days'] += 0.5
+                monthly_data[month_start_date]['half_days'] += 1
+            else:
+                monthly_data[month_start_date]['half_days'] += 1
+        elif record.status == 'leave' and leave:
+            leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1
+            leave_entry = next((entry for entry in leave_history if entry['date'] == record.date and entry['leave_id'] == leave.id), None)
+            if leave_entry:
+                if leave_entry.get('was_sufficient', False):
+                    monthly_data[month_start_date]['present_days'] += leave_amount
+                    if leave.leave_type == 'Half-Day':
+                        monthly_data[month_start_date]['half_days'] += 1
+                elif leave.leave_type == 'Full-Day':
+                    available_before = leave_entry.get('available_before', 0.0)
+                    monthly_data[month_start_date]['present_days'] += available_before
+                    if available_before > 0:
+                        monthly_data[month_start_date]['half_days'] += 1
+            logger.debug(f"Monthly view - Date {record.date}: Leave processed, Type={leave.leave_type}, Present Days={monthly_data[month_start_date]['present_days']}")
 
     monthly_view = [{
         'month': month,
@@ -253,14 +260,12 @@ def employee_home(request):
         'half_days': data['half_days']
     } for month, data in sorted(monthly_data.items(), reverse=True)]
 
-    # Get holidays for current month
     holidays = Holiday.objects.filter(
         date__month=current_month,
         date__year=current_year
     ).values_list('date', flat=True)
     logger.debug(f"Holidays in {current_month}/{current_year}: {list(holidays)}")
 
-    # Calculate working days and attendance stats
     days_in_month = monthrange(current_year, current_month)[1]
     total_working_days = 0
     weekend_days_list = []
@@ -272,16 +277,14 @@ def employee_home(request):
 
     logger.info(f"Calculating attendance stats for {current_month}/{current_year}")
 
-    # Pre-fetch leaves and records for the month
     leaves = LeaveReportEmployee.objects.filter(
         employee=employee,
-        status=1,  # Approved
+        status=1,
         start_date__lte=end_date,
         end_date__gte=start_date
     ).order_by('start_date', 'id')
     logger.info(f"Found {leaves.count()} approved leaves: {[(l.id, l.start_date, l.end_date, l.leave_type) for l in leaves]}")
 
-    # Fetch attendance records for the month
     month_records = AttendanceRecord.objects.filter(
         user=request.user,
         date__gte=start_date,
@@ -289,10 +292,8 @@ def employee_home(request):
     ).select_related('department')
     logger.info(f"Found {month_records.count()} attendance records: {[(r.id, r.date, r.status) for r in month_records]}")
 
-    # Get the joining date
     joining_date = employee.date_of_joining
 
-    # First Pass: Calculate total working days for the entire month
     if not first_clock_in_date or today < first_clock_in_date:
         total_working_days = 0
         logger.debug("No clock-in yet or today is before first clock-in, setting Total Working Days to 0")
@@ -300,7 +301,7 @@ def employee_home(request):
         total_working_days = 0
         logger.debug("Joining date is after the current month, setting Total Working Days to 0")
     else:
-        start_day = 1  # Always start from the 1st of the month
+        start_day = 1
         for day in range(start_day, days_in_month + 1):
             date = datetime(current_year, current_month, day).date()
             if date > end_date:
@@ -308,9 +309,8 @@ def employee_home(request):
             weekday = date.weekday()
             is_sunday = weekday == 6
             is_saturday = weekday == 5
-            week_number = (day - 1) // 7  # 0-based week number (0 for days 1-7, 1 for days 8-14, etc.)
-            is_2nd_or_4th_saturday = is_saturday and week_number in [1, 3]  # 2nd Saturday (week 1), 4th Saturday (week 3)
-
+            week_number = (day - 1) // 7
+            is_2nd_or_4th_saturday = is_saturday and week_number in [1, 3]
             if not is_sunday and not is_2nd_or_4th_saturday and date not in holidays:
                 total_working_days += 1
                 logger.debug(f"Working day: {date}, Total Working Days: {total_working_days}")
@@ -318,18 +318,12 @@ def employee_home(request):
                 weekend_days_list.append(str(date))
                 logger.debug(f"Date {date} - Skipped (weekend/holiday)")
 
-    # Second Pass: Calculate present and absent days
     if joining_date <= end_date:
-        # Initialize leave balance tracking
         joining_year = joining_date.year
         joining_month = joining_date.month
-
-        # Calculate initial available leaves at the start of the current month
         available_leaves = 0.0
         total_allocated = 0.0
         total_used_up_to_prev_month = 0.0
-
-        # Sum allocated leaves and carried forward from joining month to previous month
         if current_year >= joining_year:
             start_month = joining_month if current_year == joining_year else 1
             for month in range(start_month, current_month):
@@ -337,23 +331,20 @@ def employee_home(request):
                 if leave_balance:
                     total_allocated += leave_balance.allocated_leaves
                     total_used_up_to_prev_month += leave_balance.used_leaves
-            # Include current month's allocation but not its used leaves yet
             current_balance = LeaveBalance.get_balance(employee, current_year, current_month)
             if current_balance:
                 total_allocated += current_balance.allocated_leaves
         available_leaves = total_allocated - total_used_up_to_prev_month
         logger.debug(f"Initial available leaves at start of {current_month}/{current_year}: Total Allocated={total_allocated}, Used up to prev month={total_used_up_to_prev_month}, Available={available_leaves}")
 
-        # Process leaves in chronological order to reconstruct available leaves at each point
         leave_history = []
         for leave in leaves:
             start = max(leave.start_date, start_date)
             end = min(leave.end_date, end_date)
-            leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
+            leave_amount_per_day = 1 if leave.leave_type == 'Full-Day' else 0.5
             current_date = start
             while current_date <= end:
                 if current_date.month == current_month:
-                    # Check if the date is a working day
                     weekday = current_date.weekday()
                     is_sunday = weekday == 6
                     is_saturday = weekday == 5
@@ -368,33 +359,27 @@ def employee_home(request):
                         })
                 current_date += timedelta(days=1)
 
-        # Sort leave history by date to process in order
         leave_history.sort(key=lambda x: x['date'])
         logger.debug(f"Leave history to process: {[entry for entry in leave_history]}")
 
-        # Track available leaves as we process each leave
         for entry in leave_history:
             date = entry['date']
             leave_amount = entry['leave_amount']
             leave_id = entry['leave_id']
             leave_type = entry['leave_type']
-
             logger.debug(f"Processing historical leave on {date} - Leave ID={leave_id}, Type={leave_type}, Amount={leave_amount}, Available Before={available_leaves}")
-
+            entry['available_before'] = available_leaves
             if available_leaves >= leave_amount:
-                # Sufficient leaves at the time of this leave
                 available_leaves -= leave_amount
                 entry['was_sufficient'] = True
                 logger.debug(f"Leave on {date} - Sufficient leaves, Available After={available_leaves}")
             else:
-                # Insufficient leaves
                 available_leaves = max(0, available_leaves - leave_amount)
                 entry['was_sufficient'] = False
                 logger.debug(f"Leave on {date} - Insufficient leaves, Available After={available_leaves}")
 
-        # Now calculate present and absent days, starting from joining_date
         start_day = joining_date.day if joining_date.year == current_year and joining_date.month == current_month else 1
-        for day in range(1, days_in_month + 1):  # Loop through the entire month
+        for day in range(1, days_in_month + 1):
             date = datetime(current_year, current_month, day).date()
             if date > end_date:
                 break
@@ -404,22 +389,30 @@ def employee_home(request):
             week_number = (day - 1) // 7
             is_2nd_or_4th_saturday = is_saturday and week_number in [1, 3]
             if is_sunday or is_2nd_or_4th_saturday or date in holidays:
-                continue  # Skip weekends and holidays
-
-            # Skip days before the joining date
+                continue
             if date < joining_date:
                 continue
-
-            # Skip if today is before the first clock-in date or no clock-in exists
             if not first_clock_in_date or today < first_clock_in_date:
                 continue
 
-            # Check for attendance record
             record = month_records.filter(date=date).first()
-            # Check for approved leave
             leave_entry = next((entry for entry in leave_history if entry['date'] == date), None)
 
-            if record and record.status in ['present', 'late', 'half_day']:
+            if leave_entry and leave_entry['leave_type'] == 'Half-Day':
+                # Prioritize half-day leave over attendance record status
+                if leave_entry.get('was_sufficient', False):
+                    present_days += 0.5
+                    half_days += 1
+                    if record and record.status == 'late':
+                        late_days += 1
+                    logger.debug(f"Date {date} - Approved Leave ID={leave_entry['leave_id']}, Type=Half-Day, Sufficient Leaves, Present Days={present_days}, Half Days={half_days}, Late Days={late_days}")
+                else:
+                    absent_days += 0.5
+                    half_days += 1
+                    if record and record.status == 'late':
+                        late_days += 1
+                    logger.debug(f"Date {date} - Approved Leave ID={leave_entry['leave_id']}, Type=Half-Day, Insufficient Leaves, Absent Days={absent_days}, Half Days={half_days}, Late Days={late_days}")
+            elif record and record.status in ['present', 'late', 'half_day']:
                 if record.status == 'present':
                     present_days += 1
                     logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}")
@@ -428,49 +421,59 @@ def employee_home(request):
                     late_days += 1
                     logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}, Late Days={late_days}")
                 elif record.status == 'half_day':
-                    present_days += 1
-                    half_days += 1
-                    absent_days += 0.5
-                    logger.debug(f"Date {date} - Status={record.status}, Present Days={present_days}, Half Days={half_days}")
+                    if leave_entry and leave_entry['leave_type'] == 'Half-Day':
+                        if leave_entry.get('was_sufficient', False):
+                            present_days += 0.5
+                            half_days += 1
+                            absent_days += 0.5
+                            logger.debug(f"Date {date} - Status={record.status}, Sufficient Leaves, Present Days={present_days}, Half Days={half_days}")
+                        else:
+                            absent_days += 0.5
+                            half_days += 1
+                            logger.debug(f"Date {date} - Status={record.status}, Insufficient Leaves, Absent Days={absent_days}, Half Days={half_days}")
+                    else:
+                        present_days += 1
+                        half_days += 1
+                        logger.debug(f"Date {date} - Status={record.status}, No Leave Record, Present Days={present_days}, Half Days={half_days}")
             elif leave_entry:
                 leave_amount = leave_entry['leave_amount']
                 leave_id = leave_entry['leave_id']
                 was_sufficient = leave_entry['was_sufficient']
-                
                 if was_sufficient:
-                    # Sufficient leaves at the time of application
                     present_days += leave_amount
                     if leave_entry['leave_type'] == 'Half-Day':
-                        half_days += 0.5
+                        half_days += 1
                     logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Sufficient Leaves, Present Days={present_days}")
                 else:
-                    # Insufficient leaves at the time of application
-                    absent_days += 1
-                    logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Insufficient Leaves, Absent Days={absent_days}")
+                    if leave_entry['leave_type'] == 'Half-Day':
+                        absent_days += 0.5
+                        half_days += 1
+                    else:
+                        available_before = leave_entry.get('available_before', 0.0)
+                        present_days += available_before
+                        absent_days += (1 - available_before)
+                        if available_before > 0:
+                            half_days += 1
+                    logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Insufficient Leaves, Present Days={present_days}, Absent Days={absent_days}")
             elif date <= today:
-                # If there's a first clock-in, mark as absent from joining_date to the day before first_clock_in_date
                 if first_clock_in_date and date < first_clock_in_date:
                     absent_days += 1
                     absent_dates.append(date)
                     logger.debug(f"Date {date} - Marked as absent (before first clock-in), Absent Days={absent_days}")
                 elif not record and not leave_entry:
-                    # Mark as absent if no record or leave after first clock-in
                     absent_days += 1
                     absent_dates.append(date)
                     logger.debug(f"Date {date} - Marked as absent (no record or leave), Absent Days={absent_days}")
 
-    # Update total available leaves for context
     if balance:
         total_available_leaves = balance.total_available_leaves()
         logger.debug(f"After adjustments - Leave balance for {today.year}-{today.month}: Allocated={balance.allocated_leaves}, Carried Forward={balance.carried_forward}, Used={balance.used_leaves}, Available={balance.total_available_leaves()}")
 
-    # Get leave balance context after adjustments
     leave_context = leave_balance_context(request)
     yearly_leave_data = leave_context['yearly_leave_data']
     employee_name = leave_context.get('employee_name', employee.admin.get_full_name())
     department = leave_context.get('department', employee.department.name if employee.department else 'N/A')
 
-    # Check current clock-in status
     current_record = AttendanceRecord.objects.filter(
         user=request.user,
         clock_out__isnull=True,
@@ -485,13 +488,11 @@ def employee_home(request):
             break_end__isnull=True
         ).first()
 
-    # Find the employee's schedule for today
     schedule = DailySchedule.objects.filter(
         employee=employee,
         date=today
     ).first()
 
-    # Check if today's update has been submitted for the employee's schedule
     has_submitted_update = False
     if schedule:
         has_submitted_update = DailyUpdate.objects.filter(
@@ -500,7 +501,6 @@ def employee_home(request):
         ).exists()
     logger.debug(f"Has submitted today's update: {has_submitted_update}")
 
-    # Break statistics
     total_breaks_in_month = Break.objects.filter(
         attendance_record__date__month=current_month,
         attendance_record__date__year=current_year,
@@ -514,11 +514,9 @@ def employee_home(request):
 
     logger.info(f"Final Attendance Stats - Total Working Days: {total_working_days}, Present Days: {present_days}, Late Days: {late_days}, Half Days: {half_days}, Absent Days: {absent_days}")
 
-    # Calculate attendance percentage
     attendance_percentage = round((present_days / total_working_days * 100) if total_working_days > 0 else 0, 1)
     logger.debug(f"Attendance Percentage: {attendance_percentage}%")
 
-    # Today's time tracking
     today_records = AttendanceRecord.objects.filter(
         user=request.user,
         date=today
@@ -543,21 +541,16 @@ def employee_home(request):
         today_clock_in_time = today_record.clock_in
         last_clock_out_record = today_records.filter(clock_out__isnull=False).last()
         today_clock_out_time = last_clock_out_record.clock_out if last_clock_out_record else None
-
         clock_in_ist = today_record.clock_in if today_record.clock_in else None
         office_start = datetime.combine(today, time(9, 30)) if clock_in_ist else None
-
         if current_record:
             today_status = 'Clocked In'
         elif today_clock_out_time:
             today_status = 'Clocked Out'
         else:
             today_status = 'Not Clocked In Today'
-
         today_late = today_record.status == 'late'
         today_half_day = today_record.status == 'half_day'
-
-        # Calculate late duration if applicable
         if clock_in_ist and office_start:
             try:
                 late_duration = clock_in_ist - office_start
@@ -570,11 +563,8 @@ def employee_home(request):
                 today_late_duration_str = "0 hours 0 minutes"
         else:
             today_late_duration_str = "0 hours 0 minutes"
-
-        # Calculate worked duration
         first_clock_in = today_clock_in_time
         last_clock_out = today_clock_out_time
-
         if first_clock_in and last_clock_out:
             try:
                 today_total_worked = last_clock_out - first_clock_in
@@ -613,15 +603,12 @@ def employee_home(request):
             today_duration_str = "0 hours 0 minutes"
             today_late_duration_str = "0 hours 0 minutes"
 
-    # Check break status
     lunch_taken = Break.objects.filter(
         attendance_record__user=request.user,
         attendance_record__date=today,
         break_type='lunch'
     ).exists()
-
     on_break = current_break is not None
-
     lunch_break = Break.objects.filter(
         attendance_record__user=request.user,
         attendance_record__date=today,
@@ -629,7 +616,6 @@ def employee_home(request):
     ).first()
     if lunch_break:
         lunch_taken_time = make_aware_if_naive(lunch_break.break_start)
-
     recent_break = Break.objects.filter(
         attendance_record__user=request.user,
         attendance_record__date=today
@@ -637,12 +623,10 @@ def employee_home(request):
     if recent_break:
         break_taken_time = make_aware_if_naive(recent_break.break_start)
 
-    # Get recent activity
     recent_activities = ActivityFeed.objects.filter(
         user=request.user
     ).order_by('-timestamp').first()
 
-    # Prepare context
     context = {
         'page_title': 'Employee Dashboard',
         'employee': employee,
@@ -694,7 +678,6 @@ def employee_home(request):
         'status_choices': AttendanceRecord.STATUS_CHOICES,
     }
 
-    # Handle AJAX requests
     if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.method == 'GET':
         try:
             html = render_to_string('employee_template/home_content.html', context, request=request)
@@ -713,7 +696,6 @@ def employee_home(request):
 
     logger.debug(f"Rendering dashboard with context: Present Days={present_days}, Absent Days={absent_days}")
     return render(request, 'employee_template/home_content.html', context)
-
 
 
 
@@ -759,7 +741,7 @@ def leave_balance(request):
             end_month = 12  # Always calculate until the end of the year
             # Number of months from start_month to end_month (inclusive)
             months_in_year = end_month - start_month + 1
-            yearly_total_allocated_leaves = months_in_year * 1.0  # 1 leave per month
+            yearly_total_allocated_leaves = months_in_year * 1  # 1 leave per month
 
             # Adjust yearly total allocated leaves by subtracting available leaves for current month if fully used
             current_month_balance = leave_balances.filter(month=current_month).first()
