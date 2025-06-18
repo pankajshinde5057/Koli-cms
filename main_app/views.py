@@ -253,18 +253,18 @@ def clock_in_out(request):
             )
             new_record.full_clean()
             new_record.save()
- 
+
             ActivityFeed.objects.create(
                 user=request.user,
                 activity_type='clock_in',
                 related_record=new_record
             )
- 
+
             return JsonResponse({
                 'status': 'success',
                 'message': 'Successfully clocked in!'
             })
- 
+
         elif 'clock_out' in request.POST:
             current_record = AttendanceRecord.objects.filter(
                 user=request.user,

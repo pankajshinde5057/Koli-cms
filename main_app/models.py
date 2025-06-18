@@ -380,7 +380,7 @@ class AttendanceRecord(models.Model):
             raise ValidationError("Clock out time must be on the same date as the attendance record.")
 
     def save(self, *args, **kwargs):
-        # Auto-close previous records only if the new record is not related to leave:
+        # Auto-close previous records with 8 hours for normal days and 4.5 hours for half_day
         if not self.pk and self.status not in ['leave' , 'half_day']:
             open_records = AttendanceRecord.objects.filter(
                 user = self.user,
@@ -390,7 +390,12 @@ class AttendanceRecord(models.Model):
 
             for record in open_records:
                 if record.clock_in:
-                    record.clock_out = record.clock_in + timedelta(hours=8)
+                    if record.status == 'half_day':
+                        auto_clockout_duration = timedelta(hours=4 , minutes=30)
+                    else:
+                        auto_clockout_duration = timedelta(hours=8)
+
+                    record.clock_out = record.clock_in + auto_clockout_duration
                     record.notes = (
                         f"{record.notes}\n" if record.notes else ""
                     ) + f"Auto-logged out on {timezone.now().date()} due to new record creation"
