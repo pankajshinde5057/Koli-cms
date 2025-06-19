@@ -28,7 +28,6 @@ from django.utils.timezone import make_aware, now
 
 
 
-
 logger = logging.getLogger(__name__)
 
 def make_aware_if_naive(dt, timezone=ZoneInfo('Asia/Kolkata')):
@@ -236,7 +235,7 @@ def employee_home(request):
             else:
                 monthly_data[month_start_date]['half_days'] += 1
         elif record.status == 'leave' and leave:
-            leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1
+            leave_amount = 0.5 if leave.leave_type == 'Half-Day' else 1.0
             leave_entry = next((entry for entry in leave_history if entry['date'] == record.date and entry['leave_id'] == leave.id), None)
             if leave_entry:
                 if leave_entry.get('was_sufficient', False):
@@ -341,7 +340,7 @@ def employee_home(request):
         for leave in leaves:
             start = max(leave.start_date, start_date)
             end = min(leave.end_date, end_date)
-            leave_amount_per_day = 1 if leave.leave_type == 'Full-Day' else 0.5
+            leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
             current_date = start
             while current_date <= end:
                 if current_date.month == current_month:
@@ -399,7 +398,6 @@ def employee_home(request):
             leave_entry = next((entry for entry in leave_history if entry['date'] == date), None)
 
             if leave_entry and leave_entry['leave_type'] == 'Half-Day':
-                # Prioritize half-day leave over attendance record status
                 if leave_entry.get('was_sufficient', False):
                     present_days += 0.5
                     half_days += 1
@@ -425,7 +423,6 @@ def employee_home(request):
                         if leave_entry.get('was_sufficient', False):
                             present_days += 0.5
                             half_days += 1
-                            absent_days += 0.5
                             logger.debug(f"Date {date} - Status={record.status}, Sufficient Leaves, Present Days={present_days}, Half Days={half_days}")
                         else:
                             absent_days += 0.5
@@ -433,8 +430,9 @@ def employee_home(request):
                             logger.debug(f"Date {date} - Status={record.status}, Insufficient Leaves, Absent Days={absent_days}, Half Days={half_days}")
                     else:
                         present_days += 1
+                        absent_days += 0.5
                         half_days += 1
-                        logger.debug(f"Date {date} - Status={record.status}, No Leave Record, Present Days={present_days}, Half Days={half_days}")
+                        logger.debug(f"Date {date} - Status={record.status}, No Leave Record, Present Days={present_days}, Absent Days={absent_days}, Half Days={half_days}")
             elif leave_entry:
                 leave_amount = leave_entry['leave_amount']
                 leave_id = leave_entry['leave_id']
@@ -451,7 +449,7 @@ def employee_home(request):
                     else:
                         available_before = leave_entry.get('available_before', 0.0)
                         present_days += available_before
-                        absent_days += (1 - available_before)
+                        absent_days += (1.0 - available_before)
                         if available_before > 0:
                             half_days += 1
                     logger.debug(f"Date {date} - Approved Leave ID={leave_id}, Type={leave_entry['leave_type']}, Insufficient Leaves, Present Days={present_days}, Absent Days={absent_days}")
@@ -467,7 +465,7 @@ def employee_home(request):
 
     if balance:
         total_available_leaves = balance.total_available_leaves()
-        logger.debug(f"After adjustments - Leave balance for {today.year}-{today.month}: Allocated={balance.allocated_leaves}, Carried Forward={balance.carried_forward}, Used={balance.used_leaves}, Available={balance.total_available_leaves()}")
+        logger.debug(f"After adjustments - Leave balance for {today.year}-{today.month}: Allocated={balance.allocated_leaves}, Carried Forward={balance.carried_forward}, Used={balance.used_leaves}, Available={total_available_leaves}")
 
     leave_context = leave_balance_context(request)
     yearly_leave_data = leave_context['yearly_leave_data']
@@ -499,7 +497,7 @@ def employee_home(request):
             schedule=schedule,
             updated_at__date=today
         ).exists()
-    logger.debug(f"Has submitted today's update: {has_submitted_update}")
+    logger.debug(f"Has submitted update: {has_submitted_update}")
 
     total_breaks_in_month = Break.objects.filter(
         attendance_record__date__month=current_month,
@@ -549,10 +547,11 @@ def employee_home(request):
             today_status = 'Clocked Out'
         else:
             today_status = 'Not Clocked In Today'
-        today_late = today_record.status == 'late'
-        today_half_day = today_record.status == 'half_day'
+        today_late = today_record.status == 'late' if today_record else False
+        today_half_day = today_record.status == 'half_day' if today_record else False
         if clock_in_ist and office_start:
             try:
+                office_start = make_aware_if_naive(office_start)
                 late_duration = clock_in_ist - office_start
                 total_seconds = late_duration.total_seconds()
                 hours = int(total_seconds // 3600)
@@ -699,6 +698,9 @@ def employee_home(request):
 
 
 
+
+logger = logging.getLogger(__name__)
+
 @login_required
 def leave_balance(request):
     employee = get_object_or_404(Employee, admin=request.user)
@@ -715,6 +717,7 @@ def leave_balance(request):
     yearly_leave_data = []
     total_available_leaves = 0.0
     yearly_total_allocated_leaves = 0.0
+    total_used_leaves = 0.0
 
     if not first_clock_in:
         # Before first clock-in, show all values as 0.0 and an empty table
@@ -735,45 +738,52 @@ def leave_balance(request):
         joining_year = joining_date.year
         joining_month = joining_date.month
 
-        # Calculate yearly total allocated leaves (from joining month to December)
+        # Calculate yearly total allocated and used leaves
         if current_year >= joining_year:
             start_month = joining_month if current_year == joining_year else 1
-            end_month = 12  # Always calculate until the end of the year
-            # Number of months from start_month to end_month (inclusive)
+            end_month = 12  # Calculate until end of year
             months_in_year = end_month - start_month + 1
-            yearly_total_allocated_leaves = months_in_year * 1  # 1 leave per month
+            yearly_total_allocated_leaves = months_in_year * 1.0  # 1 leave per month
 
-            # Adjust yearly total allocated leaves by subtracting available leaves for current month if fully used
-            current_month_balance = leave_balances.filter(month=current_month).first()
-            if current_month_balance and current_month_balance.total_available_leaves() == 0.0:
-                yearly_total_allocated_leaves = max(0.0, yearly_total_allocated_leaves - (current_month_balance.allocated_leaves + current_month_balance.carried_forward))
-
-        # Process monthly leave balances for display in the table
-        for month in range(1, 13):
-            if current_year < joining_year or (current_year == joining_year and month < joining_month):
-                continue
-            balance = leave_balances.filter(month=month).first()
-            if not balance and month <= current_month:
-                balance = LeaveBalance.get_balance(employee, current_year, month)
-                if not balance:
-                    balance = LeaveBalance.create_balance(employee, current_year, month)
-            if balance:
-                # Validate used_leaves for the current month
-                if month == current_month:
+            # Process leave balances to calculate total used leaves
+            for month in range(start_month, end_month + 1):
+                balance = leave_balances.filter(month=month).first()
+                if not balance and month <= current_month:
+                    balance = LeaveBalance.get_balance(employee, current_year, month)
+                    if not balance:
+                        balance = LeaveBalance.create_balance(employee, current_year, month)
+                if balance:
+                    # Validate used_leaves for the month
                     max_used_leaves = balance.allocated_leaves + balance.carried_forward
                     if balance.used_leaves > max_used_leaves:
                         balance.used_leaves = max_used_leaves
                         balance.save()
-                
-                yearly_leave_data.append({
-                    'month': datetime(current_year, month, 1).strftime('%B'),
-                    'allocated_leaves': balance.allocated_leaves,
-                    'carried_forward': balance.carried_forward,
-                    'used_leaves': balance.used_leaves,
-                    'available_leaves': balance.total_available_leaves()
-                })
-                if month == current_month:
-                    total_available_leaves = balance.total_available_leaves()
+                    total_used_leaves += balance.used_leaves
+
+            # Adjust yearly_total_allocated_leaves by subtracting total used leaves
+            yearly_total_allocated_leaves -= total_used_leaves
+
+            # Process monthly leave balances for display in the table
+            for month in range(start_month, 13):
+                if current_year == joining_year and month < joining_month:
+                    continue
+                balance = leave_balances.filter(month=month).first()
+                if not balance and month <= current_month:
+                    balance = LeaveBalance.get_balance(employee, current_year, month)
+                    if not balance:
+                        balance = LeaveBalance.create_balance(employee, current_year, month)
+                if balance:
+                    yearly_leave_data.append({
+                        'month': datetime(current_year, month, 1).strftime('%B'),
+                        'allocated_leaves': balance.allocated_leaves,
+                        'carried_forward': balance.carried_forward,
+                        'used_leaves': balance.used_leaves,
+                        'available_leaves': balance.total_available_leaves()
+                    })
+                    if month == current_month:
+                        total_available_leaves = balance.total_available_leaves()
+
+    logger.debug(f"Leave Balance - Year: {current_year}, Total Allocated: {yearly_total_allocated_leaves}, Total Used: {total_used_leaves}, Total Available (Current Month): {total_available_leaves}")
 
     context = {
         'page_title': 'Leave Balance',

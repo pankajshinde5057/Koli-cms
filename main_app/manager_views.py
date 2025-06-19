@@ -1577,7 +1577,7 @@ def edit_employee_by_manager(request, employee_id):
     context = {
         'form': form,
         'employee_id': employee_id,
-        "user_object" : employee,
+        'user_object': employee,
         'page_title': 'Edit Employee'
     }
 
@@ -1592,13 +1592,25 @@ def edit_employee_by_manager(request, employee_id):
             password = form.cleaned_data.get('password') or None
             division = form.cleaned_data.get('division')
             department = form.cleaned_data.get('department')
+            designation = form.cleaned_data.get('designation')
+            phone_number = form.cleaned_data.get('phone_number')
+            team_lead = form.cleaned_data.get('team_lead')
             passport = request.FILES.get('profile_pic') or None
+
+            emergency_name = form.cleaned_data.get('emergency_name')
+            emergency_relationship = form.cleaned_data.get('emergency_relationship')
+            emergency_phone = form.cleaned_data.get('emergency_phone')
+            emergency_address = form.cleaned_data.get('emergency_address')
+
             try:
+                if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
+                    raise ValidationError("Emergency phone number must be exactly 10 digits.")
+
                 # Get the related CustomUser instance
                 user = CustomUser.objects.get(id=employee.admin.id)
 
-                # If a new passport image is uploaded, update the profile_pic
-                if passport is not None:
+                # Update profile picture if provided
+                if passport:
                     fs = FileSystemStorage()
                     filename = fs.save(passport.name, passport)
                     passport_url = fs.url(filename)
@@ -1607,8 +1619,8 @@ def edit_employee_by_manager(request, employee_id):
                 # Update the CustomUser fields
                 user.username = username
                 user.email = email
-                if password is not None:
-                    user.set_password(password)  # Set the new password
+                if password:
+                    user.set_password(password)
                 user.first_name = first_name
                 user.last_name = last_name
                 user.gender = gender
@@ -1620,6 +1632,18 @@ def edit_employee_by_manager(request, employee_id):
                 # Update the Employee model fields
                 employee.division = division
                 employee.department = department
+                employee.designation = designation
+                employee.phone_number = phone_number
+                employee.team_lead = team_lead
+
+                # Update emergency contact information
+                employee.emergency_contact = {
+                    'name': emergency_name or "Not provided",
+                    'relationship': emergency_relationship or "Not provided",
+                    'phone': emergency_phone or "Not provided",
+                    'address': emergency_address or "Not provided"
+                }
+
                 employee.save()
 
                 messages.success(request, "Employee information updated successfully.")
