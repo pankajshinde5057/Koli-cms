@@ -30,20 +30,23 @@
         body {
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
         }
         
         .login-container {
-            width: 400px;
-            max-width: 90%;
+            width: 100%;
+            max-width: 400px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            animation: fadeIn 0.5s ease-in-out;
+            animation: fadeInUp 0.6s ease-out both;
         }
         
         .brand-logo {
@@ -53,21 +56,33 @@
             display: flex;
             align-items: center;
             justify-content: center;
-
+            transition: transform 0.3s ease;
+        }
+        
+        .brand-logo:hover {
+            transform: scale(1.05) rotate(-2deg);
         }
         
         .brand-logo img {
+            width: 100%;
             height: auto;
-            width: 300;
+            max-width: 300px;
         }
         
         .card {
             border: none;
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             background-color: white;
-            width: 130%;
+            width: 100%;
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .card:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-5px);
         }
         
         .login-card-body {
@@ -80,11 +95,22 @@
             text-align: center;
             font-size: 1.1rem;
             font-weight: 500;
+            animation: fadeIn 0.8s ease-in both;
+            animation-delay: 0.3s;
         }
         
         .input-group {
             margin-bottom: 1.5rem;
             position: relative;
+            animation: fadeIn 0.8s ease-in both;
+        }
+        
+        .input-group:nth-child(1) {
+            animation-delay: 0.4s;
+        }
+        
+        .input-group:nth-child(2) {
+            animation-delay: 0.5s;
         }
         
         .form-control {
@@ -100,6 +126,7 @@
         .form-control:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+            transform: translateX(5px);
         }
         
         .input-group-text {
@@ -115,6 +142,11 @@
             align-items: center;
             justify-content: center;
             color: #6c757d;
+            transition: color 0.3s;
+        }
+        
+        .form-control:focus + .input-group-text {
+            color: var(--primary-color);
         }
         
         .btn-primary {
@@ -126,13 +158,19 @@
             letter-spacing: 0.5px;
             transition: all 0.3s;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.8s ease-in both;
+            animation-delay: 0.6s;
         }
         
         .btn-primary:hover {
             background-color: var(--secondary-color);
             border-color: var(--secondary-color);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
         }
         
         .password-toggle {
@@ -143,12 +181,27 @@
             cursor: pointer;
             color: #6c757d;
             z-index: 5;
+            transition: color 0.3s;
         }
         
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        /* Animations */
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
             }
             to {
                 opacity: 1;
@@ -156,15 +209,69 @@
             }
         }
         
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        /* Alert animations */
+        .alert {
+            animation: slideInDown 0.5s ease-out both;
+        }
+        
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive adjustments */
         @media (max-width: 576px) {
             .login-card-body {
                 padding: 1.5rem;
             }
             
             .brand-logo {
-                height: 90px;
-                width: 90px;
-                margin-bottom: 1.2rem;
+                width: 120px;
+                margin-bottom: 1rem;
+            }
+            
+            body {
+                padding: 10px;
+            }
+        }
+        
+        @media (max-width: 400px) {
+            .login-card-body {
+                padding: 1.2rem;
+            }
+            
+            .form-control {
+                height: 45px;
+                padding-left: 40px;
+                padding-right: 40px;
+            }
+            
+            .input-group-text {
+                width: 40px;
+                height: 45px;
+            }
+            
+            .btn-primary {
+                height: 45px;
+                font-size: 0.9rem;
             }
         }
     </style>
@@ -244,6 +351,53 @@
                 passwordInput.type = isHidden ? "text" : "password";
                 toggleIcon.classList.toggle("fa-eye-slash");
                 toggleIcon.classList.toggle("fa-eye");
+                
+                // Add a small animation when toggling
+                if (isHidden) {
+                    toggleIcon.animate([
+                        { transform: 'scale(1)' },
+                        { transform: 'scale(1.2)' },
+                        { transform: 'scale(1)' }
+                    ], {
+                        duration: 300
+                    });
+                }
+            });
+            
+            // Add focus animation to form inputs
+            const inputs = document.querySelectorAll('.form-control');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.querySelector('.input-group-text').animate([
+                        { transform: 'scale(1)' },
+                        { transform: 'scale(1.1)' },
+                        { transform: 'scale(1)' }
+                    ], {
+                        duration: 300
+                    });
+                });
+            });
+            
+            // Button hover animation
+            const submitButton = document.querySelector('.btn-primary');
+            submitButton.addEventListener('mouseenter', function() {
+                this.animate([
+                    { transform: 'scale(1)' },
+                    { transform: 'scale(1.02)' }
+                ], {
+                    duration: 200,
+                    fill: 'forwards'
+                });
+            });
+            
+            submitButton.addEventListener('mouseleave', function() {
+                this.animate([
+                    { transform: 'scale(1.02)' },
+                    { transform: 'scale(1)' }
+                ], {
+                    duration: 200,
+                    fill: 'forwards'
+                });
             });
         });
     </script>
