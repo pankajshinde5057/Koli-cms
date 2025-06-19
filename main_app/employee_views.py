@@ -551,7 +551,7 @@ def employee_home(request):
         today_half_day = today_record.status == 'half_day' if today_record else False
         if clock_in_ist and office_start:
             try:
-                office_start = make_aware_if_naive(office_start)
+                office_start = (office_start)
                 late_duration = clock_in_ist - office_start
                 total_seconds = late_duration.total_seconds()
                 hours = int(total_seconds // 3600)
