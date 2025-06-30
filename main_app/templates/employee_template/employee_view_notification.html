@@ -168,7 +168,7 @@
                                                     data-target="#notificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }}, 'notification-from-admin')">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
-                                            {% if notification.id in general_notification_ids %}
+                                            {% if notification.id in general_notification %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>
@@ -350,7 +350,7 @@
                                                     data-target="#managerNotificationModal-{{ notification.id }}" title="View Details" onclick="markNotificationRead({{ notification.id }}, 'notification-from-manager')">
                                                 <i class="fas fa-eye"></i> View Details
                                             </button>
-                                            {% if notification.id in general_notification_ids %}
+                                            {% if notification.id in general_notification %}
                                                 <i class="fas fa-circle unread-dot" title="Unread"></i>
                                             {% endif %}
                                         </div>

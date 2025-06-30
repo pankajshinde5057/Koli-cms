@@ -264,9 +264,11 @@
                 {% if today_half_day and today_record.status != 'half_day' %}
                     <span class="badge bg-secondary">Half Day</span>
                 {% endif %}
-                <span class="badge bg-warning late-by-badge">
-                    Late by: {{ today_late_duration_str|default:"0 hours 0 minutes" }}
-                </span>
+                {% if today_late_duration_str %}
+                    <span class="badge bg-warning late-by-badge">
+                        Late by: {{ today_late_duration_str|default:"0 hours 0 minutes" }}
+                    </span>
+                {% endif %}
         </div>
 
         <div class="container-fluid">
