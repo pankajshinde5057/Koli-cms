@@ -540,7 +540,7 @@
                 <li class="nav-item">
                     {% url 'manager_asset_view_notification' as manager_asset_view_notification %}
                     <a href="{{ manager_asset_view_notification }}" class="nav-link {% if manager_asset_view_notification == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-bell"></i>
+                        <i class="nav-icon fas fa-concierge-bell"></i>
                         <p>
                             Asset Notifications
                             {% if total_asset_unread_notifications > 0 %}
@@ -607,7 +607,7 @@
                 <li class="nav-item">
                     {% url 'leave_balance' as leave_balance %}
                     <a href="{{ leave_balance }}" class="nav-link {% if leave_balance == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-calendar-check"></i>
+                        <i class="nav-icon fas fa-hourglass-half"></i>
                         <p>Leave Balance</p>
                     </a>
                 </li>
