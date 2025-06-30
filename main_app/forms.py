@@ -77,7 +77,10 @@ class EmployeeForm(CustomUserForm):
     def clean_emergency_phone(self):
         emergency_phone = self.cleaned_data.get('emergency_phone')
         phone_number = self.cleaned_data.get('phone_number')
-    
+
+        emergency_phone = self.cleaned_data.get('emergency_phone')
+        if emergency_phone and emergency_phone[0] in ['1', '2', '3', '4']:
+            raise ValidationError("Emergency phone number cannot start with 1, 2, 3, or 4")
         
         if not emergency_phone:
             raise ValidationError("Emergency contact phone number is required.")
@@ -127,6 +130,13 @@ class EmployeeForm(CustomUserForm):
             except Exception as e:
                 print(f"Error saving employee: {e}")  # Debugging
         return instance
+
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if phone_number and phone_number[0] in ['1', '2', '3', '4']:
+            raise ValidationError("Phone number cannot start with 1, 2, 3, or 4")
+        return phone_number
+
 
     class Meta(CustomUserForm.Meta):
         model = Employee
@@ -208,12 +218,23 @@ class ManagerForm(CustomUserForm):
         if commit:
             instance.save()
         return instance
+    
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if phone_number and phone_number[0] in ['1', '2', '3', '4']:
+            raise ValidationError("Phone number cannot start with 1, 2, 3, or 4")
+        return phone_number
+
+    def clean_emergency_phone(self):
+        emergency_phone = self.cleaned_data.get('emergency_phone')
+        if emergency_phone and emergency_phone[0] in ['1', '2', '3', '4']:
+            raise ValidationError("Emergency phone number cannot start with 1, 2, 3, or 4")
+        return emergency_phone
 
     class Meta(CustomUserForm.Meta):
         model = Manager
         fields = CustomUserForm.Meta.fields + [
             'division', 'department','phone_number', 'date_of_joining',
-           
         ]
 
 

@@ -67,6 +67,12 @@
             // Update field value
             this.value = digitsOnly;
 
+            // Check if number starts with 1, 2, 3, or 4
+            if (/^[1-4]/.test(digitsOnly)) {
+                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Phone number cannot start with 1, 2, 3, or 4</span>").insertAfter(this);
+                return;
+            }
+
             // Additional validation for emergency phone
             if (isEmergencyPhone) {
                 if (digitsOnly.length !== 10) {
@@ -91,19 +97,37 @@
             const emergencyPhone = $("#id_emergency_phone").val();
             const phoneNumber = $("#id_phone_number").val();
             const warningId = "id_emergency_phone_warning";
+            const emergencyWarningId = "id_emergency_phone_warning";
 
             // Remove existing warnings
             $("#" + warningId).remove();
+            $("#" + emergencyWarningId).remove();
 
+            // Validate phone_number
+            if (!phoneNumber) {
+                event.preventDefault();
+                $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number is required</span>").insertAfter("#id_phone_number");
+            } else if (phoneNumber.length !== 10) {
+                event.preventDefault();
+                $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number must be exactly 10 digits</span>").insertAfter("#id_phone_number");
+            } else if (/^[1-4]/.test(phoneNumber)) {
+                event.preventDefault();
+                $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number cannot start with 1, 2, 3, or 4</span>").insertAfter("#id_phone_number");
+            }
+
+            // Validate emergency_phone
             if (!emergencyPhone) {
                 event.preventDefault();
-                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number is required</span>").insertAfter("#id_emergency_phone");
+                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number is required</span>").insertAfter("#id_emergency_phone");
             } else if (emergencyPhone.length !== 10) {
                 event.preventDefault();
-                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number must be exactly 10 digits</span>").insertAfter("#id_emergency_phone");
+                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number must be exactly 10 digits</span>").insertAfter("#id_emergency_phone");
             } else if (emergencyPhone === phoneNumber) {
                 event.preventDefault();
-                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot be the same as primary phone number</span>").insertAfter("#id_emergency_phone");
+                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot be the same as primary phone number</span>").insertAfter("#id_emergency_phone");
+            } else if (/^[1-4]/.test(emergencyPhone)) {
+                event.preventDefault();
+                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot start with 1, 2, 3, or 4</span>").insertAfter("#id_emergency_phone");
             }
         });
 

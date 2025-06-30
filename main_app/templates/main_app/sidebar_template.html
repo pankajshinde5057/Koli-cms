@@ -245,7 +245,7 @@
                             </p>
                         </a>
                     </li> -->
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     {% url 'manager_feedback_message' as manager_feedback_message %}
                     <a href="{{manager_feedback_message}}" class="nav-link {% if manager_feedback_message == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comments"></i>
@@ -263,7 +263,7 @@
                             {% endif %}
                         </p>
                     </a>
-                </li>
+                </li> -->
                 <li class="nav-item">
                     {% url 'view_manager_leave' as view_manager_leave %}
                     <a href="{{view_manager_leave}}" class="nav-link {% if view_manager_leave == request.path %} active {% endif %}">
@@ -459,7 +459,7 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     {% url 'manager_view_by_employee_feedback_message' as manager_view_by_employee_feedback_message %}
                     <a href="{{ manager_view_by_employee_feedback_message }}" class="nav-link {% if manager_view_by_employee_feedback_message == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comment-alt"></i>
@@ -470,7 +470,7 @@
                             {% endif %}
                         </p>
                     </a>
-                </li>
+                </li> -->
                   {% comment %} <li class="nav-item">
                 {% url 'manager_view_by_employee_leave' as manager_view_by_employee_leave %}
 
@@ -501,13 +501,13 @@
                         </p>
                     </a>
                 </li>
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     {% url 'manager_feedback' as manager_feedback %}
                     <a href="{{manager_feedback}}" class="nav-link {% if manager_feedback == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comment-dots"></i>
                         <p>Feedback</p>
                     </a>
-                </li>
+                </li> -->
                 <li class="nav-header">ASSET MANAGEMENT</li>
                 <li class="nav-item">
                     {% url 'asset_app:print_all_barcode' as print_barcodes %}

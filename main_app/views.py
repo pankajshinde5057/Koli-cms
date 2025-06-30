@@ -19,11 +19,11 @@ from dotenv import load_dotenv
 import os
 from django.urls import reverse
 from django.http import HttpResponseForbidden
-from django.db.models import Q
+from django.db.models import Q,Value
 from django.contrib.auth.models import User
 from main_app.notification_badge import send_notification
 from .context_processors import unread_notification_count
-
+from django.db.models.functions import Concat
 
 load_dotenv()
 
@@ -769,10 +769,18 @@ def all_employees_schedules(request):
 
     # Apply name search
     if search_name:
-        schedules = schedules.filter(
-            Q(employee__admin__first_name__icontains=search_name) |
-            Q(employee__admin__last_name__icontains=search_name)
+        schedules = schedules.annotate(
+        full_name=Concat(
+            'employee__admin__first_name',
+            Value(' '),
+            'employee__admin__last_name'
         )
+    ).filter(
+        Q(employee__admin__first_name__icontains=search_name) |
+        Q(employee__admin__last_name__icontains=search_name) |
+        Q(full_name__icontains=search_name)
+    )
+        
 
     # Get all departments and employees for filters
     departments = Department.objects.all().order_by('name')
