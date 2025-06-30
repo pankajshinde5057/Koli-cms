@@ -53,6 +53,55 @@
                 display: none;
             }
         }
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+            max-width: 350px;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform: translateY(-20px);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        .toast-notification.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast-success {
+            background-color: #28a745;
+            color: white;
+            padding-right: 40px; /* Space for close button */
+        }
+        .toast-error {
+            background-color: #dc3545;
+            color: white;
+            padding-right: 40px; /* Space for close button */
+        }
+        .toast-notification .close {
+            position: absolute;
+            top: 10px;
+            right: 10px; /* Top-right corner */
+            color: white;
+            opacity: 0.8;
+            font-size: 1.5rem;
+            line-height: 1;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        .toast-notification .close:hover {
+            opacity: 1;
+        }
     </style>
 {% endblock %}
 
@@ -176,6 +225,13 @@
             </div>
         </div>
     </div>
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast-notification" role="alert">
+        <button type="button" class="close" data-dismiss="toast" aria-label="Close">
+            <span aria-hidden="true">×</span>
+        </button>
+        <div class="toast-body" id="toast-message"></div>
+    </div>
 </section>
 
 <!-- Reply Modal -->
@@ -232,18 +288,35 @@
 {% endblock content %}
 
 {% block custom_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 
 <script>
 $(document).ready(function() {
-    // Toastr configuration
-    toastr.options = {
-        "closeButton": true,
-        "progressBar": true,
-        "positionClass": "toast-top-right",
-        "timeOut": "3000"
-    };
+    // Function to show toast notification
+    function showToast(message, type) {
+        const $toast = $('#toast-notification');
+        const $message = $('#toast-message');
+        
+        // Set message
+        $message.text(message);
+        
+        // Remove previous classes and add new one
+        $toast.removeClass('toast-success toast-error').addClass(type === 'success' ? 'toast-success' : 'toast-error');
+        
+        // Show toast
+        $toast.addClass('show');
+        
+        // Auto-hide after 3 seconds
+        setTimeout(function() {
+            $toast.removeClass('show');
+        }, 3000);
+    }
+
+    // Handle close button for toast
+    $(document).on('click', '.toast-notification .close', function() {
+        $('#toast-notification').removeClass('show');
+    });
 
     // Handle message truncation click to open the action modal
     $(document).on('click', '.message-truncate', function() {
@@ -275,8 +348,8 @@ $(document).ready(function() {
                 window.history.pushState({}, '', '?page=' + page);
             },
             error: function(xhr, status, error) {
-                toastr.error('Error loading page. Please try again.');
                 console.error('Pagination AJAX failed:', error);
+                showToast('Failed to load page: ' + error, 'error');
             }
         });
     });
@@ -296,7 +369,6 @@ $(document).ready(function() {
         var endDate = $(this).data('end-date');
         var leaveType = $(this).data('leave-type');
         
-        // Format dates
         var formattedStartDate = new Date(startDate).toLocaleDateString('en-US', { 
             year: 'numeric', month: 'short', day: 'numeric' 
         });
@@ -304,7 +376,6 @@ $(document).ready(function() {
             year: 'numeric', month: 'short', day: 'numeric' 
         });
 
-        // Populate modal
         $('#id').val(id);
         $('#modal_manager').text(manager);
         $('#modal_division').text(division);
@@ -329,28 +400,35 @@ $(document).ready(function() {
                     status: status,
                     csrfmiddlewaretoken: '{{ csrf_token }}'
                 },
+                dataType: 'json',
                 beforeSend: function() {
                     $('#reply_btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
                 },
                 success: function(response) {
-                    if (response == "True") {
-                        toastr.success("Leave response has been saved!");
+                    console.log('AJAX Success:', response);
+                    if (response.status === 'success') {
+                        $('#reply_modal').modal('hide');
+                        showToast(
+                            status == '1' ? 'Success! Leave request approved.' : 'Error! Leave request rejected.',
+                            status == '1' ? 'success' : 'error'
+                        );
                         setTimeout(function() {
                             location.reload();
-                        }, 1500);
+                        }, 3500);
                     } else {
-                        toastr.error("Reply could not be sent.");
+                        showToast(response.message || 'Reply could not be sent.', 'error');
                     }
                 },
-                error: function() {
-                    toastr.error("An error occurred while processing your request.");
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', xhr.responseText, status, error);
+                    showToast('An error occurred while processing your request.', 'error');
                 },
                 complete: function() {
                     $('#reply_btn').prop('disabled', false).html('<i class="fas fa-check"></i> Submit');
                 }
             });
         } else {
-            toastr.warning("Please select a valid response.");
+            showToast('Please select a valid response.', 'error');
         }
     });
 });

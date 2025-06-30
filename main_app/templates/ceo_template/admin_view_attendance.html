@@ -382,14 +382,14 @@
     /* Mobile-specific styles */
     @media (max-width: 767.98px) {
         .card-header {
-            flex-direction: column;
-            align-items: flex-start;
+            flex-direction: row;
+            align-items: center;
+            padding: 0.75rem 1rem;
         }
         
         .card-header .actions {
-            width: 100%;
-            justify-content: flex-start;
-            margin-top: 0.75rem;
+            justify-content: flex-end;
+            margin-top: 0;
         }
         
         .filter-card .row > div {
@@ -398,44 +398,35 @@
         }
         
         .summary-item {
-            flex: 1 1 100%;
+            flex: 1 1 calc(50% - 0.5rem);
         }
         
         .attendance-table thead {
-            display: none;
+            display: table-header-group;
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
         
         .attendance-table tbody tr {
-            display: block;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            padding: 0.5rem;
+            display: table-row;
+            margin: 0;
         }
         
         .attendance-table tbody td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem;
+            display: table-cell;
+            padding: 0.75rem 1rem;
             border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
         }
         
         .attendance-table tbody td::before {
-            content: attr(data-label);
-            font-weight: 600;
-            color: #64748b;
-            margin-right: 1rem;
-            flex: 1;
-        }
-        
-        .attendance-table tbody td span {
-            flex: 2;
-            text-align: right;
+            content: none;
         }
         
         .btn-primary, .select2-container--default .select2-selection--single {
             height: 42px;
+            font-size: 0.875rem;
         }
         
         .person-name {
@@ -444,6 +435,18 @@
         
         .date-range {
             font-size: 0.8125rem;
+        }
+        
+        .employee-info-container {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .progress-container {
+            width: 100%;
+            margin: 0.75rem 0;
         }
     }
 
@@ -545,7 +548,7 @@
                         <div class="row">
                             <div class="col-md-6 col-sm-12 mb-3">
                                 <label class="form-label">Department</label>
-                                <select class="form-control select2" id="department" data-placeholder="-- Select Department --">
+                                <select class="form-control select2" id="department" data-placeholder=" Select Department ">
                                     <option value=""></option>
                                     {% comment %} <option value="all">All Departments</option> {% endcomment %}
                                     {% for department in departments %}
@@ -555,8 +558,8 @@
                             </div>
                             
                             <div class="col-md-6 col-sm-12 mb-3">
-                                <label class="form-label">User (Employee/Manager)</label>
-                                <select class="form-control select2" id="person" data-placeholder="-- Select Person --">
+                                <label class="form-label">User (Manager/Employee)</label>
+                                <select class="form-control select2" id="person" data-placeholder=" Select Manager/Employee ">
                                     <option value=""></option>
                                     <option value="no-records">No records available</option>
                                 </select>
@@ -1148,7 +1151,7 @@ $(document).ready(function() {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous">
-                        <span aria-hidden="true">&laquo;</span>
+                        <span aria-hidden="true">«</span>
                     </a>
                 </li>
             `;
@@ -1200,7 +1203,7 @@ $(document).ready(function() {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next">
-                        <span aria-hidden="true">&raquo;</span>
+                        <span aria-hidden="true">»</span>
                     </a>
                 </li>
             `;
@@ -1324,7 +1327,7 @@ $(document).ready(function() {
         const alertHtml = `
             <div class="alert alert-${alertClass} alert-dismissible fade show">
                 <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
-                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                <button type="button" class="close" data-dismiss="alert">×</button>
             </div>
         `;
         $('.container-fluid').prepend(alertHtml);
