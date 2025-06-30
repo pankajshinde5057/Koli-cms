@@ -618,7 +618,7 @@ def update_attendance(request):
 
 logger = logging.getLogger(__name__)
 
-User = get_user_model() 
+User = get_user_model()
 @login_required
 @csrf_exempt
 def get_employee_attendance(request):
@@ -668,7 +668,6 @@ def get_employee_attendance(request):
 
         # Date filtering setup
         holiday_dates = set()
-        filtered_dates = None
         start_date = None
         end_date = None
         today = datetime.now().date()
@@ -707,53 +706,20 @@ def get_employee_attendance(request):
                         defaults={'name': f'Saturday - {saturday.strftime("%B %d, %Y")}'}
                     )
 
-        set_automatic_holidays(current_year, current_month)
-
-        # Calculate total working days and holiday count
-        full_month_start = datetime(current_year, current_month, 1).date()
-        days_in_month = monthrange(current_year, current_month)[1]
-        full_month_end = datetime(current_year, current_month, days_in_month).date()
-        full_month_holidays = set(Holiday.objects.filter(
-            date__year=current_year,
-            date__month=current_month
-        ).values_list('date', flat=True))
-        total_working_days = 0
-        holiday_count = 0
-        current_date = full_month_start
-        while current_date <= full_month_end:
-            weekday = current_date.weekday()
-            is_sunday = weekday == 6
-            is_saturday = weekday == 5
-            is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
-            is_holiday = current_date in full_month_holidays
-            if is_sunday or is_2nd_or_4th_saturday or is_holiday:
-                if current_date <= today:
-                    holiday_count += 1
-            elif not (is_sunday or is_2nd_or_4th_saturday or is_holiday):
-                total_working_days += 1
-            current_date += timedelta(days=1)
-
         # Apply date filters
         if from_date and to_date:
             try:
                 start_date = datetime.strptime(from_date, '%Y-%m-%d').date()
                 end_date = datetime.strptime(to_date, '%Y-%m-%d').date()
+                if end_date > today:
+                    end_date = today
                 queryset = queryset.filter(date__range=(start_date, end_date))
                 holiday_dates = set(Holiday.objects.filter(
                     date__range=(start_date, end_date)
                 ).values_list('date', flat=True))
-                filtered_dates = (start_date, end_date)
             except ValueError:
                 return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
         else:
-            start_date = datetime(current_year, current_month, 1).date()
-            end_date = today
-            queryset = queryset.filter(date__range=(start_date, end_date))
-            holiday_dates = set(Holiday.objects.filter(
-                date__range=(start_date, end_date)
-            ).values_list('date', flat=True))
-            filtered_dates = (start_date, end_date)
-
             if year:
                 year = int(year)
                 if week:
@@ -762,11 +728,12 @@ def get_employee_attendance(request):
                         first_day_of_year = datetime(year, 1, 1).date()
                         start_date = first_day_of_year + timedelta(weeks=week - 1)
                         end_date = start_date + timedelta(days=6)
+                        if end_date > today:
+                            end_date = today
                         queryset = queryset.filter(date__range=(start_date, end_date))
                         holiday_dates = set(Holiday.objects.filter(
                             date__range=(start_date, end_date)
                         ).values_list('date', flat=True))
-                        filtered_dates = (start_date, end_date)
                     except ValueError:
                         return JsonResponse({"error": "Invalid week number"}, status=400)
                 elif month:
@@ -782,14 +749,40 @@ def get_employee_attendance(request):
                             date__year=year,
                             date__month=month
                         ).values_list('date', flat=True))
-                        filtered_dates = (start_date, end_date)
-                        if year == current_year:
-                            set_automatic_holidays(year, month)
+                        set_automatic_holidays(year, month)
                     except ValueError:
                         return JsonResponse({"error": "Invalid month number"}, status=400)
+                else:
+                    start_date = datetime(year, 1, 1).date()
+                    end_date = min(today, datetime(year, 12, 31).date())
+                    queryset = queryset.filter(date__year=year)
+                    holiday_dates = set(Holiday.objects.filter(
+                        date__year=year
+                    ).values_list('date', flat=True))
+            else:
+                start_date = datetime(current_year, current_month, 1).date()
+                end_date = today
+                queryset = queryset.filter(date__range=(start_date, end_date))
+                holiday_dates = set(Holiday.objects.filter(
+                    date__range=(start_date, end_date)
+                ).values_list('date', flat=True))
+                set_automatic_holidays(current_year, current_month)
 
-        if end_date > today:
-            end_date = today
+        # Calculate total working days and holiday count for the filtered period
+        total_working_days = 0
+        holiday_count = 0
+        current_date = start_date
+        while current_date <= end_date:
+            weekday = current_date.weekday()
+            is_sunday = weekday == 6
+            is_saturday = weekday == 5
+            is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
+            is_holiday = current_date in holiday_dates
+            if is_sunday or is_2nd_or_4th_saturday or is_holiday:
+                holiday_count += 1
+            else:
+                total_working_days += 1
+            current_date += timedelta(days=1)
 
         queryset = queryset.order_by('-date')
 
@@ -926,12 +919,8 @@ def get_employee_attendance(request):
                 half_days += stats['half_days']
                 absent_days += stats['absent_days']
 
-        # Calculate working days for filtered period
-        filtered_working_days = total_working_days if filtered_dates[1] == full_month_end else sum(
-            1 for d in [start_date + timedelta(days=x) for x in range((end_date - start_date).days + 1)]
-            if not (d.weekday() == 6 or (d.weekday() == 5 and ((d.day - 1) // 7) in [1, 3]) or d in holiday_dates)
-        )
-        attendance_percentage = (present_days / filtered_working_days) * 100 if filtered_working_days > 0 else 0
+        # Calculate attendance percentage
+        attendance_percentage = (present_days / total_working_days) * 100 if total_working_days > 0 else 0
         attendance_percentage = round(attendance_percentage, 1)
 
         # Build attendance list

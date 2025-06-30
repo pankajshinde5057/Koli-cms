@@ -107,6 +107,13 @@
       </div>
     </div>
   </div>
+  <!-- Toast Notification -->
+  <div id="toast-notification" class="toast-notification" role="alert">
+    <button type="button" class="close" data-dismiss="toast" aria-label="Close">
+      <span aria-hidden="true">×</span>
+    </button>
+    <div class="toast-body" id="toast-message"></div>
+  </div>
 </section>
 
 <!-- Individual Notification Modal -->
@@ -215,22 +222,87 @@
   .card-header .btn {
     margin-bottom: 0.25rem;
   }
+
+  /* Toast Notification */
+  .toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+    min-width: 300px;
+    max-width: 350px;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    transform: translateY(-20px);
+  }
+  .toast-notification.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast-success {
+    background-color: #28a745;
+    color: white;
+    padding-right: 40px; /* Space for close button */
+  }
+  .toast-error {
+    background-color: #dc3545;
+    color: white;
+    padding-right: 40px; /* Space for close button */
+  }
+  .toast-notification .close {
+    position: absolute;
+    top: 10px;
+    right: 10px; /* Top-right corner */
+    color: white;
+    opacity: 0.8;
+    font-size: 1.5rem;
+    line-height: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+  .toast-notification .close:hover {
+    opacity: 1;
+  }
 </style>
 {% endblock custom_css %}
 
 {% block custom_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 
 <script>
 $(document).ready(function() {
-  // Toastr configuration
-  toastr.options = {
-    "closeButton": true,
-    "progressBar": true,
-    "positionClass": "toast-top-right",
-    "timeOut": "3000"
-  };
+  // Function to show toast notification
+  function showToast(message, type) {
+    const $toast = $('#toast-notification');
+    const $message = $('#toast-message');
+    
+    // Set message
+    $message.text(message);
+    
+    // Remove previous classes and add new one
+    $toast.removeClass('toast-success toast-error').addClass(type === 'success' ? 'toast-success' : 'toast-error');
+    
+    // Show toast
+    $toast.addClass('show');
+    
+    // Auto-hide after 3 seconds
+    setTimeout(function() {
+      $toast.removeClass('show');
+    }, 3000);
+  }
+
+  // Handle close button for toast
+  $(document).on('click', '.toast-notification .close', function() {
+    $('#toast-notification').removeClass('show');
+  });
 
   // Update selected count
   function updateSelectedCount() {
@@ -261,12 +333,12 @@ $(document).ready(function() {
           window.history.pushState({}, '', '?page=' + page);
           updateSelectedCount();
         } else {
-          toastr.error(response.message || 'Failed to load page');
+          showToast(response.message || 'Failed to load page', 'error');
         }
       },
       error: function(xhr, status, error) {
         console.error('Pagination error:', status, error);
-        toastr.error('Error loading page. Please try again.');
+        showToast('Error loading page. Please try again.', 'error');
       },
       complete: function() {
         $('#employee-table-container').removeClass('loading');
@@ -306,7 +378,7 @@ $(document).ready(function() {
     var message = $('#message').val().trim();
     
     if (!message) {
-      toastr.warning('Please enter a message');
+      showToast('Please enter a message', 'error');
       return;
     }
 
@@ -329,7 +401,7 @@ $(document).ready(function() {
       success: function(response) {
         console.log('Response received:', response);
         if (response.success) {
-          toastr.success(response.message);
+          showToast(response.message, 'success');
           
           setTimeout(function() {
             console.log('Closing individual notification modal...');
@@ -344,12 +416,12 @@ $(document).ready(function() {
             $('#employee_id').val('');
           }, 100);
         } else {
-          toastr.error(response.message || 'Failed to send notification');
+          showToast(response.message || 'Failed to send notification', 'error');
         }
       },
       error: function(xhr, status, error) {
         console.error('AJAX error:', status, error);
-        toastr.error('Error sending notification: ' + error);
+        showToast('Error sending notification: ' + error, 'error');
       },
       complete: function() {
         console.log('Re-enabling button...');
@@ -364,7 +436,7 @@ $(document).ready(function() {
     var message = $('#bulkMessage').val().trim();
     
     if (!message) {
-      toastr.warning('Please enter a message');
+      showToast('Please enter a message', 'error');
       return;
     }
 
@@ -386,7 +458,7 @@ $(document).ready(function() {
       success: function(response) {
         console.log('Response received:', response);
         if (response.success) {
-          toastr.success(response.message);
+          showToast(response.message, 'success');
           
           setTimeout(function() {
             console.log('Closing bulk notification modal...');
@@ -400,12 +472,12 @@ $(document).ready(function() {
             $('#bulkMessage').val('');
           }, 100);
         } else {
-          toastr.error(response.message || 'Failed to send bulk notification');
+          showToast(response.message || 'Failed to send bulk notification', 'error');
         }
       },
       error: function(xhr, status, error) {
         console.error('AJAX error:', status, error);
-        toastr.error('Error sending bulk notification: ' + error);
+        showToast('Error sending bulk notification: ' + error, 'error');
       },
       complete: function() {
         console.log('Re-enabling button...');
@@ -424,12 +496,12 @@ $(document).ready(function() {
     });
 
     if (!message) {
-      toastr.warning('Please enter a message');
+      showToast('Please enter a message', 'error');
       return;
     }
 
     if (selectedEmployees.length === 0) {
-      toastr.warning('Please select at least one employee');
+      showToast('Please select at least one employee', 'error');
       return;
     }
 
@@ -452,7 +524,7 @@ $(document).ready(function() {
       success: function(response) {
         console.log('Response received:', response);
         if (response.success) {
-          toastr.success(response.message);
+          showToast(response.message, 'success');
           
           setTimeout(function() {
             console.log('Closing selective notification modal...');
@@ -469,12 +541,12 @@ $(document).ready(function() {
             updateSelectedCount();
           }, 100);
         } else {
-          toastr.error(response.message || 'Failed to send notification');
+          showToast(response.message || 'Failed to send notification', 'error');
         }
       },
       error: function(xhr, status, error) {
         console.error('AJAX error:', status, error);
-        toastr.error('Error sending notification: ' + error);
+        showToast('Error sending notification: ' + error, 'error');
       },
       complete: function() {
         console.log('Re-enabling button...');
