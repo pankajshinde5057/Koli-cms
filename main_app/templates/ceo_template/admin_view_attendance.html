@@ -20,19 +20,21 @@
         --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
-    
+
+    /* Base styles for all devices */
     .filter-card {
         background-color: white;
         border: none;
         border-radius: 12px;
         box-shadow: var(--card-shadow);
         transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
     }
-    
+
     .filter-card:hover {
         box-shadow: var(--card-hover-shadow);
     }
-    
+
     .results-card {
         background-color: white;
         border: none;
@@ -40,7 +42,7 @@
         box-shadow: var(--card-shadow);
         overflow: hidden;
     }
-    
+
     .card-header {
         background-color: var(--primary-color);
         color: white;
@@ -56,22 +58,22 @@
         gap: 10px;
         margin-left: auto;
     }
-    
+
     .select2-container--default .select2-selection--single {
         height: 48px;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         transition: all 0.3s;
     }
-    
+
     .select2-container--default .select2-selection--single:hover {
         border-color: var(--primary-color);
     }
-    
+
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 46px;
     }
-    
+
     .btn-primary {
         background-color: var(--primary-color);
         border-color: var(--primary-color);
@@ -84,79 +86,81 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
+        padding: 0.5rem 1rem;
     }
-    
+
     .btn-primary:hover {
         background-color: var(--primary-hover);
         border-color: var(--primary-hover);
         transform: translateY(-2px);
     }
-    
+
     .btn-primary:active {
         transform: translateY(0);
     }
-    
+
     .btn-outline-light {
         color: white;
         border-color: white;
         transition: all 0.3s;
-        padding: 6px 12px;
+        padding: 0.375rem 0.75rem;
         font-size: 0.875rem;
     }
-    
+
     .btn-outline-light:hover {
         background-color: rgba(255, 255, 255, 0.2);
         border-color: white;
         color: white;
         transform: translateY(-2px);
     }
-    
+
     .status-badge {
-        padding: 6px 12px;
+        padding: 0.375rem 0.75rem;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 0.75rem;
         font-weight: 600;
         text-transform: capitalize;
         display: inline-flex;
         align-items: center;
         gap: 4px;
+        white-space: nowrap;
     }
-    
+
     .present {
         background-color: #dcfce7;
         color: #166534;
     }
-    
+
     .absent {
         background-color: #fee2e2;
         color: #991b1b;
     }
-    
+
     .late {
         background-color: #fef3c7;
         color: #92400e;
     }
-    
+
     .halfday {
         background-color: #dbeafe;
         color: #1e40af;
     }
-    
+
     .holiday {
         background-color: #ede9fe;
         color: #5b21b6;
     }
-    
+
     .attendance-table {
         border-collapse: separate;
         border-spacing: 0;
         width: 100%;
     }
-    
+
     .attendance-table thead th {
         background-color: #f8fafc;
         border: none;
-        padding: 14px 20px;
+        padding: 0.875rem 1rem;
         font-weight: 600;
         color: #64748b;
         text-transform: uppercase;
@@ -165,69 +169,73 @@
         position: sticky;
         top: 0;
     }
-    
+
     .attendance-table tbody td {
-        padding: 14px 20px;
+        padding: 0.875rem 1rem;
         border-bottom: 1px solid #f1f5f9;
         vertical-align: middle;
     }
-    
+
     .attendance-table tbody tr:last-child td {
         border-bottom: none;
     }
-    
+
     .attendance-table tbody tr:hover td {
         background-color: #f8fafc;
     }
-    
+
     .summary-card {
         display: flex;
         flex-wrap: wrap;
-        gap: 16px;
-        margin-bottom: 24px;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
-    
+
     .summary-item {
         background-color: white;
         border-radius: 8px;
-        padding: 16px;
+        padding: 1rem;
         box-shadow: var(--card-shadow);
         display: flex;
         align-items: center;
-        gap: 12px;
-        min-width: 160px;
+        gap: 0.75rem;
+        min-width: 0;
+        flex: 1 1 calc(50% - 0.5rem);
         transition: all 0.3s;
     }
-    
+
     .summary-item:hover {
         transform: translateY(-3px);
         box-shadow: var(--card-hover-shadow);
     }
-    
+
     .summary-count {
         font-weight: 700;
         font-size: 1.25rem;
         color: #1e293b;
+        white-space: nowrap;
     }
-    
+
     .summary-label {
         font-size: 0.875rem;
         color: #64748b;
+        white-space: nowrap;
     }
-    
+
     .date-range {
         color: #64748b;
         font-size: 0.875rem;
-        margin-top: 16px;
+        margin-top: 1rem;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 0.5rem;
+        white-space: nowrap;
     }
-    
+
     .date-input-wrapper {
         position: relative;
     }
-    
+
     .date-input-wrapper i {
         position: absolute;
         right: 12px;
@@ -236,27 +244,27 @@
         pointer-events: none;
         color: #64748b;
     }
-    
+
     .flatpickr-input[readonly] {
         background-color: white;
         cursor: pointer;
         height: 48px;
         border-radius: 8px;
     }
-    
+
     .flatpickr-day.selected {
         background-color: var(--primary-color);
         border-color: var(--primary-color);
     }
-    
+
     .loading-spinner {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 40px 0;
+        padding: 2.5rem 0;
     }
-    
+
     .spinner {
         width: 50px;
         height: 50px;
@@ -264,117 +272,66 @@
         border-radius: 50%;
         border-top-color: var(--primary-color);
         animation: spin 1s ease-in-out infinite;
-        margin-bottom: 16px;
+        margin-bottom: 1rem;
     }
-    
+
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
-    
+
     .empty-state {
         text-align: center;
-        padding: 40px 20px;
+        padding: 2.5rem 1.25rem;
     }
-    
+
     .empty-state i {
-        font-size: 48px;
+        font-size: 3rem;
         color: #cbd5e1;
-        margin-bottom: 16px;
+        margin-bottom: 1rem;
     }
-    
+
     .empty-state p {
         color: #64748b;
         font-size: 1rem;
     }
-    
-    @media (max-width: 768px) {
-        .summary-item {
-            flex: 1 1 100%;
-        }
-        
-        .attendance-table thead {
-            display: none;
-        }
-        
-        .attendance-table tbody tr {
-            display: block;
-            margin-bottom: 16px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .attendance-table tbody td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        
-        .attendance-table tbody td::before {
-            content: attr(data-label);
-            font-weight: 600;
-            color: #64748b;
-            margin-right: 16px;
-            flex: 1;
-        }
-        
-        .attendance-table tbody td span {
-            flex: 2;
-            text-align: right;
-        }
-        
-        .card-header .actions {
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
+
+    .employee-info-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
-    
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
-        70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+
+    .person-details {
+        flex: 1;
     }
-    
-    .new-record {
-        position: relative;
+
+    .person-name {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
     }
-    
-    .new-record::after {
-        content: "New";
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        background-color: var(--danger-color);
-        color: white;
-        font-size: 10px;
-        font-weight: bold;
-        padding: 2px 6px;
-        border-radius: 10px;
-        animation: pulse 2s infinite;
-    }
-    
+
     .progress-container {
         width: 100%;
         background-color: #e2e8f0;
         border-radius: 10px;
-        margin: 20px 0;
+        margin: 1.25rem 0;
         height: 10px;
         overflow: hidden;
     }
-    
+
     .progress-bar {
         height: 100%;
         border-radius: 10px;
         background-color: var(--primary-color);
         transition: width 0.5s ease;
     }
-    
+
     [data-tooltip] {
         position: relative;
         cursor: pointer;
     }
-    
+
     [data-tooltip]:hover::before {
         content: attr(data-tooltip);
         position: absolute;
@@ -383,14 +340,14 @@
         transform: translateX(-50%);
         background-color: #1e293b;
         color: white;
-        padding: 4px 8px;
+        padding: 0.25rem 0.5rem;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 0.75rem;
         white-space: nowrap;
         z-index: 100;
-        margin-bottom: 8px;
+        margin-bottom: 0.5rem;
     }
-    
+
     [data-tooltip]:hover::after {
         content: "";
         position: absolute;
@@ -403,6 +360,129 @@
         margin-bottom: 3px;
     }
 
+    .pagination-container {
+        margin-top: 1.25rem;
+    }
+    
+    .pagination {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .page-item.active .page-link {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    .page-link {
+        color: var(--primary-color);
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Mobile-specific styles */
+    @media (max-width: 767.98px) {
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .card-header .actions {
+            width: 100%;
+            justify-content: flex-start;
+            margin-top: 0.75rem;
+        }
+        
+        .filter-card .row > div {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        
+        .summary-item {
+            flex: 1 1 100%;
+        }
+        
+        .attendance-table thead {
+            display: none;
+        }
+        
+        .attendance-table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 0.5rem;
+        }
+        
+        .attendance-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .attendance-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #64748b;
+            margin-right: 1rem;
+            flex: 1;
+        }
+        
+        .attendance-table tbody td span {
+            flex: 2;
+            text-align: right;
+        }
+        
+        .btn-primary, .select2-container--default .select2-selection--single {
+            height: 42px;
+        }
+        
+        .person-name {
+            font-size: 1.25rem;
+        }
+        
+        .date-range {
+            font-size: 0.8125rem;
+        }
+    }
+
+    /* Tablet and small desktop */
+    @media (min-width: 768px) and (max-width: 991.98px) {
+        .summary-item {
+            flex: 1 1 calc(50% - 0.5rem);
+        }
+        
+        .employee-info-container {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .date-range {
+            margin-top: 0;
+        }
+    }
+
+    /* Desktop and larger */
+    @media (min-width: 992px) {
+        .summary-item {
+            flex: 1;
+            min-width: 160px;
+        }
+        
+        .employee-info-container {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .date-range {
+            margin-top: 0;
+        }
+    }
+
+    /* Print styles */
     @media print {
         body * {
             visibility: hidden;
@@ -444,20 +524,6 @@
             display: none !important;
         }
     }
-
-    .pagination-container {
-        margin-top: 20px;
-    }
-    .pagination {
-        justify-content: center;
-    }
-    .page-item.active .page-link {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-    .page-link {
-        color: var(--primary-color);
-    }
 </style>
 {% endblock %}
 
@@ -465,9 +531,9 @@
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-12">
                 <div id="filter-error" class="alert alert-warning alert-dismissible fade show" style="display: none;">
-                    <strong>Warning!</strong> Please select at least one filter (Department or Person)
+                    <strong>Warning!</strong> <span id="filter-error-message"></span>
                     <button type="button" class="close" data-dismiss="alert">×</button>
                 </div>
 
@@ -477,18 +543,18 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 col-sm-12 mb-3">
                                 <label class="form-label">Department</label>
                                 <select class="form-control select2" id="department" data-placeholder="-- Select Department --">
                                     <option value=""></option>
-                                    <option value="all">All Departments</option>
+                                    {% comment %} <option value="all">All Departments</option> {% endcomment %}
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 col-sm-12 mb-3">
                                 <label class="form-label">User (Employee/Manager)</label>
                                 <select class="form-control select2" id="person" data-placeholder="-- Select Person --">
                                     <option value=""></option>
@@ -497,7 +563,7 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-4 col-sm-12 mb-3">
                                 <label class="form-label">Time Period</label>
                                 <select class="form-control" id="time_period">
                                     <option value="week">This Week</option>
@@ -506,23 +572,23 @@
                                     <option value="custom">Custom Range</option>
                                 </select>
                             </div>
-                            <div class="col-md-4 mb-3 custom-date" style="display:none;">
+                            <div class="col-md-4 col-sm-12 mb-3 custom-date" style="display:none;">
                                 <label class="form-label">From Date</label>
                                 <div class="date-input-wrapper">
                                     <input type="text" class="form-control flatpickr-input" id="from_date" readonly placeholder="Select start date">
                                     <i class="fas fa-calendar-alt"></i>
                                 </div>
                             </div>
-                            <div class="col-md-4 mb-3 custom-date" style="display:none;">
+                            <div class="col-md-4 col-sm-12 mb-3 custom-date" style="display:none;">
                                 <label class="form-label">To Date</label>
                                 <div class="date-input-wrapper">
                                     <input type="text" class="form-control flatpickr-input" id="to_date" readonly placeholder="Select end date">
                                     <i class="fas fa-calendar-alt"></i>
                                 </div>
                             </div>
-                            <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <div class="col-md-4 col-sm-12 mb-3 d-flex align-items-end">
                                 <button id="view_attendance" class="btn btn-primary w-100">
-                                   <i class="fas fa-search"></i> View Attendance 
+                                    <i class="fas fa-search"></i> View Attendance
                                 </button>
                             </div>
                         </div>
@@ -534,24 +600,23 @@
                         <h3 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>Attendance Records</h3>
                         <div class="actions">
                             <button class="btn btn-sm btn-outline-light no-print" id="print_btn" data-tooltip="Print Records">
-                                <i class="fas fa-print"></i> Print
+                                <i class="fas fa-print"></i> <span class="d-none d-md-inline">Print</span>
                             </button>
                             <button class="btn btn-sm btn-outline-light no-print" id="export_btn" data-tooltip="Export to Excel">
-                                <i class="fas fa-file-excel"></i> Export 
+                                <i class="fas fa-file-excel"></i> <span class="d-none d-md-inline">Export</span>
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="employee-info-container mb-4 d-flex justify-content-between align-items-start">
+                        <div class="employee-info-container">
                             <div class="person-details" id="person_details">
                                 <b><div class="person-name h4 mb-1" id="person_name"></div></b>
                                 <div class="person-department text-muted">
                                     <i class="fas fa-building mr-1"></i>
                                     <span id="person_department"></span>
+                                    <span class="d-none" id="person_type"></span>
                                 </div>
-                               
                             </div>
-                        
                             <div class="date-range text-muted">
                                 <i class="fas fa-calendar-week mr-1"></i>
                                 <span id="date_range"></span>
@@ -672,7 +737,6 @@ $(document).ready(function() {
         $personSelect.empty().append('<option value=""></option>');
         
         if (!departmentId) {
-            // No department selected, show "No records available"
             $personSelect.append('<option value="no-records">No records available</option>');
             $personSelect.trigger('change');
             return;
@@ -700,7 +764,6 @@ $(document).ready(function() {
                 }));
             });
         } else if (selectedDept.includes('hr')) {
-            // For HR department, show only managers
             allPersons.forEach(person => {
                 if (person.type === 'Manager') {
                     $personSelect.append($('<option>', {
@@ -712,7 +775,6 @@ $(document).ready(function() {
                 }
             });
         } else {
-            // For other departments, show only employees
             allPersons.forEach(person => {
                 if (person.department_id === departmentId && person.type === 'Employee') {
                     $personSelect.append($('<option>', {
@@ -725,7 +787,6 @@ $(document).ready(function() {
             });
         }
 
-        // Trigger change to update Select2 display
         $personSelect.trigger('change');
     });
 
@@ -743,36 +804,33 @@ $(document).ready(function() {
         
         // Basic validation
         if (!departmentId) {
-            $('#filter-error').text('Please select a department').show();
+            $('#filter-error-message').text('Please select a department');
+            $('#filter-error').show();
             return;
         }
 
-        if (personId === 'no-records') {
-            $('#filter-error').text('No records available for the selected department').show();
+        if (!personId || personId === 'no-records') {
+            $('#filter-error-message').text('Please select a person or group');
+            $('#filter-error').show();
             return;
         }
 
         // Get selected person details
         let selectedName, selectedDepartment, selectedType;
         
-        if (personId && personId !== 'no-records') {
-            if (personId === 'all-employees') {
-                selectedName = 'All Employees';
-                selectedDepartment = departmentId === 'all' ? 'All Departments' : $('#department option:selected').text();
-                selectedType = 'Employee';
-            } else if (personId === 'all-managers') {
-                selectedName = 'All Managers';
-                selectedDepartment = 'HR';
-                selectedType = 'Manager';
-            } else {
-                const selectedPerson = $('#person option:selected');
-                selectedName = selectedPerson.text().split(' (')[0];
-                selectedDepartment = selectedPerson.data('department') || $('#department option:selected').text();
-                selectedType = selectedPerson.data('type') || 'Unknown';
-            }
+        if (personId === 'all-employees') {
+            selectedName = 'All Employees';
+            selectedDepartment = departmentId === 'all' ? 'All Departments' : $('#department option:selected').text();
+            selectedType = 'Employee';
+        } else if (personId === 'all-managers') {
+            selectedName = 'All Managers';
+            selectedDepartment = 'HR';
+            selectedType = 'Manager';
         } else {
-            $('#filter-error').text('Please select a person or group').show();
-            return;
+            const selectedPerson = $('#person option:selected');
+            selectedName = selectedPerson.text().split(' (')[0];
+            selectedDepartment = selectedPerson.data('department') || $('#department option:selected').text();
+            selectedType = selectedPerson.data('type') || 'Unknown';
         }
         
         // Update display
@@ -783,18 +841,29 @@ $(document).ready(function() {
 
         // Prepare data for AJAX request
         const data = {
-            person_id: personId === 'all-employees' || personId === 'all-managers' ? '' : personId,
             department_id: departmentId === 'all' ? '' : departmentId,
-            person_type: personId === 'all-employees' ? 'Employee' : personId === 'all-managers' ? 'Manager' : selectedType,
             page: 1,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
+        // Set employee_id or manager_id based on person type
+        if (personId !== 'all-employees' && personId !== 'all-managers') {
+            if (selectedType === 'Employee') {
+                data.employee_id = personId;
+            } else if (selectedType === 'Manager') {
+                data.manager_id = personId;
+            }
+        } else if (personId === 'all-employees') {
+            data.employee_id = 'all';
+        } else if (personId === 'all-managers') {
+            data.manager_id = 'all';
+        }
+
         // Store current filter data
         currentFilterData = {
-            person_id: data.person_id,
+            employee_id: data.employee_id || '',
+            manager_id: data.manager_id || '',
             department_id: data.department_id,
-            person_type: data.person_type,
             time_period: timePeriod,
             from_date: $('#from_date').val(),
             to_date: $('#to_date').val(),
@@ -860,7 +929,7 @@ $(document).ready(function() {
 
     // Fetch attendance data
     function fetchAttendanceData(data) {
-        if (!data || (!data.person_id && !data.department_id && !data.person_type)) {
+        if (!data || (!data.employee_id && !data.department_id && !data.manager_id)) {
             showAlert('Invalid filter parameters', 'error');
             return;
         }
@@ -1017,15 +1086,15 @@ $(document).ready(function() {
 
             tableHtml += `
                 <tr>
-                    <td>${escapeHtml(name)}</td>
-                    <td>${escapeHtml(department)}</td>
-                    <td><span class="badge ${userType === 'Manager' ? 'bg-primary' : 'bg-secondary'}">${escapeHtml(userType)}</span></td>
-                    <td>${date}</td>
-                    <td>${day}</td>
-                    <td><span class="status-badge ${statusClass}">${statusIcon}${escapeHtml(record.status)}</span></td>
-                    <td>${inTime}</td>
-                    <td>${outTime}</td>
-                    <td>${hours}</td>
+                    <td data-label="Name">${escapeHtml(name)}</td>
+                    <td data-label="Department">${escapeHtml(department)}</td>
+                    <td data-label="User Type"><span class="badge ${userType === 'Manager' ? 'bg-primary' : 'bg-secondary'}">${escapeHtml(userType)}</span></td>
+                    <td data-label="Date">${date}</td>
+                    <td data-label="Day">${day}</td>
+                    <td data-label="Status"><span class="status-badge ${statusClass}">${statusIcon}${escapeHtml(record.status)}</span></td>
+                    <td data-label="Clock In">${inTime}</td>
+                    <td data-label="Clock Out">${outTime}</td>
+                    <td data-label="Hours">${hours}</td>
                 </tr>
             `;
         });
@@ -1056,7 +1125,7 @@ $(document).ready(function() {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/'/g, "&#39;");
     }
     
     function renderPagination(pagination) {
@@ -1079,7 +1148,7 @@ $(document).ready(function() {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous">
-                        <span aria-hidden="true">«</span>
+                        <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
             `;
@@ -1131,7 +1200,7 @@ $(document).ready(function() {
             paginationHtml += `
                 <li class="page-item">
                     <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next">
-                        <span aria-hidden="true">»</span>
+                        <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>
             `;
@@ -1255,7 +1324,7 @@ $(document).ready(function() {
         const alertHtml = `
             <div class="alert alert-${alertClass} alert-dismissible fade show">
                 <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
-                <button type="button" class="close" data-dismiss="alert">×</button>
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
             </div>
         `;
         $('.container-fluid').prepend(alertHtml);

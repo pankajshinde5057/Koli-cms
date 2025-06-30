@@ -472,7 +472,7 @@ def add_department(request):
 def manage_manager(request):
     manager_list = CustomUser.objects.filter(user_type=2)
     
-    paginator = Paginator(manager_list, 5)
+    paginator = Paginator(manager_list, 10)
     page_number = request.GET.get('page', 1)
     
     try:
@@ -484,7 +484,7 @@ def manage_manager(request):
 
     manager_list = CustomUser.objects.filter(user_type=2)
     
-    paginator = Paginator(manager_list, 5)
+    paginator = Paginator(manager_list, 10)
     page_number = request.GET.get('page', 1)
     
     try:
@@ -559,7 +559,7 @@ def manage_employee(request):
     departments = Department.objects.all()
     divisions = Division.objects.all()
 
-    paginator = Paginator(employees, 5)
+    paginator = Paginator(employees, 10)
     page_obj = paginator.get_page(page_number)
 
     context = {
