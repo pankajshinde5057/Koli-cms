@@ -188,6 +188,16 @@ def add_manager(request):
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
+            phone_number = form.cleaned_data.get('phone_number')
+
+            if phone_number and phone_number[0] in ['1', '2', '3', '4']:
+                form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")
+            
+            if emergency_phone and emergency_phone[0] in ['1', '2', '3', '4']:
+                form.add_error('emergency_phone', "Emergency phone number cannot start with 1, 2, 3, or 4")
+
+            if not form.is_valid():
+                return render(request, 'ceo_template/add_manager_template.html', context)
 
             passport_url = None
             if 'profile_pic' in request.FILES:
@@ -213,6 +223,7 @@ def add_manager(request):
                 manager.division = division
                 manager.department = department
                 manager.date_of_joining = date_of_joining
+                manager.phone_number = phone_number
                 manager.emergency_contact = {
                     'name': emergency_name,
                     'relationship': emergency_relationship,
@@ -258,6 +269,16 @@ def add_employee(request):
             emergency_address = employee_form.cleaned_data.get('emergency_address')
 
             passport_url = None
+
+            if phone_number and phone_number[0] in ['1', '2', '3', '4']:
+                employee_form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")
+            
+            if emergency_phone and emergency_phone[0] in ['1', '2', '3', '4']:
+                employee_form.add_error('emergency_phone', "Emergency phone number cannot start with 1, 2, 3, or 4")
+
+            if not employee_form.is_valid():
+                return render(request, 'ceo_template/add_employee_template.html', context)
+
             if 'profile_pic' in request.FILES:
                 passport = request.FILES['profile_pic']
                 fs = FileSystemStorage()
@@ -1074,7 +1095,10 @@ def view_manager_leave(request):
 
                     leave.status = status
                     leave.save()
-                    return HttpResponse(True)
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Leave request has been rejected'
+                    })
                 
                 if status == 1: # Approved
 
@@ -1097,10 +1121,16 @@ def view_manager_leave(request):
 
                     leave.status = status
                     leave.save()
-                    return HttpResponse(True)
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Leave request has been approved'
+                    })
                 
-        except Exception:
-            return HttpResponse(False)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error processing request: {str(e)}'
+            }, status=400)
 
 
 @login_required

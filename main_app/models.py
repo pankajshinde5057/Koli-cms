@@ -190,6 +190,9 @@ class LeaveBalance(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"LeaveBalance for {self.employee}"
+
     class Meta:
         unique_together = [['employee', 'year', 'month']]
         indexes = [
@@ -323,6 +326,9 @@ class LeaveReportEmployee(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.employee} Leave for {self.leave_type}"
+
     def clean(self):
         super().clean()
         if self.leave_type == 'Half-Day' and not self.half_day_type:
@@ -454,6 +460,9 @@ class LeaveReportManager(models.Model):
     status = models.SmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.manager} Leave for {self.leave_type}"
 
 
 class FeedbackEmployee(models.Model):
