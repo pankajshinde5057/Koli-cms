@@ -131,7 +131,14 @@
                                                 <div class="modal-body">
                                                     <div class="row mb-3">
                                                         <div class="col-md-6">
-                                                            <p><strong>Date:</strong> {{ leave.start_date|date:"M d, Y" }}</p>
+                                                            <p><strong>Start Date:</strong> {{ leave.start_date|date:"M d, Y" }}</p>
+                                                            <p><strong>End Date:</strong> 
+                                                                {% if leave.end_date %}
+                                                                    {{ leave.end_date|date:"M d, Y" }}
+                                                                {% else %}
+                                                                    Same as Start Date
+                                                                {% endif %}
+                                                            </p>
                                                             <p><strong>Type:</strong> 
                                                                 {{ leave.get_leave_type_display }}
                                                                 {% if leave.half_day_type %} - {{ leave.half_day_type }}{% endif %}
