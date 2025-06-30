@@ -102,6 +102,7 @@ def unread_notification_count(request):
     employee_asset_request = 0
     total_asset_unread_notifications = 0
     total_unread_notifications = 0
+    total_notification_leave_assset = 0
 
     if request.user.is_authenticated:
         if request.user.user_type == '2':
@@ -227,14 +228,18 @@ def unread_notification_count(request):
                 role = 'employee' 
             ).count()
 
-            total_unread_notifications = (
-                employee_notification_from_manager_count +
+            total_notification_leave_assset = (
                 employee_leave_approved_or_rejected_notification_count +
-                employee_clockout_request_to_manager_count + employee_asset_request
+                employee_asset_request 
             )
 
             total_general_unread_notification = (
                 employee_notification_from_manager_count 
+            )
+
+            total_unread_notifications = (
+                employee_leave_approved_or_rejected_notification_count +
+                employee_asset_request + employee_notification_from_manager_count
             )
 
             return {
@@ -244,6 +249,7 @@ def unread_notification_count(request):
                 'employee_leave_approved_or_rejected_notification_count': employee_leave_approved_or_rejected_notification_count,
                 'employee_clockout_request_to_manager_count': employee_clockout_request_to_manager_count,
                 'employee_asset_request' : employee_asset_request,
+                'total_notification_leave_assset' : total_notification_leave_assset
             }
     
     # Add a default return dictionary if the user is not authenticated
@@ -263,6 +269,7 @@ def unread_notification_count(request):
         'total_general_unread_notification' : 0,
         'employee_asset_request' : 0,
         'total_asset_notification' : 0,
+        'total_notification_leave_assset' : 0
                 
     }
        

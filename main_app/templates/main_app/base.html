@@ -196,56 +196,56 @@
         }
 
         /* Mute Toggle Styles */
-#muteToggle {
-    transition: all 0.3s ease;
-    padding: 6px 12px;
-    border-radius: 20px;
-}
+        #muteToggle {
+            transition: all 0.3s ease;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
 
-#muteToggle:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-}
+        #muteToggle:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
 
-/* Muted State */
-#muteToggle.muted {
-    background-color: #f8f9fa;
-    box-shadow: inset 0 0 0 1px #e9ecef;
-}
+        /* Muted State */
+        #muteToggle.muted {
+            background-color: #f8f9fa;
+            box-shadow: inset 0 0 0 1px #e9ecef;
+        }
 
-#muteToggle.muted #muteIcon {
-    color: #dc3545; /* Red color when muted */
-}
+        #muteToggle.muted #muteIcon {
+            color: #dc3545; /* Red color when muted */
+        }
 
-#muteToggle.muted #muteText {
-    color: #dc3545;
-    font-weight: 500;
-}
+        #muteToggle.muted #muteText {
+            color: #dc3545;
+            font-weight: 500;
+        }
 
-/* Unmuted State */
-#muteToggle.unmuted {
-    background-color: #f8f9fa;
-    box-shadow: inset 0 0 0 1px #e9ecef;
-}
+        /* Unmuted State */
+        #muteToggle.unmuted {
+            background-color: #f8f9fa;
+            box-shadow: inset 0 0 0 1px #e9ecef;
+        }
 
-#muteToggle.unmuted #muteIcon {
-    color: #28a745; /* Green color when unmuted */
-}
+        #muteToggle.unmuted #muteIcon {
+            color: #28a745; /* Green color when unmuted */
+        }
 
-#muteToggle.unmuted #muteText {
-    color: #28a745;
-    font-weight: 500;
-}
+        #muteToggle.unmuted #muteText {
+            color: #28a745;
+            font-weight: 500;
+        }
 
-/* Pulse animation for state changes */
-@keyframes pulseState {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
+        /* Pulse animation for state changes */
+        @keyframes pulseState {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
 
-.state-change {
-    animation: pulseState 0.5s ease;
-}
+        .state-change {
+            animation: pulseState 0.5s ease;
+        }
     </style>
     {% block custom_css %}
     {% endblock custom_css %}

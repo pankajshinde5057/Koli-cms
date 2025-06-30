@@ -653,7 +653,7 @@
                         <p>
                            View Notifications
                            {% if total_general_unread_notification > 0 %}
-                           <span class="right badge badge-danger">{{ total_general_unread_notification }}</span>
+                           <span class="badge badge-danger">{{ total_general_unread_notification }}</span>
                             {% endif %}
                         </p>
                     </a>
@@ -691,8 +691,8 @@
                     <a href="{{employee_requests}}" class="nav-link {% if employee_requests == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-tasks"></i>
                         <p>My Requests</p>
-                        {% if total_unread_notifications > 0 %}
-                            <span class="badge badge-danger">{{ total_unread_notifications }}</span>
+                        {% if total_notification_leave_assset > 0 %}
+                            <span class="badge badge-danger">{{ total_notification_leave_assset }}</span>
                         {% endif %}
                     </a>
                 </li>
