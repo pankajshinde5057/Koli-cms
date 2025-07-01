@@ -349,7 +349,7 @@
                     <div class="card border-0 shadow-sm h-100">
                         <div class="card-header bg-dark text-white">
                             <div class="d-flex justify-content-between align-items-center flex-wrap">
-                                <h5 class="card-title mb-2 mb-md-0"> Manager & Employee Breaks</h5>
+                                <h5 class="card-title mb-2 mb-md-0"> Manager & Employee Today's Breaks</h5>
                                 <form method="get" id="breakFilterForm" class="date-filter-group">
                                     <div class="form-group">
                                         <select id="department" name="department" class="form-control form-control-sm">
@@ -359,7 +359,7 @@
                                             {% endfor %}
                                         </select>
                                     </div>
-                                    <div class="form-group">
+                                    <!-- <div class="form-group">
                                         <label for="break_start_date">From:</label>
                                         <input type="text" name="start_date" id="break_start_date" class="form-control form-control-sm flatpickr-input" 
                                             value="{{ start_date }}" placeholder="Select Date" readonly>
@@ -368,7 +368,7 @@
                                         <label for="break_end_date">To:</label>
                                         <input type="text" name="end_date" id="break_end_date" class="form-control form-control-sm flatpickr-input" 
                                             value="{{ end_date }}" placeholder="Select Date" readonly>
-                                    </div>
+                                    </div> -->
                                 </form>
                             </div>
                         </div>
