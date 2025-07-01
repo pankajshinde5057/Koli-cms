@@ -270,7 +270,7 @@
                 {% url 'employee_home' as employee_home %}
                 {% url 'manager_home' as manager_home %}
                 {% if request.path == employee_home or request.path == manager_home %}
-                    <ul class="navbar-nav">
+                    <ul class="navbar-nav koliInfotech">
                         {% include "main_app/timesheet_clock.html" %}
                     </ul>
                 {% endif %}
@@ -308,7 +308,7 @@
             </div>
             
             <!-- Main content -->
-            <section class="content">
+            <section class="content priyankAlertMsg">
                 <div class="container-fluid">
                     <div class="row">
                         <div class="col-md-12">

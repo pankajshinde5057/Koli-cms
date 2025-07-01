@@ -671,13 +671,13 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     {% url 'employee_feedback' as employee_feedback %}
                     <a href="{{employee_feedback}}" class="nav-link {% if employee_feedback == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comment-dots"></i>
                         <p>Feedback</p>
                     </a>
-                </li>
+                </li> -->
                 <li class="nav-item">
                     {% url 'early_clock_out_request_page' as early_clock_out_request_page %}
                     <a href="{{early_clock_out_request_page}}" class="nav-link {% if early_clock_out_request_page == request.path %} active {% endif %}">

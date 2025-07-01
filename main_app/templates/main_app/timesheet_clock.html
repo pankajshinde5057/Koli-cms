@@ -6,14 +6,14 @@
 <li class="nav-item" id="working_timer_li" style="display: none;">
     <span class="nav-link text-info d-flex align-items-center">
         <span class="d-none d-sm-inline">Working Time:</span>
-        <span id="working_duration" class="ms-1">0h 0m 0s</span>
+        <span id="working_duration" class="ms-1 priyankResponsive priyankTimeout">0h 0m 0s</span>
     </span>
 </li>
 <li class="nav-item" id="break_timer_li" style="display: none;">
-    <span class="nav-link text-warning d-flex align-items-center">
-        <i class="fas fa-coffee me-2"></i>
+    <span class="nav-link text-warning d-flex align-items-center priyankBreakTimeout">
+        <i class="fas fa-coffee me-2" ></i>
         <span class="d-none d-sm-inline">Break Time:</span>
-        <span id="break_duration" class="ms-1">0h 0m 0s</span>
+        <span id="break_duration" class="ms-1 priyankResponsive ">0h 0m 0s</span>
     </span>
 </li>
 
@@ -29,20 +29,20 @@
 
 <!-- Clock Action Buttons -->
 {% if current_record %}
-    <li class="nav-item">
-        <div class="d-flex flex-row justify-content-center align-items-center" style="gap: 4px;">
+    <li class="nav-item ">
+        <div class="d-flex flex-row justify-content-center align-items-center priyank" style="gap: 4px;">
             <!-- Clock Out Button -->
             <form id="clockOutForm" method="post" action="{% url 'clock_in_out' %}">
                 {% csrf_token %}
                 <input type="hidden" name="clock_out" value="true">
                 {% if can_clock_out %}
-                    <button type="submit" class="btn btn-danger rounded-pill px-3">
+                    <button type="submit" class="btn btn-danger rounded-pill px-3 text-center priyankResponsive employee-panel-buttons">
                         <span class="d-none d-sm-inline">Clock Out</span>
                         <i class="fas fa-sign-out-alt ms-sm-1"></i>
                     </button>
                 {% else %}
-                    <button type="submit" id="clockOutBtn" class="btn btn-danger rounded-pill px-3" disabled>
-                        <span class="d-none d-sm-inline">
+                    <button type="submit" id="clockOutBtn" class="btn btn-danger rounded-pill px-3 text-center priyankResponsive employee-panel-buttons" disabled>
+                        <span class="d-none d-sm-inline responsiveText">
                             Clock Out (available in 
                             <span id="countdown" data-seconds="{{ remaining_time }}"></span>
                         )
@@ -54,20 +54,20 @@
             
             <!-- Break Buttons -->
             {% if current_break %}
-                <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3">
+                <button id="endBreakBtn" class="btn btn-warning rounded-pill px-3 text-center priyankResponsive">
                     <span class="d-none d-sm-inline">End Break</span>
                     <i class="fas fa-pause-circle ms-sm-1"></i>
                 </button>
             {% else %}
                 <div class="btn-group btn-group-sm" role="group" aria-label="Break options">
                     <button id="shortBreakBtn" type="button" 
-                            class="btn btn-primary rounded-pill px-3 mr-1">
-                        <span class="d-none d-sm-inline">Short Break</span>
+                            class="btn btn-primary rounded-pill px-3 mr-1 text-center priyankResponsive employee-panel-buttons">
+                        <span class="d-none d-sm-inline responsiveText">Break</span>
                         <i class="fas fa-mug-hot ms-sm-1"></i>
                     </button>
                     <button id="lunchBreakBtn" type="button" 
-                            class="btn btn-warning rounded-pill px-3">
-                        <span class="d-none d-sm-inline">Lunch</span>
+                            class="btn btn-warning rounded-pill px-3 text-center priyankResponsive employee-panel-buttons">
+                        <span class="d-none d-sm-inline responsiveText">Lunch</span>
                         <i class="fas fa-utensils ms-sm-1"></i>
                     </button>
                 </div>
@@ -76,17 +76,17 @@
     </li>
 {% else %}
     <li class="nav-item">
-        <div class="form-group text-center">
+        <div class="form-group text-center priyankClockin">
             <form id="clockInForm" method="post" action="{% url 'clock_in_out' %}">
                 {% csrf_token %}
                 <input type="hidden" name="clock_in" value="true">
                 {% if today_records.exists %}
-                    <button type="submit" class="btn btn-success rounded-pill px-4" disabled title="You have already clocked in today.">
+                    <button type="submit" class="btn btn-success rounded-pill px-4 priyankClockInbtn" disabled title="You have already clocked in today.">
                         <span class="d-none d-sm-inline">Clock In</span>
                         <i class="fas fa-sign-in-alt ms-sm-1"></i>
                     </button>
                 {% else %}
-                    <button type="submit" class="btn btn-success rounded-pill px-4">
+                    <button type="submit" class="btn btn-success rounded-pill px-4 priyankClockInbtn">
                         <span class="d-none d-sm-inline">Clock In</span>
                         <i class="fas fa-sign-in-alt ms-sm-1"></i>
                     </button>

@@ -1017,8 +1017,8 @@ def employee_view_attendance(request):
                 if date_str not in daily_summaries:
                     daily_summaries[date_str] = {
                         'date': date_str,
-                        'first_clock_in': make_aware(record.clock_in) if record.clock_in and not record.clock_in.tzinfo else record.clock_in,
-                        'last_clock_out': make_aware(record.clock_out) if record.clock_out and not record.clock_out.tzinfo else record.clock_out,
+                        'first_clock_in': (record.clock_in) if record.clock_in and not record.clock_in.tzinfo else record.clock_in,
+                        'last_clock_out': (record.clock_out) if record.clock_out and not record.clock_out.tzinfo else record.clock_out,
                         'status': record.status,
                         'total_worked': record.total_worked or timedelta(),
                         'records_count': 1
@@ -1026,9 +1026,9 @@ def employee_view_attendance(request):
                 else:
                     day = daily_summaries[date_str]
                     if record.clock_in and (not day['first_clock_in'] or record.clock_in < day['first_clock_in']):
-                        day['first_clock_in'] = make_aware(record.clock_in) if not record.clock_in.tzinfo else record.clock_in
+                        day['first_clock_in'] = (record.clock_in) if not record.clock_in.tzinfo else record.clock_in
                     if record.clock_out and (not day['last_clock_out'] or record.clock_out > day['last_clock_out']):
-                        day['last_clock_out'] = make_aware(record.clock_out) if not record.clock_out.tzinfo else record.clock_out
+                        day['last_clock_out'] = (record.clock_out) if not record.clock_out.tzinfo else record.clock_out
                     if record.status == 'late':
                         day['status'] = 'late'
                     if record.total_worked:
@@ -1037,8 +1037,8 @@ def employee_view_attendance(request):
 
             json_data = []
             for date_str, day in sorted(daily_summaries.items(), reverse=True):
-                lunch_start = make_aware(datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 0)))
-                lunch_end = make_aware(datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 40)))
+                lunch_start = (datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 0)))
+                lunch_end = (datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 40)))
 
                 # Adjust total_worked only for completed sessions
                 if day['first_clock_in'] and day['last_clock_out'] and day['first_clock_in'] <= lunch_start and day['last_clock_out'] >= lunch_end:
@@ -1051,7 +1051,7 @@ def employee_view_attendance(request):
                     minutes = (total_seconds % 3600) // 60
                     total_worked_str = f"{hours}h {minutes}m"
                 elif not day['last_clock_out']:  # Ongoing session
-                    current_time = make_aware(now())
+                    current_time = (now())
                     if day['first_clock_in'] and current_time > day['first_clock_in']:
                         worked = current_time - day['first_clock_in']
                         if day['first_clock_in'] <= lunch_start and current_time >= lunch_end:

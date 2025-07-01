@@ -1515,7 +1515,7 @@ def delete_manager(request, manager_id):
         manager.delete()
         messages.success(request, "Manager deleted successfully!")
     except Exception as e:
-        messages.error(request,"Sorry, failed to delete manager.")
+        messages.error(request,"Sorry, failed to delete manager or manager assigne some assets to employee.")
     return redirect(reverse('manage_manager'))
 
 
