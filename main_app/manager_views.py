@@ -436,19 +436,40 @@ def save_attendance(request):
 
 
 
-@login_required   
+@login_required
 def manager_update_attendance(request):
-    manager = get_object_or_404(Manager, admin=request.user)
-    departments = Department.objects.filter(division=manager.division)
-    employees = Employee.objects.filter(department__in=departments)
+    current_date = datetime.now()
+    current_year = current_date.year
+    current_month = current_date.month
+
+    years = [current_year + i for i in range(5)]
+    months = [
+        (f"{i:02}", datetime(current_year, i, 1).strftime('%B'))
+        for i in range(1, 13)
+    ]
+
+    # Determine user access
+    if hasattr(request.user, 'manager'):
+        manager = request.user.manager
+        departments = Department.objects.filter(division=manager.division)
+        employees = Employee.objects.filter(department__in=departments).select_related('department')
+        managers = Manager.objects.filter(department__in=departments).select_related('department')
+    else:
+        departments = Department.objects.all()
+        employees = Employee.objects.all().select_related('department')
+        managers = Manager.objects.all().select_related('department')
+
     context = {
         'departments': departments,
         'employees': employees,
+        'managers': managers,
         'page_title': 'View Attendance',
+        'months': months,
+        'years': years,
+        'current_year': current_year,
+        'current_month': current_month
     }
-    
     return render(request, 'manager_template/manager_update_attendance.html', context)
-
 
 
 # For handling the AJAX updates
@@ -1051,6 +1072,7 @@ def get_employee_attendance(request):
         # Retrieve POST parameters
         employee_id = request.POST.get('employee_id')
         department_id = request.POST.get('department_id')
+        manager_id = request.POST.get('manager_id')
         month = request.POST.get('month')
         year = request.POST.get('year')
         week = request.POST.get('week')
@@ -1071,7 +1093,9 @@ def get_employee_attendance(request):
         # Base queryset with related models
         queryset = AttendanceRecord.objects.select_related(
             'user__employee',
-            'user__employee__department'
+            'user__manager',
+            'user__employee__department',
+            'user__manager__department'
         ).prefetch_related('breaks').all()
 
         # Apply filters
@@ -1081,8 +1105,24 @@ def get_employee_attendance(request):
                 queryset = queryset.filter(user=employee.admin)
             except Employee.DoesNotExist:
                 return JsonResponse({"error": "Employee not found"}, status=400)
+        elif manager_id and manager_id != 'all':
+            try:
+                manager = Manager.objects.filter(id=manager_id).first()
+                if not manager:
+                    manager = Manager.objects.filter(admin_id=manager_id).first()
+                if not manager:
+                    return JsonResponse({"error": "Manager not found"}, status=400)
+                queryset = queryset.filter(user=manager.admin)
+            except Exception as e:
+                logger.error(f"Manager lookup error: {str(e)}")
+                return JsonResponse({"error": f"Manager lookup error: {str(e)}"}, status=400)
         elif department_id and department_id != 'all':
-            queryset = queryset.filter(user__employee__department_id=department_id)
+            queryset = queryset.filter(
+                Q(user__employee__department_id=department_id) |
+                Q(user__manager__department_id=department_id)
+            )
+        elif manager_id == 'all':
+            queryset = queryset.filter(user__manager__isnull=False)
         elif employee_id == 'all':
             queryset = queryset.filter(user__employee__isnull=False)
 
@@ -1221,6 +1261,19 @@ def get_employee_attendance(request):
                     users = [employee.admin]
                 except Employee.DoesNotExist:
                     users = []
+            elif manager_id and manager_id != 'all':
+                try:
+                    manager = Manager.objects.filter(id=manager_id).first()
+                    if not manager:
+                        manager = Manager.objects.filter(admin_id=manager_id).first()
+                    if manager:
+                        users = [manager.admin]
+                    else:
+                        users = []
+                except Exception:
+                    users = []
+            elif manager_id == 'all':
+                users = [m.admin for m in Manager.objects.all()]
             elif employee_id == 'all':
                 users = [e.admin for e in Employee.objects.filter(department_id=department_id)]
             else:
@@ -1229,7 +1282,8 @@ def get_employee_attendance(request):
 
             for user in users:
                 employee_for_user = Employee.objects.filter(admin=user).first()
-                joining_date = employee_for_user.date_of_joining if employee_for_user else today
+                manager_for_user = Manager.objects.filter(admin=user).first()
+                joining_date = employee_for_user.date_of_joining if employee_for_user else (manager_for_user.date_of_joining if manager_for_user else today)
                 first_clock_in = AttendanceRecord.objects.filter(
                     user=user,
                     status__in=['present', 'late', 'half_day']
@@ -1342,6 +1396,12 @@ def get_employee_attendance(request):
                 department = user.department.name if user.department else "HR"
                 user_type = "Employee"
                 user_id = user.employee_id
+            elif hasattr(record.user, 'manager'):
+                user = record.user.manager
+                name = f"{user.admin.first_name} {user.admin.last_name}"
+                department = user.department.name if user.department else "HR"
+                user_type = "Manager"
+                user_id = getattr(user, 'manager_id', None) or getattr(user, 'admin_id', None) or str(user.id)
             else:
                 continue
 
@@ -1391,7 +1451,7 @@ def get_employee_attendance(request):
                     "hours": "0h 0m",
                     "name": "",
                     "department": "",
-                    "user嘱: user_type": "",
+                    "user_type": "",
                     "user_id": "",
                 })
             current_date += timedelta(days=1)
