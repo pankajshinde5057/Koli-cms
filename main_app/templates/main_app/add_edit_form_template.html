@@ -551,7 +551,9 @@
                                 {% endif %}
                             {% elif page_title != "Add Employee" and page_title != 'Add Manager' %}
                                 <h3 class="mt-2">{{ user_object.admin.get_full_name }}</h3>
-                                <p class="text-muted">{{ user_object.designation }}</p>
+                                {% if user_object.designation %}
+                                    <p class="text-muted">{{ user_object.designation }}</p>
+                                {% endif %}
                                 {% if user_object.department %}
                                     <p class="text-muted">{{ user_object.department }}</p>
                                 {% endif %}
