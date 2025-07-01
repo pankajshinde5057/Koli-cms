@@ -97,7 +97,7 @@
                                     <small class="text-muted">{{ issue.asset.asset_serial_number }}</small>
                                 </td>
                                 <td>
-                                    <span class="badge badge-pill bg-{{ issue.get_badge_color }}">
+                                    <span class="badge badge-pill bg-{{ issue.get_badge_color }} text-dark">
                                         {{ issue.get_issue_type_display }}
                                     </span>
                                 </td>
@@ -119,9 +119,6 @@
                                         <a href="{% url 'asset_app:assets-detail' issue.asset.id %}" class="btn btn-outline-primary" title="View Asset">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <button class="btn btn-outline-info view-issue-details" data-issue-id="{{ issue.id }}" title="View Details">
-                                            <i class="fas fa-info-circle"></i>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
