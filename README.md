@@ -1,40 +1,32 @@
-## Table of Contents
+# Employee and Asset Management System
 
-1. [Introduction](#officeops-workforce-productivity-suite)
-   - [Deployed Website](#deployed-website)
-   - [Default Credentials](#default-credentials)
-2. [Features](#features)
-   - [CEO Features](#ceo-can)
-   - [Manager Features](#manager-can)
-   - [Employee Features](#employee-can)
-3. [Screenshots](#screenshots)
-4. [Installation](#installation)
-5. [Contributions](#contributions)
-6. [License](#license)
+## Overview
+A centralized platform for managing:
+- Employee information, roles, and departments
+- Company assets (equipment, devices, etc.)
+- Asset assignments and maintenance records
 
-# OfficeOps: Workforce Productivity Suite
+## Key Features
+- **Employee Management**  
+  - Onboarding/offboarding workflows  
+  - Department hierarchy  
+  - Document storage  
 
-OfficeOps is a powerful Workforce Productivity Suite built using Django, designed to streamline HR and office management processes within your organization. This project allows CEOs, Managers, and Employees to manage various aspects of HR, including employee information, attendance, feedback, and leave requests.
+- **Asset Tracking**  
+  - Barcode/QR code support  
+  - Check-in/check-out system  
+  - Maintenance scheduling  
 
-## Deployed Website
+- **Reporting**  
+  - Asset utilization reports  
+  - Employee assignment history  
+  - Depreciation calculations  
 
-You can access the deployed OfficeOps website at [officeops.onrender.com](https://officeops.onrender.com/).
-
-## Default Credentials
-
-For CEO:
-- Email: admin@admin.com
-- Password: admin
-
-For Manager:
-- Email: manager@manager.com
-- Password: manager
-
-For Employee:
-- Email: employee@employee.com
-- Password: employee
-
-## Features
+## Technical Stack
+- **Backend**: Python Django
+- **Database**: MySQL
+- **Frontend**: Django Templates
+- **Authentication**: Django Custom and Inbuild Authentication
 
 ### CEO Can:
 
@@ -44,48 +36,20 @@ For Employee:
 
 - **Track Employee Attendance:** Monitor employee attendance to ensure a productive workforce.
 
-- **Engage with Feedback:** Review and respond to feedback from both employees and managers to foster a collaborative workplace.
-
 - **Manage Leave Requests:** Approve or reject leave requests from Managers and Employees, ensuring operational continuity.
 
 ### Manager Can:
 
 - **Maintain Attendance:** Managers can record and update employee attendance, making it easier to track team productivity.
 
-- **Handle Salaries:** Add or update salary information for employees, streamlining payroll processes.
-
 - **Apply for Leave:** Managers can request time off and have it reviewed by the CEO.
 
-- **Communicate with CEO:** Managers can share feedback and important information directly with the CEO.
 
 ### Employee Can:
 
 - **Check Attendance:** Employees can view their attendance records to stay on top of their work hours.
 
-- **Access Salary Information:** Check salary details for transparency and financial planning.
-
 - **Request Leave:** Submit leave requests to the CEO, ensuring seamless time-off management.
-
-- **Connect with CEO:** Employees can provide feedback and share important concerns with the CEO, fostering a culture of open communication.
-
-## Screenshots
-
-| CEO                                        | Manager                                         | Employee                                     |
-|:------------------------------------------:|:-----------------------------------------------:|:--------------------------------------------:|
-| ![CEO_Home](/visuals/ss/CEO_Home.png) | ![Manager_Home](/visuals/ss/Manager_Home.png) | ![Employee_Home](/visuals/ss/Employee_Home.png)   |
-| DashBoard                           | DashBoard                            | DashBoard                              |
-| ![CEO_ManageEmployee](/visuals/ss/CEO_ManageEmployee.png) | ![Manager_AddSalary](/visuals/ss/Manager_AddSalary.png) | ![Employee_ViewSalary](/visuals/ss/Employee_ViewSalary.png)   |
-| Manage Employee                            | Add Salary                            | View Salary                             |
-| ![CEO_ManageManager](/visuals/ss/CEO_ManageManager.png) | ![Manager_TakeAttendance](/visuals/ss/Manager_TakeAttendance.png) | ![Employee_EditProfile](/visuals/ss/Employee_EditProfile.png)   |
-| Manage Manager                            | Take Attendance                            | Edit Profile      
-| ![CEO_EmployeeLeave](/visuals/ss/CEO_EmployeeLeave.png) | ![Manager_ViewAttendance](/visuals/ss/Manager_ViewAttendance.png) | ![Employee_Attendence](/visuals/ss/Employee_Attendence.png)   |
-| Leave Application Reply                           | Update Attendance                            | View Attendance                             |
-| ![CEO_ManagerLeave](/visuals/ss/CEO_ManagerLeave.png) | ![Manager_ApplyForLeave](/visuals/ss/Manager_ApplyForLeave.png) | ![Employee_ApplyForLeave](/visuals/ss/Employee_ApplyForLeave.png)   |
-| Leave Application Response                           | Apply For Leave                           | Apply For Leave                             |
-| ![CEO_EmployeeFeedbackReply](/visuals/ss/CEO_EmployeeFeedbackReply.png) | ![Manager_Feedback](/visuals/ss/Manager_Feedback.png) | ![Employee_Feedback](/visuals/ss/Employee_Feedback.png)   |
-| Feedback                            | Feedback                            | Feedback                             |
-| ![CEO_NotifyManager](/visuals/ss/CEO_NotifyManager.png) | ![Manager_Notification](/visuals/ss/Manager_Notification.png) | ![Employee_Notification](/visuals/ss/Employee_Notification.png)   |
-| Send Notification                            | View Notification                            | View Notification                            |
 
 ## Installation
 
@@ -93,7 +57,7 @@ To set up this project on your local machine, follow these steps:
 
 1. Clone the repository:
 ```
-git clone https://github.com/Gaurav241/OfficeOps-WPS.git
+git clone https://github.com/pankajshinde5057/Koli-cms.git
 ```
 2. Create a virtual environment and activate it:
 ```
@@ -101,17 +65,9 @@ python -m venv venv
 venv\Scripts\activate
 ```
 3. Navigate to the project directory and setup environment:
-```
-cd OfficeOps-WPS
-```
+
 Create .env File: Create a file named .env in the project directory. Add the following content to the .env file:
 or just rename .env.example to .env
-```
-DATABASE_URL = "postgres://USER:PASSWORD@localhost:5432/DB_NAME"
-SECRET_KEY = "your_secret_key"
-```
-NOTE: Make sure to replace YOUR_USER, YOUR_PASSWORD, YOUR_DB_NAME with your actual database credentials. 
-Also, substitute YOUR_SECRET_KEY with your desired secret key.
 
 4. Install dependencies:
 ```
