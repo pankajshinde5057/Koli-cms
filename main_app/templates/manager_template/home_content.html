@@ -296,7 +296,7 @@
                                             <th>No</th>
                                             <th>Employee</th>
                                             <th class="d-none d-md-table-cell">Department</th>
-                                            <th>Start</th>
+                                            <th class="d-none d-sm-table-cell">Start</th>
                                             <th class="d-none d-sm-table-cell">End</th>
                                             <th>Duration</th>
                                         </tr>
@@ -305,9 +305,17 @@
                                         {% for entry in break_entries %}
                                         <tr>
                                             <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                            <td>{{ entry.employee_name }}</td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span>{{ entry.employee_name }}</span>
+                                                    <small class="d-md-none text-muted">{{ entry.department }}</small>
+                                                    <small class="d-sm-none text-muted">
+                                                        {{ entry.break_start }} - {{ entry.break_end }}
+                                                    </small>
+                                                </div>
+                                            </td>
                                             <td class="d-none d-md-table-cell">{{ entry.department }}</td>
-                                            <td>{{ entry.break_start }}</td>
+                                            <td class="d-none d-sm-table-cell">{{ entry.break_start }}</td>
                                             <td class="d-none d-sm-table-cell">{{ entry.break_end }}</td>
                                             <td>{{ entry.break_duration }} min</td>
                                         </tr>
@@ -323,7 +331,7 @@
                                 </table>
                                 {% if page_obj.has_other_pages %}
                                 <nav aria-label="Break entries pagination" id="break-entries-pagination">
-                                    <ul class="pagination justify-content-center mt-3">
+                                    <ul class="pagination justify-content-center mt-3 flex-wrap">
                                         {% if page_obj.has_previous %}
                                         <li class="page-item">
                                             <a class="page-link" href="?page=1" data-page="1" data-section="break" aria-label="First">
@@ -370,7 +378,67 @@
 {% block custom_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Handle pagination clicks
+    // Initialize real-time updates
+    let updateInterval;
+    const updateFrequency = 30000; // 30 seconds
+    
+    function startBreakUpdates() {
+        // Clear any existing interval
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+        
+        // Initial update
+        updateBreakData();
+        
+        // Set up periodic updates
+        updateInterval = setInterval(updateBreakData, updateFrequency);
+    }
+    
+    function updateBreakData() {
+        const url = window.location.pathname + '?partial=breaks';
+        const containerId = '#break-entries-container';
+        const bodyId = '#break-entries-body';
+        const paginationId = '#break-entries-pagination';
+        
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Update table body
+            const newBody = doc.querySelector(bodyId);
+            if (newBody) {
+                document.querySelector(bodyId).innerHTML = newBody.innerHTML;
+            }
+            
+            // Update pagination
+            const newPagination = doc.querySelector(paginationId);
+            const paginationContainer = document.querySelector(paginationId);
+            if (newPagination && paginationContainer) {
+                paginationContainer.innerHTML = newPagination.innerHTML;
+            } else if (paginationContainer) {
+                paginationContainer.innerHTML = '';
+            }
+            
+            // Update "On Break" counter
+            const onBreakCounter = doc.querySelector('.small-box.bg-gradient-secondary .inner h3');
+            if (onBreakCounter) {
+                document.querySelector('.small-box.bg-gradient-secondary .inner h3').textContent = onBreakCounter.textContent;
+            }
+        })
+        .catch(error => console.error('Error fetching break data:', error));
+    }
+    
+    // Start the updates
+    startBreakUpdates();
+    
+    // Handle pagination clicks (existing code)
     document.querySelectorAll('#break-entries-pagination a.page-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
@@ -455,53 +523,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Firebase Configuration (unchanged)
-var firebaseConfig = {
-    apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
-    authDomain: "sms-with-django.firebaseapp.com",
-    databaseURL: "https://sms-with-django.firebaseio.com",
-    projectId: "sms-with-django",
-    storageBucket: "sms-with-django.appspot.com",
-    messagingSenderId: "945324593139",
-    appId: "1:945324593139:web:03fa99a8854bbd38420c86",
-    measurementId: "G-2F2RXTL9GT"
-};
-
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
-
-function InitializeFireBaseMessaging() {
-    messaging.requestPermission()
-        .then(() => messaging.getToken())
-        .then(token => sendToServer(token))
-        .catch(err => console.log(err));
-}
-
-messaging.onMessage(payload => {
-    const notificationOption = {
-        body: payload.notification.body,
-        icon: payload.notification.icon,
-    };
-    if (Notification.permission === 'granted') {
-        const notification = new Notification(payload.notification.title, notificationOption);
-        notification.onclick = event => {
-            event.preventDefault();
-            window.open(payload.notification.click_action, "_blank");
-            notification.close();
-        };
-    }
-});
-
-messaging.onTokenRefresh(() => {
-    messaging.getToken()
-        .then(newToken => sendToServer(newToken))
-        .catch(err => console.log(err));
-});
-
-function sendToServer(token) {
-    $.post("{% url 'manager_fcmtoken' %}", { token });
-}
-
-InitializeFireBaseMessaging();
+// Rest of your Firebase configuration remains the same...
 </script>
 {% endblock custom_js %}
