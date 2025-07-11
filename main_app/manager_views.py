@@ -41,143 +41,148 @@ def make_aware_if_naive(dt):
 
 @login_required   
 def manager_home(request):
-    manager = get_object_or_404(Manager, admin=request.user)
-    
-    today = date.today()
-    current_time = timezone.now()
+    try:
+        manager = get_object_or_404(Manager, admin=request.user)
+        
+        today = date.today()
+        current_time = timezone.now()
 
-    predefined_names = ['Python Department', 'React JS Department', 'Node JS Department']
-    all_departments = Department.objects.all()
+        predefined_names = ['Python Department', 'React JS Department', 'Node JS Department']
+        all_departments = Department.objects.all()
 
-    leave_request_from_employee = LeaveReportEmployee.objects.filter(status = 0).count()
+        leave_request_from_employee = LeaveReportEmployee.objects.filter(status = 0).count()
 
-    selected_department = request.GET.get('department', 'all').strip().lower()
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+        selected_department = request.GET.get('department', 'all').strip().lower()
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        is_partial = request.GET.get('partial') == 'breaks'  # New flag for partial updates
 
-    employees = CustomUser.objects.filter(user_type=3)  
-    normalized_predefined = [name.lower() for name in predefined_names]
+        employees = CustomUser.objects.filter(user_type=3)  
+        normalized_predefined = [name.lower() for name in predefined_names]
 
-    if selected_department != 'all':
-        if selected_department == 'others':
-            employees = employees.exclude(employee__department__name__in=predefined_names)
-        else:
-            employees = employees.filter(employee__department__name__iexact=selected_department.title())
-
-    employee_ids = employees.values_list('id', flat=True)
-    filtered_records = AttendanceRecord.objects.filter(user_id__in=employee_ids)
-    
-    on_break_now = Break.objects.filter(
-        attendance_record__user__in=employee_ids,
-        break_start__date=today,
-        break_start__lte=current_time,
-    ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
-
-    total_on_break = on_break_now.count()
-
-    if start_date and end_date:
-        date_range = [parse_date(start_date), parse_date(end_date)]
-        filtered_records = filtered_records.filter(date__range=date_range)
-
-    time_history_data = []
-    break_entries = []
-    
-    for employee in employees:
-        emp_records = filtered_records.filter(user=employee)
-        total_present = emp_records.filter(status='present').count()
-        total_late = emp_records.filter(status='late').count()
-
-        emp_leaves = LeaveReportEmployee.objects.filter(employee__admin=employee)
-        if start_date and end_date:
-            emp_leaves = emp_leaves.filter(
-                start_date__lte=parse_date(end_date),
-                end_date__gte=parse_date(start_date)
-            )
-        total_leave = emp_leaves.count()
-    
-        emp_breaks = Break.objects.filter(
-            attendance_record__user=employee,
-            break_start__date=today
-        ).order_by('break_start')
-
-        for b in emp_breaks:
-            if b.break_end:
-                duration = int((b.break_end - b.break_start).total_seconds() / 60)
+        if selected_department != 'all':
+            if selected_department == 'others':
+                employees = employees.exclude(employee__department__name__in=predefined_names)
             else:
-                duration = 0 
+                employees = employees.filter(employee__department__name__iexact=selected_department.title())
 
-            break_entries.append({
-                'employee_id': employee.id,
-                'employee_name': employee.get_full_name(),
-                'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
-                'break_start': b.break_start.strftime('%H:%M'),
-                'break_end': b.break_end.strftime('%H:%M') if b.break_end else 'Ongoing',
-                'break_duration': duration,
-            })
+        employee_ids = employees.values_list('id', flat=True)
+        filtered_records = AttendanceRecord.objects.filter(user_id__in=employee_ids)
+        
+        on_break_now = Break.objects.filter(
+            attendance_record__user__in=employee_ids,
+            break_start__date=today,
+            break_start__lte=current_time,
+        ).filter(models.Q(break_end__isnull=True) | models.Q(break_end__gte=current_time)).distinct()
 
-        # current record
-        current_record = AttendanceRecord.objects.filter(
-            user=request.user,
-            clock_out__isnull=True,
-            date=today
-        ).first()
+        total_on_break = on_break_now.count()
 
-        # for break start end
-        current_break = None
-        if current_record:
-            current_break = Break.objects.filter(
-                attendance_record=current_record,
-                break_end__isnull=True
+        if start_date and end_date:
+            date_range = [parse_date(start_date), parse_date(end_date)]
+            filtered_records = filtered_records.filter(date__range=date_range)
+
+        time_history_data = []
+        break_entries = []
+        
+        for employee in employees:
+            emp_records = filtered_records.filter(user=employee)
+            total_present = emp_records.filter(status='present').count()
+            total_late = emp_records.filter(status='late').count()
+
+            emp_leaves = LeaveReportEmployee.objects.filter(employee__admin=employee)
+            if start_date and end_date:
+                emp_leaves = emp_leaves.filter(
+                    start_date__lte=parse_date(end_date),
+                    end_date__gte=parse_date(start_date)
+                )
+            total_leave = emp_leaves.count()
+        
+            emp_breaks = Break.objects.filter(
+                attendance_record__user=employee,
+                break_start__date=today
+            ).order_by('-break_start')  # Changed to descending order
+
+            for b in emp_breaks:
+                if b.break_end:
+                    duration = int((b.break_end - b.break_start).total_seconds() / 60)
+                else:
+                    duration = 0 
+
+                break_entries.append({
+                    'employee_id': employee.id,
+                    'employee_name': employee.get_full_name(),
+                    'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
+                    'break_start': b.break_start.strftime('%H:%M'),
+                    'break_end': b.break_end.strftime('%H:%M') if b.break_end else 'Ongoing',
+                    'break_duration': duration,
+                })
+
+            # current record
+            current_record = AttendanceRecord.objects.filter(
+                user=request.user,
+                clock_out__isnull=True,
+                date=today
             ).first()
 
+            # for break start end
+            current_break = None
+            if current_record:
+                current_break = Break.objects.filter(
+                    attendance_record=current_record,
+                    break_end__isnull=True
+                ).first()
+
+        # Sort break entries by break_start in descending order (newest first)
+        if break_entries:
+            break_entries = sorted(break_entries, key=lambda x: x['break_start'], reverse=True)
+            
         # Paginate break entries
         paginator = Paginator(break_entries, 10)  
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
-
-        # After the loop that appends to break_entries
-        if break_entries:
-            break_entries = sorted(break_entries, key=lambda x: x['break_start'], reverse=True)
-            
-            # Apply pagination to sorted entries
-            paginator = Paginator(break_entries, 10)
-            page_obj = paginator.get_page(page_number)
-            break_entries = page_obj.object_list
+        break_entries = page_obj.object_list
         
-        time_history_data.append({
-            'employee_name': employee.get_full_name(),
-            'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
-            'present': total_present,
-            'late': total_late,
-            'leave': total_leave,
-            'working_days': total_present + total_late,
-        })
+        for employee in employees:
+            time_history_data.append({
+                'employee_name': employee.get_full_name(),
+                'department': employee.employee.department.name if hasattr(employee, 'employee') and employee.employee.department else '',
+                'present': total_present,
+                'late': total_late,
+                'leave': total_leave,
+                'working_days': total_present + total_late,
+            })
 
-    context = {
-        'page_title': f"Manager Panel - {manager.admin.get_full_name().capitalize()}",
-        'departments': all_departments,
-        'time_history_data': time_history_data,
-        'selected_department': selected_department,
-        'start_date': start_date,
-        'end_date': end_date,
-        'total_employees': employees.count(),
-        'total_attendance': filtered_records.count(),
-        'total_leave': sum(item['leave'] for item in time_history_data),
-        'total_department': all_departments.count(),
-        'total_on_break' : total_on_break,
-        'break_entries': break_entries,
-        'page_obj': page_obj,
-        'current_break' : current_break,
-        'leave_request_from_employee' : leave_request_from_employee
+        context = {
+            'page_title': f"Manager Panel - {manager.admin.get_full_name().capitalize()}",
+            'departments': all_departments,
+            'time_history_data': time_history_data,
+            'selected_department': selected_department,
+            'start_date': start_date,
+            'end_date': end_date,
+            'total_employees': employees.count(),
+            'total_attendance': filtered_records.count(),
+            'total_leave': sum(item['leave'] for item in time_history_data),
+            'total_department': all_departments.count(),
+            'total_on_break': total_on_break,
+            'break_entries': break_entries,
+            'page_obj': page_obj,
+            'current_break': current_break,
+            'leave_request_from_employee': leave_request_from_employee
+        }
 
-    }
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        html = render_to_string('manager_template/home_content.html', context, request=request)
-        return HttpResponse(html)
+        if is_partial:
+            # Return only the breaks table for AJAX updates
+            return render(request, 'manager_template/partials/breaks_table.html', context)
+        
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            html = render_to_string('manager_template/home_content.html', context, request=request)
+            return HttpResponse(html)
 
-    return render(request, 'manager_template/home_content.html', context)
-
-
+        return render(request, 'manager_template/home_content.html', context)
+    
+    except Exception as e:
+        messages.error(request,"something went wrong")
+        return render(request,'manager_template/home_content.html')
 
 @login_required
 def manager_todays_attendance(request):
@@ -210,6 +215,7 @@ def manager_todays_attendance(request):
         'total_clocked_in': today_attendances.values('user').distinct().count()
     }
     return render(request, 'manager_template/todays_attendance.html', context)
+
 
 @login_required   
 def manager_take_attendance(request):
