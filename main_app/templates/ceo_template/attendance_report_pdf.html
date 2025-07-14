@@ -118,7 +118,7 @@
             <div class="col-10 mx-auto d-flex">
                 <div class="col-2">
                     <div class="employee-info">
-                        <strong>{{ employee.admin.get_full_name }}</strong><br>
+                        <strong>{{ employee.admin.first_name }} {{ employee.admin.last_name }}</strong><br>
                         EMP-{{ employee.id|stringformat:"04d" }}<br>
                         {{ employee.department.name }}
                     </div>

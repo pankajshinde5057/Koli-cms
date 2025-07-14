@@ -92,7 +92,7 @@ class Manager(models.Model):
     date_of_joining = models.DateField(blank=True, null=True)
     
     def __str__(self):
-        return self.admin.last_name + " " + self.admin.first_name
+        return self.admin.first_name + " " + self.admin.last_name  
 
 
 

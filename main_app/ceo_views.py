@@ -1258,7 +1258,7 @@ def get_admin_attendance(request):
 
 @login_required
 def admin_notify_manager(request):
-    manager_list = CustomUser.objects.filter(user_type=2).order_by('last_name', 'first_name')
+    manager_list = CustomUser.objects.filter(user_type=2).order_by('first_name','last_name')
     
     page = request.GET.get('page', 1)
     paginator = Paginator(manager_list, 5)
@@ -1382,7 +1382,7 @@ def send_selected_manager_notification(request):
 
 @login_required
 def admin_notify_employee(request):
-    employee_list = CustomUser.objects.filter(user_type=3).order_by('last_name', 'first_name')    
+    employee_list = CustomUser.objects.filter(user_type=3).order_by('first_name','last_name')    
     page = request.GET.get('page', 1)
     paginator = Paginator(employee_list, 10)
     
