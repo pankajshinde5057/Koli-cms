@@ -83,7 +83,8 @@ def manager_home(request):
 
         time_history_data = []
         break_entries = []
-        
+        current_break = None
+
         for employee in employees:
             emp_records = filtered_records.filter(user=employee)
             total_present = emp_records.filter(status='present').count()
@@ -138,7 +139,10 @@ def manager_home(request):
             
         # Paginate break entries
         paginator = Paginator(break_entries, 10)  
-        page_number = request.GET.get('page')
+        try:
+            page_number = int(request.GET.get('page', 1))
+        except ValueError:
+            page_number = 1
         page_obj = paginator.get_page(page_number)
         break_entries = page_obj.object_list
         
@@ -181,7 +185,8 @@ def manager_home(request):
         return render(request, 'manager_template/home_content.html', context)
     
     except Exception as e:
-        messages.error(request,"something went wrong")
+        print(e)
+        # messages.warning(request,"something went wrong")
         return render(request,'manager_template/home_content.html')
 
 @login_required
@@ -244,7 +249,7 @@ def get_employees(request):
         for employee in employees:
             data = {
                 "id": employee.admin.id,
-                "name": employee.admin.last_name + " " + employee.admin.first_name
+                "name": employee.admin.first_name + " " + employee.admin.last_name
             }
             employee_data.append(data)
         return JsonResponse(json.dumps(employee_data), content_type='application/json', safe=False)
@@ -268,7 +273,7 @@ def get_managers(request):
         for manager in managers:
             data = {
                 "id": manager.admin.id,
-                "name": manager.admin.last_name + " " + manager.admin.first_name
+                "name": manager.admin.first_name + " " + manager.admin.last_name
             }
             manager_data.append(data)
         return JsonResponse(json.dumps(manager_data), content_type='application/json', safe=False)

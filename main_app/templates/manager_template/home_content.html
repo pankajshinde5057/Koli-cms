@@ -377,6 +377,157 @@
 
 {% block custom_js %}
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize real-time updates
+        let updateInterval;
+        const updateFrequency = 30000; // 30 seconds
+
+        function startBreakUpdates() {
+            // Clear any existing interval
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            
+            // Initial update
+            updateBreakData();
+            
+            // Set up periodic updates
+            updateInterval = setInterval(updateBreakData, updateFrequency);
+        }
+
+        function updateBreakData() {
+            const url = window.location.pathname + '?partial=breaks';
+            const containerId = '#break-entries-container';
+            const bodyId = '#break-entries-body';
+            const paginationId = '#break-entries-pagination';
+            
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Update table body
+                const newBody = doc.querySelector(bodyId);
+                if (newBody) {
+                    document.querySelector(bodyId).innerHTML = newBody.innerHTML;
+                }
+                
+                // Update pagination
+                const newPagination = doc.querySelector(paginationId);
+                const paginationContainer = document.querySelector(paginationId);
+                if (newPagination && paginationContainer) {
+                    paginationContainer.innerHTML = newPagination.innerHTML;
+                    // Reattach event handlers after updating pagination
+                    attachPaginationHandlers();
+                } else if (paginationContainer) {
+                    paginationContainer.innerHTML = '';
+                }
+                
+                // Update "On Break" counter
+                const onBreakCounter = doc.querySelector('.small-box.bg-gradient-secondary .inner h3');
+                if (onBreakCounter) {
+                    document.querySelector('.small-box.bg-gradient-secondary .inner h3').textContent = onBreakCounter.textContent;
+                }
+            })
+            .catch(error => console.error('Error fetching break data:', error));
+        }
+
+        // Function to handle pagination clicks
+        function handlePaginationClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const page = this.dataset.page;
+            const url = `?page=${page}${getFilterParams()}`;
+            const bodyId = '#break-entries-body';
+            const paginationId = '#break-entries-pagination';
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Update table body
+                const newBody = doc.querySelector(bodyId);
+                if (newBody) {
+                    document.querySelector(bodyId).innerHTML = newBody.innerHTML;
+                }
+                
+                // Update pagination
+                const newPagination = doc.querySelector(paginationId);
+                const paginationContainer = document.querySelector(paginationId);
+                if (newPagination && paginationContainer) {
+                    paginationContainer.innerHTML = newPagination.innerHTML;
+                    // Reattach event handlers after updating pagination
+                    attachPaginationHandlers();
+                } else if (paginationContainer) {
+                    paginationContainer.innerHTML = '';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Function to attach event handlers to pagination links
+        function attachPaginationHandlers() {
+            document.querySelectorAll('#break-entries-pagination a.page-link').forEach(link => {
+                // Remove any existing click handlers to prevent duplicates
+                link.removeEventListener('click', handlePaginationClick);
+                // Add new click handler
+                link.addEventListener('click', handlePaginationClick);
+            });
+        }
+
+        // Helper function to preserve filter parameters
+        function getFilterParams() {
+            const params = new URLSearchParams(window.location.search);
+            let filterParams = '';
+            if (params.get('department')) {
+                filterParams += `&department=${params.get('department')}`;
+            }
+            if (params.get('start_date')) {
+                filterParams += `&start_date=${params.get('start_date')}`;
+            }
+            if (params.get('end_date')) {
+                filterParams += `&end_date=${params.get('end_date')}`;
+            }
+            return filterParams;
+        }
+
+        // Initialize everything
+        function init() {
+            startBreakUpdates();
+            attachPaginationHandlers();
+            
+            // Existing filter form submission
+            $('#start_date, #end_date, #department').on('change', function() {
+                $('#filter-form').submit();
+            });
+        }
+
+        // Start the application
+        init();
+    });
+
+    // Rest of your Firebase configuration remains the same...
+</script>
+{% endblock custom_js %}
+
+
+
+
+<!-- 
+
+<script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize real-time updates
     let updateInterval;
@@ -525,4 +676,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Rest of your Firebase configuration remains the same...
 </script>
-{% endblock custom_js %}
+-->
