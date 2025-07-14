@@ -520,7 +520,7 @@
 <body>
     <section class="content">
         <div class="container-fluid">
-            <form id="profile-form" method="POST" enctype="multipart/form-data">
+            <form id="{% if page_title == 'Add Employee' or page_title == 'Add Manager' %}add-form{% else %}edit-form{% endif %}" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="row">
                     <!-- Profile Side -->
@@ -721,7 +721,7 @@
         const confirmationMessage = document.getElementById('confirmationMessage');
         const confirmYes = document.getElementById('confirmYes');
         const confirmNo = document.getElementById('confirmNo');
-        const profileForm = document.getElementById('profile-form');
+        const profileForm =  document.getElementById('add-form') || document.getElementById('edit-form');
         const cancelBtn = document.getElementById('cancelBtn');
         const profilePicInput = document.getElementById('id_profile_pic');
         const cropModal = document.getElementById('cropModal');
