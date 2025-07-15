@@ -189,6 +189,10 @@ def add_manager(request):
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
             phone_number = form.cleaned_data.get('phone_number')
+            aadhar_card = form.cleaned_data.get('aadhar_card')
+            pan_card = form.cleaned_data.get('pan_card')
+            bond_start = form.cleaned_data.get('bond_start')
+            bond_end = form.cleaned_data.get('bond_end')
 
             if phone_number and phone_number[0] in ['1', '2', '3', '4']:
                 form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")
@@ -230,6 +234,10 @@ def add_manager(request):
                     'phone': emergency_phone,
                     'address': emergency_address
                 }
+                manager.aadhar_card = aadhar_card
+                manager.pan_card = pan_card
+                manager.bond_start = bond_start
+                manager.bond_end = bond_end
                 manager.save()
 
                 messages.success(request, "Successfully Added")
@@ -241,8 +249,6 @@ def add_manager(request):
             messages.error(request, "Please fill all the details correctly.")
 
     return render(request, 'ceo_template/add_manager_template.html', context)
-
-
 
 @login_required
 def add_employee(request):
@@ -267,6 +273,10 @@ def add_employee(request):
             emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
             emergency_phone = employee_form.cleaned_data.get('emergency_phone')
             emergency_address = employee_form.cleaned_data.get('emergency_address')
+            aadhar_card = employee_form.cleaned_data.get('aadhar_card')
+            pan_card = employee_form.cleaned_data.get('pan_card')
+            bond_start = employee_form.cleaned_data.get('bond_start')
+            bond_end = employee_form.cleaned_data.get('bond_end')
 
             passport_url = None
 
@@ -306,14 +316,16 @@ def add_employee(request):
                 employee.date_of_joining = date_of_joining
                 if team_lead:
                     employee.team_lead = team_lead
-
                 employee.emergency_contact = {
                     'name': emergency_name,
                     'relationship': emergency_relationship,
                     'phone': emergency_phone,
                     'address': emergency_address
                 }
-
+                employee.aadhar_card = aadhar_card
+                employee.pan_card = pan_card
+                employee.bond_start = bond_start
+                employee.bond_end = bond_end
                 employee.save()
 
                 messages.success(request, "Successfully Added")
@@ -324,8 +336,6 @@ def add_employee(request):
             messages.error(request, "Please fill all the details correctly.")
 
     return render(request, 'ceo_template/add_employee_template.html', context)
-
-
 
 
 

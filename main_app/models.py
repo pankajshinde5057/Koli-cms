@@ -90,9 +90,24 @@ class Manager(models.Model):
     designation = models.CharField(max_length=50, blank=True, null=True)
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='manager')
     date_of_joining = models.DateField(blank=True, null=True)
+    aadhar_card = models.CharField(max_length=12, blank=True, null=True)  # Aadhar Card (12 digits)
+    pan_card = models.CharField(max_length=10, blank=True, null=True)    # PAN Card (10 characters)
+    bond_start = models.DateField(blank=True, null=True)                  # Bond Start Date
+    bond_end = models.DateField(blank=True, null=True)
+    remaining_bond = models.IntegerField(blank=True, null=True) 
     
+    
+    def save(self, *args, **kwargs):
+        # Calculate remaining_bond if both bond_start and bond_end are provided
+        if self.bond_start and self.bond_end:
+            delta = self.bond_end - self.bond_start
+            self.remaining_bond = delta.days if delta.days >= 0 else 0
+        else:
+            self.remaining_bond = None
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.admin.first_name + " " + self.admin.last_name  
+        return f"{self.admin.first_name} {self.admin.last_name}"  
 
 
 
@@ -108,21 +123,23 @@ class Employee(models.Model):
     phone_number = models.CharField(max_length=10)
     emergency_contact = models.JSONField(blank=True, null=True)
     date_of_joining = models.DateField(blank=True, null=True)
+    aadhar_card = models.CharField(max_length=12, blank=True, null=True)  # Aadhar Card (12 digits)
+    pan_card = models.CharField(max_length=10, blank=True, null=True)    # PAN Card (10 characters)
+    bond_start = models.DateField(blank=True, null=True)                  # Bond Start Date
+    bond_end = models.DateField(blank=True, null=True)
+    remaining_bond = models.IntegerField(blank=True, null=True) 
 
     def save(self, *args, **kwargs):
-        # Check if this is an update (not a new instance)
         is_update = self.pk is not None
         old_date_of_joining = None
 
         if is_update:
-            # Fetch the old date_of_joining before saving
             try:
                 old_instance = Employee.objects.get(pk=self.pk)
                 old_date_of_joining = old_instance.date_of_joining
             except Employee.DoesNotExist:
                 old_date_of_joining = None
 
-        # Generate employee_id if not set
         if not self.employee_id:
             last_id = Employee.objects.all().order_by('-id').first()
             if last_id and last_id.employee_id:
@@ -131,14 +148,18 @@ class Employee(models.Model):
                 emp_num = 1
             self.employee_id = f"EMP{emp_num:03d}"
 
-        # Save the Employee instance
+        # Calculate remaining_bond if both bond_start and bond_end are provided
+        if self.bond_start and self.bond_end:
+            delta = self.bond_end - self.bond_start
+            self.remaining_bond = delta.days if delta.days >= 0 else 0
+        else:
+            self.remaining_bond = None
+
         with transaction.atomic():
             super().save(*args, **kwargs)
 
-            # Check if date_of_joining has changed
             if is_update and self.date_of_joining != old_date_of_joining:
                 logger.info(f"Date of joining changed for {self.employee_id}: {old_date_of_joining} -> {self.date_of_joining}")
-                # Recalculate LeaveBalance records
                 self._recalculate_leave_balances()
 
     def _recalculate_leave_balances(self):
