@@ -10,8 +10,7 @@ from zoneinfo import ZoneInfo
 from calendar import monthrange
 import logging
 from .models import CustomUser, AttendanceRecord, EarylyClockOutRequest, Employee, LeaveBalance
-
-logger = logging.getLogger(__name__)
+from django.shortcuts import get_object_or_404
 
 
 
@@ -21,6 +20,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from .models import AttendanceRecord, CustomUser, EarylyClockOutRequest
 import logging
+from .models import Manager
 
 logger = logging.getLogger(__name__)
 
@@ -103,21 +103,39 @@ def unread_notification_count(request):
     total_asset_unread_notifications = 0
     total_unread_notifications = 0
     total_notification_leave_assset = 0
+    manager_leave_request_from_ceo_count = 0
+    employee_asset_request_count = 0
 
     if request.user.is_authenticated:
         if request.user.user_type == '2':
+            manager = get_object_or_404(Manager, admin=request.user)
+            manager_department = manager.department.name.lower().strip()
+
             manager_general_count = Notification.objects.filter(
                 user=request.user,
                 is_read=False,
                 notification_type='general-notification',
                 role="manager"
             ).count()
+            if manager_department in ['hr','h r']:                 
+                employee_asset_request_count = Notification.objects.filter(
+                    is_read = False , 
+                    notification_type = 'asset-notification',
+                    role = 'manager'
+                ).count()
 
-            employee_asset_request_count = Notification.objects.filter(
-                is_read = False , 
-                notification_type = 'asset-notification',
-                role = 'manager'
-            ).count()
+                employee_clockout_request_to_manager_count = Notification.objects.filter(
+                    user=request.user,
+                    is_read=False,
+                    notification_type='clockout-notification',
+                    role="manager"
+                ).count()
+
+                employee_asset_claim_request_to_manager_count = Notification.objects.filter(
+                    is_read=False,
+                    notification_type='asset-notification',
+                    role="manager"
+                ).count()
 
             employee_leave_request_to_manager_count = Notification.objects.filter(
                 user=request.user,
@@ -130,19 +148,6 @@ def unread_notification_count(request):
                 user=request.user,
                 is_read=False,
                 notification_type='manager-leave-notification',
-                role="manager"
-            ).count()
-
-            employee_clockout_request_to_manager_count = Notification.objects.filter(
-                user=request.user,
-                is_read=False,
-                notification_type='clockout-notification',
-                role="manager"
-            ).count()
-
-            employee_asset_claim_request_to_manager_count = Notification.objects.filter(
-                is_read=False,
-                notification_type='asset-notification',
                 role="manager"
             ).count()
 

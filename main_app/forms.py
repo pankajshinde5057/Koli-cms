@@ -18,6 +18,11 @@ class CustomUserForm(FormSettings):
     address = forms.CharField(widget=forms.Textarea)
     password = forms.CharField(widget=forms.PasswordInput, required=False)
     profile_pic = forms.ImageField(required=False, widget=forms.FileInput)
+    is_second_shift = forms.ChoiceField(
+        required=False,
+        label="Is second shift",
+        choices=[(False, 'No (means morning shift)'),(True, 'Yes (means afternoon shift)')],
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,6 +35,7 @@ class CustomUserForm(FormSettings):
             self.fields['address'].initial = user.address
             self.fields['gender'].initial = user.gender
             self.fields['profile_pic'].initial = user.profile_pic
+            self.fields['is_second_shift'].initial = user.is_second_shift
 
     def clean_email(self):
         email = self.cleaned_data['email'].lower()
@@ -43,7 +49,7 @@ class CustomUserForm(FormSettings):
 
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'gender', 'password', 'profile_pic', 'address']
+        fields = ['first_name', 'last_name', 'email', 'gender', 'password', 'profile_pic', 'address','is_second_shift']
 
 
 class AdminForm(CustomUserForm):
@@ -62,6 +68,23 @@ class EmployeeForm(CustomUserForm):
         widget=forms.DateInput(attrs={'type': 'date'}),
         required=True
     )
+    aadhar_card = forms.CharField(label="Aadhar Card Number", max_length=12, required=False)
+    pan_card = forms.CharField(label="PAN Card Number", max_length=10, required=False)
+    bond_start = forms.DateField(
+        label="Bond Start Date",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=False
+    )
+    bond_end = forms.DateField(
+        label="Bond End Date",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=False
+    )
+    # remaining_bond = forms.IntegerField(
+    #     label="Remaining Bond (Days)",
+    #     required=False,
+    #     widget=forms.TextInput(attrs={'readonly': 'readonly'})
+    # )
  
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,6 +99,47 @@ class EmployeeForm(CustomUserForm):
             self.fields['emergency_address'].initial = ec.get('address', '')
         if self.instance and self.instance.date_of_joining:
             self.fields['date_of_joining'].initial = self.instance.date_of_joining
+        if self.instance:
+            self.fields['aadhar_card'].initial = self.instance.aadhar_card
+            self.fields['pan_card'].initial = self.instance.pan_card
+            self.fields['bond_start'].initial = self.instance.bond_start
+            self.fields['bond_end'].initial = self.instance.bond_end
+            # self.fields['remaining_bond'].initial = self.instance.remaining_bond
+    
+    def clean_aadhar_card(self):
+        aadhar_card = self.cleaned_data.get('aadhar_card')
+        if aadhar_card:
+            if not aadhar_card.isdigit():
+                raise ValidationError("Aadhar Card number must contain only digits.")
+            if len(aadhar_card) != 12:
+                raise ValidationError("Aadhar Card number must be exactly 12 digits.")
+        return aadhar_card
+
+    def clean_pan_card(self):
+        pan_card = self.cleaned_data.get('pan_card')
+        if pan_card:
+            if not pan_card.isalnum():
+                raise ValidationError("PAN Card number must be alphanumeric.")
+            if len(pan_card) != 10:
+                raise ValidationError("PAN Card number must be exactly 10 characters.")
+            if not pan_card[:5].isalpha() or not pan_card[5:9].isdigit() or not pan_card[9].isalpha():
+                raise ValidationError("PAN Card number must follow the format: 5 letters, 4 digits, 1 letter.")
+        return pan_card
+
+    def clean_bond_end(self):
+        bond_start = self.cleaned_data.get('bond_start')
+        bond_end = self.cleaned_data.get('bond_end')
+        if bond_start and bond_end and bond_end < bond_start:
+            raise ValidationError("Bond end date cannot be before bond start date.")
+        return bond_end
+
+    # def clean_remaining_bond(self):
+    #     bond_start = self.cleaned_data.get('bond_start')
+    #     bond_end = self.cleaned_data.get('bond_end')
+    #     if bond_start and bond_end:
+    #         delta = bond_end - bond_start
+    #         return delta.days if delta.days >= 0 else 0
+    #     return None
  
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get('phone_number')
@@ -140,6 +204,11 @@ class EmployeeForm(CustomUserForm):
             'address': self.cleaned_data.get('emergency_address') or '',
         }
         instance.date_of_joining = self.cleaned_data.get('date_of_joining')
+        instance.aadhar_card = self.cleaned_data.get('aadhar_card') or ''
+        instance.pan_card = self.cleaned_data.get('pan_card') or ''
+        instance.bond_start = self.cleaned_data.get('bond_start')
+        instance.bond_end = self.cleaned_data.get('bond_end')
+        # instance.remaining_bond = self.cleaned_data.get('remaining_bond')
  
         if commit:
             try:
@@ -152,7 +221,8 @@ class EmployeeForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Employee
         fields = CustomUserForm.Meta.fields + [
-            'division', 'department', 'designation', 'team_lead', 'phone_number', 'date_of_joining'
+            'division', 'department', 'designation', 'team_lead', 'phone_number', 'date_of_joining',
+            'aadhar_card', 'pan_card', 'bond_start', 'bond_end'
         ]
  
 
@@ -166,6 +236,23 @@ class ManagerForm(CustomUserForm):
         widget=forms.DateInput(attrs={'type': 'date'}),
         required=True
     )
+    aadhar_card = forms.CharField(label="Aadhar Card Number", max_length=12, required=False)
+    pan_card = forms.CharField(label="PAN Card Number", max_length=10, required=False)
+    bond_start = forms.DateField(
+        label="Bond Start Date",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=False
+    )
+    bond_end = forms.DateField(
+        label="Bond End Date",
+        widget=forms.DateInput(attrs={'type': 'date'}),
+        required=False
+    )
+    # remaining_bond = forms.IntegerField(
+    #     label="Remaining Bond (Days)",
+    #     required=False,
+    #     widget=forms.TextInput(attrs={'readonly': 'readonly'})
+    # )
  
     def __init__(self, *args, **kwargs):
         super(ManagerForm, self).__init__(*args, **kwargs)
@@ -180,6 +267,47 @@ class ManagerForm(CustomUserForm):
             self.fields['emergency_address'].initial = ec.get('address', '')
         if self.instance and hasattr(self.instance, 'date_of_joining'):
             self.fields['date_of_joining'].initial = self.instance.date_of_joining
+        if self.instance:
+            self.fields['aadhar_card'].initial = self.instance.aadhar_card
+            self.fields['pan_card'].initial = self.instance.pan_card
+            self.fields['bond_start'].initial = self.instance.bond_start
+            self.fields['bond_end'].initial = self.instance.bond_end
+            # self.fields['remaining_bond'].initial = self.instance.remaining_bond
+    
+    def clean_aadhar_card(self):
+        aadhar_card = self.cleaned_data.get('aadhar_card')
+        if aadhar_card:
+            if not aadhar_card.isdigit():
+                raise ValidationError("Aadhar Card number must contain only digits.")
+            if len(aadhar_card) != 12:
+                raise ValidationError("Aadhar Card number must be exactly 12 digits.")
+        return aadhar_card
+
+    def clean_pan_card(self):
+        pan_card = self.cleaned_data.get('pan_card')
+        if pan_card:
+            if not pan_card.isalnum():
+                raise ValidationError("PAN Card number must be alphanumeric.")
+            if len(pan_card) != 10:
+                raise ValidationError("PAN Card number must be exactly 10 characters.")
+            if not pan_card[:5].isalpha() or not pan_card[5:9].isdigit() or not pan_card[9].isalpha():
+                raise ValidationError("PAN Card number must follow the format: 5 letters, 4 digits, 1 letter.")
+        return pan_card
+    
+    def clean_bond_end(self):
+        bond_start = self.cleaned_data.get('bond_start')
+        bond_end = self.cleaned_data.get('bond_end')
+        if bond_start and bond_end and bond_end < bond_start:
+            raise ValidationError("Bond end date cannot be before bond start date.")
+        return bond_end
+
+    # def clean_remaining_bond(self):
+    #     bond_start = self.cleaned_data.get('bond_start')
+    #     bond_end = self.cleaned_data.get('bond_end')
+    #     if bond_start and bond_end:
+    #         delta = bond_end - bond_start
+    #         return delta.days if delta.days >= 0 else 0
+    #     return None
  
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get('phone_number')
@@ -238,6 +366,11 @@ class ManagerForm(CustomUserForm):
             'address': self.cleaned_data.get('emergency_address') or '',
         }
         instance.date_of_joining = self.cleaned_data.get('date_of_joining')
+        instance.aadhar_card = self.cleaned_data.get('aadhar_card') or ''
+        instance.pan_card = self.cleaned_data.get('pan_card') or ''
+        instance.bond_start = self.cleaned_data.get('bond_start')
+        instance.bond_end = self.cleaned_data.get('bond_end')
+        # instance.remaining_bond = self.cleaned_data.get('remaining_bond')
  
         if commit:
             instance.save()
@@ -247,6 +380,7 @@ class ManagerForm(CustomUserForm):
         model = Manager
         fields = CustomUserForm.Meta.fields + [
             'division', 'department', 'phone_number', 'date_of_joining',
+            'aadhar_card', 'pan_card', 'bond_start', 'bond_end'
         ]
 
 

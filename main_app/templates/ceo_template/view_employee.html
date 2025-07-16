@@ -11,9 +11,15 @@
                     <div class="card-header">
                         <h3 class="card-title">Employee Details</h3>
                         <div class="card-tools">
-                            <a href="{% url 'edit_employee' employee.id %}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-edit"></i> Edit
-                            </a>
+                            {% if request.user.user_type == '2' %}
+                                <a href="{% url 'edit_employee_by_manager' employee.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            {% else %}
+                                <a href="{% url 'edit_employee' employee.id %}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
+                            {% endif %}
                             <a href="{% url 'manage_employee' %}" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-arrow-left"></i> Back
                             </a>
@@ -76,10 +82,10 @@
                                                         <th style="width: 30%">Department</th>
                                                         <td>{{ employee.department.name|default:"-" }}</td>
                                                     </tr>
-                                                    <tr>
+                                                    {% comment %} <tr>
                                                         <th>Division</th>
                                                         <td>{{ employee.division.name|default:"-" }}</td>
-                                                    </tr>
+                                                    </tr> {% endcomment %}
                                                     <tr>
                                                         <th>Designation</th>
                                                         <td>{{ employee.designation|default:"-" }}</td>
@@ -89,7 +95,14 @@
                                                         <td>{{ employee.team_lead|default:"-" }}</td>
                                                     </tr>
                                                     <tr>
+                                                        <th>Bond Start-End</th>
+                                                        <td>{{ employee.bond_start|default:"-" }} - {{employee.bond_end|default:"-"}}</td>
                                                     </tr>
+                                                    <tr>
+                                                        <th>Bond Remaining</th>
+                                                        <td>{{ employee.remaining_bond|default:"-" }} days</td>
+                                                    </tr>
+                                                    
                                                 </table>
                                             </div>
                                         </div>

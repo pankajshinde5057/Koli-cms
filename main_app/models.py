@@ -48,6 +48,7 @@ class CustomUser(AbstractUser):
     fcm_token = models.TextField(default="")  # For firebase notifications
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_second_shift = models.BooleanField(blank=True,default=False)
     
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -90,10 +91,47 @@ class Manager(models.Model):
     designation = models.CharField(max_length=50, blank=True, null=True)
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='manager')
     date_of_joining = models.DateField(blank=True, null=True)
-    
+    aadhar_card = models.CharField(max_length=12, blank=True, null=True)
+    pan_card = models.CharField(max_length=10, blank=True, null=True)
+    bond_start = models.DateField(blank=True, null=True)
+    bond_end = models.DateField(blank=True, null=True)
+    # remaining_bond = models.IntegerField(blank=True, null=True)
+
+    @property
+    def remaining_bond(self):
+        if self.bond_end:
+            today = date.today()
+            remaining = (self.bond_end - today).days
+            print(remaining)
+            return max(0, remaining)
+        return None
+
     def __str__(self):
         return self.admin.first_name + " " + self.admin.last_name  
 
+    def save(self, *args, **kwargs):
+        is_update = self.pk is not None
+        old_date_of_joining = None
+
+        if is_update:
+            try:
+                old_instance = Manager.objects.get(pk=self.pk)
+                old_date_of_joining = old_instance.date_of_joining
+            except Manager.DoesNotExist:
+                old_date_of_joining = None
+
+        # if self.bond_start and self.bond_end:
+        #     delta = self.bond_end - self.bond_start
+        #     self.remaining_bond = delta.days if delta.days >= 0 else 0
+        # else:
+        #     self.remaining_bond = None
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+
+            # if is_update and self.date_of_joining != old_date_of_joining:
+            #     logger.info(f"Date of joining changed for {self.admin.get_full_name()}: {old_date_of_joining} -> {self.date_of_joining}")
+            #     # self._recalculate_leave_balances()
 
 
 logger = logging.getLogger(__name__)
@@ -108,6 +146,22 @@ class Employee(models.Model):
     phone_number = models.CharField(max_length=10)
     emergency_contact = models.JSONField(blank=True, null=True)
     date_of_joining = models.DateField(blank=True, null=True)
+    aadhar_card = models.CharField(max_length=12, blank=True, null=True)  # Aadhar Card (12 digits)
+    pan_card = models.CharField(max_length=10, blank=True, null=True)    # PAN Card (10 characters)
+    bond_start = models.DateField(blank=True, null=True)                  # Bond Start Date
+    bond_end = models.DateField(blank=True, null=True)
+    # remaining_bond = models.IntegerField(blank=True, null=True) 
+
+    @property
+    def remaining_bond(self):
+        if self.bond_end:
+            today = date.today()
+            remaining = (self.bond_end - today).days
+            return max(0, remaining)
+        return None
+
+    def __str__(self):
+        return self.admin.first_name + " " + self.admin.last_name  
 
     def save(self, *args, **kwargs):
         # Check if this is an update (not a new instance)
@@ -130,6 +184,13 @@ class Employee(models.Model):
             else:
                 emp_num = 1
             self.employee_id = f"EMP{emp_num:03d}"
+
+        # # Calculate remaining_bond if both bond_start and bond_end are provided
+        # if self.bond_start and self.bond_end:
+        #     delta = self.bond_end - self.bond_start
+        #     self.remaining_bond = delta.days if delta.days >= 0 else 0
+        # else:
+        #     self.remaining_bond = None
 
         # Save the Employee instance
         with transaction.atomic():
@@ -366,7 +427,7 @@ class AttendanceRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
+    def __str__(self):   
         return f"{self.user} - {self.date}"
 
     class Meta:

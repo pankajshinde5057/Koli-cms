@@ -852,9 +852,20 @@ def employee_apply_leave(request):
                 message=message
             )
             messages.success(request, "Your leave request has been submitted.")
-            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
-            send_notification(user, "Leave Applied", "leave-notification", leave_request.id, "manager")
+            # notify team lead
+            team_lead = Manager.objects.get(department=employee.department,admin=employee.team_lead.admin)
+            send_notification(team_lead.admin, "Leave Applied", "leave-notification", leave_request.id, "manager")
             
+            # notify HR
+            hr_users = Manager.objects.filter(department__name__iexact='HR') | \
+                    Manager.objects.filter(department__name__iexact='hr') | \
+                    Manager.objects.filter(department__name__icontains='h r')
+            print(hr_users)
+            if hr_users.exists():
+                for hr in hr_users:
+                    send_notification(hr.admin, "Leave Applied", "leave-notification", leave_request.id, "manager")
+
+            # notify CEO
             admin_users = CustomUser.objects.filter(is_superuser=True)
             if admin_users.exists():
                 for admin_user in admin_users:
