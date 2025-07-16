@@ -24,6 +24,23 @@
         justify-content: center;
         background-color: #f0f0f0;
     }
+    .table-large {
+        font-size: 1.1rem;
+    }
+    .table-large th {
+        width: 35% !important;
+    }
+    .card-body {
+        padding: 1rem !important;
+    }
+    .no-margin-bottom {
+        margin-bottom: 0 !important;
+    }
+    .org-table {
+        min-height: 350px; /* Increased height for Organization Details table */
+        max-height: 300px; /* Limits the height */
+        overflow-y: auto; /* Enables vertical scrolling */
+    }
 </style>
 {% endblock custom_css %}
 
@@ -52,8 +69,8 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-md-3 text-center">
-                                <div class="profile-pic-container">
+                            <div class="col-md-3">
+                                <div class="profile-pic-container no-margin-bottom">
                                     {% if employee.admin.profile_pic %}
                                         <img src="{{ employee.admin.profile_pic }}" class="img-fluid rounded-circle" alt="Profile Picture">
                                     {% else %}
@@ -62,138 +79,118 @@
                                         </div>
                                     {% endif %}
                                 </div>
-                                <h4 class="mt-3">{{ employee.admin.get_full_name }}</h4>
-                                <p class="text-muted">{{ employee.designation|default:"-" }}</p>
+                                <h4 class="mt-2 mb-1 text-center">{{ employee.admin.get_full_name }}</h4>
+                                <p class="text-muted text-center mb-0">{{ employee.designation|default:"-" }}</p>
+                                <div class="card card-info card-outline mt-2">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Organization Details</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-bordered org-table">
+                                            <tr>
+                                                <th style="width: 35%">Department</th>
+                                                <td>{{ employee.department.name|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Designation</th>
+                                                <td>{{ employee.designation|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Team Lead</th>
+                                                <td>{{ employee.team_lead|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Bond Start</th>
+                                                <td>{{ employee.bond_start|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Bond End</th>
+                                                <td>{{ employee.bond_end|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Remaining Bond</th>
+                                                <td id="remaining-bond">{{ employee.remaining_bond|default:"-" }} days</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                             <div class="col-md-9">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="card card-primary card-outline">
-                                            <div class="card-header">
-                                                <h3 class="card-title">Basic Information</h3>
-                                            </div>
-                                            <div class="card-body">
+                                <div class="card card-primary card-outline">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Basic Information</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-bordered table-large">
+                                            <tr>
+                                                <th>Employee ID</th>
+                                                <td>{{ employee.employee_id|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Full Name</th>
+                                                <td>{{ employee.admin.get_full_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Email</th>
+                                                <td>{{ employee.admin.email }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Phone</th>
+                                                <td>{{ employee.phone_number|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Gender</th>
+                                                <td>{{ employee.admin.get_gender_display|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Aadhar Card</th>
+                                                <td>{{ employee.aadhar_card|default:"-" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>PAN Card</th>
+                                                <td>{{ employee.pan_card|default:"-" }}</td>
+                                            </tr>
+                                            
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="card card-warning card-outline">
+                                    <div class="card-header">
+                                        <h3 class="card-title">Emergency Contact</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if employee.emergency_contact %}
+                                        <div class="row">
+                                            <div class="col-md-6">
                                                 <table class="table table-bordered">
                                                     <tr>
-                                                        <th style="width: 30%">Employee ID</th>
-                                                        <td>{{ employee.employee_id|default:"-" }}</td>
+                                                        <th style="width: 35%">Contact Name</th>
+                                                        <td>{{ employee.emergency_contact.name|default:"-" }}</td>
                                                     </tr>
                                                     <tr>
-                                                        <th>Full Name</th>
-                                                        <td>{{ employee.admin.get_full_name }}</td>
+                                                        <th>Relationship</th>
+                                                        <td>{{ employee.emergency_contact.relationship|default:"-" }}</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <table class="table table-bordered">
+                                                    <tr>
+                                                        <th style="width: 35%">Phone</th>
+                                                        <td>{{ employee.emergency_contact.phone|default:"-" }}</td>
                                                     </tr>
                                                     <tr>
-                                                        <th>Email</th>
-                                                        <td>{{ employee.admin.email }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Phone</th>
-                                                        <td>{{ employee.phone_number|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Gender</th>
-                                                        <td>{{ employee.admin.get_gender_display|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Aadhar Card</th>
-                                                        <td>{{ employee.aadhar_card|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>PAN Card</th>
-                                                        <td>{{ employee.pan_card|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Bond Start</th>
-                                                        <td>{{ employee.bond_start|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Bond End</th>
-                                                        <td>{{ employee.bond_end|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Remaining Bond</th>
-                                                        <td id="remaining-bond">{{ employee.remaining_bond|default:"-" }} days</td>
+                                                        <th>Address</th>
+                                                        <td>{{ employee.emergency_contact.address|default:"-" }}</td>
                                                     </tr>
                                                 </table>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card card-info card-outline">
-                                            <div class="card-header">
-                                                <h3 class="card-title">Organization Details</h3>
-                                            </div>
-                                            <div class="card-body">
-                                                <table class="table table-bordered">
-                                                    <tr>
-                                                        <th style="width: 30%">Department</th>
-                                                        <td>{{ employee.department.name|default:"-" }}</td>
-                                                    </tr>
-                                                    {% comment %} <tr>
-                                                        <th>Division</th>
-                                                        <td>{{ employee.division.name|default:"-" }}</td>
-                                                    </tr> {% endcomment %}
-                                                    <tr>
-                                                        <th>Designation</th>
-                                                        <td>{{ employee.designation|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Team Lead</th>
-                                                        <td>{{ employee.team_lead|default:"-" }}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Bond Start-End</th>
-                                                        <td>{{ employee.bond_start|default:"-" }} - {{employee.bond_end|default:"-"}}</td>
-                                                    </tr>
-                                                    <tr>
-                                                        <th>Bond Remaining</th>
-                                                        <td>{{ employee.remaining_bond|default:"-" }} days</td>
-                                                    </tr>
-                                                    
-                                                </table>
-                                            </div>
+                                        {% else %}
+                                        <div class="alert alert-info">
+                                            No emergency contact information available
                                         </div>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <div class="card card-warning card-outline">
-                                            <div class="card-header">
-                                                <h3 class="card-title">Emergency Contact</h3>
-                                            </div>
-                                            <div class="card-body">
-                                                {% if employee.emergency_contact %}
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <table class="table table-bordered">
-                                                            <tr>
-                                                                <th style="width: 30%">Contact Name</th>
-                                                                <td>{{ employee.emergency_contact.name|default:"-" }}</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <th>Relationship</th>
-                                                                <td>{{ employee.emergency_contact.relationship|default:"-" }}</td>
-                                                            </tr>
-                                                        </table>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <table class="table table-bordered">
-                                                            <tr>
-                                                                <th style="width: 30%">Phone</th>
-                                                                <td>{{ employee.emergency_contact.phone|default:"-" }}</td>
-                                                            </tr>
-                                                            <tr>
-                                                                <th>Address</th>
-                                                                <td>{{ employee.emergency_contact.address|default:"-" }}</td>
-                                                            </tr>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                                {% else %}
-                                                <div class="alert alert-info">
-                                                    No emergency contact information available
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -282,7 +279,7 @@ $(document).ready(function() {
         const bondEnd = "{{ employee.bond_end|date:'Y-m-d' }}" || null;
         const remainingBondElement = $("#remaining-bond");
         if (bondEnd) {
-            const today = new Date('2025-07-15T15:56:00+05:30'); // 03:56 PM IST, July 15, 2025
+            const today = new Date('2025-07-16T11:57:00+05:30'); // 11:57 AM IST, July 16, 2025
             const endDate = new Date(bondEnd);
             const todayDate = new Date(today.toDateString());
             const endDateOnly = new Date(endDate.toDateString());
