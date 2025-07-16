@@ -2202,6 +2202,7 @@ def edit_employee_by_manager(request, employee_id):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
+            is_second_shift = form.cleaned_data.get('is_second_shift')
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
@@ -2226,6 +2227,7 @@ def edit_employee_by_manager(request, employee_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
+                user.is_second_shift = is_second_shift
 
                 # Save the CustomUser instance
                 user.save()

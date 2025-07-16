@@ -1,3 +1,4 @@
+<!-- todays_attendance.html -->
 {% extends 'main_app/base.html' %}
 {% load static %}
 {% load tz %}
@@ -12,32 +13,160 @@
 .bg-gradient-success {
     background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
 }
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+.bg-gradient-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%) !important;
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <section class="content">
     <div class="container-fluid">
-        <!-- Count Card -->
+        <!-- Count Cards -->
         <div class="row mb-4">
-            <div class="col-12">
+            <div class="col-md-4">
                 <div class="small-box bg-gradient-success">
                     <div class="inner">
                         <h3>{{ total_clocked_in }}</h3>
-                        <p>Total Employees Clocked-In Today</p>
+                        <p>Total Clocked-In Today</p>
                     </div>
                     <div class="icon">
                         <i class="fas fa-user-check"></i>
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="small-box bg-gradient-primary">
+                    <div class="inner">
+                        <h3>{{ total_employees }}</h3>
+                        <p>Employees Clocked-In</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="small-box bg-gradient-info">
+                    <div class="inner">
+                        <h3>{{ total_managers }}</h3>
+                        <p>Managers Clocked-In</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
+        <!-- Managers Table -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h3 class="card-title">Today's Clocked-In Managers - {{ current_date }}</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Manager</th>
+                                        <th>Department</th>
+                                        <th>Clock In</th>
+                                        <th>Clock Out</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in manager_page_obj %}
+                                    <tr>
+                                        <td>{{ forloop.counter0|add:manager_page_obj.start_index }}</td>
+                                        <td>{{ record.user.get_full_name }}</td>
+                                        <td>
+                                            {% if record.user.manager.department.name %}
+                                                {{ record.user.manager.department.name }}
+                                            {% else %}
+                                                <span class="text-muted">Not assigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% timezone "Asia/Kolkata" %}
+                                                {{ record.clock_in|time:"h:i A" }}
+                                            {% endtimezone %}
+                                        </td>
+                                        <td>
+                                            {% if record.clock_out %}
+                                                {% timezone "Asia/Kolkata" %}
+                                                    {{ record.clock_out|time:"h:i A" }}
+                                                {% endtimezone %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if record.status == 'present' %}badge-success
+                                                {% elif record.status == 'late' %}badge-warning
+                                                {% else %}badge-secondary{% endif %}">
+                                                {{ record.status|title }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">
+                                            No manager attendance records found for today
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if manager_page_obj.has_other_pages %}
+                    <div class="card-footer">
+                        <nav aria-label="Manager pagination">
+                            <ul class="pagination justify-content-center mb-0">
+                                {% if manager_page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?manager_page={{ manager_page_obj.previous_page_number }}" tabindex="-1">Previous</a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in manager_page_obj.paginator.page_range %}
+                                    {% if manager_page_obj.number == num %}
+                                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                    {% elif num > manager_page_obj.number|add:'-3' and num < manager_page_obj.number|add:'3' %}
+                                        <li class="page-item"><a class="page-link" href="?manager_page={{ num }}">{{ num }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if manager_page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?manager_page={{ manager_page_obj.next_page_number }}">Next</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Employees Table -->
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
-                    <div class="card-header bg-gradient-info text-white">
-                        <h3 class="card-title">{{ page_title }} - {{ current_date }}</h3>
+                    <div class="card-header bg-gradient-success text-white">
+                        <h3 class="card-title">Today's Clocked-In Employees - {{ current_date }}</h3>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -47,19 +176,17 @@
                                         <th>#</th>
                                         <th>Employee</th>
                                         <th>Department</th>
-                                        <th>Manager</th>
                                         <th>Clock In</th>
                                         <th>Clock Out</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for record in page_obj %}
+                                    {% for record in employee_page_obj %}
                                     <tr>
-                                        <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+                                        <td>{{ forloop.counter0|add:employee_page_obj.start_index }}</td>
                                         <td>{{ record.user.get_full_name }}</td>
                                         <td>{{ record.user.employee.department.name }}</td>
-                                        <td>{{ record.user.employee.team_lead }}</td>
                                         <td>
                                             {% timezone "Asia/Kolkata" %}
                                                 {{ record.clock_in|time:"h:i A" }}
@@ -86,7 +213,7 @@
                                     {% empty %}
                                     <tr>
                                         <td colspan="7" class="text-center py-4 text-muted">
-                                            No attendance records found for today
+                                            No employee attendance records found for today
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -96,11 +223,29 @@
                     </div>
                     
                     <!-- Pagination -->
-                    {% if page_obj.has_other_pages %}
+                    {% if employee_page_obj.has_other_pages %}
                     <div class="card-footer">
-                        <nav aria-label="Attendance pagination">
+                        <nav aria-label="Employee pagination">
                             <ul class="pagination justify-content-center mb-0">
-                                <!-- Same pagination code as manager template -->
+                                {% if employee_page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?employee_page={{ employee_page_obj.previous_page_number }}" tabindex="-1">Previous</a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in employee_page_obj.paginator.page_range %}
+                                    {% if employee_page_obj.number == num %}
+                                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                    {% elif num > employee_page_obj.number|add:'-3' and num < employee_page_obj.number|add:'3' %}
+                                        <li class="page-item"><a class="page-link" href="?employee_page={{ num }}">{{ num }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if employee_page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?employee_page={{ employee_page_obj.next_page_number }}">Next</a>
+                                </li>
+                                {% endif %}
                             </ul>
                         </nav>
                     </div>
@@ -110,8 +255,4 @@
         </div>
     </div>
 </section>
-{% endblock %}
-
-{% block custom_js %}
-<!-- Same JavaScript as manager template -->
 {% endblock %}

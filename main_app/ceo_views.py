@@ -711,6 +711,7 @@ def edit_manager(request, manager_id):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
+            is_second_shift = form.cleaned_data.get('is_second_shift')
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
@@ -725,6 +726,7 @@ def edit_manager(request, manager_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
+                user.is_second_shift = is_second_shift
 
                 if passport:
                     fs = FileSystemStorage()
@@ -797,6 +799,7 @@ def edit_employee(request, employee_id):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
+            is_second_shift = form.cleaned_data.get('is_second_shift')
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
@@ -811,6 +814,7 @@ def edit_employee(request, employee_id):
                 user.last_name = last_name
                 user.gender = gender
                 user.address = address
+                user.is_second_shift = is_second_shift
 
                 if passport:
                     fs = FileSystemStorage()
@@ -2002,26 +2006,45 @@ def admin_todays_attendance(request):
         date=today,
         user__user_type="3"  # Only include employees
     ).select_related('user__employee__department').order_by('-clock_in')
-    
+
+    today_attendances_manager = AttendanceRecord.objects.filter(
+        date = today,
+        user__user_type = "2" # only include manager
+    ).order_by("-clock_in")
+
     # Debug: Print all attendance records for today
     all_attendances = AttendanceRecord.objects.filter(date=today)
     
-    # Pagination
-    page = request.GET.get('page', 1)
-    paginator = Paginator(today_attendances, 10)
+    # Pagination for employees
+    employee_page = request.GET.get('employee_page', 1)
+    employee_paginator = Paginator(today_attendances, 20)
     
     try:
-        page_obj = paginator.page(page)
+        employee_page_obj = employee_paginator.page(employee_page)
     except PageNotAnInteger:
-        page_obj = paginator.page(1)
+        employee_page_obj = employee_paginator.page(1)
     except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
+        employee_page_obj = employee_paginator.page(employee_paginator.num_pages)
+
+    # Pagination for managers
+    manager_page = request.GET.get('manager_page', 1)
+    manager_paginator = Paginator(today_attendances_manager, 20)
+    
+    try:
+        manager_page_obj = manager_paginator.page(manager_page)
+    except PageNotAnInteger:
+        manager_page_obj = manager_paginator.page(1)
+    except EmptyPage:
+        manager_page_obj = manager_paginator.page(manager_paginator.num_pages)
 
     context = {
-        'page_title': "Today's Clocked-In Employees",
-        'page_obj': page_obj,
+        'page_title': "Today's Attendance",
+        'employee_page_obj': employee_page_obj,
+        'manager_page_obj': manager_page_obj,
         'current_date': today.strftime("%Y-%m-%d"),
-        'total_clocked_in': today_attendances.values('user').distinct().count()
+        'total_clocked_in': today_attendances.count() + today_attendances_manager.count(),
+        'total_employees': today_attendances.count(),
+        'total_managers': today_attendances_manager.count()
     }
     return render(request, 'ceo_template/todays_attendance.html', context)
 
