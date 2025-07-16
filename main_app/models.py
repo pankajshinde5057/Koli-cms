@@ -595,7 +595,8 @@ class AttendanceRecord(models.Model):
                         record.overtime_hours = timedelta()
                     record.save()
 
-        if self.clock_in:
+        # only apply late/half-day logic for non-second-shift user
+        if self.clock_in and not self.user.is_second_shift:
             late_time = datetime.combine(self.clock_in.date(), time(9, 30))
             half_day_time = datetime.combine(self.clock_in.date(), time(13, 0))
 
@@ -606,8 +607,9 @@ class AttendanceRecord(models.Model):
                     self.status = 'late'
                 else:
                     self.status = 'present'
-
-        if self.clock_out:
+        
+        # calculate worked hours for all users when clocking out
+        if self.clock_out and self.clock_in:
             self.total_worked = self.clock_out - self.clock_in
             regular_hours_limit = timedelta(hours=8)
             self.regular_hours = min(self.total_worked, regular_hours_limit)
