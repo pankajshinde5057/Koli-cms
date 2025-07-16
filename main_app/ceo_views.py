@@ -495,19 +495,7 @@ def add_department(request):
 def manage_manager(request):
     manager_list = CustomUser.objects.filter(user_type=2)
     
-    paginator = Paginator(manager_list, 10)
-    page_number = request.GET.get('page', 1)
-    
-    try:
-        page_obj = paginator.page(page_number)
-    except PageNotAnInteger:
-        page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
-
-    manager_list = CustomUser.objects.filter(user_type=2)
-    
-    paginator = Paginator(manager_list, 10)
+    paginator = Paginator(manager_list, 50)
     page_number = request.GET.get('page', 1)
     
     try:
@@ -582,7 +570,7 @@ def manage_employee(request):
     departments = Department.objects.all()
     divisions = Division.objects.all()
 
-    paginator = Paginator(employees, 10)
+    paginator = Paginator(employees, 50)
     page_obj = paginator.get_page(page_number)
 
     context = {
@@ -2351,12 +2339,39 @@ def approve_admin_leave_request(request, leave_id):
     if request.method == 'POST':
         leave_request = get_object_or_404(LeaveReportManager, id=leave_id)
         msg = "Please check the Leave Request"
-        if leave_request.status == 0:
+        if leave_request.status == 0: # pending
             if not leave_request.end_date:
                 leave_request.end_date = leave_request.start_date
                 leave_request.save()
 
             leave_request.status = 1
+            # manager = leave_request.manager
+            # start_date = leave_request.start_date
+            # end_date = leave_request.end_date or start_date
+
+            # current_date = start_date
+            # while current_date <= end_date:
+            #     # deduct leave
+            #     success, remaining_leaves = ManagerLeaveBalance.deduct_leave(manager,current_date,leave_request.leave_type)
+            #     if not success:
+            #         return JsonResponse({'status': 'error', 'message': 'Insufficient leave balance.'})
+            #     # update or create attendance record
+            #     if leave_request.leave_type == 'Full-Day':
+            #         record, created = AttendanceRecord.objects.update_or_create(
+            #             user=manager.admin,
+            #             date=current_date,
+            #             defaults={
+            #                 'status': 'leave',
+            #                 'department': manager.department,
+            #                 'clock_in': None,
+            #                 'clock_out': None,
+            #                 'total_worked': None,
+            #                 'regular_hours': None,
+            #                 'overtime_hours': None
+            #             }
+            #         )
+            #     current_date += timedelta(days=1)
+
             leave_request.save()
 
             if leave_request.leave_type == 'Half-Day':
@@ -2394,7 +2409,7 @@ def reject_admin_leave_request(request, leave_id):
         msg = "Please check the Leave Request"
         leave_request = get_object_or_404(LeaveReportManager, id=leave_id)
         if leave_request.status == 0:
-            leave_request.status = 2
+            leave_request.status = -1
             leave_request.save()
             msg = "Leave request rejected."
             messages.warning(request, "Leave request rejected.")

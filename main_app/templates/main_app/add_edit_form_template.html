@@ -648,29 +648,48 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    {% for field in form %}
+                                   {% for field in form %}
                                         {% if field.name not in "profile_pic email phone_number address" %}
-                                            <div class="col-md-6">
-                                                <div class="form-group {% if field.name == 'password' %}password-field-container{% endif %}">
-                                                    <label for="{{ field.id_for_label }}">
-                                                        {{ field.label }}
-                                                        {% if field.field.required %}
-                                                            <span class="required-asterisk">*</span>
-                                                        {% endif %}
-                                                    </label>
-                                                    {% if field.name == 'password' %}
-                                                        <div class="password-field-container">
+                                            {% if field.name == "is_second_shift" %}
+                                                {% if request.user.user_type == '1' or page_title == 'Edit Employee' or page_title == 'Add Employee' %}
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="{{ field.id_for_label }}">
+                                                                {{ field.label }}
+                                                                {% if field.field.required %}
+                                                                    <span class="required-asterisk">*</span>
+                                                                {% endif %}
+                                                            </label>
                                                             {{ field }}
-                                                            <i class="fas fa-eye password-toggle" id="passwordToggle" aria-label="Toggle password visibility"></i>
-                                                        </div>    
-                                                    {% else %}
-                                                        {{ field }}
-                                                    {% endif %}
-                                                    {% if field.errors %}
-                                                        <div class="text-danger">{{ field.errors|striptags }}</div>
-                                                    {% endif %}
+                                                            {% if field.errors %}
+                                                                <div class="text-danger">{{ field.errors|striptags }}</div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                            {% else %}
+                                                <div class="col-md-6">
+                                                    <div class="form-group {% if field.name == 'password' %}password-field-container{% endif %}">
+                                                        <label for="{{ field.id_for_label }}">
+                                                            {{ field.label }}
+                                                            {% if field.field.required %}
+                                                                <span class="required-asterisk">*</span>
+                                                            {% endif %}
+                                                        </label>
+                                                        {% if field.name == 'password' %}
+                                                            <div class="password-field-container">
+                                                                {{ field }}
+                                                                <i class="fas fa-eye password-toggle" id="passwordToggle" aria-label="Toggle password visibility"></i>
+                                                            </div>
+                                                        {% else %}
+                                                            {{ field }}
+                                                        {% endif %}
+                                                        {% if field.errors %}
+                                                            <div class="text-danger">{{ field.errors|striptags }}</div>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            {% endif %}
                                         {% endif %}
                                     {% endfor %}
                                 </div>

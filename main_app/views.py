@@ -229,21 +229,6 @@ def clock_in_out(request):
                         'message': 'Cannot clock in on an approved leave day.'
                     }, status=400)
                 
-                # for half-day leave
-                current_time = now.time()
-                # for first half leave, allow clock-in only after 1:00 pm
-                if leave_manager.half_day_type == "First Half" and current_time < time(13,0):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'For First Half leave, you can only clock in after 1:00 PM.'
-                    }, status=400)
-
-                # For Second Half leave, allow clock-in only before 1:00 PM
-                if leave_manager.leave_type == 'Second Half' and current_time >= time(13, 0):
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'For Second Half leave, you must clock in before 1:00 PM.'
-                    }, status=400)
 
             if not user_.is_second_shift:    
                 # logic for non-second shift users
@@ -267,6 +252,8 @@ def clock_in_out(request):
             else:
                 # logic for second shift users
                 status = 'present'  # Default status for second shift users
+                if (leave_manager and leave_manager.leave_type == 'Half-Day'):
+                    status = 'half_day'
 
             # Create record only on successful validation
             department_id = request.POST.get('department')
