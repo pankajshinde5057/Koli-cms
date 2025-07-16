@@ -48,6 +48,7 @@ class CustomUser(AbstractUser):
     fcm_token = models.TextField(default="")  # For firebase notifications
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_second_shift = models.BooleanField(blank=True,default=False)
     
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -217,7 +218,19 @@ class Manager(models.Model):
     pan_card = models.CharField(max_length=10, blank=True, null=True)
     bond_start = models.DateField(blank=True, null=True)
     bond_end = models.DateField(blank=True, null=True)
-    remaining_bond = models.IntegerField(blank=True, null=True)
+    # remaining_bond = models.IntegerField(blank=True, null=True)
+
+    @property
+    def remaining_bond(self):
+        if self.bond_end:
+            today = date.today()
+            remaining = (self.bond_end - today).days
+            print(remaining)
+            return max(0, remaining)
+        return None
+
+    def __str__(self):
+        return f"{self.admin.first_name} {self.admin.last_name}"
 
     def save(self, *args, **kwargs):
         is_update = self.pk is not None
@@ -230,48 +243,18 @@ class Manager(models.Model):
             except Manager.DoesNotExist:
                 old_date_of_joining = None
 
-        if self.bond_start and self.bond_end:
-            delta = self.bond_end - self.bond_start
-            self.remaining_bond = delta.days if delta.days >= 0 else 0
-        else:
-            self.remaining_bond = None
+        # if self.bond_start and self.bond_end:
+        #     delta = self.bond_end - self.bond_start
+        #     self.remaining_bond = delta.days if delta.days >= 0 else 0
+        # else:
+        #     self.remaining_bond = None
 
         with transaction.atomic():
             super().save(*args, **kwargs)
 
-            if is_update and self.date_of_joining != old_date_of_joining:
-                logger.info(f"Date of joining changed for {self.admin.get_full_name()}: {old_date_of_joining} -> {self.date_of_joining}")
-                self._recalculate_leave_balances()
-
-    def _recalculate_leave_balances(self):
-        if not self.date_of_joining:
-            logger.warning(f"No date_of_joining set for {self.admin.get_full_name()}, skipping LeaveBalance recalculation")
-            return
-
-        leave_balances = ManagerLeaveBalance.objects.filter(manager=self).order_by('year', 'month')
-        used_leaves_data = {
-            (balance.year, balance.month): balance.used_leaves
-            for balance in leave_balances
-        }
-        logger.debug(f"Stored used_leaves data: {used_leaves_data}")
-
-        leave_balances.delete()
-        logger.info(f"Deleted existing ManagerLeaveBalance records for {self.admin.get_full_name()}")
-
-        today = date.today()
-        ManagerLeaveBalance.initialize_balances(self, today)
-        logger.info(f"Reinitialized ManagerLeaveBalance records for {self.admin.get_full_name()} from {self.date_of_joining} to {today}")
-
-        for (year, month), used_leaves in used_leaves_data.items():
-            balance = ManagerLeaveBalance.get_balance(self, year, month)
-            if balance:
-                balance.used_leaves = used_leaves
-                balance.save()
-                logger.debug(f"Restored used_leaves={used_leaves} for {self.admin.get_full_name()} in {year}-{month}")
-
-    def __str__(self):
-        return f"{self.admin.first_name} {self.admin.last_name}"
-
+            # if is_update and self.date_of_joining != old_date_of_joining:
+            #     logger.info(f"Date of joining changed for {self.admin.get_full_name()}: {old_date_of_joining} -> {self.date_of_joining}")
+            #     # self._recalculate_leave_balances()
 
 
 logger = logging.getLogger(__name__)
@@ -290,7 +273,18 @@ class Employee(models.Model):
     pan_card = models.CharField(max_length=10, blank=True, null=True)    # PAN Card (10 characters)
     bond_start = models.DateField(blank=True, null=True)                  # Bond Start Date
     bond_end = models.DateField(blank=True, null=True)
-    remaining_bond = models.IntegerField(blank=True, null=True) 
+    # remaining_bond = models.IntegerField(blank=True, null=True) 
+
+    @property
+    def remaining_bond(self):
+        if self.bond_end:
+            today = date.today()
+            remaining = (self.bond_end - today).days
+            return max(0, remaining)
+        return None
+
+    def __str__(self):
+        return self.admin.first_name + " " + self.admin.last_name  
 
     def save(self, *args, **kwargs):
         is_update = self.pk is not None
@@ -311,13 +305,14 @@ class Employee(models.Model):
                 emp_num = 1
             self.employee_id = f"EMP{emp_num:03d}"
 
-        # Calculate remaining_bond if both bond_start and bond_end are provided
-        if self.bond_start and self.bond_end:
-            delta = self.bond_end - self.bond_start
-            self.remaining_bond = delta.days if delta.days >= 0 else 0
-        else:
-            self.remaining_bond = None
+        # # Calculate remaining_bond if both bond_start and bond_end are provided
+        # if self.bond_start and self.bond_end:
+        #     delta = self.bond_end - self.bond_start
+        #     self.remaining_bond = delta.days if delta.days >= 0 else 0
+        # else:
+        #     self.remaining_bond = None
 
+        # Save the Employee instance
         with transaction.atomic():
             super().save(*args, **kwargs)
 
@@ -550,7 +545,7 @@ class AttendanceRecord(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
+    def __str__(self):   
         return f"{self.user} - {self.date}"
 
     class Meta:

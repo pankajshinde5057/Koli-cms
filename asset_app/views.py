@@ -23,6 +23,7 @@ from django.db.models import ProtectedError
 from django.template.loader import render_to_string
 from django.db import IntegrityError
 from django import forms
+from main_app.models import Employee,Manager
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -497,7 +498,8 @@ class AssetNotAssignListView(LoginRequiredMixin, View):
             pending_requests = Notify_Manager.objects.filter(
                 asset__in=not_assign_assets,
                 manager__isnull=False,
-                approved__isnull=True
+                approved__isnull=True,
+                employee = request.user
             ).values_list('asset_id', flat=True)
 
             context = {
@@ -568,7 +570,13 @@ class AssetClaimView(LoginRequiredMixin, View):
             )
             new_req.save()
 
-            send_notification(get_object_or_404(CustomUser , id=new_req.manager.id), manager_message,"asset-notification",new_req.id,"manager")
+            # notify HR
+            hr_users = Manager.objects.filter(department__name__iexact='HR') | \
+                    Manager.objects.filter(department__name__iexact='hr') | \
+                    Manager.objects.filter(department__name__icontains='h r')
+            
+            for hr in hr_users:
+                send_notification(hr.admin, manager_message,"asset-notification",new_req.id,"manager")
             messages.success(request, "Your asset request has been sent for approval.")
 
         except Exception as e:

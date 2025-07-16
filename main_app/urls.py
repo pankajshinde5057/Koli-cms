@@ -158,6 +158,8 @@ urlpatterns = [
      path("manager/employee/view/leave/", manager_views.manager_view_by_employee_leave,name="manager_view_by_employee_leave",),
      path('manager-leave-balance/', manager_views.manager_leave_balance, name='manager_leave_balance'),
 
+     path("view_employee_by_manager/<int:employee_id>/", manager_views.view_employee_by_manager,name="view_employee_by_manager",),
+
      # Employee
      path("employee/home/", employee_views.employee_home, name='employee_home'),
      path("employee/view/attendance/", employee_views.employee_view_attendance,name='employee_view_attendance'),

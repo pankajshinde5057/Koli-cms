@@ -18,6 +18,11 @@ class CustomUserForm(FormSettings):
     address = forms.CharField(widget=forms.Textarea)
     password = forms.CharField(widget=forms.PasswordInput, required=False)
     profile_pic = forms.ImageField(required=False, widget=forms.FileInput)
+    is_second_shift = forms.ChoiceField(
+        required=False,
+        label="Is second shift",
+        choices=[(False, 'No (means morning shift)'),(True, 'Yes (means afternoon shift)')],
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,6 +35,7 @@ class CustomUserForm(FormSettings):
             self.fields['address'].initial = user.address
             self.fields['gender'].initial = user.gender
             self.fields['profile_pic'].initial = user.profile_pic
+            self.fields['is_second_shift'].initial = user.is_second_shift
 
     def clean_email(self):
         email = self.cleaned_data['email'].lower()
@@ -43,7 +49,7 @@ class CustomUserForm(FormSettings):
 
     class Meta:
         model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'gender', 'password', 'profile_pic', 'address']
+        fields = ['first_name', 'last_name', 'email', 'gender', 'password', 'profile_pic', 'address','is_second_shift']
 
 
 class AdminForm(CustomUserForm):
@@ -76,12 +82,12 @@ class EmployeeForm(CustomUserForm):
         widget=forms.DateInput(attrs={'type': 'date'}),
         required=False
     )
-    remaining_bond = forms.IntegerField(
-        label="Remaining Bond (Days)",
-        required=False,
-        widget=forms.TextInput(attrs={'readonly': 'readonly'})
-    )
-
+    # remaining_bond = forms.IntegerField(
+    #     label="Remaining Bond (Days)",
+    #     required=False,
+    #     widget=forms.TextInput(attrs={'readonly': 'readonly'})
+    # )
+ 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and hasattr(self.instance, 'admin'):
@@ -100,8 +106,8 @@ class EmployeeForm(CustomUserForm):
             self.fields['pan_card'].initial = self.instance.pan_card
             self.fields['bond_start'].initial = self.instance.bond_start
             self.fields['bond_end'].initial = self.instance.bond_end
-            self.fields['remaining_bond'].initial = self.instance.remaining_bond
-
+            # self.fields['remaining_bond'].initial = self.instance.remaining_bond
+    
     def clean_aadhar_card(self):
         aadhar_card = self.cleaned_data.get('aadhar_card')
         if aadhar_card:
@@ -129,14 +135,45 @@ class EmployeeForm(CustomUserForm):
             raise ValidationError("Bond end date cannot be before bond start date.")
         return bond_end
 
-    def clean_remaining_bond(self):
-        bond_start = self.cleaned_data.get('bond_start')
-        bond_end = self.cleaned_data.get('bond_end')
-        if bond_start and bond_end:
-            delta = bond_end - bond_start
-            return delta.days if delta.days >= 0 else 0
-        return None
-
+    # def clean_remaining_bond(self):
+    #     bond_start = self.cleaned_data.get('bond_start')
+    #     bond_end = self.cleaned_data.get('bond_end')
+    #     if bond_start and bond_end:
+    #         delta = bond_end - bond_start
+    #         return delta.days if delta.days >= 0 else 0
+    #     return None
+ 
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if phone_number:
+            if not phone_number.isdigit():
+                raise ValidationError("Phone number must contain only digits.")
+            if len(phone_number) != 10:
+                raise ValidationError("Phone number must be exactly 10 digits.")
+            if phone_number[0] in ['1', '2', '3', '4']:
+                raise ValidationError("Phone number cannot start with 1, 2, 3, or 4")
+        return phone_number
+ 
+    def clean_emergency_phone(self):
+        emergency_phone = self.cleaned_data.get('emergency_phone')
+        phone_number = self.cleaned_data.get('phone_number')
+        if emergency_phone:
+            if not emergency_phone.isdigit():
+                raise ValidationError("Emergency contact phone number must contain only digits.")
+            if len(emergency_phone) != 10:
+                raise ValidationError("Emergency contact phone number must be exactly 10 digits.")
+            if emergency_phone == phone_number:
+                raise ValidationError("Emergency contact phone number cannot be the same as the primary phone number.")
+            if emergency_phone[0] in ['1', '2', '3', '4']:
+                raise ValidationError("Emergency contact phone number cannot start with 1, 2, 3, or 4")
+        return emergency_phone
+ 
+    def clean_date_of_joining(self):
+        date_of_joining = self.cleaned_data.get('date_of_joining')
+        if not date_of_joining:
+            raise ValidationError("Date of Joining is required.")
+        return date_of_joining
+ 
     def save(self, commit=True):
         instance = super().save(commit=False)
         if hasattr(instance, 'admin'):
@@ -173,8 +210,8 @@ class EmployeeForm(CustomUserForm):
         instance.pan_card = self.cleaned_data.get('pan_card') or ''
         instance.bond_start = self.cleaned_data.get('bond_start')
         instance.bond_end = self.cleaned_data.get('bond_end')
-        instance.remaining_bond = self.cleaned_data.get('remaining_bond')
-
+        # instance.remaining_bond = self.cleaned_data.get('remaining_bond')
+ 
         if commit:
             try:
                 instance.save()
@@ -187,7 +224,7 @@ class EmployeeForm(CustomUserForm):
         model = Employee
         fields = CustomUserForm.Meta.fields + [
             'division', 'department', 'designation', 'team_lead', 'phone_number', 'date_of_joining',
-            'aadhar_card', 'pan_card', 'bond_start', 'bond_end', 'remaining_bond'
+            'aadhar_card', 'pan_card', 'bond_start', 'bond_end'
         ]
 
 class ManagerForm(CustomUserForm):
@@ -212,12 +249,12 @@ class ManagerForm(CustomUserForm):
         widget=forms.DateInput(attrs={'type': 'date'}),
         required=False
     )
-    remaining_bond = forms.IntegerField(
-        label="Remaining Bond (Days)",
-        required=False,
-        widget=forms.TextInput(attrs={'readonly': 'readonly'})
-    )
-
+    # remaining_bond = forms.IntegerField(
+    #     label="Remaining Bond (Days)",
+    #     required=False,
+    #     widget=forms.TextInput(attrs={'readonly': 'readonly'})
+    # )
+ 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and hasattr(self.instance, 'admin'):
@@ -236,8 +273,8 @@ class ManagerForm(CustomUserForm):
             self.fields['pan_card'].initial = self.instance.pan_card
             self.fields['bond_start'].initial = self.instance.bond_start
             self.fields['bond_end'].initial = self.instance.bond_end
-            self.fields['remaining_bond'].initial = self.instance.remaining_bond
-
+            # self.fields['remaining_bond'].initial = self.instance.remaining_bond
+    
     def clean_aadhar_card(self):
         aadhar_card = self.cleaned_data.get('aadhar_card')
         if aadhar_card:
@@ -257,7 +294,7 @@ class ManagerForm(CustomUserForm):
             if not pan_card[:5].isalpha() or not pan_card[5:9].isdigit() or not pan_card[9].isalpha():
                 raise ValidationError("PAN Card number must follow the format: 5 letters, 4 digits, 1 letter.")
         return pan_card
-
+    
     def clean_bond_end(self):
         bond_start = self.cleaned_data.get('bond_start')
         bond_end = self.cleaned_data.get('bond_end')
@@ -265,14 +302,39 @@ class ManagerForm(CustomUserForm):
             raise ValidationError("Bond end date cannot be before bond start date.")
         return bond_end
 
-    def clean_remaining_bond(self):
-        bond_start = self.cleaned_data.get('bond_start')
-        bond_end = self.cleaned_data.get('bond_end')
-        if bond_start and bond_end:
-            delta = bond_end - bond_start
-            return delta.days if delta.days >= 0 else 0
-        return None
-
+    # def clean_remaining_bond(self):
+    #     bond_start = self.cleaned_data.get('bond_start')
+    #     bond_end = self.cleaned_data.get('bond_end')
+    #     if bond_start and bond_end:
+    #         delta = bond_end - bond_start
+    #         return delta.days if delta.days >= 0 else 0
+    #     return None
+ 
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if phone_number:
+            if not phone_number.isdigit():
+                raise ValidationError("Phone number must contain only digits.")
+            if len(phone_number) != 10:
+                raise ValidationError("Phone number must be exactly 10 digits.")
+            if phone_number[0] in ['1', '2', '3', '4']:
+                raise ValidationError("Phone number cannot start with 1, 2, 3, or 4")
+        return phone_number
+ 
+    def clean_emergency_phone(self):
+        emergency_phone = self.cleaned_data.get('emergency_phone')
+        phone_number = self.cleaned_data.get('phone_number')
+        if emergency_phone:
+            if not emergency_phone.isdigit():
+                raise ValidationError("Emergency contact phone number must contain only digits.")
+            if len(emergency_phone) != 10:
+                raise ValidationError("Emergency contact phone number must be exactly 10 digits.")
+            if emergency_phone == phone_number:
+                raise ValidationError("Emergency contact phone number cannot be the same as the primary phone number.")
+            if emergency_phone[0] in ['1', '2', '3', '4']:
+                raise ValidationError("Emergency contact phone number cannot start with 1, 2, 3, or 4")
+        return emergency_phone
+ 
     def save(self, commit=True):
         instance = super().save(commit=False)
         if hasattr(instance, 'admin'):
@@ -309,8 +371,8 @@ class ManagerForm(CustomUserForm):
         instance.pan_card = self.cleaned_data.get('pan_card') or ''
         instance.bond_start = self.cleaned_data.get('bond_start')
         instance.bond_end = self.cleaned_data.get('bond_end')
-        instance.remaining_bond = self.cleaned_data.get('remaining_bond')
-
+        # instance.remaining_bond = self.cleaned_data.get('remaining_bond')
+ 
         if commit:
             instance.save()
         return instance
@@ -319,7 +381,7 @@ class ManagerForm(CustomUserForm):
         model = Manager
         fields = CustomUserForm.Meta.fields + [
             'division', 'department', 'phone_number', 'date_of_joining',
-            'aadhar_card', 'pan_card', 'bond_start', 'bond_end', 'remaining_bond'
+            'aadhar_card', 'pan_card', 'bond_start', 'bond_end'
         ]
 
 

@@ -43,28 +43,40 @@ def make_aware_if_naive(dt):
 def manager_home(request):
     try:
         manager = get_object_or_404(Manager, admin=request.user)
-        
+        manager_department = manager.department.name.lower().strip()
         today = date.today()
         current_time = timezone.now()
 
         predefined_names = ['Python Department', 'React JS Department', 'Node JS Department']
         all_departments = Department.objects.all()
+        leave_request_from_employee = None
+        if manager_department in ['hr','h r']:
+            leave_request_from_employee = LeaveReportEmployee.objects.filter(status = 0).count()
+        else:
+            leave_request_from_employee = LeaveReportEmployee.objects.filter(status=0,employee__department=manager.department).count()
+        # selected_department = request.GET.get('department', 'all').strip().lower()
+        # start_date = request.GET.get('start_date')
+        # end_date = request.GET.get('end_date')
 
-        leave_request_from_employee = LeaveReportEmployee.objects.filter(status = 0).count()
-
-        selected_department = request.GET.get('department', 'all').strip().lower()
-        start_date = request.GET.get('start_date')
-        end_date = request.GET.get('end_date')
         is_partial = request.GET.get('partial') == 'breaks'  # New flag for partial updates
 
-        employees = CustomUser.objects.filter(user_type=3)  
+        # try:
+        #     if manager_department in ['hr','h r']:
+        #         employees = CustomUser.objects.filter(user_type = '3')
+        #     else:
+        employees = CustomUser.objects.filter(user_type = '3')
+        # except Exception as e:
+        #     return render(request,'manager_template/home_content.html')
+            
+        # employees = Employee.objects.filter(department=manager.department)  
+
         normalized_predefined = [name.lower() for name in predefined_names]
 
-        if selected_department != 'all':
-            if selected_department == 'others':
-                employees = employees.exclude(employee__department__name__in=predefined_names)
-            else:
-                employees = employees.filter(employee__department__name__iexact=selected_department.title())
+        # if selected_department != 'all':
+        #     if selected_department == 'others':
+        #         employees = employees.exclude(employee__department__name__in=predefined_names)
+        #     else:
+        #         employees = employees.filter(employee__department__name__iexact=selected_department.title())
 
         employee_ids = employees.values_list('id', flat=True)
         filtered_records = AttendanceRecord.objects.filter(user_id__in=employee_ids)
@@ -77,9 +89,9 @@ def manager_home(request):
 
         total_on_break = on_break_now.count()
 
-        if start_date and end_date:
-            date_range = [parse_date(start_date), parse_date(end_date)]
-            filtered_records = filtered_records.filter(date__range=date_range)
+        # if start_date and end_date:
+        #     date_range = [parse_date(start_date), parse_date(end_date)]
+        #     filtered_records = filtered_records.filter(date__range=date_range)
 
         time_history_data = []
         break_entries = []
@@ -89,13 +101,14 @@ def manager_home(request):
             emp_records = filtered_records.filter(user=employee)
             total_present = emp_records.filter(status='present').count()
             total_late = emp_records.filter(status='late').count()
+            
+            emp_leaves = LeaveReportEmployee.objects.filter(employee__admin=employee,status=0)
+            # if start_date and end_date:
+            #     emp_leaves = emp_leaves.filter(
+            #         start_date__lte=parse_date(end_date),
+            #         end_date__gte=parse_date(start_date)
+            #     )
 
-            emp_leaves = LeaveReportEmployee.objects.filter(employee__admin=employee)
-            if start_date and end_date:
-                emp_leaves = emp_leaves.filter(
-                    start_date__lte=parse_date(end_date),
-                    end_date__gte=parse_date(start_date)
-                )
             total_leave = emp_leaves.count()
         
             emp_breaks = Break.objects.filter(
@@ -160,9 +173,9 @@ def manager_home(request):
             'page_title': f"Manager Panel - {manager.admin.get_full_name().capitalize()}",
             'departments': all_departments,
             'time_history_data': time_history_data,
-            'selected_department': selected_department,
-            'start_date': start_date,
-            'end_date': end_date,
+            # 'selected_department': selected_department,
+            # 'start_date': start_date,
+            # 'end_date': end_date,
             'total_employees': employees.count(),
             'total_attendance': filtered_records.count(),
             'total_leave': sum(item['leave'] for item in time_history_data),
@@ -294,7 +307,12 @@ def manager_todays_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
     today = timezone.now()
     
-    team_members = Employee.objects.filter(team_lead=manager)
+    # if manager.department.name.strip().lower() in ['hr','h r']:
+    #     team_members = Employee.objects.all()
+    # else:
+    #     team_members = Employee.objects.filter(team_lead=manager)
+    
+    team_members = Employee.objects.all()    
     employee_users = CustomUser.objects.filter(employee__in=team_members)
     
     today_attendances = AttendanceRecord.objects.filter(
@@ -1699,8 +1717,7 @@ def manage_employee_by_manager(request):
     division_id = request.GET.get("division", '')
     page_number = request.GET.get('page', 1)
 
-    # Get employees with asset count
-    employees = Employee.objects.filter(team_lead=manager).annotate(
+    employees = Employee.objects.all().annotate(
         asset_count=Count('admin__assetsissuance'),
     ).select_related('admin', 'department', 'division', 'team_lead')
 
@@ -2072,6 +2089,11 @@ def add_employee_by_manager(request):
             emergency_name = employee_form.cleaned_data.get('emergency_name')
             emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
             emergency_address = employee_form.cleaned_data.get('emergency_address')
+
+            aadhar_card = employee_form.cleaned_data.get('aadhar_card')
+            pan_card = employee_form.cleaned_data.get('pan_card')
+            bond_start = employee_form.cleaned_data.get('bond_start')
+            bond_end = employee_form.cleaned_data.get('bond_end')
             
 
             passport_url = None
@@ -2112,6 +2134,10 @@ def add_employee_by_manager(request):
                 }
 
                 employee.emergency_contact = emergency_contact
+                employee.aadhar_card = aadhar_card
+                employee.pan_card = pan_card
+                employee.bond_start = bond_start
+                employee.bond_end = bond_end
                 
                 employee.save()
 
@@ -2125,12 +2151,23 @@ def add_employee_by_manager(request):
     return render(request, 'manager_template/add_employee_by_manager.html', context)
 
 
+@login_required
+def view_employee_by_manager(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    context = {
+        'employee': employee,
+        'page_title': f'Profile - {employee}'
+    }
+    return render(request, 'ceo_template/view_employee.html' , context)
+
+
 @login_required   
 def edit_employee_by_manager(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
-    if employee.team_lead != request.user.manager:
-        messages.error(request, "You do not have permission to edit this employee.")
-        return redirect('manage_employee_by_manager')
+    
+    # if employee.team_lead != request.user.manager:
+    #     messages.error(request, "You do not have permission to edit this employee.")
+    #     return redirect('manage_employee_by_manager')
 
     form = EmployeeForm(request.POST or None, instance=employee)
     context = {
@@ -2160,6 +2197,11 @@ def edit_employee_by_manager(request, employee_id):
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
+
+            aadhar_card = form.cleaned_data.get('aadhar_card')
+            pan_card = form.cleaned_data.get('pan_card')
+            bond_start = form.cleaned_data.get('bond_start')
+            bond_end = form.cleaned_data.get('bond_end')
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
@@ -2202,6 +2244,10 @@ def edit_employee_by_manager(request, employee_id):
                     'phone': emergency_phone or "Not provided",
                     'address': emergency_address or "Not provided"
                 }
+                employee.aadhar_card = aadhar_card
+                employee.pan_card = pan_card
+                employee.bond_start = bond_start
+                employee.bond_end = bond_end
 
                 employee.save()
 
@@ -2513,6 +2559,7 @@ def manager_fcmtoken(request):
 @login_required   
 def manager_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
+    manager_department = manager.department.name.lower().strip()
 
     # notification from admin
     notification_from_admin = NotificationManager.objects.filter(manager=manager).order_by('-created_at')
@@ -2545,7 +2592,14 @@ def manager_view_notification(request):
     early_clock_out_history = EarylyClockOutRequest.objects.filter(status__in=['approved', 'denied']).order_by('-reviewed_at')
 
     # Pending and history
-    pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
+    if manager_department in ['hr','h r']:
+        pending_leave_requests = LeaveReportEmployee.objects.filter(status=0).order_by('-created_at')
+    else:
+        pending_leave_requests = LeaveReportEmployee.objects.filter(
+            status=0,
+            employee__department=manager.department
+        ).order_by('-created_at')
+
     leave_history = LeaveReportEmployee.objects.filter(status__in=[1, 2]).order_by('-updated_at')
 
     # Pagination
@@ -2722,72 +2776,78 @@ def manager_view_by_employee_leave(request):
 @login_required   
 def manager_asset_view_notification(request):
     manager = get_object_or_404(Manager, admin=request.user)
+    manager_department = manager.department.name.lower().strip()
 
-    # Recently resolved recurring asset issues
-    all_resolved_recurring = AssetIssue.objects.filter(
-        status='resolved',
-    ).order_by('-resolved_date')[:5]
+    if manager_department in ['hr','h r']:
+        # Recently resolved recurring asset issues
+        all_resolved_recurring = AssetIssue.objects.filter(
+            status='resolved',
+        ).order_by('-resolved_date')[:5]
 
-    # Asset claim notifications pending approval
-    pending_asset_notifications = Notify_Manager.objects.filter(
-        # manager=request.user,
-        approved__isnull=True
-    ).order_by('-timestamp')
+        # Asset claim notifications pending approval
+        pending_asset_notifications = Notify_Manager.objects.filter(
+            # manager=request.user,
+            approved__isnull=True
+        ).order_by('-timestamp')
+        print(pending_asset_notifications)
 
-    # Get all unread notifications for manager
-    unread_notifications = Notification.objects.filter(
-        # user=request.user,
-        role="manager",
-        is_read=False,
-        notification_type = 'asset-notification'
-    ).values_list('leave_or_notification_id' , flat=True)
+        # Get all unread notifications for manager
+        unread_notifications = Notification.objects.filter(
+            # user=request.user,
+            role="manager",
+            is_read=False,
+            notification_type = 'asset-notification'
+        ).values_list('leave_or_notification_id' , flat=True)
 
-    ## Asset claim notification history 
-    asset_notification_history = Notify_Manager.objects.filter(
-        manager = request.user,
-    ).exclude(approved__isnull=True).order_by('-timestamp')
+        ## Asset claim notification history 
+        asset_notification_history = Notify_Manager.objects.filter(
+            manager = request.user,
+        ).exclude(approved__isnull=True).order_by('-timestamp')
 
-    # Asset issues with pending or in-progress status
-    pending_asset_issues = AssetIssue.objects.filter(
-        status__in=['pending', 'in_progress']
-    ).order_by('-reported_date')
+        # Asset issues with pending or in-progress status
+        pending_asset_issues = AssetIssue.objects.filter(
+            status__in=['pending', 'in_progress']
+        ).order_by('-reported_date')
 
-    # Pagination for asset claim notifications
-    asset_notification_paginator = Paginator(pending_asset_notifications, 5)
-    asset_notification_page_obj = asset_notification_paginator.get_page(request.GET.get('asset_page'))
+        # Pagination for asset claim notifications
+        asset_notification_paginator = Paginator(pending_asset_notifications, 5)
+        asset_notification_page_obj = asset_notification_paginator.get_page(request.GET.get('asset_page'))
 
-    # Pagination for asset ckain notification history
-    asset_history_claim_notication_paginator = Paginator(asset_notification_history,5)
-    asset_history_claim_notication_obj = asset_history_claim_notication_paginator.get_page(request.GET.get('asset_claim_notification_history'))
+        # Pagination for asset ckain notification history
+        asset_history_claim_notication_paginator = Paginator(asset_notification_history,5)
+        asset_history_claim_notication_obj = asset_history_claim_notication_paginator.get_page(request.GET.get('asset_claim_notification_history'))
 
-    # Pagination for resolved recurring issues
-    resolved_issues_paginator = Paginator(all_resolved_recurring, 5)
-    resolved_issues_page_obj = resolved_issues_paginator.get_page(request.GET.get('resolved_page'))
-    # IDs of unread notifications for potential frontend use
-    manager_unread_ids = pending_asset_notifications.values_list('id', flat=True)
+        # Pagination for resolved recurring issues
+        resolved_issues_paginator = Paginator(all_resolved_recurring, 5)
+        resolved_issues_page_obj = resolved_issues_paginator.get_page(request.GET.get('resolved_page'))
+        # IDs of unread notifications for potential frontend use
+        manager_unread_ids = pending_asset_notifications.values_list('id', flat=True)
 
-    # Count of unread asset-related notifications
-    unread_asset_notification_count = pending_asset_notifications.count() + pending_asset_issues.count()
+        # Count of unread asset-related notifications
+        unread_asset_notification_count = pending_asset_notifications.count() + pending_asset_issues.count()
 
-    context = {
-        'asset_notifications': pending_asset_notifications,
-        'asset_issue_notifications': pending_asset_issues,
-        'pending_issue': pending_asset_issues.filter(status='pending'),
-        'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
-        'all_resolved_recurring': all_resolved_recurring,
-        'asset_notification_page_obj': asset_notification_page_obj,
-        'resolved_issues_page_obj': resolved_issues_page_obj,
-        'page_title': "Asset Notifications",
-        'manager_unread_ids': manager_unread_ids,
-        'LOCATION_CHOICES': LOCATION_CHOICES,
-        'unread_asset_notification_count': unread_asset_notification_count,
-        'unread_asset_request_count': pending_asset_notifications.count(),
-        'unread_asset_issue_count': pending_asset_issues.count(),
-        'asset_history_claim_notication_obj' : asset_history_claim_notication_obj,
-        'unread_notifications' : list(unread_notifications)
-    }
+        context = {
+            'asset_notifications': pending_asset_notifications,
+            'asset_issue_notifications': pending_asset_issues,
+            'pending_issue': pending_asset_issues.filter(status='pending'),
+            'in_progress_issue': pending_asset_issues.filter(status='in_progress'),
+            'all_resolved_recurring': all_resolved_recurring,
+            'asset_notification_page_obj': asset_notification_page_obj,
+            'resolved_issues_page_obj': resolved_issues_page_obj,
+            'page_title': "Asset Notifications",
+            'manager_unread_ids': manager_unread_ids,
+            'LOCATION_CHOICES': LOCATION_CHOICES,
+            'unread_asset_notification_count': unread_asset_notification_count,
+            'unread_asset_request_count': pending_asset_notifications.count(),
+            'unread_asset_issue_count': pending_asset_issues.count(),
+            'asset_history_claim_notication_obj' : asset_history_claim_notication_obj,
+            'unread_notifications' : list(unread_notifications)
+        }
 
-    return render(request, "manager_template/manager_asset_view_notification.html", context)
+        return render(request, "manager_template/manager_asset_view_notification.html", context)
+    else:
+        return render(request, "manager_template/manager_asset_view_notification.html")
+
 
 
 

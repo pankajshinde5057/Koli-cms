@@ -193,6 +193,10 @@ def add_manager(request):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
+            aadhar_card = form.cleaned_data.get('aadhar_card')
+            pan_card = form.cleaned_data.get('pan_card')
+            bond_start = form.cleaned_data.get('bond_start')
+            bond_end = form.cleaned_data.get('bond_end')
 
             if phone_number and phone_number[0] in ['1', '2', '3', '4']:
                 form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")
@@ -238,6 +242,10 @@ def add_manager(request):
                 manager.pan_card = pan_card
                 manager.bond_start = bond_start
                 manager.bond_end = bond_end
+                manager.aadhar_card = aadhar_card
+                manager.pan_card = pan_card
+                manager.bond_start = bond_start
+                manager.bond_end = bond_end
                 manager.save()
 
                 messages.success(request, "Successfully Added")
@@ -273,6 +281,10 @@ def add_employee(request):
             emergency_relationship = employee_form.cleaned_data.get('emergency_relationship')
             emergency_phone = employee_form.cleaned_data.get('emergency_phone')
             emergency_address = employee_form.cleaned_data.get('emergency_address')
+            aadhar_card = employee_form.cleaned_data.get('aadhar_card')
+            pan_card = employee_form.cleaned_data.get('pan_card')
+            bond_start = employee_form.cleaned_data.get('bond_start')
+            bond_end = employee_form.cleaned_data.get('bond_end')
             aadhar_card = employee_form.cleaned_data.get('aadhar_card')
             pan_card = employee_form.cleaned_data.get('pan_card')
             bond_start = employee_form.cleaned_data.get('bond_start')
@@ -326,6 +338,7 @@ def add_employee(request):
                 employee.pan_card = pan_card
                 employee.bond_start = bond_start
                 employee.bond_end = bond_end
+
                 employee.save()
 
                 messages.success(request, "Successfully Added")
@@ -602,8 +615,9 @@ def view_employee(request, employee_id):
         'employee': employee,
         'page_title': f'Profile - {employee}'
     }
-    return render(request, 'ceo_template/view_employee.html', context)
+    return render(request, 'ceo_template/view_employee.html' , context)
 
+    # return render(request, 'manager_template/view_employee.html' if request.user.user_type == '2' else 'ceo_template/view_employee.html', context)
 
 @login_required
 def manage_division(request):
@@ -693,6 +707,11 @@ def edit_manager(request, manager_id):
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
 
+            aadhar_card = form.cleaned_data.get('aadhar_card')
+            pan_card = form.cleaned_data.get('pan_card')
+            bond_start = form.cleaned_data.get('bond_start')
+            bond_end = form.cleaned_data.get('bond_end')
+
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
                     raise ValidationError("Emergency phone number must be exactly 10 digits.")
@@ -723,6 +742,10 @@ def edit_manager(request, manager_id):
                     'phone': emergency_phone or "Not provided",
                     'address': emergency_address or "Not provided"
                 }
+                manager.aadhar_card = aadhar_card
+                manager.pan_card = pan_card
+                manager.bond_start = bond_start
+                manager.bond_end = bond_end
 
                 manager.save()
 
@@ -770,6 +793,11 @@ def edit_employee(request, employee_id):
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
 
+            aadhar_card = form.cleaned_data.get('aadhar_card')
+            pan_card = form.cleaned_data.get('pan_card')
+            bond_start = form.cleaned_data.get('bond_start')
+            bond_end = form.cleaned_data.get('bond_end')
+
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
                     raise ValidationError("Emergency phone number must be exactly 10 digits.")
@@ -804,6 +832,10 @@ def edit_employee(request, employee_id):
                     'phone': emergency_phone or "Not provided",
                     'address': emergency_address or "Not provided"
                 }
+                employee.aadhar_card = aadhar_card
+                employee.pan_card = pan_card
+                employee.bond_start = bond_start
+                employee.bond_end = bond_end
 
                 employee.save()
 
