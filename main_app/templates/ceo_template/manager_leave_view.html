@@ -409,7 +409,7 @@ $(document).ready(function() {
                     if (response.status === 'success') {
                         $('#reply_modal').modal('hide');
                         showToast(
-                            status == '1' ? 'Success! Leave request approved.' : 'Error! Leave request rejected.',
+                            status == '1' ? 'Leave request approved.' : 'Leave request rejected.',
                             status == '1' ? 'success' : 'error'
                         );
                         setTimeout(function() {

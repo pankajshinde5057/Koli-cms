@@ -109,10 +109,11 @@
                                 <tbody id="employee-body">
                                     {% for employee in employees %}
                                     <tr>
-                                        <td>EMP-{{ employee.id|stringformat:"04d" }}</td>
+                                        <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
                                         <td>
                                             <div>
                                                 <strong>{{ employee.first_name }} {{ employee.last_name }}</strong>
+                                                <small>EMP-{{ employee.id|stringformat:"04d" }}</small>
                                             </div>
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">
