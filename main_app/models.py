@@ -83,13 +83,136 @@ class Department(models.Model):
     def __str__(self):
         return self.name
 
+
+class ManagerLeaveBalance(models.Model):
+    manager = models.ForeignKey('Manager', on_delete=models.CASCADE, related_name='leave_balances')
+    year = models.PositiveIntegerField()
+    month = models.PositiveIntegerField()
+    allocated_leaves = models.FloatField(default=0.0)
+    carried_forward = models.FloatField(default=0.0)
+    used_leaves = models.FloatField(default=0.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"ManagerLeaveBalance for {self.manager}"
+
+    class Meta:
+        unique_together = [['manager', 'year', 'month']]
+        indexes = [
+            models.Index(fields=['manager', 'year', 'month']),
+        ]
+
+    def clean(self):
+        if self.month < 1 or self.month > 12:
+            raise ValidationError("Month must be between 1 and 12.")
+        if self.allocated_leaves < 0 or self.used_leaves < 0 or self.carried_forward < 0:
+            raise ValidationError("Leave counts cannot be negative.")
+        if self.year < 2000 or self.year > 9999:
+            raise ValidationError("Year must be a valid four-digit year.")
+
+    def total_available_leaves(self):
+        return max(0, self.allocated_leaves + self.carried_forward - self.used_leaves)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+
+        if not self.manager.date_of_joining:
+            raise ValidationError("Manager must have a valid date_of_joining to calculate leave balances.")
+
+        joining_date = self.manager.date_of_joining
+        joining_year = joining_date.year
+        joining_month = joining_date.month
+
+        if self.month == 1:
+            self.carried_forward = 0.0
+            if not self.pk:
+                self.used_leaves = 0.0
+
+        if self.year == joining_year and self.month == joining_month:
+            self.allocated_leaves = 1.0
+        elif self.year >= joining_year and (self.year > joining_year or self.month >= joining_month):
+            self.allocated_leaves = 1.0
+        else:
+            self.allocated_leaves = 0.0
+
+        if self.month != 1:
+            prev_month = self.month - 1
+            prev_year = self.year
+        else:
+            prev_month = 12
+            prev_year = self.year - 1
+
+        if self.month != 1 and prev_year >= joining_year and (prev_year > joining_year or prev_month >= joining_month):
+            prev_balance = ManagerLeaveBalance.objects.filter(
+                manager=self.manager,
+                year=prev_year,
+                month=prev_month
+            ).first()
+            if prev_balance and prev_balance.total_available_leaves() > 0:
+                self.carried_forward = prev_balance.total_available_leaves()
+
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_balance(cls, manager, year_or_date, month=None):
+        if isinstance(year_or_date, date):
+            year = year_or_date.year
+            month = year_or_date.month
+        else:
+            year = year_or_date
+
+        return cls.objects.filter(manager=manager, year=year, month=month).first()
+
+    @classmethod
+    def create_balance(cls, manager, year, month):
+        balance, created = cls.objects.get_or_create(
+            manager=manager,
+            year=year,
+            month=month,
+            defaults={'allocated_leaves': 0.0, 'used_leaves': 0.0, 'carried_forward': 0.0}
+        )
+        if created or not balance.allocated_leaves:
+            balance.save()
+        return balance
+
+    @classmethod
+    def initialize_balances(cls, manager, end_date):
+        joining_date = manager.date_of_joining
+        current_date = joining_date
+        end_year = end_date.year
+        end_month = end_date.month
+
+        while current_date.year < end_year or (current_date.year == end_year and current_date.month <= end_month):
+            cls.create_balance(manager, current_date.year, current_date.month)
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1, day=1)
+            else:
+                current_date = current_date.replace(month=current_date.month + 1, day=1)
+
+    @classmethod
+    def deduct_leave(cls, manager, date, leave_type):
+        balance = cls.get_balance(manager, date.year, date.month)
+        if not balance:
+            cls.initialize_balances(manager, date)
+            balance = cls.get_balance(manager, date.year, date.month)
+
+        leave_amount = 0.5 if leave_type == 'Half-Day' else 1.0
+        available_leaves = balance.total_available_leaves()
+
+        balance.used_leaves += leave_amount
+        balance.save()
+        new_available = balance.total_available_leaves()
+        return True, available_leaves - leave_amount
+
+
 class Manager(models.Model):
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
     emergency_contact = models.JSONField(blank=True, null=True)
     phone_number = models.CharField(max_length=10, blank=True, null=True)
     designation = models.CharField(max_length=50, blank=True, null=True)
-    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='manager')
+    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='manager')
     date_of_joining = models.DateField(blank=True, null=True)
     aadhar_card = models.CharField(max_length=12, blank=True, null=True)
     pan_card = models.CharField(max_length=10, blank=True, null=True)
@@ -107,7 +230,7 @@ class Manager(models.Model):
         return None
 
     def __str__(self):
-        return self.admin.first_name + " " + self.admin.last_name  
+        return f"{self.admin.first_name} {self.admin.last_name}"
 
     def save(self, *args, **kwargs):
         is_update = self.pk is not None
@@ -164,19 +287,16 @@ class Employee(models.Model):
         return self.admin.first_name + " " + self.admin.last_name  
 
     def save(self, *args, **kwargs):
-        # Check if this is an update (not a new instance)
         is_update = self.pk is not None
         old_date_of_joining = None
 
         if is_update:
-            # Fetch the old date_of_joining before saving
             try:
                 old_instance = Employee.objects.get(pk=self.pk)
                 old_date_of_joining = old_instance.date_of_joining
             except Employee.DoesNotExist:
                 old_date_of_joining = None
 
-        # Generate employee_id if not set
         if not self.employee_id:
             last_id = Employee.objects.all().order_by('-id').first()
             if last_id and last_id.employee_id:
@@ -196,10 +316,8 @@ class Employee(models.Model):
         with transaction.atomic():
             super().save(*args, **kwargs)
 
-            # Check if date_of_joining has changed
             if is_update and self.date_of_joining != old_date_of_joining:
                 logger.info(f"Date of joining changed for {self.employee_id}: {old_date_of_joining} -> {self.date_of_joining}")
-                # Recalculate LeaveBalance records
                 self._recalculate_leave_balances()
 
     def _recalculate_leave_balances(self):
@@ -498,25 +616,22 @@ class AttendanceRecord(models.Model):
         super().save(*args, **kwargs)
 
 
-        
-
-
 
 class LeaveReportManager(models.Model):
     LEAVE_TYPE = (
-        ('Half-Day','Half-Day'),
-        ('Full-Day','Full-Day')
+        ('Half-Day', 'Half-Day'),
+        ('Full-Day', 'Full-Day')
     )
     HALF_DAY_CHOICES = (
         ('First Half', 'First Half'),
         ('Second Half', 'Second Half')
     )
-    manager = models.ForeignKey(Manager, on_delete=models.CASCADE)
-    leave_type = models.CharField(max_length=100,choices=LEAVE_TYPE,blank=True,default="Full-Day")
+    manager = models.ForeignKey('Manager', on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+    leave_type = models.CharField(max_length=100, choices=LEAVE_TYPE, default="Full-Day")
     half_day_type = models.CharField(max_length=100, choices=HALF_DAY_CHOICES, blank=True, null=True)
     start_date = models.DateField(blank=True, null=True, default=None)
-    end_date = models.DateField(blank=True,null=True)
-    date = models.CharField(max_length=60)
+    end_date = models.DateField(blank=True, null=True)
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -525,6 +640,20 @@ class LeaveReportManager(models.Model):
     def __str__(self):
         return f"{self.manager} Leave for {self.leave_type}"
 
+    def clean(self):
+        super().clean()
+        if self.leave_type == 'Half-Day' and not self.half_day_type:
+            raise ValidationError("Please specify whether it's First Half or Second Half for Half-Day leaves.")
+        if self.leave_type == 'Full-Day' and self.half_day_type:
+            self.half_day_type = None
+        if self.end_date and self.start_date and self.end_date < self.start_date:
+            raise ValidationError("End date cannot be before start date.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+        
+        
 
 class FeedbackEmployee(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)

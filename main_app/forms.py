@@ -58,6 +58,8 @@ class AdminForm(CustomUserForm):
         fields = CustomUserForm.Meta.fields
 
 
+
+
 class EmployeeForm(CustomUserForm):
     emergency_phone = forms.CharField(label="Emergency Contact Phone", max_length=10, required=False)
     emergency_name = forms.CharField(label="Emergency Contact Name", required=False)
@@ -182,13 +184,13 @@ class EmployeeForm(CustomUserForm):
                 first_name=self.cleaned_data.get('first_name'),
                 last_name=self.cleaned_data.get('last_name'),
                 phone_number=self.cleaned_data.get('phone_number'),
-                user_type=3,  # Assuming 3 is for Employee
+                user_type=3,
             )
             if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
                 admin.set_password(self.cleaned_data.get('password'))
             admin.save()
             instance.admin = admin
- 
+
         admin.first_name = self.cleaned_data.get('first_name')
         admin.last_name = self.cleaned_data.get('last_name')
         admin.email = self.cleaned_data.get('email')
@@ -196,7 +198,7 @@ class EmployeeForm(CustomUserForm):
         if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
             admin.set_password(self.cleaned_data.get('password'))
         admin.save()
- 
+
         instance.emergency_contact = {
             'name': self.cleaned_data.get('emergency_name') or '',
             'relationship': self.cleaned_data.get('emergency_relationship') or '',
@@ -217,14 +219,13 @@ class EmployeeForm(CustomUserForm):
             except Exception as e:
                 print(f"Error saving employee: {e}")
         return instance
- 
+
     class Meta(CustomUserForm.Meta):
         model = Employee
         fields = CustomUserForm.Meta.fields + [
             'division', 'department', 'designation', 'team_lead', 'phone_number', 'date_of_joining',
             'aadhar_card', 'pan_card', 'bond_start', 'bond_end'
         ]
- 
 
 class ManagerForm(CustomUserForm):
     emergency_phone = forms.CharField(label="Emergency Contact Phone", max_length=10, required=False)
@@ -255,7 +256,7 @@ class ManagerForm(CustomUserForm):
     # )
  
     def __init__(self, *args, **kwargs):
-        super(ManagerForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and hasattr(self.instance, 'admin'):
             self.fields['email'].initial = self.instance.admin.email
             self.fields['password'].required = False
@@ -350,7 +351,7 @@ class ManagerForm(CustomUserForm):
                 admin.set_password(self.cleaned_data.get('password'))
             admin.save()
             instance.admin = admin
- 
+
         admin.first_name = self.cleaned_data.get('first_name')
         admin.last_name = self.cleaned_data.get('last_name')
         admin.email = self.cleaned_data.get('email')
@@ -358,7 +359,7 @@ class ManagerForm(CustomUserForm):
         if self.cleaned_data.get('password') and self.cleaned_data.get('password').strip():
             admin.set_password(self.cleaned_data.get('password'))
         admin.save()
- 
+
         instance.emergency_contact = {
             'name': self.cleaned_data.get('emergency_name') or '',
             'relationship': self.cleaned_data.get('emergency_relationship') or '',
@@ -375,7 +376,7 @@ class ManagerForm(CustomUserForm):
         if commit:
             instance.save()
         return instance
- 
+
     class Meta(CustomUserForm.Meta):
         model = Manager
         fields = CustomUserForm.Meta.fields + [
@@ -409,7 +410,7 @@ class LeaveReportManagerForm(FormSettings):
 
     class Meta:
         model = LeaveReportManager
-        fields = ['date', 'message']
+        fields = [ 'message']
         widgets = {
             'date': forms.DateInput(
                 attrs={

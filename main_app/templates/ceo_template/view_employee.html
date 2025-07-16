@@ -2,6 +2,31 @@
 {% load static %}
 {% block page_title %}{{ page_title }}{% endblock page_title %}
 
+{% block custom_css %}
+<style>
+    .profile-pic-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+    }
+    .profile-pic-container img, .profile-pic-container div {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .profile-pic-container div {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f0f0f0;
+    }
+</style>
+{% endblock custom_css %}
+
 {% block content %}
 <section class="content">
     <div class="container-fluid">
@@ -28,14 +53,16 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-3 text-center">
-                                {% if employee.admin.profile_pic %}
-                                    <img src="{{ employee.admin.profile_pic }}" class="img-fluid rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-                                {% else %}
-                                    <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 150px; height: 150px;">
-                                        <i class="fas fa-user fa-3x text-muted"></i>
-                                    </div>
-                                {% endif %}
-                                <h4 class="mt-3">{{ employee.user.get_full_name }}</h4>
+                                <div class="profile-pic-container">
+                                    {% if employee.admin.profile_pic %}
+                                        <img src="{{ employee.admin.profile_pic }}" class="img-fluid rounded-circle" alt="Profile Picture">
+                                    {% else %}
+                                        <div class="bg-light rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-user fa-3x text-muted"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <h4 class="mt-3">{{ employee.admin.get_full_name }}</h4>
                                 <p class="text-muted">{{ employee.designation|default:"-" }}</p>
                             </div>
                             <div class="col-md-9">
@@ -65,7 +92,27 @@
                                                     </tr>
                                                     <tr>
                                                         <th>Gender</th>
-                                                        <td>{{ employee.admin.gender|default:"-" }}</td>
+                                                        <td>{{ employee.admin.get_gender_display|default:"-" }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Aadhar Card</th>
+                                                        <td>{{ employee.aadhar_card|default:"-" }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>PAN Card</th>
+                                                        <td>{{ employee.pan_card|default:"-" }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Bond Start</th>
+                                                        <td>{{ employee.bond_start|default:"-" }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Bond End</th>
+                                                        <td>{{ employee.bond_end|default:"-" }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Remaining Bond</th>
+                                                        <td id="remaining-bond">{{ employee.remaining_bond|default:"-" }} days</td>
                                                     </tr>
                                                 </table>
                                             </div>
@@ -107,8 +154,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                <!-- Emergency Contact Section - Full Width -->
-                                {% comment %} <div class="row mt-3"> {% endcomment %}
                                     <div class="col-md-12">
                                         <div class="card card-warning card-outline">
                                             <div class="card-header">
@@ -160,3 +205,100 @@
     </div>
 </section>
 {% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    // Aadhar Card validation
+    $(document).on('input', '#id_aadhar_card', function() {
+        const original = this.value;
+        const digitsOnly = original.replace(/\D/g, '');
+        const warningId = this.id + "_warning";
+
+        $("#" + warningId).remove();
+
+        if (original !== digitsOnly) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>Aadhar Card number must contain only digits</span>").insertAfter(this);
+            this.value = digitsOnly;
+            return;
+        }
+
+        this.value = digitsOnly;
+
+        if (digitsOnly.length > 0 && digitsOnly.length !== 12) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>Aadhar Card number must be exactly 12 digits</span>").insertAfter(this);
+        } else if (digitsOnly.length === 12) {
+            $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid Aadhar Card number</span>").insertAfter(this);
+        }
+    });
+
+    $(document).on('keypress', '#id_aadhar_card', function(e) {
+        const charCode = e.which ? e.which : e.keyCode;
+        if (charCode < 48 || charCode > 57) { // Allow only 0-9
+            e.preventDefault();
+        }
+    });
+
+    // PAN Card validation
+    $(document).on('input', '#id_pan_card', function() {
+        const value = this.value.toUpperCase();
+        const warningId = this.id + "_warning";
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
+        $("#" + warningId).remove();
+
+        this.value = value;
+
+        if (value && !panRegex.test(value)) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>PAN Card number must be 5 letters, 4 digits, 1 letter</span>").insertAfter(this);
+        } else if (value.length === 10) {
+            $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid PAN Card number</span>").insertAfter(this);
+        }
+    });
+
+    // Form submission validation
+    $(document).on('submit', 'form#profile-form', function(event) {
+        const aadharCard = $('#id_aadhar_card').val();
+        const panCard = $('#id_pan_card').val();
+        const aadharWarningId = 'id_aadhar_card_warning';
+        const panWarningId = 'id_pan_card_warning';
+
+        $("#" + aadharWarningId).remove();
+        $("#" + panWarningId).remove();
+
+        if (aadharCard && (aadharCard.length !== 12 || !/^\d+$/.test(aadharCard))) {
+            event.preventDefault();
+            $("<span id='" + aadharWarningId + "' class='invalid d-block mt-1'>Aadhar Card number must be exactly 12 digits and contain only digits</span>").insertAfter("#id_aadhar_card");
+        }
+
+        if (panCard && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panCard)) {
+            event.preventDefault();
+            $("<span id='" + panWarningId + "' class='invalid d-block mt-1'>PAN Card number must be 5 letters, 4 digits, 1 letter</span>").insertAfter("#id_pan_card");
+        }
+    });
+
+    // Calculate remaining bond dynamically
+    function updateRemainingBond() {
+        const bondEnd = "{{ employee.bond_end|date:'Y-m-d' }}" || null;
+        const remainingBondElement = $("#remaining-bond");
+        if (bondEnd) {
+            const today = new Date('2025-07-15T15:56:00+05:30'); // 03:56 PM IST, July 15, 2025
+            const endDate = new Date(bondEnd);
+            const todayDate = new Date(today.toDateString());
+            const endDateOnly = new Date(endDate.toDateString());
+            const delta = (endDateOnly - todayDate) / (1000 * 60 * 60 * 24); // Days difference
+            if (delta >= 0) {
+                remainingBondElement.text(Math.floor(delta) + " days");
+            } else {
+                remainingBondElement.text("0 days");
+            }
+        } else {
+            remainingBondElement.text("-");
+        }
+    }
+
+    // Run on page load
+    updateRemainingBond();
+});
+</script>
+{% endblock custom_js %}

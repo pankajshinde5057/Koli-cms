@@ -3,12 +3,12 @@
 {% block page_title %}{{page_title}}{% endblock page_title %}
 {% block custom_css %}
   <style>
-      .invalid{
+      .invalid {
         font-style: italic;
         font-weight: bold;
         color: red;
       }
-      .valid{
+      .valid {
         font-style: italic;
         font-weight: bold;
         color: green;
@@ -16,21 +16,16 @@
   </style>
 {% endblock custom_css %}
 {% block content %}
-
 <section class="content">
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
                         <h3 class="card-title">{{page_title}}</h3>
                     </div>
-
-                    {% include "main_app/add_edit_form_template.html" with messages=messages  form=form button_text="Add Manager"%}
+                    {% include "main_app/add_edit_form_template.html" with messages=messages form=form button_text="Add Manager" %}
                 </div>
-                <!-- /.card -->
-
             </div>
         </div>
     </div>
@@ -38,121 +33,208 @@
 {% endblock content %}
 {% block custom_js %}
 <script>
-    function validateEmail(email) {
-        const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-        return re.test(String(email).toLowerCase());
-    }
+function validateEmail(email) {
+    const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+}
 
-    $(document).ready(function(){
-        // Phone number and emergency contact input filter with validation
-        $("#id_phone_number, #id_emergency_phone").on("input", function() {
-            const original = this.value;
-            const digitsOnly = original.replace(/\D/g, '');
-            const warningId = this.id + "_warning";
-            const isEmergencyPhone = this.id === "id_emergency_phone";
-            const phoneNumber = $("#id_phone_number").val();
-            const emergencyPhone = $("#id_emergency_phone").val();
+// Set current date (July 15, 2025, 03:15 PM IST)
+const today = new Date('2025-07-15T15:15:00+05:30');
 
-            // Remove existing warnings
-            $("#" + warningId).remove();
+$(document).ready(function(){
+    // Phone number and emergency contact input filter with validation
+    $("#id_phone_number, #id_emergency_phone").on("input", function() {
+        const original = this.value;
+        const digitsOnly = original.replace(/\D/g, '');
+        const warningId = this.id + "_warning";
+        const isEmergencyPhone = this.id === "id_emergency_phone";
+        const phoneNumber = $("#id_phone_number").val();
+        const emergencyPhone = $("#id_emergency_phone").val();
 
-            // Check for non-digits
-            if (original !== digitsOnly) {
-                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Only digits are allowed</span>").insertAfter(this);
-                this.value = digitsOnly;
-                return;
-            }
+        $("#" + warningId).remove();
 
-            // Update field value
+        if (original !== digitsOnly) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>Only digits are allowed</span>").insertAfter(this);
             this.value = digitsOnly;
-            
-            
-            // Check if number starts with 1234
-            if (/^[1-4]/.test(digitsOnly)) {
-                console.log("asghdagsfdgasfd")
-                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Phone number cannot start with 1234</span>").insertAfter(this);
-                return;
-            }
+            return;
+        }
 
-            // Additional validation for emergency phone
-            if (isEmergencyPhone) {
-                if (digitsOnly.length !== 10) {
-                    $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number must be exactly 10 digits</span>").insertAfter(this);
-                } else if (digitsOnly === phoneNumber) {
-                    $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot be the same as primary phone number</span>").insertAfter(this);
-                } else {
-                    $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid emergency contact phone number</span>").insertAfter(this);
-                }
+        this.value = digitsOnly;
+
+        if (/^[1-4]/.test(digitsOnly)) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>Phone number cannot start with 1, 2, 3, or 4</span>").insertAfter(this);
+            return;
+        }
+
+        if (isEmergencyPhone) {
+            if (digitsOnly.length !== 10) {
+                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number must be exactly 10 digits</span>").insertAfter(this);
+            } else if (digitsOnly === phoneNumber) {
+                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot be the same as primary phone number</span>").insertAfter(this);
             } else {
-                // Validation for primary phone number
-                if (digitsOnly.length > 0 && digitsOnly.length !== 10) {
-                    $("<span id='" + warningId + "' class='invalid d-block mt-1'>Phone number must be exactly 10 digits</span>").insertAfter(this);
-                } else if (digitsOnly.length === 10) {
-                    $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid phone number</span>").insertAfter(this);
-                }
+                $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid emergency contact phone number</span>").insertAfter(this);
             }
-        });
-
-        // Prevent form submission if phone_number or emergency_phone is invalid
-        $("#profile-form").on("submit", function(event) {
-            const phoneNumber = $("#id_phone_number").val();
-            const emergencyPhone = $("#id_emergency_phone").val();
-            const phoneWarningId = "id_phone_number_warning";
-            const emergencyWarningId = "id_emergency_phone_warning";
-
-            // Remove existing warnings
-            $("#" + phoneWarningId).remove();
-            $("#" + emergencyWarningId).remove();
-
-            // Validate phone_number
-            if (!phoneNumber) {
-                event.preventDefault();
-                $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number is required</span>").insertAfter("#id_phone_number");
-            } else if (phoneNumber.length !== 10) {
-                event.preventDefault();
-                $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number must be exactly 10 digits</span>").insertAfter("#id_phone_number");
-            } else if (/^[1-4]/.test(phoneNumber)) {
-                event.preventDefault();
-                $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number cannot start with 1,2,3 or 4</span>").insertAfter("#id_phone_number");
+        } else {
+            if (digitsOnly.length > 0 && digitsOnly.length !== 10) {
+                $("<span id='" + warningId + "' class='invalid d-block mt-1'>Phone number must be exactly 10 digits</span>").insertAfter(this);
+            } else if (digitsOnly.length === 10) {
+                $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid phone number</span>").insertAfter(this);
             }
-
-            // Validate emergency_phone
-            if (!emergencyPhone) {
-                event.preventDefault();
-                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number is required</span>").insertAfter("#id_emergency_phone");
-            } else if (emergencyPhone.length !== 10) {
-                event.preventDefault();
-                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number must be exactly 10 digits</span>").insertAfter("#id_emergency_phone");
-            } else if (emergencyPhone === phoneNumber) {
-                event.preventDefault();
-                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot be the same as primary phone number</span>").insertAfter("#id_emergency_phone");
-            } else if (/^[1-4]/.test(emergencyPhone)) {
-                event.preventDefault();
-                $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot start with 1,2,3 or 4</span>").insertAfter("#id_emergency_phone");
-            }
-        });
-
-        // Email availability checker (unchanged)
-        $("#id_email").keyup(function(){
-            var email = $(this).val();
-            if (validateEmail(email)){
-                $.ajax({
-                    url: "{% url 'check_email_availability' %}",
-                    type: 'POST',
-                    data:{email:email}
-                }).done(function(response){
-                    $(".email_error").remove();
-                    if (response == "True"){
-                        $("<span class='invalid email_error'>Email Address Already Exist</span>").insertAfter("#id_email");
-                    } else {
-                        $("<span class='valid email_error'>Email Address Available</span>").insertAfter("#id_email");
-                    }
-                }).fail(function(){
-                    $(".email_error").remove();
-                    $("<span class='alert alert-warning'>Server Could Not Process This</span>").insertAfter("#id_email");
-                });
-            }
-        });
+        }
     });
+
+    // Aadhar Card validation
+    $("#id_aadhar_card").on("input", function() {
+        const original = this.value;
+        const digitsOnly = original.replace(/\D/g, '');
+        const warningId = this.id + "_warning";
+
+        $("#" + warningId).remove();
+
+        if (original !== digitsOnly) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>Aadhar Card number must contain only digits</span>").insertAfter(this);
+            this.value = digitsOnly;
+            return;
+        }
+
+        this.value = digitsOnly;
+
+        if (digitsOnly.length > 0 && digitsOnly.length !== 12) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>Aadhar Card number must be exactly 12 digits</span>").insertAfter(this);
+        } else if (digitsOnly.length === 12) {
+            $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid Aadhar Card number</span>").insertAfter(this);
+        }
+    });
+
+    $("#id_aadhar_card").on("keypress", function(e) {
+        const charCode = e.which ? e.which : e.keyCode;
+        if (charCode < 48 || charCode > 57) {
+            e.preventDefault();
+        }
+    });
+
+    // PAN Card validation
+    $("#id_pan_card").on("input", function() {
+        const value = this.value.toUpperCase();
+        const warningId = this.id + "_warning";
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+
+        $("#" + warningId).remove();
+
+        this.value = value;
+
+        if (value && !panRegex.test(value)) {
+            $("<span id='" + warningId + "' class='invalid d-block mt-1'>PAN Card number must be 5 letters, 4 digits, 1 letter</span>").insertAfter(this);
+        } else if (value.length === 10) {
+            $("<span id='" + warningId + "' class='valid d-block mt-1'>Valid PAN Card number</span>").insertAfter(this);
+        }
+    });
+
+    // Bond dates validation and remaining bond calculation
+    $("#id_bond_end").on("change", function() {
+        const bondEnd = $("#id_bond_end").val();
+        const remainingBondField = $("#id_remaining_bond");
+        const remainingBondWarningId = "id_remaining_bond_warning";
+
+        $("#" + remainingBondWarningId).remove();
+
+        if (bondEnd) {
+            const endDate = new Date(bondEnd);
+            const delta = (endDate - today) / (1000 * 60 * 60 * 24); // Convert ms to days
+            if (delta > 0) {
+                remainingBondField.val(Math.floor(delta));
+                $("<span id='" + remainingBondWarningId + "' class='valid d-block mt-1'>Remaining bond: " + Math.floor(delta) + " days</span>").insertAfter(remainingBondField);
+            } else {
+                remainingBondField.val(0);
+                $("<span id='" + remainingBondWarningId + "' class='valid d-block mt-1'>Bond has expired</span>").insertAfter(remainingBondField);
+            }
+        } else {
+            remainingBondField.val('');
+        }
+    });
+
+    // Prevent form submission if fields are invalid
+    $("#profile-form").on("submit", function(event) {
+        const phoneNumber = $("#id_phone_number").val();
+        const emergencyPhone = $("#id_emergency_phone").val();
+        const aadharCard = $("#id_aadhar_card").val();
+        const panCard = $("#id_pan_card").val();
+        const bondStart = $("#id_bond_start").val();
+        const bondEnd = $("#id_bond_end").val();
+        const phoneWarningId = "id_phone_number_warning";
+        const emergencyWarningId = "id_emergency_phone_warning";
+        const aadharWarningId = "id_aadhar_card_warning";
+        const panWarningId = "id_pan_card_warning";
+        const bondEndWarningId = "id_bond_end_warning";
+
+        $("#" + phoneWarningId).remove();
+        $("#" + emergencyWarningId).remove();
+        $("#" + aadharWarningId).remove();
+        $("#" + panWarningId).remove();
+        $("#" + bondEndWarningId).remove();
+
+        if (!phoneNumber) {
+            event.preventDefault();
+            $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number is required</span>").insertAfter("#id_phone_number");
+        } else if (phoneNumber.length !== 10) {
+            event.preventDefault();
+            $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number must be exactly 10 digits</span>").insertAfter("#id_phone_number");
+        } else if (/^[1-4]/.test(phoneNumber)) {
+            event.preventDefault();
+            $("<span id='" + phoneWarningId + "' class='invalid d-block mt-1'>Phone number cannot start with 1, 2, 3, or 4</span>").insertAfter("#id_phone_number");
+        }
+
+        if (!emergencyPhone) {
+            event.preventDefault();
+            $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number is required</span>").insertAfter("#id_emergency_phone");
+        } else if (emergencyPhone.length !== 10) {
+            event.preventDefault();
+            $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number must be exactly 10 digits</span>").insertAfter("#id_emergency_phone");
+        } else if (emergencyPhone === phoneNumber) {
+            event.preventDefault();
+            $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot be the same as primary phone number</span>").insertAfter("#id_emergency_phone");
+        } else if (/^[1-4]/.test(emergencyPhone)) {
+            event.preventDefault();
+            $("<span id='" + emergencyWarningId + "' class='invalid d-block mt-1'>Emergency contact phone number cannot start with 1, 2, 3, or 4</span>").insertAfter("#id_emergency_phone");
+        }
+
+        if (aadharCard && (aadharCard.length !== 12 || !/^\d+$/.test(aadharCard))) {
+            event.preventDefault();
+            $("<span id='" + aadharWarningId + "' class='invalid d-block mt-1'>Aadhar Card number must be exactly 12 digits and contain only digits</span>").insertAfter("#id_aadhar_card");
+        }
+
+        if (panCard && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panCard)) {
+            event.preventDefault();
+            $("<span id='" + panWarningId + "' class='invalid d-block mt-1'>PAN Card number must be 5 letters, 4 digits, 1 letter</span>").insertAfter("#id_pan_card");
+        }
+
+        if (bondStart && bondEnd && new Date(bondEnd) < new Date(bondStart)) {
+            event.preventDefault();
+            $("<span id='" + bondEndWarningId + "' class='invalid d-block mt-1'>Bond end date cannot be before bond start date</span>").insertAfter("#id_bond_end");
+        }
+    });
+
+    // Email availability checker
+    $("#id_email").keyup(function(){
+        var email = $(this).val();
+        if (validateEmail(email)){
+            $.ajax({
+                url: "{% url 'check_email_availability' %}",
+                type: 'POST',
+                data: {email: email}
+            }).done(function(response){
+                $(".email_error").remove();
+                if (response == "True"){
+                    $("<span class='invalid email_error'>Email Address Already Exist</span>").insertAfter("#id_email");
+                } else {
+                    $("<span class='valid email_error'>Email Address Available</span>").insertAfter("#id_email");
+                }
+            }).fail(function(){
+                $(".email_error").remove();
+                $("<span class='alert alert-warning'>Server Could Not Process This</span>").insertAfter("#id_email");
+            });
+        }
+    });
+});
 </script>
 {% endblock custom_js %}

@@ -202,6 +202,106 @@ def manager_home(request):
         # messages.warning(request,"something went wrong")
         return render(request,'manager_template/home_content.html')
 
+
+    
+    
+
+logger = logging.getLogger(__name__)
+
+@login_required
+def manager_leave_balance(request):
+    manager = get_object_or_404(Manager, admin=request.user)
+    today = get_ist_date()
+    current_year = today.year
+    current_month = today.month
+
+    # Check for the first clock-in
+    first_clock_in = AttendanceRecord.objects.filter(
+        user=request.user,
+        status__in=['present', 'late', 'half_day']
+    ).order_by('date').first()
+
+    yearly_leave_data = []
+    total_available_leaves = 0.0
+    yearly_total_allocated_leaves = 0.0
+    total_used_leaves = 0.0
+
+    if not first_clock_in:
+        # Before first clock-in, show all values as 0.0 and an empty table
+        context = {
+            'page_title': 'Leave Balance',
+            'manager': manager,
+            'yearly_leave_data': yearly_leave_data,
+            'total_available_leaves': round(total_available_leaves, 1),
+            'yearly_total_allocated_leaves': round(yearly_total_allocated_leaves, 1),
+        }
+        return render(request, 'manager_template/manager_leave_balance.html', context)
+
+    # After first clock-in, proceed with actual calculations
+    leave_balances = ManagerLeaveBalance.objects.filter(manager=manager, year=current_year).order_by('month')
+    joining_date = manager.date_of_joining
+
+    if joining_date:
+        joining_year = joining_date.year
+        joining_month = joining_date.month
+
+        # Calculate yearly total allocated and used leaves
+        if current_year >= joining_year:
+            start_month = joining_month if current_year == joining_year else 1
+            end_month = 12  # Calculate until end of year
+            months_in_year = end_month - start_month + 1
+            yearly_total_allocated_leaves = months_in_year * 1.0  # 1 leave per month
+
+            # Process leave balances to calculate total used leaves
+            for month in range(start_month, end_month + 1):
+                balance = leave_balances.filter(month=month).first()
+                if not balance and month <= current_month:
+                    balance = ManagerLeaveBalance.get_balance(manager, current_year, month)
+                    if not balance:
+                        balance = ManagerLeaveBalance.create_balance(manager, current_year, month)
+                if balance:
+                    # Validate used_leaves for the month
+                    max_used_leaves = balance.allocated_leaves + balance.carried_forward
+                    if balance.used_leaves > max_used_leaves:
+                        balance.used_leaves = max_used_leaves
+                        balance.save()
+                    total_used_leaves += balance.used_leaves
+
+            # Adjust yearly_total_allocated_leaves by subtracting total used leaves
+            yearly_total_allocated_leaves -= total_used_leaves
+
+            # Process monthly leave balances for display in the table
+            for month in range(start_month, 13):
+                if current_year == joining_year and month < joining_month:
+                    continue
+                balance = leave_balances.filter(month=month).first()
+                if not balance and month <= current_month:
+                    balance = ManagerLeaveBalance.get_balance(manager, current_year, month)
+                    if not balance:
+                        balance = ManagerLeaveBalance.create_balance(manager, current_year, month)
+                if balance:
+                    yearly_leave_data.append({
+                        'month': datetime(current_year, month, 1).strftime('%B'),
+                        'allocated_leaves': balance.allocated_leaves,
+                        'carried_forward': balance.carried_forward,
+                        'used_leaves': balance.used_leaves,
+                        'available_leaves': balance.total_available_leaves()
+                    })
+                    if month == current_month:
+                        total_available_leaves = balance.total_available_leaves()
+
+    logger.debug(f"Leave Balance - Year: {current_year}, Total Allocated: {yearly_total_allocated_leaves}, Total Used: {total_used_leaves}, Total Available (Current Month): {total_available_leaves}")
+
+    context = {
+        'page_title': 'Leave Balance',
+        'manager': manager,
+        'yearly_leave_data': yearly_leave_data,
+        'total_available_leaves': round(total_available_leaves, 1),
+        'yearly_total_allocated_leaves': round(yearly_total_allocated_leaves, 1),
+    }
+    return render(request, 'manager_template/manager_leave_balance.html', context) 
+ 
+
 @login_required
 def manager_todays_attendance(request):
     manager = get_object_or_404(Manager, admin=request.user)
@@ -1525,10 +1625,10 @@ def get_employee_attendance(request):
         logger.error(f"Server error: {str(e)}")
         return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
 
-@login_required   
+@login_required
 def manager_apply_leave(request):
     manager = get_object_or_404(Manager, admin_id=request.user.id)
-    
+
     unread_ids = Notification.objects.filter(
         user=request.user,
         role="manager",
@@ -1537,7 +1637,7 @@ def manager_apply_leave(request):
     ).values_list('leave_or_notification_id', flat=True)
 
     leave_list = LeaveReportManager.objects.filter(manager=manager).order_by('-created_at')
-    paginator = Paginator(leave_list, 5)  
+    paginator = Paginator(leave_list, 5)
 
     page_number = request.GET.get('page')
     leave_page = paginator.get_page(page_number)
@@ -1548,7 +1648,6 @@ def manager_apply_leave(request):
         start_date_ = request.POST.get('start_date')
         end_date_ = request.POST.get('end_date')
         message_ = request.POST.get('message')
-        print(leave_type_, half_day_type_, start_date_, end_date_, message_)
 
         if not all([leave_type_, start_date_, message_]):
             messages.error(request, "All fields are required")
@@ -1556,8 +1655,8 @@ def manager_apply_leave(request):
 
         existing_leaves = LeaveReportManager.objects.filter(
             manager=manager,
-            start_date__lte=end_date_ if end_date_ else start_date_,
-            end_date__gte=start_date_,
+            start_date__lte=date.fromisoformat(end_date_) if end_date_ else date.fromisoformat(start_date_),
+            end_date__gte=date.fromisoformat(start_date_),
             status__in=[0, 1]
         ).exists()
 
@@ -1570,18 +1669,18 @@ def manager_apply_leave(request):
             end_date = date.fromisoformat(end_date_ if end_date_ else start_date_)
             if end_date < start_date:
                 messages.error(request, "End date cannot be before start date.")
-                return redirect(reverse('manager_apply_leave'))  
+                return redirect('manager_apply_leave')
         except ValueError:
             messages.error(request, "Invalid date format.")
-            return redirect(reverse('manager_apply_leave'))
+            return redirect('manager_apply_leave')
 
         try:
             leave_request = LeaveReportManager.objects.create(
                 manager=manager,
                 leave_type=leave_type_,
                 half_day_type=half_day_type_ if half_day_type_ else None,
-                start_date=start_date_,
-                end_date=end_date_ if end_date_ else start_date_,
+                start_date=start_date,
+                end_date=end_date,
                 message=message_
             )
             messages.success(request, "Your leave request has been submitted.")
@@ -1589,23 +1688,24 @@ def manager_apply_leave(request):
             if admin_users.exists():
                 for admin_user in admin_users:
                     send_notification(admin_user, "Leave Applied", "manager-leave-notification", leave_request.id, "ceo")
-            
+
             return redirect(reverse('manager_apply_leave'))
         except Exception as e:
             messages.error(request, f"Error submitting leave: {str(e)}")
-            return redirect(reverse('manager_apply_leave'))
+            return redirect('manager_apply_leave')
 
     context = {
         'leave_page': leave_page,
         'unread_ids': list(unread_ids),
         'page_title': 'Apply for Leave',
     }
-    
+
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         html = render_to_string("manager_template/manager_apply_leave.html", context, request=request)
         return HttpResponse(html)
 
     return render(request, "manager_template/manager_apply_leave.html", context)
+
 
 
 @login_required   
@@ -2859,7 +2959,7 @@ def approve_leave_request(request, leave_id):
                 current_date = start_date
                 while current_date <= end_date:
                     # Deduct leave
-                    success, remaining_leaves = LeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
+                    success, remaining_leaves = ManagerLeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
                     if not success:
                         logger.error(f"Failed to deduct leave for {current_date}")
                         messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")
