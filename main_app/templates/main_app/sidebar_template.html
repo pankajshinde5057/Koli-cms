@@ -400,6 +400,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    {% url 'manager_leave_balance' as manager_leave_balance %}
+                    <a href="{{ manager_leave_balance }}" class="nav-link {% if manager_leave_balance == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-hourglass-half"></i>
+                        <p>Leave Balance</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     {% url 'manager_todays_attendance' as manager_todays_attendance %}
                     <a href="{{ manager_todays_attendance }}" class="nav-link {% if manager_todays_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-user-clock"></i>

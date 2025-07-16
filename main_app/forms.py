@@ -348,7 +348,7 @@ class LeaveReportManagerForm(FormSettings):
 
     class Meta:
         model = LeaveReportManager
-        fields = ['date', 'message']
+        fields = [ 'message']
         widgets = {
             'date': forms.DateInput(
                 attrs={

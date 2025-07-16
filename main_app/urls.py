@@ -156,6 +156,7 @@ urlpatterns = [
      path('send_bulk_employee_notification_by_manager', manager_views.send_bulk_employee_notification_by_manager, name='send_bulk_employee_notification_by_manager'),
      path("manager/employee/view/feedback/", manager_views.manager_view_by_employee_feedback_message,name="manager_view_by_employee_feedback_message",),
      path("manager/employee/view/leave/", manager_views.manager_view_by_employee_leave,name="manager_view_by_employee_leave",),
+     path('manager-leave-balance/', manager_views.manager_leave_balance, name='manager_leave_balance'),
 
      # Employee
      path("employee/home/", employee_views.employee_home, name='employee_home'),
