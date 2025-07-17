@@ -21,7 +21,6 @@
         --card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
 
-    /* Base styles for all devices */
     .filter-card {
         background-color: white;
         border: none;
@@ -126,30 +125,11 @@
         white-space: nowrap;
     }
 
-    .present {
-        background-color: #dcfce7;
-        color: #166534;
-    }
-
-    .absent {
-        background-color: #fee2e2;
-        color: #991b1b;
-    }
-
-    .late {
-        background-color: #fef3c7;
-        color: #92400e;
-    }
-
-    .halfday {
-        background-color: #dbeafe;
-        color: #1e40af;
-    }
-
-    .holiday {
-        background-color: #ede9fe;
-        color: #5b21b6;
-    }
+    .present { background-color: #dcfce7; color: #166534; }
+    .absent { background-color: #fee2e2; color: #991b1b; }
+    .late { background-color: #fef3c7; color: #92400e; }
+    .halfday { background-color: #dbeafe; color: #1e40af; }
+    .holiday { background-color: #ede9fe; color: #5b21b6; }
 
     .attendance-table {
         border-collapse: separate;
@@ -184,13 +164,7 @@
         background-color: #f8fafc;
     }
 
-    .summary-card {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
+    .summary-card { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
     .summary-item {
         background-color: white;
         border-radius: 8px;
@@ -209,18 +183,8 @@
         box-shadow: var(--card-hover-shadow);
     }
 
-    .summary-count {
-        font-weight: 700;
-        font-size: 1.25rem;
-        color: #1e293b;
-        white-space: nowrap;
-    }
-
-    .summary-label {
-        font-size: 0.875rem;
-        color: #64748b;
-        white-space: nowrap;
-    }
+    .summary-count { font-weight: 700; font-size: 1.25rem; color: #1e293b; white-space: nowrap; }
+    .summary-label { font-size: 0.875rem; color: #64748b; white-space: nowrap; }
 
     .date-range {
         color: #64748b;
@@ -232,10 +196,7 @@
         white-space: nowrap;
     }
 
-    .date-input-wrapper {
-        position: relative;
-    }
-
+    .date-input-wrapper { position: relative; }
     .date-input-wrapper i {
         position: absolute;
         right: 12px;
@@ -275,42 +236,15 @@
         margin-bottom: 1rem;
     }
 
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .empty-state {
-        text-align: center;
-        padding: 2.5rem 1.25rem;
-    }
+    .empty-state { text-align: center; padding: 2.5rem 1.25rem; }
+    .empty-state i { font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem; }
+    .empty-state p { color: #64748b; font-size: 1rem; }
 
-    .empty-state i {
-        font-size: 3rem;
-        color: #cbd5e1;
-        margin-bottom: 1rem;
-    }
-
-    .empty-state p {
-        color: #64748b;
-        font-size: 1rem;
-    }
-
-    .employee-info-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .person-details {
-        flex: 1;
-    }
-
-    .person-name {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
-
+    .employee-info-container { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+    .person-details { flex: 1; }
+    .person-name { font-size: 1.5rem; margin-bottom: 0.5rem; }
     .progress-container {
         width: 100%;
         background-color: #e2e8f0;
@@ -319,7 +253,6 @@
         height: 10px;
         overflow: hidden;
     }
-
     .progress-bar {
         height: 100%;
         border-radius: 10px;
@@ -327,11 +260,7 @@
         transition: width 0.5s ease;
     }
 
-    [data-tooltip] {
-        position: relative;
-        cursor: pointer;
-    }
-
+    [data-tooltip] { position: relative; cursor: pointer; }
     [data-tooltip]:hover::before {
         content: attr(data-tooltip);
         position: absolute;
@@ -347,7 +276,6 @@
         z-index: 100;
         margin-bottom: 0.5rem;
     }
-
     [data-tooltip]:hover::after {
         content: "";
         position: absolute;
@@ -360,172 +288,68 @@
         margin-bottom: 3px;
     }
 
-    .pagination-container {
-        margin-top: 1.25rem;
-    }
-    
-    .pagination {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .page-item.active .page-link {
-        background-color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-    
-    .page-link {
-        color: var(--primary-color);
-        padding: 0.5rem 0.75rem;
-    }
+    .pagination-container { margin-top: 1.25rem; }
+    .pagination { justify-content: center; flex-wrap: wrap; }
+    .page-item.active .page-link { background-color: var(--primary-color); border-color: var(--primary-color); }
+    .page-link { color: var(--primary-color); padding: 0.5rem 0.75rem; }
 
-    /* Mobile-specific styles */
     @media (max-width: 767.98px) {
-        .card-header {
-            flex-direction: row;
-            align-items: center;
-            padding: 0.75rem 1rem;
-        }
-        
-        .card-header .actions {
-            justify-content: flex-end;
-            margin-top: 0;
-        }
-        
-        .filter-card .row > div {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-        }
-        
-        .summary-item {
-            flex: 1 1 calc(50% - 0.5rem);
-        }
-        
-        .attendance-table thead {
-            display: table-header-group;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-        
-        .attendance-table tbody tr {
-            display: table-row;
-            margin: 0;
-        }
-        
+        .card-header { flex-direction: row; align-items: center; padding: 0.75rem 1rem; }
+        .card-header .actions { justify-content: flex-end; margin-top: 0; }
+        .filter-card .row > div { padding-left: 0.5rem; padding-right: 0.5rem; }
+        .summary-item { flex: 1 1 calc(50% - 0.5rem); }
+        .attendance-table thead { display: table-header-group; position: sticky; top: 0; z-index: 1; }
+        .attendance-table tbody tr { display: table-row; margin: 0; }
         .attendance-table tbody td {
             display: table-cell;
             padding: 0.75rem 1rem;
             border-bottom: 1px solid #f1f5f9;
             font-size: 0.875rem;
         }
-        
-        .attendance-table tbody td::before {
-            content: none;
-        }
-        
-        .btn-primary, .select2-container--default .select2-selection--single {
-            height: 42px;
-            font-size: 0.875rem;
-        }
-        
-        .person-name {
-            font-size: 1.25rem;
-        }
-        
-        .date-range {
-            font-size: 0.8125rem;
-        }
-        
+        .attendance-table tbody td::before { content: none; }
+        .btn-primary, .select2-container--default .select2-selection--single { height: 42px; font-size: 0.875rem; }
+        .person-name { font-size: 1.25rem; }
+        .date-range { font-size: 0.8125rem; }
         .employee-info-container {
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
         }
-        
-        .progress-container {
-            width: 100%;
-            margin: 0.75rem 0;
-        }
+        .progress-container { width: 100%; margin: 0.75rem 0; }
     }
 
-    /* Tablet and small desktop */
     @media (min-width: 768px) and (max-width: 991.98px) {
-        .summary-item {
-            flex: 1 1 calc(50% - 0.5rem);
-        }
-        
-        .employee-info-container {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .date-range {
-            margin-top: 0;
-        }
+        .summary-item { flex: 1 1 calc(50% - 0.5rem); }
+        .employee-info-container { flex-direction: row; justify-content: space-between; align-items: center; }
+        .date-range { margin-top: 0; }
     }
 
-    /* Desktop and larger */
     @media (min-width: 992px) {
-        .summary-item {
-            flex: 1;
-            min-width: 160px;
-        }
-        
-        .employee-info-container {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .date-range {
-            margin-top: 0;
-        }
+        .summary-item { flex: 1; min-width: 160px; }
+        .employee-info-container { flex-direction: row; justify-content: space-between; align-items: center; }
+        .date-range { margin-top: 0; }
     }
 
-    /* Print styles */
     @media print {
-        body * {
-            visibility: hidden;
-        }
-        #printable-area, #printable-area * {
-            visibility: visible;
-        }
-        #printable-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        .no-print {
-            display: none !important;
-        }
+        body * { visibility: hidden; }
+        #printable-area, #printable-area * { visibility: visible; }
+        #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+        .no-print { display: none !important; }
         .card-header {
             background-color: #4a6baf !important;
             color: white !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .attendance-table {
-            width: 100% !important;
-            font-size: 12px !important;
-        }
+        .attendance-table { width: 100% !important; font-size: 12px !important; }
         .attendance-table th {
             background-color: #f2f2f2 !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .status-badge {
-            padding: 3px 6px !important;
-            font-size: 10px !important;
-        }
-        .actions {
-            display: none !important;
-        }
+        .status-badge { padding: 3px 6px !important; font-size: 10px !important; }
+        .actions { display: none !important; }
     }
 </style>
 {% endblock %}
@@ -548,9 +372,8 @@
                         <div class="row">
                             <div class="col-md-6 col-sm-12 mb-3">
                                 <label class="form-label">Department</label>
-                                <select class="form-control select2" id="department" data-placeholder=" Select Department ">
+                                <select class="form-control select2" id="department" data-placeholder="Select Department">
                                     <option value=""></option>
-                                    {% comment %} <option value="all">All Departments</option> {% endcomment %}
                                     {% for department in departments %}
                                     <option value="{{ department.id }}">{{ department.name }}</option>
                                     {% endfor %}
@@ -559,7 +382,7 @@
                             
                             <div class="col-md-6 col-sm-12 mb-3">
                                 <label class="form-label">Employee</label>
-                                <select class="form-control select2" id="person" data-placeholder=" Select Employee ">
+                                <select class="form-control select2" id="person" data-placeholder="Select Employee">
                                     <option value=""></option>
                                     <option value="no-records">No records available</option>
                                 </select>
@@ -602,10 +425,10 @@
                     <div class="card-header">
                         <h3 class="card-title mb-0"><i class="fas fa-calendar-check mr-2"></i>Attendance Records</h3>
                         <div class="actions">
-                            <button class="btn btn-sm btn-outline-light no-print" id="print_btn" >
+                            <button class="btn btn-sm btn-outline-light no-print" id="print_btn">
                                 <i class="fas fa-print"></i> <span class="d-none d-md-inline">Print</span>
                             </button>
-                            <button class="btn btn-sm btn-outline-light no-print" id="export_btn" >
+                            <button class="btn btn-sm btn-outline-light no-print" id="export_btn">
                                 <i class="fas fa-file-excel"></i> <span class="d-none d-md-inline">Export</span>
                             </button>
                         </div>
@@ -724,72 +547,71 @@ $(document).ready(function() {
         {
             id: "{{ manager.id }}",
             name: "{{ manager.admin.get_full_name }}",
-            department_id: "HR",
-            department_name: "HR",
+            department_id: "{{ manager.department.id|default_if_none:'HR' }}",
+            department_name: "{{ manager.department.name|default:'HR' }}",
             type: "Manager"
         },
         {% endfor %}
     ];
 
+    // Log allPersons for debugging
+    console.log('allPersons:', allPersons);
+
     // Department change handler
     $('#department').change(function() {
-        const departmentId = $(this).val();
+        const deptId = $(this).val();
         const $personSelect = $('#person');
-        
-        // Clear existing options and reset to default
-        $personSelect.empty().append('<option value=""></option>');
-        
-        if (!departmentId) {
+        const selectedDeptName = $('#department option:selected').text().toLowerCase();
+
+        // Clear existing options
+        $personSelect.empty().append('<option value="">-- Select Manager/Employee --</option>');
+
+        if (deptId && deptId !== 'all') {
+            // Determine if the selected department is HR
+            const isHRDepartment = selectedDeptName === 'hr';
+
+            if (isHRDepartment) {
+                // Filter only HR managers
+                const hrManagers = allPersons.filter(person => 
+                    person.type === 'Manager' && 
+                    person.department_name.toLowerCase() === 'hr'
+                );
+
+                if (hrManagers.length > 0) {
+                    hrManagers.forEach(person => {
+                        $personSelect.append($('<option>', {
+                            value: person.id,
+                            text: `${person.name} (${person.type})`,
+                            'data-department': person.department_name,
+                            'data-type': person.type
+                        }));
+                    });
+                    $personSelect.append('<option value="all-managers">All Managers</option>');
+                } else {
+                    $personSelect.append('<option value="no-records">No managers available</option>');
+                }
+            } else {
+                // Show employees and managers for other departments
+                const deptPersons = allPersons.filter(person => 
+                    person.department_id === deptId
+                );
+                if (deptPersons.length > 0) {
+                    deptPersons.forEach(person => {
+                        $personSelect.append($('<option>', {
+                            value: person.id,
+                            text: `${person.name} (${person.type})`,
+                            'data-department': person.department_name,
+                            'data-type': person.type
+                        }));
+                    });
+                    $personSelect.append('<option value="all-employees">All Employees</option>');
+                } else {
+                    $personSelect.append('<option value="no-records">No records available</option>');
+                }
+            }
+        } else {
             $personSelect.append('<option value="no-records">No records available</option>');
-            $personSelect.trigger('change');
-            return;
         }
-
-        // Add "All Employees" and "All Managers" options based on department
-        const selectedDept = $('#department option:selected').text().toLowerCase();
-        if (selectedDept.includes('hr')) {
-            $personSelect.append('<option value="all-managers">All Managers</option>');
-        } else if (departmentId === 'all') {
-            $personSelect.append('<option value="all-employees">All Employees</option>');
-            $personSelect.append('<option value="all-managers">All Managers</option>');
-        } else {
-            $personSelect.append('<option value="all-employees">All Employees</option>');
-        }
-
-        // Populate person dropdown based on department
-        if (departmentId === 'all') {
-            allPersons.forEach(person => {
-                $personSelect.append($('<option>', {
-                    value: person.id,
-                    text: `${person.name} (${person.type})`,
-                    'data-department': person.department_name,
-                    'data-type': person.type
-                }));
-            });
-        } else if (selectedDept.includes('hr')) {
-            allPersons.forEach(person => {
-                if (person.type === 'Manager') {
-                    $personSelect.append($('<option>', {
-                        value: person.id,
-                        text: `${person.name} (${person.type})`,
-                        'data-department': person.department_name,
-                        'data-type': person.type
-                    }));
-                }
-            });
-        } else {
-            allPersons.forEach(person => {
-                if (person.department_id === departmentId && person.type === 'Employee') {
-                    $personSelect.append($('<option>', {
-                        value: person.id,
-                        text: `${person.name} (${person.type})`,
-                        'data-department': person.department_name,
-                        'data-type': person.type
-                    }));
-                }
-            });
-        }
-
         $personSelect.trigger('change');
     });
 
@@ -802,10 +624,8 @@ $(document).ready(function() {
         const departmentId = $('#department').val();
         const timePeriod = $('#time_period').val();
         
-        // Hide any previous error messages
         $('#filter-error').hide();
         
-        // Basic validation
         if (!departmentId) {
             $('#filter-error-message').text('Please select a department');
             $('#filter-error').show();
@@ -818,9 +638,7 @@ $(document).ready(function() {
             return;
         }
 
-        // Get selected person details
         let selectedName, selectedDepartment, selectedType;
-        
         if (personId === 'all-employees') {
             selectedName = 'All Employees';
             selectedDepartment = departmentId === 'all' ? 'All Departments' : $('#department option:selected').text();
@@ -836,20 +654,17 @@ $(document).ready(function() {
             selectedType = selectedPerson.data('type') || 'Unknown';
         }
         
-        // Update display
         $('#person_details').show();
         $('#person_name').text(selectedName);
         $('#person_department').text(selectedDepartment);
         $('#person_type').text(selectedType);
 
-        // Prepare data for AJAX request
         const data = {
-            department_id: departmentId === 'all' ? '' : departmentId,
+            department_id: departmentId,
             page: 1,
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
-        // Set employee_id or manager_id based on person type
         if (personId !== 'all-employees' && personId !== 'all-managers') {
             if (selectedType === 'Employee') {
                 data.employee_id = personId;
@@ -862,7 +677,6 @@ $(document).ready(function() {
             data.manager_id = 'all';
         }
 
-        // Store current filter data
         currentFilterData = {
             employee_id: data.employee_id || '',
             manager_id: data.manager_id || '',
@@ -873,28 +687,23 @@ $(document).ready(function() {
             csrfmiddlewaretoken: '{{ csrf_token }}'
         };
 
-        // Handle time period filters
         const currentDate = moment();
         if (timePeriod === 'custom') {
             const fromDate = $('#from_date').val();
             const toDate = $('#to_date').val();
-            
             if (!fromDate || !toDate) {
                 showAlert('Please select both From and To dates', 'warning');
                 return;
             }
-            
             if (moment(toDate).isBefore(fromDate)) {
                 showAlert('To Date must be after From Date', 'warning');
                 return;
             }
-            
             const maxDateRange = 365;
             if (moment(toDate).diff(moment(fromDate), 'days') > maxDateRange) {
                 showAlert(`Date range cannot exceed ${maxDateRange} days`, 'warning');
                 return;
             }
-            
             data.from_date = fromDate;
             data.to_date = toDate;
             data.year = moment(fromDate).year();
@@ -904,7 +713,6 @@ $(document).ready(function() {
         } else {
             data.year = currentDate.year();
             currentFilterData.year = currentDate.year();
-            
             if (timePeriod === 'week') {
                 data.week = currentDate.week();
                 data.from_date = currentDate.startOf('week').format('YYYY-MM-DD');
@@ -930,7 +738,6 @@ $(document).ready(function() {
         fetchAttendanceData(data);
     });
 
-    // Fetch attendance data
     function fetchAttendanceData(data) {
         if (!data || (!data.employee_id && !data.department_id && !data.manager_id)) {
             showAlert('Invalid filter parameters', 'error');
@@ -957,21 +764,9 @@ $(document).ready(function() {
             },
             success: function(response) {
                 try {
-                    if (!response) {
-                        throw new Error('Empty response from server');
+                    if (!response || response.error || !response.data) {
+                        throw new Error(response.error || 'Invalid data format');
                     }
-                    
-                    if (response.error) {
-                        showAlert(response.error, 'error');
-                        $('#empty_state').show();
-                        $('#attendance_data').html('');
-                        return;
-                    }
-                    
-                    if (!response.data) {
-                        throw new Error('Invalid data format in response');
-                    }
-                    
                     if (response.data.length > 0) {
                         renderAttendanceTable(response.data, response.pagination || {}, response.stats || {});
                         $('#empty_state').hide();
@@ -988,15 +783,8 @@ $(document).ready(function() {
             },
             error: function(xhr, status, error) {
                 let errorMsg = "Failed to load attendance data";
-                try {
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMsg = xhr.responseJSON.error;
-                    } else if (xhr.statusText) {
-                        errorMsg = `${xhr.status}: ${xhr.statusText}`;
-                    }
-                } catch (e) {
-                    console.error('Error parsing error response:', e);
-                }
+                if (xhr.responseJSON && xhr.responseJSON.error) errorMsg = xhr.responseJSON.error;
+                else if (xhr.statusText) errorMsg = `${xhr.status}: ${xhr.statusText}`;
                 showAlert(errorMsg, 'error');
                 $('#empty_state').show();
                 $('#attendance_data').html('');
@@ -1005,12 +793,7 @@ $(document).ready(function() {
     }
 
     function fetchAllAttendanceData(callback) {
-        const data = {
-            ...currentFilterData,
-            page: 1,
-            per_page: 10000
-        };
-
+        const data = { ...currentFilterData, page: 1, per_page: 10000 };
         $.ajax({
             url: "{% url 'get_employee_attendance' %}",
             type: "POST",
@@ -1029,15 +812,8 @@ $(document).ready(function() {
             },
             error: function(xhr, status, error) {
                 let errorMsg = "Failed to load all attendance data";
-                try {
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMsg = xhr.responseJSON.error;
-                    } else if (xhr.statusText) {
-                        errorMsg = `${xhr.status}: ${xhr.statusText}`;
-                    }
-                } catch (e) {
-                    console.error('Error parsing error response:', e);
-                }
+                if (xhr.responseJSON && xhr.responseJSON.error) errorMsg = xhr.responseJSON.error;
+                else if (xhr.statusText) errorMsg = `${xhr.status}: ${xhr.statusText}`;
                 showAlert(errorMsg, 'error');
             }
         });
@@ -1051,41 +827,21 @@ $(document).ready(function() {
         }
 
         let tableHtml = '';
-        let presentCount = stats.present_days || 0;
-        let absentCount = stats.absent_days || 0;
-        let lateCount = stats.late_days || 0;
-        let halfDayCount = stats.half_days || 0;
-        let holidayCount = stats.holidays || 0;
-        
+        const { present_days = 0, absent_days = 0, late_days = 0, half_days = 0, holidays = 0 } = stats;
+
         data.forEach(record => {
-            if (!record || typeof record !== 'object') {
-                console.warn('Invalid record skipped:', record);
-                return;
-            }
+            if (!record || typeof record !== 'object' || !record.status || !record.date) return;
 
-            if (!record.status || !record.date) {
-                console.warn('Record missing required fields:', record);
-                return;
-            }
-
-            let date, day;
-            try {
-                date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
-                day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
-            } catch (e) {
-                console.warn('Invalid date format:', record.date);
-                date = 'Invalid Date';
-                day = 'Invalid Day';
-            }
-
-            const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
-            const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+            const date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+            const day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+            const inTime = record.clock_in ? moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time' : '-';
+            const outTime = record.clock_out ? moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time' : '-';
             const hours = record.hours || '-';
             const statusClass = getStatusClass(record.status.toLowerCase());
             const statusIcon = getStatusIcon(record.status.toLowerCase());
-            const name = record.name ? String(record.name) : '-';
-            const department = record.department ? String(record.department) : '-';
-            const userType = record.user_type ? String(record.user_type) : '-';
+            const name = record.name || '-';
+            const department = record.department || '-';
+            const userType = record.user_type || '-';
 
             tableHtml += `
                 <tr>
@@ -1103,17 +859,12 @@ $(document).ready(function() {
         });
 
         $('#attendance_data').html(tableHtml);
-        updateSummaryCards(presentCount, absentCount, lateCount, halfDayCount, holidayCount, stats);
-        
+        updateSummaryCards(present_days, absent_days, late_days, half_days, holidays, stats);
+
         if (data.length > 0) {
-            try {
-                const fromDate = data[0].date ? (moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date') : '';
-                const toDate = data[data.length - 1].date ? (moment(data[data.length - 1].date).isValid() ? moment(data[data.length - 1].date).format('MMM D, YYYY') : 'Invalid Date') : '';
-                $('#date_range').text(`${fromDate} - ${toDate}`);
-            } catch (e) {
-                console.error('Error formatting date range:', e);
-                $('#date_range').text('Date range unavailable');
-            }
+            const fromDate = moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date';
+            const toDate = moment(data[data.length - 1].date).isValid() ? moment(data[data.length - 1].date).format('MMM D, YYYY') : 'Invalid Date';
+            $('#date_range').text(`${fromDate} - ${toDate}`);
         } else {
             $('#date_range').text('No date range');
         }
@@ -1122,122 +873,84 @@ $(document).ready(function() {
     }
 
     function escapeHtml(unsafe) {
-        if (typeof unsafe !== 'string') return unsafe;
-        return unsafe
+        return typeof unsafe === 'string' ? unsafe
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
+            .replace(/'/g, "&#039;") : unsafe;
     }
-    
+
     function renderPagination(pagination) {
         const $paginationContainer = $('#pagination_container');
         $paginationContainer.empty();
-        
+
         if (!pagination || pagination.total_pages <= 1) {
             $paginationContainer.hide();
             return;
         }
-        
+
         $paginationContainer.show();
-        
         let paginationHtml = `
             <nav aria-label="Page navigation">
                 <ul class="pagination justify-content-center">
         `;
-    
+
         if (pagination.has_previous) {
             paginationHtml += `
                 <li class="page-item">
-                    <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous">
-                        <span aria-hidden="true">«</span>
-                    </a>
+                    <a class="page-link" href="#" data-page="${pagination.previous_page}" aria-label="Previous"><span aria-hidden="true">«</span></a>
                 </li>
             `;
         }
-    
+
         const startPage = Math.max(1, pagination.current_page - 2);
         const endPage = Math.min(pagination.total_pages, pagination.current_page + 2);
-        
+
         if (startPage > 1) {
-            paginationHtml += `
-                <li class="page-item">
-                    <a class="page-link" href="#" data-page="1">1</a>
-                </li>
-            `;
-            if (startPage > 2) {
-                paginationHtml += `
-                    <li class="page-item disabled">
-                        <span class="page-link">...</span>
-                    </li>
-                `;
-            }
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+            if (startPage > 2) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
         }
-        
+
         for (let i = startPage; i <= endPage; i++) {
-            const active = i === pagination.current_page ? 'active' : '';
             paginationHtml += `
-                <li class="page-item ${active}">
+                <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
                     <a class="page-link" href="#" data-page="${i}">${i}</a>
                 </li>
             `;
         }
-        
+
         if (endPage < pagination.total_pages) {
-            if (endPage < pagination.total_pages - 1) {
-                paginationHtml += `
-                    <li class="page-item disabled">
-                        <span class="page-link">...</span>
-                    </li>
-                `;
-            }
-            paginationHtml += `
-                <li class="page-item">
-                    <a class="page-link" href="#" data-page="${pagination.total_pages}">${pagination.total_pages}</a>
-                </li>
-            `;
+            if (endPage < pagination.total_pages - 1) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${pagination.total_pages}">${pagination.total_pages}</a></li>`;
         }
-    
+
         if (pagination.has_next) {
             paginationHtml += `
                 <li class="page-item">
-                    <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next">
-                        <span aria-hidden="true">»</span>
-                    </a>
+                    <a class="page-link" href="#" data-page="${pagination.next_page}" aria-label="Next"><span aria-hidden="true">»</span></a>
                 </li>
             `;
         }
-    
+
         paginationHtml += `
                 </ul>
             </nav>
         `;
-    
         $paginationContainer.html(paginationHtml);
     }
-    
+
     $(document).on('click', '.page-link', function(e) {
         e.preventDefault();
         const page = $(this).data('page');
         if (!page) return;
-        
-        const data = {
-            ...currentFilterData,
-            page: page
-        };
-        
-        if (currentFilterData.time_period === 'week') {
-            data.week = currentFilterData.week;
-        } else if (currentFilterData.time_period === 'month') {
-            data.month = currentFilterData.month;
-        }
-        
+
+        const data = { ...currentFilterData, page: page };
+        if (currentFilterData.time_period === 'week') data.week = currentFilterData.week;
+        else if (currentFilterData.time_period === 'month') data.month = currentFilterData.month;
+
         fetchAttendanceData(data);
-        
-        $('html, body').animate({
-            scrollTop: $("#attendance_results").offset().top - 20
-        }, 300);
+        $('html, body').animate({ scrollTop: $("#attendance_results").offset().top - 20 }, 300);
     });
 
     function calculateHours(clockIn, clockOut) {
@@ -1247,21 +960,19 @@ $(document).ready(function() {
     }
 
     function getStatusClass(status) {
-        if (status.includes('present')) return 'present';
-        if (status.includes('absent')) return 'absent';
-        if (status.includes('late')) return 'late';
-        if (status.includes('half')) return 'halfday';
-        if (status.includes('holiday')) return 'holiday';
-        return '';
+        return status.includes('present') ? 'present' :
+               status.includes('absent') ? 'absent' :
+               status.includes('late') ? 'late' :
+               status.includes('half') ? 'halfday' :
+               status.includes('holiday') ? 'holiday' : '';
     }
 
     function getStatusIcon(status) {
-        if (status.includes('present')) return '<i class="fas fa-check-circle mr-1"></i>';
-        if (status.includes('absent')) return '<i class="fas fa-times-circle mr-1"></i>';
-        if (status.includes('late')) return '<i class="fas fa-clock mr-1"></i>';
-        if (status.includes('half')) return '<i class="fas fa-adjust mr-1"></i>';
-        if (status.includes('holiday')) return '<i class="fas fa-umbrella-beach mr-1"></i>';
-        return '';
+        return status.includes('present') ? '<i class="fas fa-check-circle mr-1"></i>' :
+               status.includes('absent') ? '<i class="fas fa-times-circle mr-1"></i>' :
+               status.includes('late') ? '<i class="fas fa-clock mr-1"></i>' :
+               status.includes('half') ? '<i class="fas fa-adjust mr-1"></i>' :
+               status.includes('holiday') ? '<i class="fas fa-umbrella-beach mr-1"></i>' : '';
     }
 
     function updateSummaryCards(present, absent, late, halfDay, holiday, stats) {
@@ -1269,68 +980,45 @@ $(document).ready(function() {
         const totalWorkingDays = stats.total_working_days || 0;
         $('#attendance_summary').html(`
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${present}</div>
-                    <div class="summary-label">Present Days</div>
-                </div>
+                <div><div class="summary-count">${present}</div><div class="summary-label">Present Days</div></div>
                 <div class="status-badge present"><i class="fas fa-check"></i></div>
             </div>
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${absent}</div>
-                    <div class="summary-label">Absent Days</div>
-                </div>
+                <div><div class="summary-count">${absent}</div><div class="summary-label">Absent Days</div></div>
                 <div class="status-badge absent"><i class="fas fa-times"></i></div>
             </div>
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${late}</div>
-                    <div class="summary-label">Late Days</div>
-                </div>
+                <div><div class="summary-count">${late}</div><div class="summary-label">Late Days</div></div>
                 <div class="status-badge late"><i class="fas fa-clock"></i></div>
             </div>
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${halfDay}</div>
-                    <div class="summary-label">Half Days</div>
-                </div>
+                <div><div class="summary-count">${halfDay}</div><div class="summary-label">Half Days</div></div>
                 <div class="status-badge halfday"><i class="fas fa-adjust"></i></div>
             </div>
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${holiday}</div>
-                    <div class="summary-label">Holidays</div>
-                </div>
+                <div><div class="summary-count">${holiday}</div><div class="summary-label">Holidays</div></div>
                 <div class="status-badge holiday"><i class="fas fa-umbrella-beach"></i></div>
             </div>
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${totalWorkingDays}</div>
-                    <div class="summary-label">Working Days</div>
-                </div>
+                <div><div class="summary-count">${totalWorkingDays}</div><div class="summary-label">Working Days</div></div>
                 <div><i class="fas fa-briefcase text-primary"></i></div>
             </div>
             <div class="summary-item">
-                <div>
-                    <div class="summary-count">${percentage}%</div>
-                    <div class="summary-label">Attendance</div>
-                </div>
+                <div><div class="summary-count">${percentage}%</div><div class="summary-label">Attendance</div></div>
                 <div><i class="fas fa-chart-line text-primary"></i></div>
             </div>
         `);
-        
         $('#attendance_progress').css('width', `${percentage}%`);
     }
 
     function showAlert(message, type) {
         const alertClass = type === 'error' ? 'danger' : type;
-        const alertHtml = `
+        $('.container-fluid').prepend(`
             <div class="alert alert-${alertClass} alert-dismissible fade show">
                 <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
                 <button type="button" class="close" data-dismiss="alert">×</button>
             </div>
-        `;
-        $('.container-fluid').prepend(alertHtml);
+        `);
         setTimeout(() => $('.alert').alert('close'), 5000);
     }
 
@@ -1343,36 +1031,22 @@ $(document).ready(function() {
 
             let tableHtml = `
                 <table border="1" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Department</th>
-                            <th>User Type</th>
-                            <th>Date</th>
-                            <th>Day</th>
-                            <th>Status</th>
-                            <th>Clock In</th>
-                            <th>Clock Out</th>
-                            <th>Hours</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Name</th><th>Department</th><th>User Type</th><th>Date</th><th>Day</th><th>Status</th><th>Clock In</th><th>Clock Out</th><th>Hours</th></tr></thead>
                     <tbody>
             `;
-            
-            data.forEach(record => {
-                if (!record || typeof record !== 'object') return;
-                if (!record.status || !record.date) return;
 
-                let date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
-                let day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
-                const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
-                const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+            data.forEach(record => {
+                if (!record || typeof record !== 'object' || !record.status || !record.date) return;
+                const date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+                const day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+                const inTime = record.clock_in ? moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time' : '-';
+                const outTime = record.clock_out ? moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time' : '-';
                 const hours = record.hours || '-';
                 const statusClass = getStatusClass(record.status.toLowerCase());
                 const statusIcon = getStatusIcon(record.status.toLowerCase());
-                const name = record.name ? String(record.name) : '-';
-                const department = record.department ? String(record.department) : '-';
-                const userType = record.user_type ? String(record.user_type) : '-';
+                const name = record.name || '-';
+                const department = record.department || '-';
+                const userType = record.user_type || '-';
 
                 tableHtml += `
                     <tr>
@@ -1389,46 +1063,30 @@ $(document).ready(function() {
                 `;
             });
 
-            tableHtml += `
-                    </tbody>
-                </table>
-            `;
+            tableHtml += '</tbody></table>';
 
             const printWindow = window.open('', '', 'width=800,height=600');
             printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Attendance Report</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 20px; }
-                            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                            th { background-color: #f2f2f2; }
-                            .status-badge { padding: 3px 6px; border-radius: 3px; font-size: 12px; }
-                            .present { background-color: #dcfce7; color: #166534; }
-                            .absent { background-color: #fee2e2; color: #991b1b; }
-                            .late { background-color: #fef3c7; color: #92400e; }
-                            .halfday { background-color: #dbeafe; color: #1e40af; }
-                            .holiday { background-color: #ede9fe; color: #5b21b6; }
-                            .summary { margin-bottom: 20px; font-weight: bold; }
-                            @page { size: auto; margin: 5mm; }
-                        </style>
-                    </head>
-                    <body>
-                        <h2>Attendance Report</h2>
-                        <div class="summary">${$('#person_name').text()} - ${$('#person_department').text()} (${$('#person_type').text()})</div>
-                        <div class="summary">Date Range: ${$('#date_range').text()}</div>
-                        ${tableHtml}
-                    </body>
-                </html>
+                <html><head><title>Attendance Report</title>
+                <style>body { font-family: Arial, sans-serif; margin: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .status-badge { padding: 3px 6px; border-radius: 3px; font-size: 12px; }
+                .present { background-color: #dcfce7; color: #166534; }
+                .absent { background-color: #fee2e2; color: #991b1b; }
+                .late { background-color: #fef3c7; color: #92400e; }
+                .halfday { background-color: #dbeafe; color: #1e40af; }
+                .holiday { background-color: #ede9fe; color: #5b21b6; }
+                .summary { margin-bottom: 20px; font-weight: bold; }
+                @page { size: auto; margin: 5mm; }</style></head>
+                <body><h2>Attendance Report</h2>
+                <div class="summary">${$('#person_name').text()} - ${$('#person_department').text()} (${$('#person_type').text()})</div>
+                <div class="summary">Date Range: ${$('#date_range').text()}</div>
+                ${tableHtml}</body></html>
             `);
             printWindow.document.close();
-            
-            printWindow.onload = function() {
-                printWindow.focus();
-                printWindow.print();
-                printWindow.close();
-            };
+            printWindow.onload = function() { printWindow.focus(); printWindow.print(); printWindow.close(); };
         });
     });
 
@@ -1439,35 +1097,20 @@ $(document).ready(function() {
                 return;
             }
 
-            const excelData = [
-                ['Name', 'Department', 'User Type', 'Date', 'Day', 'Status', 'Clock In', 'Clock Out', 'Hours']
-            ];
-
+            const excelData = [['Name', 'Department', 'User Type', 'Date', 'Day', 'Status', 'Clock In', 'Clock Out', 'Hours']];
             data.forEach(record => {
-                if (!record || typeof record !== 'object') return;
-                if (!record.status || !record.date) return;
-
-                let date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
-                let day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
-                const inTime = record.clock_in ? (moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time') : '-';
-                const outTime = record.clock_out ? (moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time') : '-';
+                if (!record || typeof record !== 'object' || !record.status || !record.date) return;
+                const date = moment(record.date).isValid() ? moment(record.date).format('YYYY-MM-DD') : 'Invalid Date';
+                const day = moment(record.date).isValid() ? moment(record.date).format('ddd') : 'Invalid Day';
+                const inTime = record.clock_in ? moment(record.clock_in).isValid() ? moment(record.clock_in).format('HH:mm') : 'Invalid Time' : '-';
+                const outTime = record.clock_out ? moment(record.clock_out).isValid() ? moment(record.clock_out).format('HH:mm') : 'Invalid Time' : '-';
                 const hours = record.hours || '-';
-                const name = record.name ? String(record.name) : '-';
-                const department = record.department ? String(record.department) : '-';
-                const userType = record.user_type ? String(record.user_type) : '-';
+                const name = record.name || '-';
+                const department = record.department || '-';
+                const userType = record.user_type || '-';
                 const status = record.status || '-';
 
-                excelData.push([
-                    name,
-                    department,
-                    userType,
-                    date,
-                    day,
-                    status,
-                    inTime,
-                    outTime,
-                    hours
-                ]);
+                excelData.push([name, department, userType, date, day, status, inTime, outTime, hours]);
             });
 
             const wb = XLSX.utils.book_new();

@@ -19,6 +19,7 @@
                                     <tr>
                                         <th>SN</th>
                                         <th>Full Name</th>
+                                        <th>Department</th>
                                         <th>Email</th>
                                         <th>Gender</th>
                                         <th>Division</th>
@@ -31,6 +32,7 @@
                                     <tr>
                                         <td data-title="SN">{{ page_obj.start_index|add:forloop.counter0 }}</td>
                                         <td data-title="Full Name">{{ manager.first_name }} {{ manager.last_name }}</td>
+                                        <td data-title="Department">{{ manager.manager.department.name }}</td>
                                         <td data-title="Email">{{ manager.email }}</td>
                                         <td data-title="Gender">{{ manager.gender }}</td>
                                         <td data-title="Division">{{ manager.manager.division.name }}</td>
