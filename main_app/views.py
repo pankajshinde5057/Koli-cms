@@ -285,7 +285,7 @@ def clock_in_out(request):
                 'message': 'Successfully clocked in!'
             })
 
-        elif 'clock_out' in request.POST:
+        if 'clock_out' in request.POST:
             current_record = AttendanceRecord.objects.filter(
                 user=request.user,
                 date=today,
@@ -297,46 +297,65 @@ def clock_in_out(request):
                     'status': 'error',
                     'message': 'No active clock-in record found to clock out.'
                 }, status=400)
+            
+            manager = Manager.objects.filter(admin=request.user).first()
+            if manager:
+                current_record.clock_out = now
+                current_record.notes = request.POST.get('notes', '')
+                current_record.full_clean()
+                current_record.save()
 
+                ActivityFeed.objects.create(
+                    user=request.user,
+                    activity_type='clock_out',
+                    related_record=current_record
+                )
+
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Successfully clocked out!'
+                })
+            
             # Check if today's update has been submitted (applies to all employees)
-            employee = get_object_or_404(Employee, admin=request.user)
-            schedule = DailySchedule.objects.filter(
-                employee=employee,
-                date=today
-            ).first()
+            employee = Employee.objects.filter(admin=request.user).first()
+            if employee:
+                schedule = DailySchedule.objects.filter(
+                    employee=employee,
+                    date=today
+                ).first()
 
-            if schedule:
-                has_submitted_update = DailyUpdate.objects.filter(
-                    schedule=schedule,
-                    updated_at__date=today
-                ).exists()
-                if not has_submitted_update:
+                if schedule:
+                    has_submitted_update = DailyUpdate.objects.filter(
+                        schedule=schedule,
+                        updated_at__date=today
+                    ).exists()
+                    if not has_submitted_update:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': "Cannot clock out without submitting today's update."
+                        }, status=400)
+                else:
                     return JsonResponse({
                         'status': 'error',
-                        'message': "Cannot clock out without submitting today's update."
+                        'message': 'No schedule found for today. Cannot clock out without a schedule and update.'
                     }, status=400)
-            else:
+
+                # Update clock-out time
+                current_record.clock_out = now
+                current_record.notes = request.POST.get('notes', '')
+                current_record.full_clean()
+                current_record.save()
+
+                ActivityFeed.objects.create(
+                    user=request.user,
+                    activity_type='clock_out',
+                    related_record=current_record
+                )
+
                 return JsonResponse({
-                    'status': 'error',
-                    'message': 'No schedule found for today. Cannot clock out without a schedule and update.'
-                }, status=400)
-
-            # Update clock-out time
-            current_record.clock_out = now
-            current_record.notes = request.POST.get('notes', '')
-            current_record.full_clean()
-            current_record.save()
-
-            ActivityFeed.objects.create(
-                user=request.user,
-                activity_type='clock_out',
-                related_record=current_record
-            )
-
-            return JsonResponse({
-                'status': 'success',
-                'message': 'Successfully clocked out!'
-            })
+                    'status': 'success',
+                    'message': 'Successfully clocked out!'
+                })
 
         return JsonResponse({
             'status': 'error',

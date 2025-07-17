@@ -2862,6 +2862,11 @@ def approve_assest_request(request, notification_id):
         if notification.approved is None or notification.approved is False:
             asset = notification.asset
             employee = notification.employee 
+
+            # check if asset is already assigned to someone
+            if asset.is_asset_issued == True:
+                messages.warning(request,'This asset is already assigned to another employee.')
+                return redirect('manager_asset_view_notification')
             try:
                 AssetsIssuance.objects.create(
                     asset=asset,
