@@ -505,8 +505,8 @@
                 // Initial check
                 this.checkNotifications();
                 
-                // Set reasonable polling interval (30 seconds)
-                setInterval(() => this.checkNotifications(), 30000);
+                // Set reasonable polling interval (60 seconds)
+                setInterval(() => this.checkNotifications(), 60000);
                 
                 // Check when dropdown is clicked
                 $('#notificationDropdown').on('click', this.checkNotifications.bind(this));
