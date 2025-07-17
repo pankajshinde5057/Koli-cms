@@ -416,7 +416,7 @@ def admin_view_profile(request):
                     admin.save()
                     messages.success(request, "Profile updated successfully!")
                     logger.info(f"Profile update successful for user {user.username}")
-                    return redirect(reverse('admin_view_profile'))
+                    return redirect(reverse('admin_view_ptrfile'))
                 else:
                     
                     logger.info(f"No changes made for user {user.username}")
