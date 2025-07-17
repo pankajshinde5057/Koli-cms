@@ -37,7 +37,7 @@
         margin-bottom: 0 !important;
     }
     .org-table {
-        min-height: 350px; /* Increased height for Organization Details table */
+        min-height: 300px; /* Increased height for Organization Details table */
         max-height: 300px; /* Limits the height */
         overflow-y: auto; /* Enables vertical scrolling */
     }
@@ -74,7 +74,8 @@
                                     {% endif %}
                                 </div>
                                 <h4 class="mt-2 mb-1 text-center">{{ manager.admin.get_full_name }}</h4>
-                                <p class="text-muted text-center mb-0">{{ manager.designation|default:"-" }}</p>
+                                {% comment %} <p class="text-muted text-center mb-0">{{ manager.designation|default:"-" }}</p> {% endcomment %}
+                                &nbsp;
                                 <div class="card card-info card-outline mt-2">
                                     <div class="card-header">
                                         <h3 class="card-title">Organization Details</h3>
@@ -89,10 +90,10 @@
                                                 <th>Division</th>
                                                 <td>{{ manager.division.name|default:"-" }}</td>
                                             </tr>
-                                            <tr>
+                                            {% comment %} <tr>
                                                 <th>Designation</th>
                                                 <td>{{ manager.designation|default:"-" }}</td>
-                                            </tr>
+                                            </tr> {% endcomment %}
                                             <tr>
                                                 <th>Bond Start</th>
                                                 <td>{{ manager.bond_start|default:"-" }}</td>
@@ -116,10 +117,10 @@
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-bordered table-large">
-                                            <tr>
+                                            {% comment %} <tr>
                                                 <th>Manager ID</th>
                                                 <td>{{ manager.admin_id|default:"-" }}</td>
-                                            </tr>
+                                            </tr> {% endcomment %}
                                             <tr>
                                                 <th>Full Name</th>
                                                 <td>{{ manager.admin.get_full_name }}</td>

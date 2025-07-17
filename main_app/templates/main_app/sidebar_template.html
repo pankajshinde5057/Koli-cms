@@ -140,13 +140,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    {% url 'generate_performance_report' as generate_report %}
-                    <a href="{{generate_report}}" class="nav-link {% if generate_report == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-file-download"></i>
-                        <p>Generate Report</p>
+                    {% url 'admin_todays_attendance' as admin_todays_attendance %}
+                    <a href="{{ admin_todays_attendance }}" class="nav-link {% if admin_todays_attendance == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-clock"></i>
+                        <p>Today's Clocked-In</p>
                     </a>
                 </li>
-
                 <li class="nav-item">
                     {% url 'all_employees_schedules' as all_employees_schedules %}
                     <a href="{{all_employees_schedules}}" class="nav-link {% if all_employees_schedules == request.path %} active {% endif %}">
@@ -154,6 +153,14 @@
                         <p>Employees Schedules</p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    {% url 'generate_performance_report' as generate_report %}
+                    <a href="{{generate_report}}" class="nav-link {% if generate_report == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-file-download"></i>
+                        <p>Generate Report</p>
+                    </a>
+                </li>
+
                 <li class="nav-item">
                     {% url 'add_manager' as add_manager %}
                     <a href="{{add_manager}}" class="nav-link {% if add_manager == request.path %} active {% endif %}">
@@ -225,13 +232,7 @@
                         <p>View Attendance</p>
                     </a>
                 </li>
-                <li class="nav-item">
-                    {% url 'admin_todays_attendance' as admin_todays_attendance %}
-                    <a href="{{ admin_todays_attendance }}" class="nav-link {% if admin_todays_attendance == request.path %} active {% endif %}">
-                        <i class="nav-icon fas fa-user-clock"></i>
-                        <p>Today's Clocked-In</p>
-                    </a>
-                </li>
+                
 
                 <!-- <li class="nav-item">
                         {% url 'admin_view_notification' as admin_view_notification %}
