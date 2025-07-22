@@ -157,7 +157,7 @@
 <section class="content">
     <div class="container-fluid">
         <!-- Asset Requests Card -->
-        <div class="card card-dark shadow-lg mb-4">
+        <div class="card card-primary shadow-lg mb-4">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-laptop mr-2"></i>
@@ -191,13 +191,13 @@
                                             </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ asset.employee.get_full_name }}</strong><br>
-                                                <small class="text-muted">{{ asset.employee.department }}</small>
+                                                <strong>{{ asset.employee.get_full_name|title }}</strong><br>
+                                                <small class="text-muted">{{ asset.employee.employee.department|title }}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>{{ asset.asset.asset_name }}</strong><br>
+                                        <strong>{{ asset.asset.asset_name|title }}</strong><br>
                                         <small class="text-muted">{{ asset.asset.asset_brand }}</small>
                                     </td>
                                     <td>
@@ -239,7 +239,7 @@
         </div>
 
         <!-- Asset Issue Requests Card -->
-        <div class="card card-dark shadow-lg mb-4">
+        <div class="card card-primary shadow-lg mb-4">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-tools mr-2"></i>
@@ -247,7 +247,7 @@
                 </h3>
                 <div class="card-tools">
                     <span class="badge badge-pending mr-1">{{ pending_issue|length }} Pending</span>
-                    <span class="badge badge-in-progress">{{ in_progress_issue|length }} In Progress</span>
+                    <span class="badge badge-light">{{ in_progress_issue|length }} In Progress</span>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -266,11 +266,11 @@
                             {% for issue in in_progress_issue %}
                                 <tr>
                                     <td>
-                                        <strong>{{ issue.reported_by.get_full_name }}</strong><br>
-                                        <small class="text-muted">{{ issue.reported_by.department }}</small>
+                                        <strong>{{ issue.reported_by.get_full_name|title }}</strong><br>
+                                        <small class="text-muted">{{ issue.reported_by.employee.department|title }}</small>
                                     </td>
                                     <td>
-                                        <strong>{{ issue.asset.asset_name }}</strong><br>
+                                        <strong>{{ issue.asset.asset_name|title }}</strong><br>
                                         <small class="text-muted">{{ issue.asset.asset_serial_number }}</small>
                                     </td>
                                     <td>
@@ -318,11 +318,11 @@
                             {% for issue in pending_issue %}
                                 <tr>
                                     <td>
-                                        <strong>{{ issue.reported_by.get_full_name }}</strong><br>
-                                        <small class="text-muted">{{ issue.reported_by.department }}</small>
+                                        <strong>{{ issue.reported_by.get_full_name|title }}</strong><br>
+                                        <small class="text-muted">{{ issue.reported_by.employee.department|title }}</small>
                                     </td>
                                     <td>
-                                        <strong>{{ issue.asset.asset_name }}</strong><br>
+                                        <strong>{{ issue.asset.asset_name|title }}</strong><br>
                                         <small class="text-muted">{{ issue.asset.asset_serial_number }}</small>
                                     </td>
                                     <td>
@@ -360,7 +360,7 @@
         </div>
 
         <!-- Asset Request History Card -->
-        <div class="card card-dark shadow-lg mb-4">
+        <div class="card card-primary shadow-lg mb-4">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-history mr-2"></i>
@@ -454,7 +454,7 @@
         </div>
 
         <!-- Resolved Asset Issues Card -->
-        <div class="card card-dark shadow-lg">
+        <div class="card card-primary shadow-lg">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-check-circle mr-2"></i>

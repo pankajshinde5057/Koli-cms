@@ -87,7 +87,7 @@
             <div class="col-12">
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
+                        {% comment %} <h3 class="card-title">{{ page_title }}</h3> {% endcomment %}
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" id="manager-table-container">
@@ -118,7 +118,7 @@
                                         </td>
                                         <td>
                                             <div>
-                                                <strong>{{ manager.first_name }} {{ manager.last_name }}</strong>
+                                                <strong>{{ manager.first_name|title }} {{ manager.last_name|title }}</strong>
                                             </div>
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">

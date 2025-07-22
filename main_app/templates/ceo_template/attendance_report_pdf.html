@@ -157,7 +157,7 @@
                                 {% elif record.status == 'present' %}
                                     <span class="badge bg-success status-badge">P</span>
                                 {% elif record.status == 'late' %}
-                                    <span class="badge bg-warning text-dark status-badge">Late</span>
+                                    <span class="badge bg-warning status-badge">Late</span>
                                 {% elif record.status == 'half_day' %}
                                     <span class="badge bg-primary status-badge">HF</span>
                                 {% elif record.status == 'leave' %}
@@ -196,7 +196,7 @@
                     </div>
                     <div class="col-6">
                         <table class="table table-sm table-borderless mb-1">
-                            <tr><td>Total Working Hours:</td><td class="fw-bold">{{ total_worked_hours }} hrs</td></tr>
+                            <!-- <tr><td>Total Working Hours:</td><td class="fw-bold">{{ total_worked_hours }} hrs</td></tr> -->
                             <tr><td>Late Arrivals:</td><td class="fw-bold">{{ late_days }}</td></tr>
                             <tr><td>Half Days:</td><td class="fw-bold">{{ half_days }}</td></tr>
                             <tr><td>Absent Days:</td><td class="fw-bold">{{ absent_days }}</td></tr>

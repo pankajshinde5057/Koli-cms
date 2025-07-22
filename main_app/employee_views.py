@@ -24,7 +24,7 @@ from django.utils import timezone
 from zoneinfo import ZoneInfo
 import logging
 from django.utils.timezone import make_aware, now
-
+from .utils.email_utils import send_emails_in_background
 
 
 
@@ -853,21 +853,65 @@ def employee_apply_leave(request):
             )
             messages.success(request, "Your leave request has been submitted.")
             
+            # email content template
+            email_subject = f"New Leave Request from {employee.admin.get_full_name().title()}"
+            email_content = f"""
+            Dear Recipient,
+            
+            I would like to request leave with the following details:
+            
+            Employee: {employee.admin.first_name.capitalize()} {employee.admin.last_name.capitalize()}
+            Department: {employee.department.name.capitalize()}
+            Leave Type: {leave_type}
+            Dates: {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}
+            Message: {message}
+            
+            Kind regards,
+            {employee.admin.first_name.capitalize()} {employee.admin.last_name.capitalize()}
+            """
             # notify team lead
             team_lead = Manager.objects.filter(department=employee.department,admin=employee.team_lead.admin).first()
             send_notification(team_lead.admin, "Leave Applied", "leave-notification", leave_request.id, "manager")
+            
+            send_emails_in_background(
+                recipients = [team_lead.admin.email],
+                subject = email_subject,
+                content = email_content,
+                from_email = employee.admin.email
+            )
             
             # notify HR
             hr_users = Manager.objects.filter(department__name__iexact='HR') | \
                     Manager.objects.filter(department__name__iexact='hr') | \
                     Manager.objects.filter(department__name__icontains='h r')
+            hr_emails = list(Manager.objects.filter(
+                department__name__iexact='HR'
+            ).values_list('admin__email', flat=True))
 
+            if hr_emails:
+                send_emails_in_background(
+                    recipients = hr_emails,
+                    subject = email_subject,
+                    content = email_content,
+                    from_email = employee.admin.email
+                )
             if hr_users.exists():
                 for hr in hr_users:
                     send_notification(hr.admin, "Leave Applied", "leave-notification", leave_request.id, "manager")
 
             # notify CEO
             admin_users = CustomUser.objects.filter(is_superuser=True)
+            admin_emails = list(CustomUser.objects.filter(
+                is_superuser=True
+            ).values_list('email', flat=True))
+            
+            if admin_emails:
+                send_emails_in_background(
+                    recipients=admin_emails,
+                    subject=email_subject,
+                    content=email_content,
+                    from_email=employee.admin.email
+                )
             if admin_users.exists():
                 for admin_user in admin_users:
                     send_notification(admin_user, "Leave Applied", "employee-leave-notification", leave_request.id, "ceo")

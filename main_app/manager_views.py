@@ -24,6 +24,8 @@ from django.contrib.auth import update_session_auth_hash
 import logging
 from django.utils.text import get_valid_filename
 from django.contrib.auth import get_user_model 
+from .utils.email_utils import send_emails_in_background
+
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -117,10 +119,21 @@ def manager_home(request):
             ).order_by('-break_start')  # Changed to descending order
 
             for b in emp_breaks:
+                duration = 0
                 if b.break_end:
-                    duration = int((b.break_end - b.break_start).total_seconds() / 60)
+                    duration_seconds = int((b.break_end - b.break_start).total_seconds())
                 else:
-                    duration = 0 
+                    duration_seconds = int((current_time - b.break_start).total_seconds())
+
+                minutes = int(duration_seconds // 60)
+                seconds = int(duration_seconds % 60)
+
+                if minutes > 0 and seconds > 0:
+                    duration = f"{minutes} min {seconds} sec"
+                elif minutes > 0:
+                    duration = f"{minutes} min"
+                else:
+                    duration = f"{seconds} sec"
 
                 break_entries.append({
                     'employee_id': employee.id,
@@ -170,7 +183,7 @@ def manager_home(request):
             })
 
         context = {
-            'page_title': f"Manager Panel - {manager.admin.get_full_name().capitalize()}",
+            'page_title': f"Manager Dashboard",
             'departments': all_departments,
             'time_history_data': time_history_data,
             # 'selected_department': selected_department,
@@ -332,9 +345,9 @@ def manager_todays_attendance(request):
         page_obj = paginator.page(paginator.num_pages)
 
     context = {
-        'page_title': "Today's Clocked-In Employees",
+        'page_title': "Clocked-In Employees",
         'page_obj': page_obj,
-        'current_date': today.strftime("%Y-%m-%d"),
+        'current_date': today.strftime('%d-%m-%y'),
         'total_clocked_in': today_attendances.values('user').distinct().count()
     }
     return render(request, 'manager_template/todays_attendance.html', context)
@@ -1684,7 +1697,36 @@ def manager_apply_leave(request):
                 message=message_
             )
             messages.success(request, "Your leave request has been submitted.")
+
+            # email content template
+            email_subject = f"New Leave Request from {manager.admin.get_full_name().title()}"
+            email_content = f"""
+            I would like to request leave with the following details:
+            
+            Employee: {manager.admin.get_full_name().title()}
+            Department: {manager.department.name.capitalize()}
+            Leave Type: {leave_type_}
+            Dates: {start_date.strftime('%d-%m-%Y')} to {end_date.strftime('%d-%m-%Y')}
+            Message: {message_}
+            
+            Kind regards,
+            {manager.admin.get_full_name().title()}
+            """
+            
+            # notify CEO
             admin_users = CustomUser.objects.filter(is_superuser=True)
+            admin_emails = list(CustomUser.objects.filter(
+                is_superuser=True
+            ).values_list('email', flat=True))
+            
+            if admin_emails:
+                send_emails_in_background(
+                    recipients=admin_emails,
+                    subject=email_subject,
+                    content=email_content,
+                    from_email=manager.admin.email
+                )
+            
             if admin_users.exists():
                 for admin_user in admin_users:
                     send_notification(admin_user, "Leave Applied", "manager-leave-notification", leave_request.id, "ceo")
@@ -2818,6 +2860,7 @@ def manager_asset_view_notification(request):
         # Pagination for asset ckain notification history
         asset_history_claim_notication_paginator = Paginator(asset_notification_history,5)
         asset_history_claim_notication_obj = asset_history_claim_notication_paginator.get_page(request.GET.get('asset_claim_notification_history'))
+        print(asset_history_claim_notication_obj)
 
         # Pagination for resolved recurring issues
         resolved_issues_paginator = Paginator(all_resolved_recurring, 5)
@@ -2862,6 +2905,11 @@ def approve_assest_request(request, notification_id):
         if notification.approved is None or notification.approved is False:
             asset = notification.asset
             employee = notification.employee 
+
+            # check if asset is already assigned to someone
+            if asset.is_asset_issued == True:
+                messages.warning(request,'This asset is already assigned to another employee.')
+                return redirect('manager_asset_view_notification')
             try:
                 AssetsIssuance.objects.create(
                     asset=asset,
@@ -2946,7 +2994,6 @@ def approve_leave_request(request, leave_id):
     if request.method == 'POST':
         try:
             leave = get_object_or_404(LeaveReportEmployee, id=leave_id)
- 
             if leave.status != 0:  # 0 = Pending
                 messages.info(request, "This leave request has already been processed.")
                 return redirect('manager_view_notification')
@@ -2961,7 +3008,7 @@ def approve_leave_request(request, leave_id):
                 current_date = start_date
                 while current_date <= end_date:
                     # Deduct leave
-                    success, remaining_leaves = ManagerLeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
+                    success, remaining_leaves = LeaveBalance.deduct_leave(employee, current_date, leave.leave_type)
                     if not success:
                         logger.error(f"Failed to deduct leave for {current_date}")
                         messages.error(request, f"Failed to deduct leave for {current_date.strftime('%d-%m-%Y')}")

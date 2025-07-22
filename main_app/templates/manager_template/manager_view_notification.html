@@ -97,7 +97,7 @@
 <section class="content">
     <div class="container-fluid">
         <!-- Admin Notifications Card -->
-        <div class="card card-dark mb-4 shadow-lg">
+        <div class="card card-primary mb-4 shadow-lg">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-bell mr-2"></i>
@@ -246,7 +246,7 @@
         </div>
 
         <!-- Leave Requests Card -->
-        <div class="card card-dark mb-4 shadow-lg">
+        <div class="card card-primary mb-4 shadow-lg">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-calendar-alt mr-2"></i>
@@ -280,8 +280,8 @@
                                                 </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ leave.employee.admin.get_full_name }}</strong><br>
-                                                <small class="text-muted">{{ leave.employee.department }}</small>
+                                                <strong>{{ leave.employee.admin.get_full_name|title }}</strong><br>
+                                                <small class="text-muted">{{ leave.employee.department|title }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -316,7 +316,7 @@
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content shadow-lg">
                                             <div class="modal-header bg-gradient-primary text-white">
-                                                <p class="modal-title">Leave Request by: <strong>{{ leave.employee.get_full_name }}</strong></p>
+                                                <p class="modal-title">Leave Request by: <strong>{{ leave.employee.get_full_name|title }}</strong></p>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                      <span aria-hidden="true">&times;</span>
                                                 </button>
@@ -383,7 +383,7 @@
         </div>
 
         <!-- Early Clock-Out Requests Card -->
-        <div class="card card-dark mb-4 shadow-lg">
+        <div class="card card-primary mb-4 shadow-lg">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-clock mr-2"></i>
@@ -417,8 +417,8 @@
                                                 </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ request.user.get_full_name }}</strong><br>
-                                                <small class="text-muted">{{ request.attendance_record.department }}</small>
+                                                <strong>{{ request.user.get_full_name|title }}</strong><br>
+                                                <small class="text-muted">{{ request.attendance_record.department|title }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -452,7 +452,7 @@
                                     <div class="modal-dialog" role="document">
                                         <div class="modal-content shadow-lg">
                                             <div class="modal-header bg-gradient-primary text-white">
-                                                <p class="modal-title">Early Clock-Out Request by: <strong>{{ request.user.get_full_name }}</strong></p>
+                                                <p class="modal-title">Early Clock-Out Request by: <strong>{{ request.user.get_full_name|title }}</strong></p>
                                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                                     <span aria-hidden="true">×</span>
                                                 </button>
@@ -552,7 +552,7 @@
         </div>
 
         <!-- Early Clock-Out History Card -->
-        <div class="card card-dark shadow-lg">
+        <div class="card card-primary shadow-lg">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-history mr-2"></i>
@@ -586,8 +586,8 @@
                                                 </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ request.user.get_full_name }}</strong><br>
-                                                <small class="text-muted">{{ request.attendance_record.department }}</small>
+                                                <strong>{{ request.user.get_full_name|title }}</strong><br>
+                                                <small class="text-muted">{{ request.attendance_record.department|title }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -662,7 +662,7 @@
         </div>
 
         <!-- Leave History Card -->
-        <div class="card card-dark shadow-lg">
+        <div class="card card-primary shadow-lg">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="fas fa-history mr-2"></i>
@@ -696,8 +696,8 @@
                                             </div>
                                             {% endif %}
                                             <div>
-                                                <strong>{{ leave.employee.admin.get_full_name }}</strong><br>
-                                                <small class="text-muted">{{ leave.employee.department }}</small>
+                                                <strong>{{ leave.employee.admin.get_full_name|title }}</strong><br>
+                                                <small class="text-muted">{{ leave.employee.department|title }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -782,7 +782,7 @@
                     <div class="modal-content shadow-lg">
                         <div class="modal-header bg-gradient-{% if leave.status == 1 %}success{% else %}danger{% endif %} text-white">
                             <h5 class="modal-title">
-                                Leave Request - {{ leave.employee.get_full_name }}
+                                Leave Request - {{ leave.employee|title }}
                             </h5>
                             <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
@@ -845,7 +845,7 @@
                     <div class="modal-content shadow-lg">
                         <div class="modal-header bg-gradient-{% if request.status == 'approved' %}success{% else %}danger{% endif %} text-white">
                             <h5 class="modal-title">
-                                Early Clock-Out Request - {{ request.user.get_full_name }}
+                                Early Clock-Out Request - {{ request.user.get_full_name|title }}
                             </h5>
                             <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">×</span>

@@ -61,7 +61,7 @@ class CustomUser(AbstractUser):
 class Admin(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE,related_name='admin')
     def __str__(self):
-        return self.admin.first_name+ " " + self.admin.last_name
+        return self.admin.first_name.capitalize() + " " + self.admin.last_name.capitalize()
 
 
 class Division(models.Model):

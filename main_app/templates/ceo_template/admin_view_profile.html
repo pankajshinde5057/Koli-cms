@@ -10,7 +10,7 @@
                 <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{page_title}}</h3>
+                        {% comment %} <h3 class="card-title">{{page_title}}</h3> {% endcomment %}
                     </div>
                     {% include "ceo_template/admin_add_edit_form_template.html" with messages=messages form=form button_text="Update Profile" %}
                 </div>

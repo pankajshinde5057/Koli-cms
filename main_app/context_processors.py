@@ -137,6 +137,13 @@ def unread_notification_count(request):
                     role="manager"
                 ).count()
 
+            employee_clockout_request_to_manager_count = Notification.objects.filter(
+                    user=request.user,
+                    is_read=False,
+                    notification_type='clockout-notification',
+                    role="manager"
+                ).count()
+            
             employee_leave_request_to_manager_count = Notification.objects.filter(
                 user=request.user,
                 is_read=False,
@@ -157,7 +164,7 @@ def unread_notification_count(request):
                 employee_clockout_request_to_manager_count +
                 employee_asset_request_count + manager_leave_request_from_ceo_count
             )
-
+            print(total_unread_notifications)
             total_unread_notifications_gen_leave_clockout = (
                 manager_general_count +
                 employee_leave_request_to_manager_count +

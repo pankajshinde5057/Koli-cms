@@ -112,16 +112,16 @@
             <div class="col-md-12">
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
+                        <!-- <h3 class="card-title">{{ page_title }}</h3> -->
                     </div>
                     <div class="card-body table-responsive p-0" id="leave-table-container">
                         <table class="table table-bordered table-hover">
                             <thead class="thead-light">
                                 <tr>
                                     <th>SN</th>
-                                    <th>Manager</th>
+                                    <th>Name</th>
                                     <th>Division</th>
-                                    <th>Leave Type</th>
+                                    <th>Type</th>
                                     <th>Message</th>
                                     <th>Leave Date</th>
                                     <th>Submitted On</th>
@@ -132,16 +132,22 @@
                                 {% for leave in allLeave %}
                                 <tr>
                                     <td data-title="SN">{{ forloop.counter0|add:allLeave.start_index }}</td>
-                                    <td data-title="Manager">{{ leave.manager }}</td>
-                                    <td data-title="Division">{{ leave.manager.division }}</td>
-                                    <td data-title="Leave Type">{{ leave.leave_type }}</td>
+                                    <td data-title="Manager">{{ leave.manager.admin.first_name|capfirst }} {{ leave.manager.admin.last_name|capfirst }}</td>
+                                    <td data-title="Division">{{ leave.manager.division|capfirst }}</td>
+                                    <td data-title="Leave Type">{{ leave.leave_type|capfirst }}</td>
                                     <td data-title="Message">
-                                        <div class="message-truncate">
+                                        <div class="message-truncate" 
+                                            data-bs-toggle="tooltip" 
+                                            title="{{ leave.message }}">
                                             {{ leave.message }}
                                         </div>
                                     </td>
-                                    <td data-title="Leave Date">{{ leave.start_date|date:"M d, Y" }} to {{ leave.end_date|date:"M d, Y" }}</td>
-                                    <td data-title="Submitted On">{{ leave.created_at|date:"M d, Y H:i" }}</td>
+                                    <td data-title="Leave Date">
+                                        {{ leave.start_date|date:"d/m/y" }} to {{ leave.end_date|date:"d/m/y" }}
+                                    </td>
+                                    <td data-title="Submitted On">
+                                        {{ leave.created_at|date:"d/m/y" }}
+                                    </td>
                                     <td data-title="Action">
                                         {% if leave.status == 0 %}
                                             <button data-toggle="modal" 

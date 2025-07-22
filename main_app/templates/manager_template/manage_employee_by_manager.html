@@ -32,7 +32,7 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
-                <div class="card card-secondary card-outline">
+                <div class="card card-primary card-outline">
                     <div class="card-header">
                         <div class="card-tools">
                             <form method="get" class="form-inline" id="searchForm">
@@ -108,7 +108,9 @@
                                             </div>
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">
-                                            <span class="font-monospace">{{ employee.admin.email }}</span>
+                                            <span class="font-monospace" title="{{ employee.admin.email }}">
+                                                {{ employee.admin.email }}
+                                            </span>
                                         </td>
                                         <td class="d-none d-md-table-cell">{{ employee.admin.get_gender_display }}</td>
                                         <td class="d-none d-lg-table-cell">{{ employee.division.name|default:"-" }}</td>

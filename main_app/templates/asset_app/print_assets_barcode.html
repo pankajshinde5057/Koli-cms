@@ -36,9 +36,10 @@
                 
                 <div class="table-responsive" id="asset-table-container">
                     <table class="table table-striped table-hover">
-                        <thead class="thead-dark">
+                        <thead class="table-dark">
                             <tr>
-                                <th><input type="checkbox" id="selectAll"></th>
+                                <!-- <th><input type="checkbox" id="selectAll"></th> -->
+                                <th></th>
                                 <th>Category</th>
                                 <th>Serial Number</th>
                                 <th>Barcode</th>
@@ -48,10 +49,9 @@
                             {% for asset in assets %}
                             <tr>
                                 <td>
-                                    <input type="checkbox" name="selected_assets" 
-                                           value="{{ asset.id }}" class="asset-checkbox">
+                                    <input type="checkbox" name="selected_assets" value="{{ asset.id }}" class="asset-checkbox">
                                 </td>
-                                <td>{{ asset.asset_category }}</td>
+                                <td>{{ asset.asset_category|title }}</td>
                                 <td>{{ asset.asset_serial_number }}</td>
                                 <td>
                                     {% if asset.barcode %}

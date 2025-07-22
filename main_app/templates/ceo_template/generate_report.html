@@ -31,7 +31,7 @@
       {% csrf_token %}
       <div class="card card-primary">
         <div class="card-header">
-          <h3 class="card-title">{{ page_title }}</h3>
+          <!-- <h3 class="card-title">{{ page_title }}</h3> -->
         </div>
         <div class="card-body">
           <div class="form-group">
@@ -50,15 +50,6 @@
             <select name="employee" id="employee" class="form-control select2-multiple" multiple="multiple">
               <!-- Filled dynamically by JS -->
             </select>
-            <small class="form-text text-muted">Leave empty to select all employees</small>
-          </div>
-
-          <div class="form-group" id="manager-group">
-            <label for="manager">Manager(s)</label>
-            <select name="manager" id="manager" class="form-control select2-multiple" multiple="multiple">
-              <!-- Filled dynamically by JS -->
-            </select>
-            <small class="form-text text-muted">Leave empty to select all managers</small>
           </div>
 
           <div class="form-group">
@@ -93,23 +84,25 @@
 {% block custom_js %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
   <script>
+    function capitalizeWords(str) {
+        return str.replace(/\b\w/g, char => char.toUpperCase());
+    }
     $(document).ready(function() {
       // Initialize Select2
       $('.select2-multiple').select2({
           placeholder: "-- Select Employee(s) --",
           allowClear: true
       });
-  
+
       // Department change handler
       $('#department').change(function() {
           const deptId = $(this).val();
           
           if (deptId && deptId !== 'all') {
-              // Enable both selectors initially
+              // Enable employee selector
               $('#employee').removeClass('disabled-select').prop('disabled', false);
-              $('#manager').removeClass('disabled-select').prop('disabled', false);
               
-              // Get department data including user types
+              // Get department data
               $.ajax({
                   url: '{% url "get_department_data" %}',
                   type: 'POST',
@@ -124,125 +117,55 @@
                           alert('Error loading department data');
                           return;
                       }
-  
-                      // Determine if department has employees or managers
-                      const hasEmployees = response.employees && response.employees.length > 0;
-                      const hasManagers = response.managers && response.managers.length > 0;
-  
-                      // Toggle fields based on department content
-                      if (hasEmployees && !hasManagers) {
-                          // Department with only employees (like Python)
-                          $('#employee-group').show();
-                          $('#manager-group').hide();
-                          // Fully reset the manager dropdown
-                          $('#manager').select2('destroy');
-                          $('#manager').empty().append('<option value="">-- Select --</option>');
-                          $('#manager').val(null);
-                          $('#manager').select2({
-                              placeholder: "-- Select Employee(s) --",
-                              allowClear: true
-                          });
-                      } else if (hasManagers && !hasEmployees) {
-                          // Department with only managers (like HR)
-                          $('#employee-group').hide();
-                          $('#manager-group').show();
-                          // Fully reset the employee dropdown
-                          $('#employee').select2('destroy');
-                          $('#employee').empty().append('<option value="">-- Select --</option>');
-                          $('#employee').val(null);
-                          $('#employee').select2({
-                              placeholder: "-- Select Employee(s) --",
-                              allowClear: true
+
+                      // Combine employees and managers into one list
+                      const allPeople = [...response.employees, ...response.managers];
+                      const hasPeople = allPeople.length > 0;
+                      
+                      // Clear and populate combined list
+                      $('#employee').empty().append('<option value="">-- Select --</option>');
+                      if (hasPeople) {
+                          allPeople.forEach(person => {
+                              // Add (Manager) suffix to manager names for clarity if needed
+                              const isManager = response.managers.some(m => m.id === person.id);
+                              const displayName = isManager ? `${person.name} (Manager)` : person.name;
+                               const capitalizedDisplayName = capitalizeWords(displayName);
+
+                              $('#employee').append(`<option value="${person.id}">${capitalizedDisplayName}</option>`);
                           });
                       } else {
-                          // Department with both or neither
-                          // For departments with employees (including mixed), hide manager dropdown
-                          if (hasEmployees) {
-                              $('#employee-group').show();
-                              $('#manager-group').hide();
-                              $('#manager').select2('destroy');
-                              $('#manager').empty().append('<option value="">-- Select --</option>');
-                              $('#manager').val(null);
-                              $('#manager').select2({
-                                  placeholder: "-- Select Employee(s) --",
-                                  allowClear: true
-                              });
-                          } else {
-                              // Department with no employees (but possibly managers, though unlikely)
-                              $('#employee-group').hide();
-                              $('#manager-group').show();
-                          }
-                      }
-  
-                      // Clear and populate employees if visible
-                      $('#employee').empty().append('<option value="">-- Select --</option>');
-                      if ($('#employee-group').is(':visible')) {
-                          if (hasEmployees) {
-                              response.employees.forEach(emp => {
-                                  $('#employee').append(`<option value="${emp.id}">${emp.name}</option>`);
-                              });
-                          } else {
-                              $('#employee').append('<option value="">No employees available</option>');
-                          }
-                      }
-  
-                      // Clear and populate managers if visible
-                      $('#manager').empty().append('<option value="">-- Select --</option>');
-                      if ($('#manager-group').is(':visible')) {
-                          if (hasManagers) {
-                              response.managers.forEach(mgr => {
-                                  $('#manager').append(`<option value="${mgr.id}">${mgr.name}</option>`);
-                              });
-                          } else {
-                              $('#manager').append('<option value="">No managers available</option>');
-                          }
+                          $('#employee').append('<option value="">No staff available</option>');
                       }
                   },
                   error: function(xhr, status, error) {
                       console.error('AJAX error:', status, error);
                       alert('Failed to load department data. Please try again.');
-                      $('#employee, #manager').empty().append('<option value="">Error loading data</option>');
+                      $('#employee').empty().append('<option value="">Error loading data</option>');
                   }
               });
           } else if (deptId === 'all') {
-              // Handle "All Departments" case - disable both selectors
-              $('#employee-group').show();
-              $('#manager-group').show();
-              $('#employee').empty().append('<option value="all" selected>All Employees</option>');
-              $('#manager').empty().append('<option value="all" selected>All Managers</option>');
-              
-              // Disable both selectors
+              // Handle "All Departments" case
+              $('#employee').empty().append('<option value="all" selected>All Staff</option>');
+              // Disable selector
               $('#employee').addClass('disabled-select').prop('disabled', true).trigger('change');
-              $('#manager').addClass('disabled-select').prop('disabled', true).trigger('change');
           } else {
-              // No department selected - clear both and enable
-              $('#employee-group').show();
-              $('#manager-group').show();
+              // No department selected - clear and enable
               $('#employee').empty().append('<option value="">-- Select --</option>');
-              $('#manager').empty().append('<option value="">-- Select --</option>');
               $('#employee').removeClass('disabled-select').prop('disabled', false);
-              $('#manager').removeClass('disabled-select').prop('disabled', false);
-              // Fully reset both dropdowns
+              // Fully reset dropdown
               $('#employee').select2('destroy');
               $('#employee').val(null);
               $('#employee').select2({
                   placeholder: "-- Select Employee(s) --",
                   allowClear: true
               });
-              $('#manager').select2('destroy');
-              $('#manager').val(null);
-              $('#manager').select2({
-                  placeholder: "-- Select Employee(s) --",
-                  allowClear: true
-              });
           }
       });
-  
+
       // Form submission validation
       $('form').submit(function(e) {
           const department = $('#department').val();
           const employees = $('#employee').val();
-          const managers = $('#manager').val();
           const month = $('select[name="month"]').val();
           const year = $('select[name="year"]').val();
           
@@ -258,13 +181,9 @@
               return true;
           }
           
-          // Check if at least one visible field has selection
-          const employeeVisible = $('#employee-group').is(':visible');
-          const managerVisible = $('#manager-group').is(':visible');
-          
-          if ((employeeVisible && (!employees || employees.length === 0)) &&
-              (managerVisible && (!managers || managers.length === 0))) {
-              alert('Please select at least one employee or manager');
+          // Check if at least one employee is selected
+          if (!employees || employees.length === 0) {
+              alert('Please select at least one staff member');
               e.preventDefault();
               return false;
           }

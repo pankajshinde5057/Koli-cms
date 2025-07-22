@@ -215,6 +215,88 @@
       }
   }
 
+   /* Hide all elements except timesheet_clock.html content on mobile devices */
+    @media only screen and (max-width: 768px) {
+        /* Hide all sections and elements by default */
+        .employee-hide,
+        .row,
+        .col,
+        .card,
+        .small-box,
+        .card-header,
+        .card-body,
+        .table-responsive,
+        .pagination-container,
+        .date-filter-group,
+        #notification_base {
+            display: none !important;
+        }
+
+        /* Show only the timesheet_clock.html content */
+        #timesheet_clock{
+            display: block !important;
+        }
+        .priyankAlertMsg {
+            display: block !important;
+        }
+
+        .messageAlerts {
+            display: block !important;
+        }
+
+        .koliInfotech {
+            position: absolute;
+            top: 210px;
+            right: 7px;
+            display: flex;
+            flex-direction: column !important;
+            padding: 3px;
+        }
+
+        .priyank {
+            flex-direction: column !important;
+            gap: 30px !important;
+        }
+        .priyankResponsive {
+            font-size: xxx-large !important;
+        }
+        .priyankClockin{
+            position: relative;
+            left: -97px;
+            top: 115px;
+        }
+
+        .priyankClockInbtn {
+            font-size: xxx-large;
+            margin: 30px;
+        }
+
+        .employee-panel-buttons span.d-none.d-sm-inline {
+            display: inline !important;
+            padding: 30px;
+        }
+
+        .responsiveText{
+            font-size: 20px !important;
+            text-align: center !important;
+            padding: 4px !important;
+        }
+
+        .priyankTimeout {
+            text-align: center !important;
+            padding-top: 20px !important;
+            padding: 40px !important;
+            margin-bottom: 40px !important;
+        }
+
+        .priyankBreakTimeout {
+            margin-bottom: 10px !important;
+            text-align: center !important;
+            padding-left: 65px !important;
+            
+        }
+    }
+
   /* Loading overlay for table */
   .table-loading {
       position: relative;
@@ -315,7 +397,7 @@
                                 <table class="table table-hover mb-0">
                                     <thead class="thead-light">
                                         <tr>
-                                            <th>No</th>
+                                            <th>SN</th>
                                             <th>Employee</th>
                                             <th class="d-none d-md-table-cell">Department</th>
                                             <th class="d-none d-sm-table-cell">Start</th>
@@ -330,7 +412,7 @@
                                             <td>
                                                 <div class="d-flex flex-column">
                                                     <span>{{ entry.employee_name }}</span>
-                                                    <small class="d-md-none text-muted">{{ entry.department }}</small>
+                                                    <small class="d-md-none text-muted">{{ entry.department|capfirst }}</small>
                                                     <small class="d-sm-none text-muted">
                                                         {{ entry.break_start }} - {{ entry.break_end }}
                                                     </small>
@@ -339,7 +421,7 @@
                                             <td class="d-none d-md-table-cell">{{ entry.department }}</td>
                                             <td class="d-none d-sm-table-cell">{{ entry.break_start }}</td>
                                             <td class="d-none d-sm-table-cell">{{ entry.break_end }}</td>
-                                            <td>{{ entry.break_duration }} min</td>
+                                            <td>{{ entry.break_duration }}</td>
                                         </tr>
                                         {% empty %}
                                         <tr>
