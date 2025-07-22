@@ -11,7 +11,7 @@
                 <div class="card card-primary card-outline">
                     <div class="card-header d-flex align-items-center">
                         <h3 class="card-title mr-auto">
-                            <i class="fas fa-laptop mr-2"></i>{{ asset.asset_name }} Details
+                            <i class="fas fa-laptop mr-2"></i>{{ asset.asset_name|title }} Details
                             <small class="text-muted ml-2">#{{ asset.asset_serial_number }}</small>
                         </h3>
                         <div class="card-tools">
@@ -69,12 +69,12 @@
                                         {% if asset.is_asset_issued and issuance %}
                                         <div class="list-group-item d-flex justify-content-between">
                                             <span>Assigned To:</span>
-                                            <span class="border-1 border-bottom border-success">{{ issuance.asset_assignee.get_full_name|default:issuance.asset_assignee.username }}</span>
+                                            <span class="border-1 border-bottom border-success">{{ issuance.asset_assignee.get_full_name|default:issuance.asset_assignee.username|title }}</span>
                                         </div>
                                         {% endif %}
                                         <div class="list-group-item d-flex justify-content-between">
                                             <span>Assigned by:</span>
-                                            <span>{{ current_issuance.assigned_by }}</span>
+                                            <span>{{ current_issuance.assigned_by|title }}</span>
                                         </div>
                                     {% endif %}
                                 </div>
@@ -126,16 +126,16 @@
                                     <div class="tab-pane active" id="details">
                                         <dl class="row">
                                             <dt class="col-sm-4">Asset Name</dt>
-                                            <dd class="col-sm-8">{{ asset.asset_name|default:"-" }}</dd>
+                                            <dd class="col-sm-8">{{ asset.asset_name|default:"-"|title }}</dd>
 
                                             <dt class="col-sm-4">Serial Number</dt>
                                             <dd class="col-sm-8">{{ asset.asset_serial_number }}</dd>
 
                                             <dt class="col-sm-4">Brand</dt>
-                                            <dd class="col-sm-8">{{ asset.asset_brand|default:"-" }}</dd>
+                                            <dd class="col-sm-8">{{ asset.asset_brand|default:"-"|title }}</dd>
 
                                             <dt class="col-sm-4">Category</dt>
-                                            <dd class="col-sm-8">{{ asset.asset_category }}</dd>
+                                            <dd class="col-sm-8">{{ asset.asset_category|title }}</dd>
 
                                             <dt class="col-sm-4">Added Date</dt>
                                             <dd class="col-sm-8">{{ asset.asset_added_date|date:"M d, Y H:i" }}</dd>
@@ -190,10 +190,10 @@
                                                 <hr>
                                                 <dl class="row">
                                                     <dt class="col-sm-4">Assignee</dt>
-                                                    <dd class="col-sm-8">{{ current_issuance.asset_assignee.get_full_name|default:current_issuance.asset_assignee.username }}</dd>
+                                                    <dd class="col-sm-8">{{ current_issuance.asset_assignee.get_full_name|default:current_issuance.asset_assignee.username|title }}</dd>
 
                                                     <dt class="col-sm-4">Location</dt>
-                                                    <dd class="col-sm-8">{{ current_issuance.get_asset_location_display }}</dd>
+                                                    <dd class="col-sm-8">{{ current_issuance.get_asset_location_display|title }}</dd>
 
                                                     <dt class="col-sm-4">Date Issued</dt>
                                                     <dd class="col-sm-8">{{ current_issuance.date_issued|date:"M d, Y H:i" }}</dd>
@@ -228,7 +228,7 @@
                                                 <tbody>
                                                     {% for record in asset.assetsissuance_set.all|dictsortreversed:"date_issued" %}
                                                     <tr class="{% if record == issuance %}table-active{% endif %}">
-                                                        <td>{{ record.asset_assignee.get_full_name|default:record.asset_assignee.username }}</td>
+                                                        <td>{{ record.asset_assignee.get_full_name|default:record.asset_assignee.username|title }}</td>
                                                         <td>{{ record.get_asset_location_display }}</td>
                                                         <td>{{ record.date_issued|date:"M d, Y" }}</td>
                                                         <td>{{ record.date_issued|timesince }}</td>
@@ -261,7 +261,7 @@
                                                             </span>
                                                             <h3 class="timeline-header">
                                                                 <a href="">
-                                                                    {{ current_issuance.asset_assignee.get_full_name|default:current_issuance.asset_assignee.username }}
+                                                                    {{ current_issuance.asset_assignee.get_full_name|default:current_issuance.asset_assignee.username|title }}
                                                                 </a>
                                                             </h3>
                                                             
@@ -295,7 +295,7 @@
                                                             </span>
                                                             <h3 class="timeline-header">
                                                                 <a href="">
-                                                                    {{ issuance.assignee.get_full_name }}
+                                                                    {{ issuance.assignee.get_full_name|title }}
                                                                 </a>
                                                             </h3>
                                                             
@@ -397,7 +397,7 @@
                                                                 <div class="row">
                                                                     <div class="col-md-6">
                                                                         <strong><i class="fas fa-user"></i> Reported By:</strong>
-                                                                        {{ issue.reported_by.get_full_name }}
+                                                                        {{ issue.reported_by.get_full_name|title }}
                                                                     </div>
                                                                     <div class="col-md-6">
                                                                         <strong><i class="fas fa-calendar"></i> Reported On:</strong>
@@ -406,7 +406,7 @@
                                                                 </div>
                                                                 <div class="mt-2">
                                                                     <strong>Description:</strong>
-                                                                    <p>{{ issue.description }}</p>
+                                                                    <p>{{ issue.description|title }}</p>
                                                                 </div>
                                                                 {% if issue.resolution_method %}
                                                                 <div class="alert alert-success mt-2">
@@ -414,7 +414,7 @@
                                                                     <p>{{ issue.resolution_method }}</p>
                                                                     {% if issue.resolved_by %}
                                                                     <small class="text-muted">
-                                                                        Resolved by {{ issue.resolved_by.get_full_name }} on {{ issue.resolved_date|date:"M d, Y" }}
+                                                                        Resolved by {{ issue.resolved_by.get_full_name|title }} on {{ issue.resolved_date|date:"M d, Y" }}
                                                                     </small>
                                                                     {% endif %}
                                                                 </div>
