@@ -84,7 +84,7 @@
     <div class="container-fluid">
         <!-- Leave Requests Card -->
         <div class="card card-dark mb-4 shadow-lg">
-            <div class="card-header bg-gradient-dark">
+            <div class="card-header bg-primary">
                 <h3 class="card-title">
                     <i class="fas fa-calendar-alt mr-2"></i>
                     <strong>Leave Requests</strong>
@@ -108,7 +108,7 @@
                         <tbody id="leave-requests-body">
                             {% for report in leave_requests %}
                                 <tr class="notification-text" data-notification-id="{{ report.id }}">
-                                    <td>{{ report.created_at|date:"M d, Y" }}</td>
+                                    <td>{{ report.created_at|date:"d-m-y" }}</td>
                                     <td>
                                         <div class="message-preview">
                                             {{ report.message|truncatechars:100 }}
@@ -222,7 +222,7 @@
 
         <!-- Asset Claims Card -->
         <div class="card card-dark mb-4 shadow-lg">
-            <div class="card-header bg-gradient-dark">
+            <div class="card-header bg-primary">
                 <h3 class="card-title">
                     <i class="fas fa-laptop mr-2"></i>
                     <strong>Asset Claims</strong>
@@ -236,17 +236,18 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
+                                <th style="width: 15%">Requested</th>
                                 <th style="width: 20%">Asset</th>
                                 <th style="width: 20%">Serial No</th>
                                 <th style="width: 15%">Status</th>
-                                <th style="width: 15%">Requested</th>
                                 <th style="width: 10%">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="asset-claims-body">
                             {% for claim in asset_claims %}
                                 <tr class="notification-text" data-notification-id="{{ claim.id }}">
-                                    <td>{{ claim.asset.asset_name }}</td>
+                                    <td>{{ claim.timestamp|date:"d-m-y" }}</td>
+                                    <td>{{ claim.asset.asset_name|title }}</td>
                                     <td><code>{{ claim.asset.asset_serial_number }}</code></td>
                                     <td>
                                         {% if claim.status == "Pending" %}
@@ -257,7 +258,6 @@
                                             <span class="badge badge-rejected">Rejected</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ claim.timestamp|date:"M j, Y" }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <button type="button" class="btn btn-info" data-toggle="modal" 
@@ -364,7 +364,7 @@
 
         <!-- Asset Issues Card -->
         <div class="card card-dark mb-4 shadow-lg">
-            <div class="card-header bg-gradient-dark">
+            <div class="card-header bg-primary">
                 <h3 class="card-title">
                     <i class="fas fa-laptop mr-2"></i>
                     <strong>Asset Issues</strong>
@@ -390,8 +390,8 @@
                         <tbody id="asset-issues-body">
                             {% for issue in asset_issues %}
                                 <tr class="notification-text" data-notification-id="{{ issue.id }}">
-                                    <td>{{ issue.asset.asset_name }}</td>
-                                    <td>{{ issue.get_issue_type_display }}</td>
+                                    <td>{{ issue.asset.asset_name|title }}</td>
+                                    <td>{{ issue.get_issue_type_display|title }}</td>
                                     <td>
                                         {% if issue.status == "pending" %}
                                             <span class="badge badge-pending">Pending</span>
@@ -401,10 +401,10 @@
                                             <span class="badge badge-approved">Resolved</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ issue.reported_date|date:"M j, Y" }}</td>
+                                    <td>{{ issue.reported_date|date:"d-m-y" }}</td>
                                     <td>
                                         {% if issue.resolved_date %}
-                                            {{ issue.resolved_date|date:"M j, Y" }}
+                                            {{ issue.resolved_date|date:"d-m-y" }}
                                         {% else %}
                                             <span class="text-danger border-1 border-bottom border-top border-danger">Not Resolved</span>
                                         {% endif %}

@@ -31,7 +31,7 @@
       {% csrf_token %}
       <div class="card card-primary">
         <div class="card-header">
-          <h3 class="card-title">{{ page_title }}</h3>
+          <!-- <h3 class="card-title">{{ page_title }}</h3> -->
         </div>
         <div class="card-body">
           <div class="form-group">
@@ -84,6 +84,9 @@
 {% block custom_js %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
   <script>
+    function capitalizeWords(str) {
+        return str.replace(/\b\w/g, char => char.toUpperCase());
+    }
     $(document).ready(function() {
       // Initialize Select2
       $('.select2-multiple').select2({
@@ -126,7 +129,9 @@
                               // Add (Manager) suffix to manager names for clarity if needed
                               const isManager = response.managers.some(m => m.id === person.id);
                               const displayName = isManager ? `${person.name} (Manager)` : person.name;
-                              $('#employee').append(`<option value="${person.id}">${displayName}</option>`);
+                               const capitalizedDisplayName = capitalizeWords(displayName);
+
+                              $('#employee').append(`<option value="${person.id}">${capitalizedDisplayName}</option>`);
                           });
                       } else {
                           $('#employee').append('<option value="">No staff available</option>');

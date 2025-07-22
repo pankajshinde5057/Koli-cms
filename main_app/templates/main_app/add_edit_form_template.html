@@ -545,9 +545,9 @@
                             </div>
                             
                             {% if page_title == "View/Update Profile" %}
-                                <h3 class="mt-2">{{ user_object.get_full_name }}</h3>
+                                <h3 class="mt-2">{{ user_object.first_name|capfirst }} {{user_object.last_name|capfirst}}</h3>
                                 {% if user_object.department %}
-                                    <p class="text-muted">{{ user_object.department }}</p>
+                                    <p class="text-muted">{{ user_object.department|capfirst }}</p>
                                 {% endif %}
                             {% elif page_title != "Add Employee" and page_title != 'Add Manager' %}
                                 <h3 class="mt-2">{{ user_object.admin.get_full_name }}</h3>

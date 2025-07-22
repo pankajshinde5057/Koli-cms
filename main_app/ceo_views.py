@@ -122,13 +122,23 @@ def admin_home(request):
             
         duration = 0
         if b.break_end:
-            duration = int((b.break_end - b.break_start).total_seconds() / 60)
+            duration_seconds = int((b.break_end - b.break_start).total_seconds())
         else:
-            duration = int((current_time - b.break_start).total_seconds() / 60)
-            
+            duration_seconds = int((current_time - b.break_start).total_seconds())
+        
+        minutes = int(duration_seconds // 60)
+        seconds = int(duration_seconds % 60)
+
+        if minutes > 0 and seconds > 0:
+            duration = f"{minutes} min {seconds} sec"
+        elif minutes > 0:
+            duration = f"{minutes} min"
+        else:
+            duration = f"{seconds} sec"
+
         break_entries.append({
             'user_id': user.id,
-            'user_name': user.get_full_name() or user.username,
+            'user_name': user.first_name.capitalize() + " " + user.last_name.capitalize(),
             'user_type': user_type,
             'department': department,
             'break_start': b.break_start.strftime('%H:%M'),
@@ -2035,7 +2045,7 @@ def admin_todays_attendance(request):
         'page_title': "Today's Attendance",
         'employee_page_obj': employee_page_obj,
         'manager_page_obj': manager_page_obj,
-        'current_date': today.strftime("%Y-%m-%d"),
+        'current_date': today.strftime('%d-%m-%y'),
         'total_clocked_in': today_attendances.count() + today_attendances_manager.count(),
         'total_employees': today_attendances.count(),
         'total_managers': today_attendances_manager.count()

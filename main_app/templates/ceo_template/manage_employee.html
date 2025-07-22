@@ -40,7 +40,7 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
-                <div class="card card-secondary card-outline">
+                <div class="card card-primary card-outline">
                     <div class="card-header">
                         <div class="card-tools">
                             <form method="get" class="form-inline" id="searchForm">
@@ -112,16 +112,20 @@
                                         <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
                                         <td>
                                             <div>
-                                                <strong>{{ employee.first_name }} {{ employee.last_name }}</strong>
+                                                <strong>{{ employee.first_name|capfirst }} {{ employee.last_name|capfirst }}</strong>
                                                 <small>EMP-{{ employee.id|stringformat:"04d" }}</small>
                                             </div>
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">
-                                            <span class="font-monospace">{{ employee.email }}</span>
+                                            <span class="font-monospace" 
+                                                data-bs-toggle="tooltip" 
+                                                title="{{ employee.email }}">
+                                                {{ employee.email }}
+                                            </span>
                                         </td>
-                                        <td class="d-none d-md-table-cell">{{ employee.get_gender_display }}</td>
-                                        <td class="d-none d-lg-table-cell">{{ employee.employee.division.name|default:"-" }}</td>
-                                        <td class="d-none d-lg-table-cell">{{ employee.employee.department.name|default:"-" }}</td>
+                                        <td class="d-none d-md-table-cell">{{ employee.gender|capfirst }}</td>
+                                        <td class="d-none d-lg-table-cell">{{ employee.employee.division.name|default:"-"|capfirst }}</td>
+                                        <td class="d-none d-lg-table-cell">{{ employee.employee.department.name|default:"-"|capfirst }}</td>
                                         <td class="text-center">
                                             {% if employee.profile_pic %}
                                             <img src="{{ employee.profile_pic }}" alt="Profile Pic" 

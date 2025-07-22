@@ -9,7 +9,7 @@
             <div class="row">
                 <div class="col-md-12">
                     <!-- Claim History -->
-                    <div class="card card-dark mt-2">
+                    <div class="card card-primary mt-2">
                         <div class="card-header">
                             <div class="card-tools">
                                 <div class="input-group input-group-sm" style="width: 250px;">
@@ -65,9 +65,9 @@
                                         {% for asset in assets %}
                                             <tr>
                                                 <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                                <td>{{ asset.asset_name }}</td>
+                                                <td>{{ asset.asset_name|title }}</td>
                                                 <td>{{ asset.asset_serial_number }}</td>
-                                                <td>{{ asset.asset_brand }}</td>
+                                                <td>{{ asset.asset_brand|title }}</td>
                                                 {% if request.user.user_type == '3' %}
                                                     <td>
                                                         {% if asset.id in pending_requests %}
@@ -111,9 +111,9 @@
                                                                                         </div>
                                                                                         {% endif %}
                                                                                         <div class="asset-info">
-                                                                                            <p class="mb-2"><strong><i class="fas fa-tag mr-2"></i>Name:</strong> {{ asset.asset_name }}</p>
+                                                                                            <p class="mb-2"><strong><i class="fas fa-tag mr-2"></i>Name:</strong> {{ asset.asset_name|title }}</p>
                                                                                             <p class="mb-2"><strong><i class="fas fa-barcode mr-2"></i>Serial No:</strong> {{ asset.asset_serial_number }}</p>
-                                                                                            <p class="mb-2"><strong><i class="fas fa-industry mr-2"></i>Brand:</strong> {{ asset.asset_brand }}</p>
+                                                                                            <p class="mb-2"><strong><i class="fas fa-industry mr-2"></i>Brand:</strong> {{ asset.asset_brand|title }}</p>
                                                                                             {% if asset.os_version %}
                                                                                             <p class="mb-2"><strong><i class="fas fa-code-branch mr-2"></i>OS Version:</strong> {{ asset.os_version }}</p>
                                                                                             {% endif %}

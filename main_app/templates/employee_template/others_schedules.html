@@ -262,7 +262,7 @@
                     <div class="schedule-item">
                         <div class="schedule-header">
                             <span class="employee-name">
-                                {{ schedule.employee.admin.first_name }} {{ schedule.employee.admin.last_name }}
+                                {{ schedule.employee.admin.get_full_name|title }}
                             </span>
                             <span class="schedule-date">
                                 {{ schedule.date|date:"F j, Y" }}

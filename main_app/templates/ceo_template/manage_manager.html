@@ -9,7 +9,7 @@
             <div class="col-12">
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
+                        {% comment %} <h3 class="card-title">{{ page_title }}</h3> {% endcomment %}
                     </div>
                     <!-- /.card-header -->
                     <div class="card-body p-0">
@@ -31,7 +31,7 @@
                                     {% for manager in allManager %}
                                     <tr>
                                         <td data-title="SN">{{ page_obj.start_index|add:forloop.counter0 }}</td>
-                                        <td data-title="Full Name">{{ manager.first_name }} {{ manager.last_name }}</td>
+                                        <td data-title="Full Name">{{ manager.first_name|capfirst }} {{ manager.last_name|capfirst }}</td>
                                         <td data-title="Department">{{ manager.manager.department.name }}</td>
                                         <td data-title="Email">{{ manager.email }}</td>
                                         <td data-title="Gender">{{ manager.gender }}</td>
