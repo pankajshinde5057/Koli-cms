@@ -6,49 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile | {{ page_title }}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Add Cropper.js CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <style>
-        /* Base Styles */
+        /* Same styles as before, unchanged */
         .required-asterisk {
             color: #dc3545;
             font-weight: bold;
             margin-left: 3px;
         }
-        
         .text-danger {
             color: #dc3545;
             font-size: 0.875rem;
             margin-top: 0.25rem;
         }
-        
         .alert {
             padding: 0.75rem 1.25rem;
             margin-bottom: 1rem;
             border: 1px solid transparent;
             border-radius: 0.25rem;
         }
-
         .alert-success {
             color: #155724;
             background-color: #d4edda;
             border-color: #c3e6cb;
         }
-
         .alert-error {
             color: #721c24;
             background-color: #f8d7da;
             border-color: #f5c6cb;
         }
-
-        /* Profile Picture Styles */
         .profile-pic-container {
             position: relative;
             width: 250px;
             height: 250px;
             margin: 0 auto 1.5rem;
         }
-        
         .profile-pic {
             width: 100%;
             height: 100%;
@@ -58,16 +50,13 @@
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            image-rendering: optimizeQuality; /* Ensure high-quality rendering */
+            image-rendering: optimizeQuality;
         }
-        
         .profile-pic:hover {
             border-color: #3897f0;
             transform: scale(1.03);
             box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
         }
-        
-        /* Modal Styles */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -82,14 +71,12 @@
             will-change: opacity;
             overflow-y: auto;
         }
-        
         .modal-overlay.show {
             display: flex;
             justify-content: center;
             align-items: center;
             opacity: 1;
         }
-        
         .modal-container {
             position: relative;
             width: 100%;
@@ -103,14 +90,12 @@
             overflow: hidden;
             background: #000;
         }
-        
         .modal-image-wrapper {
             position: relative;
             width: 100%;
-            padding-top: 100%; /* 1:1 Aspect Ratio */
+            padding-top: 100%;
             overflow: hidden;
         }
-        
         .modal-image {
             position: absolute;
             top: 0;
@@ -121,15 +106,12 @@
             transform: scale(0.98);
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
-            image-rendering: optimizeQuality; /* Ensure high-quality rendering */
+            image-rendering: optimizeQuality;
         }
-        
         .modal-overlay.show .modal-image {
             transform: scale(1);
             opacity: 1;
         }
-        
-        /* Modal Header */
         .modal-header {
             position: absolute;
             top: 0;
@@ -142,12 +124,10 @@
             background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
             z-index: 10;
         }
-        
         .user-info {
             display: flex;
             align-items: center;
         }
-        
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -156,21 +136,17 @@
             object-fit: cover;
             border: 2px solid rgba(255, 255, 255, 0.2);
         }
-        
         .username {
             color: white;
             font-weight: 600;
             font-size: 1rem;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
         }
-        
         .status {
             color: #ccc;
             font-size: 0.9rem;
             margin-top: 2px;
         }
-        
-        /* Modal Close Button */
         .modal-close {
             color: white;
             background: rgba(0, 0, 0, 0.5);
@@ -185,13 +161,10 @@
             border: none;
             font-size: 1.5rem;
         }
-        
         .modal-close:hover {
             background: rgba(0, 0, 0, 0.7);
             transform: rotate(90deg);
         }
-        
-        /* Loading Spinner */
         .spinner {
             position: absolute;
             top: 50%;
@@ -206,13 +179,10 @@
             z-index: 5;
             display: none;
         }
-        
         @keyframes spin {
             0% { transform: translate(-50%, -50%) rotate(0deg); }
             100% { transform: translate(-50%, -50%) rotate(360deg); }
         }
-        
-        /* Date Input Styling */
         input[type="date"] {
             position: relative;
             width: 100%;
@@ -225,34 +195,27 @@
             cursor: pointer;
             transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
-
         input[type="date"]:hover {
             border-color: #80bdff;
         }
-
         input[type="date"]:focus {
             outline: none;
             border-color: #3897f0;
             box-shadow: 0 0 5px rgba(56, 151, 240, 0.3);
         }
-
         input[type="date"]::-webkit-calendar-picker-indicator {
             opacity: 1;
             cursor: pointer;
             padding: 5px;
             margin-left: 5px;
         }
-
-        /* Password Toggle Styles */
         .password-field-container {
             position: relative;
             width: 100%;
         }
-
         .password-field-container .form-control {
             padding-right: 40px;
         }
-
         .password-toggle {
             position: absolute;
             right: 10px;
@@ -263,12 +226,9 @@
             font-size: 1.1rem;
             z-index: 2;
         }
-
         .password-toggle:hover {
             color: #343a40;
         }
-
-        /* Confirmation Popup Styles */
         .confirmation-overlay {
             display: none;
             position: fixed;
@@ -279,11 +239,9 @@
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1099;
         }
-
         .confirmation-overlay.show {
             display: block;
         }
-
         .confirmation-popup {
             display: none;
             position: fixed;
@@ -299,23 +257,19 @@
             width: 90%;
             text-align: center;
         }
-
         .confirmation-popup.show {
             display: block;
         }
-
         .confirmation-message {
             font-size: 1rem;
             margin-bottom: 1.5rem;
             color: #333;
         }
-
         .confirmation-buttons {
             display: flex;
             justify-content: center;
             gap: 1rem;
         }
-
         .confirmation-btn {
             padding: 0.5rem 1.5rem;
             border: none;
@@ -324,26 +278,20 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-
         .btn-ok {
             background-color: #3897f0;
             color: white;
         }
-
         .btn-ok:hover {
             background-color: #2a7bc2;
         }
-
         .btn-cancel-btn {
             background-color: #e6f0fa;
             color: #3897f0;
         }
-
         .btn-cancel-btn:hover {
             background-color: #d1e0f5;
         }
-
-        /* Crop Modal Styles - WhatsApp Inspired Black Background */
         .crop-modal-overlay {
             display: none;
             position: fixed;
@@ -356,54 +304,48 @@
             align-items: center;
             justify-content: center;
         }
-
         .crop-modal-overlay.show {
             display: flex;
         }
-
         .crop-modal-container {
             width: 100%;
             max-width: 800px;
-            background: #000; /* Solid black background */
+            background: #000;
             border-radius: 12px;
             overflow: hidden;
             position: relative;
             margin: 1rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            background-image: url('data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Ccircle fill="rgba(255,255,255,0.03)" cx="10" cy="10" r="1"/%3E%3C/svg%3E'); /* Subtle white dot pattern */
+            background-image: url('data:image/svg+xml,%3Csvg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"%3E%3Ccircle fill="rgba(255,255,255,0.03)" cx="10" cy="10" r="1"/%3E%3C/svg%3E');
             background-size: 20px 20px;
         }
-
         .crop-image-container {
             width: 100%;
             height: 60vh;
             min-height: 400px;
             overflow: hidden;
             position: relative;
-            background: #000; /* Solid black background for image */
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
-            border: 2px solid rgba(255, 255, 255, 0.1); /* Subtle border for contrast */
+            border: 2px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            margin: 1rem; /* Space around the image */
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5); /* Inner shadow for depth */
+            margin: 1rem;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
         }
-
         .crop-image {
             max-width: 100%;
             max-height: 100%;
             display: block;
-            image-rendering: optimizeQuality; /* Ensure high-quality rendering */
+            image-rendering: optimizeQuality;
         }
-
         .crop-modal-footer {
             padding: 1rem;
             display: flex;
             justify-content: space-between;
             background: rgba(0, 0, 0, 0.7);
         }
-
         .crop-button {
             padding: 0.5rem 1.5rem;
             border: none;
@@ -412,26 +354,20 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-
         .crop-cancel {
             background-color: #e6f0fa;
             color: #3897f0;
         }
-
         .crop-cancel:hover {
             background-color: #d1e0f5;
         }
-
         .crop-done {
             background-color: #3897f0;
             color: white;
         }
-
         .crop-done:hover {
             background-color: #2a7bc2;
         }
-
-        /* Zoom Controls */
         .zoom-controls {
             position: absolute;
             bottom: 70px;
@@ -441,7 +377,6 @@
             gap: 10px;
             z-index: 10;
         }
-
         .zoom-btn {
             width: 40px;
             height: 40px;
@@ -455,17 +390,13 @@
             cursor: pointer;
             font-size: 1.2rem;
         }
-
         .zoom-btn:hover {
             background: rgba(255, 255, 255, 0.3);
         }
-
-        /* Card Footer Styles */
         .card-footer {
             display: flex;
             justify-content: space-between;
         }
-
         .btn-cancel {
             background-color: #e6f0fa;
             color: #3897f0;
@@ -476,39 +407,31 @@
             cursor: pointer;
             transition: background-color 0.2s ease;
         }
-
         .btn-cancel:hover {
             background-color: #d1e0f5;
         }
-
-        /* Responsive Adjustments */
         @media (max-width: 768px) {
             .profile-pic-container {
                 width: 200px;
                 height: 200px;
             }
-            
             .modal-container, .crop-modal-container {
                 margin: 1rem;
                 max-height: 85vh;
             }
-
             .confirmation-popup {
                 padding: 1rem;
                 max-width: 300px;
             }
-
             .confirmation-btn, .crop-button {
                 padding: 0.4rem 1.2rem;
                 font-size: 0.9rem;
             }
-
             .crop-image-container {
                 height: 50vh;
                 min-height: 300px;
             }
         }
-
         @media (max-width: 576px) {
             .crop-image-container {
                 height: 40vh;
@@ -543,7 +466,6 @@
                                     <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
                                 {% endif %}
                             </div>
-                            
                             {% if page_title == "View/Update Profile" %}
                                 <h3 class="mt-2">{{ user_object.get_full_name }}</h3>
                                 {% if user_object.department %}
@@ -559,8 +481,6 @@
                                 {% endif %}
                             {% endif %}
                         </div>
-
-                        <!-- WhatsApp Style Modal -->
                         <div id="profileModal" class="modal-overlay">
                             <div class="modal-container">
                                 <div class="modal-header">
@@ -589,8 +509,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Crop Modal - Improved -->
                         <div id="cropModal" class="crop-modal-overlay">
                             <div class="crop-modal-container">
                                 <div class="crop-image-container">
@@ -607,39 +525,41 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Contact Info Section -->
                         <div class="card mb-4 mt-4">
                             <div class="card-header bg-light">
                                 <h5 class="card-title mb-0">Contact Info</h5>
                             </div>
-                            <div class="card-body">
-                                {% for field in form %}
-                                    {% if field.name in "profile_pic email phone_number address" %}
-                                        <div class="form-group">
-                                            <label for="{{ field.id_for_label }}">
-                                                {{ field.label }}
-                                                {% if field.field.required %}
-                                                    <span class="required-asterisk">*</span>
-                                                {% endif %}
-                                            </label>
-                                            {% if field.name == 'email' %}
-                                                <input type="email" name="email" id="{{ field.id_for_label }}" class="form-control" value="{{ form.email.value|default_if_none:'' }}">
-                                            {% elif field.name == 'profile_pic' %}
-                                                <input type="file" name="profile_pic" id="{{ field.id_for_label }}" class="form-control" accept="image/*">
-                                            {% else %}
-                                                {{ field }}
-                                            {% endif %}
-                                            {% if field.errors %}
-                                                <div class="text-danger">{{ field.errors|striptags }}</div>
-                                            {% endif %}
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
+                            <!-- In the Contact Info section -->
+<div class="card-body">
+    {% for field in form %}
+        {% if field.name in "profile_pic email phone_number address" %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                    {% if field.name == 'phone_number' and page_title in 'Add Manager,Edit Manager' %}
+                        <span class="required-asterisk">*</span>
+                    {% elif field.field.required %}
+                        <span class="required-asterisk">*</span>
+                    {% endif %}
+                </label>
+                {% if field.name == 'email' %}
+                    <input type="email" name="email" id="{{ field.id_for_label }}" class="form-control" value="{{ form.email.value|default_if_none:'' }}">
+                {% elif field.name == 'profile_pic' %}
+                    <input type="file" name="profile_pic" id="{{ field.id_for_label }}" class="form-control" accept="image/*">
+                {% elif field.name == 'phone_number' and page_title in 'Add Manager,Edit Manager' %}
+                    <input type="text" name="phone_number" id="{{ field.id_for_label }}" class="form-control" value="{{ form.phone_number.value|default_if_none:'' }}" required>
+                {% else %}
+                    {{ field }}
+                {% endif %}
+                {% if field.errors %}
+                    <div class="text-danger">{{ field.errors|striptags }}</div>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
                         </div>
                     </div>
-
                     <!-- Account Information -->
                     <div class="col-md-8 mt-4">
                         <div class="card mb-4">
@@ -648,8 +568,57 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                   {% for field in form %}
-                                        {% if field.name not in "profile_pic email phone_number address" %}
+                                    {% if page_title == "Add Manager" or page_title == "Edit Manager" %}
+                                        <!-- Explicitly render manager_id first -->
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.manager_id.id_for_label }}">
+                                                    {{ form.manager_id.label }}
+                                                    {% if form.manager_id.field.required %}
+                                                        <span class="required-asterisk">*</span>
+                                                    {% endif %}
+                                                </label>
+                                                {{ form.manager_id }}
+                                                {% if form.manager_id.errors %}
+                                                    <div class="text-danger">{{ form.manager_id.errors|striptags }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% elif page_title == "Add Employee" or page_title == "Edit Employee" %}
+                                        <!-- Explicitly render employee_id first -->
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="{{ form.employee_id.id_for_label }}">
+                                                    {{ form.employee_id.label }}
+                                                    {% if form.employee_id.field.required %}
+                                                        <span class="required-asterisk">*</span>
+                                                    {% endif %}
+                                                </label>
+                                                {{ form.employee_id }}
+                                                {% if form.employee_id.errors %}
+                                                    <div class="text-danger">{{ form.employee_id.errors|striptags }}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    <!-- Then render first_name -->
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="{{ form.first_name.id_for_label }}">
+                                                {{ form.first_name.label }}
+                                                {% if form.first_name.field.required %}
+                                                    <span class="required-asterisk">*</span>
+                                                {% endif %}
+                                            </label>
+                                            {{ form.first_name }}
+                                            {% if form.first_name.errors %}
+                                                <div class="text-danger">{{ form.first_name.errors|striptags }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <!-- Render remaining fields -->
+                                    {% for field in form %}
+                                        {% if field.name not in "profile_pic email phone_number address employee_id manager_id first_name" %}
                                             {% if field.name == "is_second_shift" %}
                                                 {% if request.user.user_type == '1' or page_title == 'Edit Employee' or page_title == 'Add Employee' %}
                                                     <div class="col-md-6">
@@ -694,19 +663,15 @@
                                     {% endfor %}
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Submit and Cancel Buttons -->
-                        <div class="card-footer">
-                            <button type="button" class="btn btn-primary btn-block" onclick="confirmSubmit()">
-                                {{ button_text|default:"Submit" }}
-                            </button>
+                            <div class="card-footer">
+                                <button type="button" class="btn btn-primary btn-block" onclick="confirmSubmit()">
+                                    {{ button_text|default:"Submit" }}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </form>
-
-            <!-- Confirmation Popup -->
             <div id="confirmationOverlay" class="confirmation-overlay"></div>
             <div id="confirmationPopup" class="confirmation-popup">
                 <div class="confirmation-message" id="confirmationMessage"></div>
@@ -717,22 +682,19 @@
             </div>
         </div>
     </section>
-
-    <!-- Add Cropper.js Script -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <script>
-        // Suppress popups
         window.alert = function() {};
         if (window.Swal) {
             Swal.close();
         }
-
-        // DOM Elements
         const profilePic = document.getElementById("profilePic");
         const profileModal = document.getElementById("profileModal");
         const enlargedPhoto = document.getElementById("enlargedPhoto");
         const spinner = document.querySelector('.spinner');
         const dateOfJoiningInput = document.getElementById("id_date_of_joining");
+        const bondStartInput = document.getElementById("id_bond_start");
+        const bondEndInput = document.getElementById("id_bond_end");
         const passwordToggle = document.getElementById('passwordToggle');
         const passwordField = document.getElementById('id_password');
         const confirmationOverlay = document.getElementById('confirmationOverlay');
@@ -740,7 +702,7 @@
         const confirmationMessage = document.getElementById('confirmationMessage');
         const confirmYes = document.getElementById('confirmYes');
         const confirmNo = document.getElementById('confirmNo');
-        const profileForm =  document.getElementById('add-form') || document.getElementById('edit-form');
+        const profileForm = document.getElementById('add-form') || document.getElementById('edit-form');
         const cancelBtn = document.getElementById('cancelBtn');
         const profilePicInput = document.getElementById('id_profile_pic');
         const cropModal = document.getElementById('cropModal');
@@ -750,11 +712,9 @@
         const zoomIn = document.getElementById('zoomIn');
         const zoomOut = document.getElementById('zoomOut');
         const rotateRight = document.getElementById('rotateRight');
-
         let cropper = null;
         let currentRotation = 0;
 
-        // Prevent Unintended Form Submission
         profileForm.addEventListener('submit', function(e) {
             if (!profileForm.dataset.submitting) {
                 e.preventDefault();
@@ -762,62 +722,50 @@
             }
         });
 
-        // Open Modal Function
         function openModal(src) {
             if (!src) return;
-            
             spinner.style.display = 'block';
             enlargedPhoto.style.display = 'none';
-            
             enlargedPhoto.src = src;
-            
             profileModal.classList.add('show');
-            
             document.body.style.overflow = 'hidden';
             document.body.style.paddingRight = getScrollbarWidth() + 'px';
         }
-        
-        // Close Modal Function
+
         function closeModal() {
             profileModal.classList.remove('show');
-            
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
         }
 
-        // Open Crop Modal
         function openCropModal(imageSrc) {
             cropImage.src = imageSrc;
             cropModal.classList.add('show');
             document.body.style.overflow = 'hidden';
-
-            // Initialize Cropper.js
             if (cropper) {
                 cropper.destroy();
             }
-            
             cropImage.onload = function() {
                 cropper = new Cropper(cropImage, {
                     aspectRatio: 1,
                     viewMode: 1,
-                    autoCropArea: 0.8, // Slightly smaller initial crop area for better control
+                    autoCropArea: 0.8,
                     responsive: true,
-                    minCropBoxWidth: 200, // Increased minimum size for better resolution
+                    minCropBoxWidth: 200,
                     minCropBoxHeight: 200,
-                    background: false, // Disable default checkered background
+                    background: false,
                     cropBoxMovable: true,
                     cropBoxResizable: true,
                     zoomable: true,
                     scalable: true,
                     rotatable: true,
                     checkCrossOrigin: true,
-                    imageSmoothingEnabled: true, // Enable image smoothing
-                    imageSmoothingQuality: 'high' // High-quality image smoothing
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
                 });
             };
         }
 
-        // Close Crop Modal
         function closeCropModal() {
             cropModal.classList.remove('show');
             document.body.style.overflow = '';
@@ -825,13 +773,12 @@
                 cropper.destroy();
                 cropper = null;
             }
-            profilePicInput.value = ''; // Clear file input
+            profilePicInput.value = '';
         }
 
-        // Handle Profile Picture Selection
         profilePicInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (file && file.type.match('image.*') && file.size <= 10 * 1024 * 1024) { // Increased file size limit to 10MB
+            if (file && file.type.match('image.*') && file.size <= 10 * 1024 * 1024) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     openCropModal(e.target.result);
@@ -842,20 +789,18 @@
             }
         });
 
-        // Crop Cancel Button
         cropCancel.addEventListener('click', function() {
             closeCropModal();
         });
 
-        // Crop Done Button
         cropDone.addEventListener('click', function() {
             if (cropper) {
-                const canvas = cropper.getCroppedCanvas({ 
-                    width: 2000, // Increased resolution for sharpness
+                const canvas = cropper.getCroppedCanvas({
+                    width: 2000,
                     height: 2000,
-                    fillColor: '#000000', // Black background for transparent areas
-                    imageSmoothingEnabled: true, // Enable high-quality rendering
-                    imageSmoothingQuality: 'high' // Highest quality smoothing
+                    fillColor: '#000000',
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
                 });
                 canvas.toBlob(function(blob) {
                     const url = URL.createObjectURL(blob);
@@ -869,25 +814,22 @@
                     document.body.style.overflow = '';
                     cropper.destroy();
                     cropper = null;
-                }, 'image/jpeg', 1.0); // Maximum quality (lossless)
+                }, 'image/jpeg', 1.0);
             }
         });
 
-        // Zoom In
         zoomIn.addEventListener('click', function() {
             if (cropper) {
-                cropper.zoom(0.1); // Zoom in by 10%
+                cropper.zoom(0.1);
             }
         });
 
-        // Zoom Out
         zoomOut.addEventListener('click', function() {
             if (cropper) {
-                cropper.zoom(-0.1); // Zoom out by 10%
+                cropper.zoom(-0.1);
             }
         });
 
-        // Rotate Right
         rotateRight.addEventListener('click', function() {
             if (cropper) {
                 currentRotation = (currentRotation + 90) % 360;
@@ -895,13 +837,11 @@
             }
         });
 
-        // Image Loaded Handler
         function imageLoaded() {
             spinner.style.display = 'none';
             enlargedPhoto.style.display = 'block';
         }
-        
-        // Show Error Function
+
         function showError(message) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-error';
@@ -909,36 +849,40 @@
             document.body.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 3000);
         }
-        
-        // Get Scrollbar Width
+
         function getScrollbarWidth() {
             return window.innerWidth - document.documentElement.clientWidth;
         }
 
-        // Trigger Date Picker
         function triggerDatePicker() {
-            if (dateOfJoiningInput) {
-                dateOfJoiningInput.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    dateOfJoiningInput.showPicker();
-                });
+            const dateInputs = [
+                dateOfJoiningInput,
+                bondStartInput,
+                bondEndInput
+            ];
 
-                dateOfJoiningInput.addEventListener('focus', () => {
-                    dateOfJoiningInput.showPicker();
-                });
-            }
+            dateInputs.forEach(input => {
+                if (input) {
+                    input.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        input.showPicker();
+                    });
+                    input.addEventListener('focus', () => {
+                        input.showPicker();
+                    });
+                }
+            });
         }
 
-        // Password Toggle
         function setupPasswordToggle() {
             if (passwordToggle && passwordField) {
                 passwordToggle.addEventListener('click', function(event) {
                     event.preventDefault();
                     event.stopPropagation();
                     const currentType = passwordField.getAttribute('type');
-                    const newType = currentType === 'password' ? 'text' : 'password';
+                    const newType = currentType == 'password' ? 'text' : 'password';
                     passwordField.setAttribute('type', newType);
-                    if (newType === 'text') {
+                    if (newType == 'text') {
                         this.classList.remove('fa-eye');
                         this.classList.add('fa-eye-slash');
                     } else {
@@ -948,8 +892,7 @@
                 });
             }
         }
-        
-        // Confirmation Popup
+
         function showConfirmationPopup(message) {
             confirmationMessage.textContent = message;
             confirmationOverlay.classList.add('show');
@@ -963,10 +906,8 @@
             document.body.style.overflow = '';
         }
 
-        // Form Submission Confirmation
         function confirmSubmit() {
             let message = "Are you sure you want to submit this form?";
-            
             {% if page_title == "Add Employee" %}
                 message = "Are you sure you want to add this employee?";
             {% elif page_title == "Add Manager" %}
@@ -974,24 +915,19 @@
             {% elif page_title == "Edit Employee" or page_title == "Edit Manager" or page_title == "View/Update Profile" %}
                 message = "Are you sure you want to update this profile?";
             {% endif %}
-            
             showConfirmationPopup(message);
         }
 
-        // Event Listeners
         function initEventListeners() {
             if (profilePic) {
                 profilePic.addEventListener('click', () => openModal(profilePic.src));
             }
-            
             document.querySelector('.modal-close').addEventListener('click', closeModal);
-            
             profileModal.addEventListener('click', (e) => {
                 if (e.target === profileModal) {
                     closeModal();
                 }
             });
-            
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && profileModal.classList.contains('show')) {
                     closeModal();
@@ -1000,7 +936,6 @@
                     closeCropModal();
                 }
             });
-            
             enlargedPhoto.addEventListener('load', imageLoaded);
             enlargedPhoto.addEventListener('error', () => {
                 spinner.style.display = 'none';
@@ -1008,7 +943,6 @@
                 enlargedPhoto.style.display = 'block';
                 showError('Failed to load image.');
             });
-
             if (confirmYes) {
                 confirmYes.addEventListener('click', function() {
                     profileForm.dataset.submitting = 'true';
@@ -1016,11 +950,9 @@
                     profileForm.submit();
                 });
             }
-
             if (confirmNo) {
                 confirmNo.addEventListener('click', hideConfirmationPopup);
             }
-
             if (confirmationOverlay) {
                 confirmationOverlay.addEventListener('click', function(e) {
                     if (e.target === confirmationOverlay) {
@@ -1028,7 +960,6 @@
                     }
                 });
             }
-
             if (cancelBtn) {
                 cancelBtn.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -1037,12 +968,10 @@
                     hideConfirmationPopup();
                 });
             }
-
             triggerDatePicker();
             setupPasswordToggle();
         }
-        
-        // Initialize
+
         document.addEventListener('DOMContentLoaded', initEventListeners);
     </script>
 </body>

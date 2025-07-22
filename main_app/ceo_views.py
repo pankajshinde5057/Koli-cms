@@ -197,6 +197,7 @@ def add_manager(request):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
+            manager_id = form.cleaned_data.get('employee_id')
 
             if phone_number and phone_number[0] in ['1', '2', '3', '4']:
                 form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")
@@ -238,6 +239,7 @@ def add_manager(request):
                     'phone': emergency_phone,
                     'address': emergency_address
                 }
+                manager.manager_id = manager_id
                 manager.aadhar_card = aadhar_card
                 manager.pan_card = pan_card
                 manager.bond_start = bond_start
@@ -285,10 +287,7 @@ def add_employee(request):
             pan_card = employee_form.cleaned_data.get('pan_card')
             bond_start = employee_form.cleaned_data.get('bond_start')
             bond_end = employee_form.cleaned_data.get('bond_end')
-            aadhar_card = employee_form.cleaned_data.get('aadhar_card')
-            pan_card = employee_form.cleaned_data.get('pan_card')
-            bond_start = employee_form.cleaned_data.get('bond_start')
-            bond_end = employee_form.cleaned_data.get('bond_end')
+            employee_id = employee_form.cleaned_data.get('employee_id')
 
             passport_url = None
 
@@ -334,6 +333,7 @@ def add_employee(request):
                     'phone': emergency_phone,
                     'address': emergency_address
                 }
+                employee.employee_id = employee_id
                 employee.aadhar_card = aadhar_card
                 employee.pan_card = pan_card
                 employee.bond_start = bond_start
@@ -493,11 +493,41 @@ def add_department(request):
 
 @login_required
 def manage_manager(request):
-    manager_list = CustomUser.objects.filter(user_type=2)
-    
-    paginator = Paginator(manager_list, 50)
+    # Get filter parameters
+    search = request.GET.get('search', '').strip()
+    gender = request.GET.get('gender', '')
+    department = request.GET.get('department', '')
+    division = request.GET.get('division', '')
+    per_page = request.GET.get('per_page', 10)  # Default to 10 records per page
     page_number = request.GET.get('page', 1)
-    
+
+    # Build the manager queryset
+    manager_list = CustomUser.objects.filter(user_type=2).select_related('manager')
+
+    # Apply filters
+    if search:
+        manager_list = manager_list.filter(
+            models.Q(first_name__icontains=search) |
+            models.Q(last_name__icontains=search) |
+            models.Q(email__icontains=search)
+        )
+    if gender:
+        manager_list = manager_list.filter(gender=gender)
+    if department:
+        manager_list = manager_list.filter(manager__department_id=department)
+    if division:
+        manager_list = manager_list.filter(manager__division_id=division)
+
+    # Validate per_page input
+    try:
+        per_page = int(per_page)
+        if per_page < 1 or per_page > 100:
+            per_page = 10  # Fallback to default if out of range
+    except ValueError:
+        per_page = 10  # Fallback to default if invalid
+
+    # Apply pagination
+    paginator = Paginator(manager_list, per_page)
     try:
         page_obj = paginator.page(page_number)
     except PageNotAnInteger:
@@ -505,10 +535,16 @@ def manage_manager(request):
     except EmptyPage:
         page_obj = paginator.page(paginator.num_pages)
 
+    # Prepare context
     context = {
         'allManager': page_obj.object_list,
         'page_obj': page_obj,
-        'page_title': 'Manage Manager'
+        'page_title': 'Manage Manager',
+        'per_page': per_page,
+        'search': search,
+        'departments': Department.objects.all(),
+        'divisions': Division.objects.all(),
+        'request': request,  # Pass request for filter persistence
     }
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -540,6 +576,14 @@ def manage_employee(request):
     department_id = request.GET.get("department", '')
     division_id = request.GET.get("division", '')
     page_number = request.GET.get('page', 1)
+    per_page = request.GET.get('per_page', 10)  # Default to 10 records per page
+
+    try:
+        per_page = int(per_page)
+        if per_page < 1 or per_page > 100:
+            per_page = 10  # Fallback to default if out of range
+    except ValueError:
+        per_page = 10  # Fallback to default if invalid
 
     # Get employees with asset count
     employees = CustomUser.objects.filter(
@@ -554,7 +598,8 @@ def manage_employee(request):
         employees = employees.filter(
             Q(first_name__icontains=search_) |
             Q(last_name__icontains=search_) |
-            Q(email__icontains=search_)
+            Q(email__icontains=search_) |
+            Q(employee__employee_id__icontains=search_)
         )
     
     if gender:
@@ -570,7 +615,7 @@ def manage_employee(request):
     departments = Department.objects.all()
     divisions = Division.objects.all()
 
-    paginator = Paginator(employees, 50)
+    paginator = Paginator(employees, per_page)  # Use dynamic per_page
     page_obj = paginator.get_page(page_number)
 
     context = {
@@ -581,6 +626,7 @@ def manage_employee(request):
         'search': search_,
         'departments': departments,
         'divisions': divisions,
+        'per_page': per_page,
     }
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -594,7 +640,6 @@ def manage_employee(request):
     if not employees:
         messages.warning(request, "No employees found")
     return render(request, "ceo_template/manage_employee.html", context)
-
 
 @login_required
 def view_employee(request, employee_id):
@@ -679,6 +724,7 @@ def edit_manager(request, manager_id):
 
     if request.method == 'POST':
         if form.is_valid():
+            manager_id = form.cleaned_data.get('manager_id')
             first_name = form.cleaned_data.get('first_name')
             last_name = form.cleaned_data.get('last_name')
             address = form.cleaned_data.get('address')
@@ -724,13 +770,14 @@ def edit_manager(request, manager_id):
 
                 user.save()
 
+                manager.manager_id = manager_id
                 manager.division = division
                 manager.department = department
                 manager.emergency_contact = {
-                    'name': emergency_name or "Not provided",
-                    'relationship': emergency_relationship or "Not provided",
-                    'phone': emergency_phone or "Not provided",
-                    'address': emergency_address or "Not provided"
+                    'name': emergency_name,
+                    'relationship': emergency_relationship,
+                    'phone': emergency_phone, 
+                    'address': emergency_address,
                 }
                 manager.aadhar_card = aadhar_card
                 manager.pan_card = pan_card
@@ -748,8 +795,6 @@ def edit_manager(request, manager_id):
             messages.error(request, "Please fill all fields properly.")
 
     return render(request, "ceo_template/edit_manager_template.html", context)
-
-    
 @login_required
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
@@ -777,12 +822,11 @@ def edit_employee(request, employee_id):
             phone_number = form.cleaned_data.get('phone_number')
             team_lead = form.cleaned_data.get('team_lead')
             passport = request.FILES.get('profile_pic') or None
-
+            employee_id = form.cleaned_data.get('employee_id')
             emergency_name = form.cleaned_data.get('emergency_name')
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
-
             aadhar_card = form.cleaned_data.get('aadhar_card')
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
@@ -817,12 +861,12 @@ def edit_employee(request, employee_id):
                 employee.designation = designation
                 employee.phone_number = phone_number
                 employee.team_lead = team_lead
-
+                employee.employee_id = employee_id
                 employee.emergency_contact = {
-                    'name': emergency_name or "Not provided",
-                    'relationship': emergency_relationship or "Not provided",
-                    'phone': emergency_phone or "Not provided",
-                    'address': emergency_address or "Not provided"
+                    'name': emergency_name,
+                    'relationship': emergency_relationship,
+                    'phone': emergency_phone ,
+                    'address': emergency_address,
                 }
                 employee.aadhar_card = aadhar_card
                 employee.pan_card = pan_card
@@ -2471,6 +2515,7 @@ def admin_view_attendance(request):
         'current_month': current_month
     }
     return render(request, 'ceo_template/admin_view_attendance.html', context)
+
 
 
 

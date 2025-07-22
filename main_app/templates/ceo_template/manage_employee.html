@@ -32,6 +32,51 @@
             justify-content: center;
             background-color: #f0f0f0;
         }
+        /* Pagination Styling */
+        .pagination-container {
+            position: relative;
+            margin-top: 1.5rem;
+            padding: 0 1rem;
+        }
+        .pagination-wrapper {
+            display: flex;
+            justify-content: center;
+        }
+        .pagination {
+            margin-bottom: 0;
+        }
+        .per-page-input {
+            position: absolute;
+            top: 50%;
+            right: 1rem;
+            transform: translateY(-50%);
+            width: 120px;
+            min-width: 100px;
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.25rem;
+        }
+        .per-page-input:invalid + .invalid-feedback {
+            display: block;
+        }
+        @media (max-width: 576px) {
+            .pagination-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding-bottom: 1rem;
+            }
+            .pagination-wrapper {
+                margin-bottom: 1rem;
+                width: 100%;
+            }
+            .per-page-input {
+                position: static;
+                transform: none;
+                width: 100%;
+                max-width: 200px;
+            }
+        }
     </style>
 {% endblock custom_css %}
 
@@ -44,7 +89,7 @@
                     <div class="card-header">
                         <div class="card-tools">
                             <form method="get" class="form-inline" id="searchForm">
-                                <div class="input-group input-group-sm mr-2" style="width: 200px;">
+                                <div class="input-group input-group-sm mr-3" style="width: 250px;">
                                     <input type="text" name="search" id="searchInput" class="form-control" 
                                         placeholder="Search by name or email..." value="{{ search }}">
                                     <div class="input-group-append">
@@ -54,7 +99,7 @@
                                     </div>
                                 </div>
                                 
-                                <div class="form-group mr-2">
+                                <div class="form-group mr-3">
                                     <select name="gender" class="form-control form-control-sm" id="genderFilter" onchange="this.form.submit()">
                                         <option value="">All Genders</option>
                                         <option value="M" {% if request.GET.gender == 'M' %}selected{% endif %}>Male</option>
@@ -62,7 +107,7 @@
                                     </select>
                                 </div>
 
-                                <div class="form-group mr-2">
+                                <div class="form-group mr-3">
                                     <select name="department" class="form-control form-control-sm" id="departmentFilter" onchange="this.form.submit()">
                                         <option value="">All Departments</option>
                                         {% for dept in departments %}
@@ -73,7 +118,7 @@
                                     </select>
                                 </div>
 
-                                <div class="form-group mr-2">
+                                <div class="form-group mr-3">
                                     <select name="division" class="form-control form-control-sm" id="divisionFilter" onchange="this.form.submit()">
                                         <option value="">All Divisions</option>
                                         {% for div in divisions %}
@@ -95,25 +140,26 @@
                             <table id="employeeTable" class="table table-bordered table-striped table-hover">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th style="width: 10%">SN</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th class="d-none d-md-table-cell">Gender</th>
-                                        <th class="d-none d-lg-table-cell">Division</th>
-                                        <th class="d-none d-lg-table-cell">Department</th>
-                                        <th style="width: 80px">Avatar</th>
-                                        <th style="width: 100px">Assets</th>
-                                        <th style="width: 150px">Actions</th>
+                                        <th style="width: 5%">SN</th>
+                                        <th style="width: 10%">Employee ID</th>
+                                        <th style="width: 15%">Name</th>
+                                        <th style="width: 20%">Email</th>
+                                        <th class="d-none d-md-table-cell" style="width: 10%">Gender</th>
+                                        <th class="d-none d-lg-table-cell" style="width: 15%">Division</th>
+                                        <th class="d-none d-lg-table-cell" style="width: 15%">Department</th>
+                                        <th style="width: 8%">Avatar</th>
+                                        <th style="width: 10%">Assets</th>
+                                        <th style="width: 12%">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="employee-body">
                                     {% for employee in employees %}
                                     <tr>
                                         <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                                        <td>{{ employee.employee.employee_id }}</td>
                                         <td>
                                             <div>
                                                 <strong>{{ employee.first_name }} {{ employee.last_name }}</strong>
-                                                <small>EMP-{{ employee.id|stringformat:"04d" }}</small>
                                             </div>
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">
@@ -161,11 +207,11 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">
-                                            <i class="fas fa-users fa-2x mb-2"></i><br>
+                                        <td colspan="10" class="text-center text-muted py-5">
+                                            <i class="fas fa-users fa-3x mb-3"></i><br>
                                             No employees found matching your criteria
                                             {% if search or request.GET.gender or request.GET.department or request.GET.division %}
-                                            <div class="mt-2">
+                                            <div class="mt-3">
                                                 <a href="{% url 'manage_employee' %}" class="btn btn-sm btn-outline-secondary">
                                                     Clear filters
                                                 </a>
@@ -178,56 +224,68 @@
                             </table>
 
                             {% if page_obj %}
-                            <nav aria-label="Employee pagination" id="employee-pagination">
-                                <ul class="pagination justify-content-center mt-3">
-                                    {% if page_obj.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link pagination-link" 
-                                           href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if request.GET.gender %}&gender={{ request.GET.gender }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.division %}&division={{ request.GET.division }}{% endif %}" 
-                                           data-page="{{ page_obj.previous_page_number }}" 
-                                           data-section="employee"
-                                           aria-label="Previous">
-                                            <span aria-hidden="true">«</span>
-                                        </a>
-                                    </li>
-                                    {% else %}
-                                    <li class="page-item disabled">
-                                        <span class="page-link" aria-hidden="true">«</span>
-                                    </li>
-                                    {% endif %}
+                            <div class="pagination-container">
+                                <div class="pagination-wrapper">
+                                    <nav aria-label="Employee pagination" id="employee-pagination">
+                                        <ul class="pagination">
+                                            {% if page_obj.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link pagination-link" 
+                                                   href="?page={{ page_obj.previous_page_number }}&per_page={{ per_page }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if request.GET.gender %}&gender={{ request.GET.gender }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.division %}&division={{ request.GET.division }}{% endif %}" 
+                                                   data-page="{{ page_obj.previous_page_number }}" 
+                                                   data-section="employee"
+                                                   aria-label="Previous">
+                                                    <span aria-hidden="true">«</span>
+                                                </a>
+                                            </li>
+                                            {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link" aria-hidden="true">«</span>
+                                            </li>
+                                            {% endif %}
 
-                                    {% for num in page_obj.paginator.page_range %}
-                                        {% if page_obj.number == num %}
-                                        <li class="page-item active">
-                                            <span class="page-link">{{ num }}</span>
-                                        </li>
-                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                        <li class="page-item">
-                                            <a class="page-link pagination-link" 
-                                               href="?page={{ num }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if request.GET.gender %}&gender={{ request.GET.gender }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.division %}&division={{ request.GET.division }}{% endif %}" 
-                                               data-page="{{ num }}"
-                                               data-section="employee">{{ num }}</a>
-                                        </li>
-                                        {% endif %}
-                                    {% endfor %}
+                                            {% for num in page_obj.paginator.page_range %}
+                                                {% if page_obj.number == num %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ num }}</span>
+                                                </li>
+                                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                                <li class="page-item">
+                                                    <a class="page-link pagination-link" 
+                                                       href="?page={{ num }}&per_page={{ per_page }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if request.GET.gender %}&gender={{ request.GET.gender }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.division %}&division={{ request.GET.division }}{% endif %}" 
+                                                       data-page="{{ num }}"
+                                                       data-section="employee">{{ num }}</a>
+                                                </li>
+                                                {% endif %}
+                                            {% endfor %}
 
-                                    {% if page_obj.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link pagination-link" 
-                                           href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if request.GET.gender %}&gender={{ request.GET.gender }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.division %}&division={{ request.GET.division }}{% endif %}" 
-                                           data-page="{{ page_obj.next_page_number }}"
-                                           data-section="employee"
-                                           aria-label="Next">
-                                            <span aria-hidden="true">»</span>
-                                        </a>
-                                    </li>
-                                    {% else %}
-                                    <li class="page-item disabled">
-                                        <span class="page-link" aria-hidden="true">»</span>
-                                    </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
+                                            {% if page_obj.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link pagination-link" 
+                                                   href="?page={{ page_obj.next_page_number }}&per_page={{ per_page }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if request.GET.gender %}&gender={{ request.GET.gender }}{% endif %}{% if request.GET.department %}&department={{ request.GET.department }}{% endif %}{% if request.GET.division %}&division={{ request.GET.division }}{% endif %}" 
+                                                   data-page="{{ page_obj.next_page_number }}"
+                                                   data-section="employee"
+                                                   aria-label="Next">
+                                                    <span aria-hidden="true">»</span>
+                                                </a>
+                                            </li>
+                                            {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link" aria-hidden="true">»</span>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </nav>
+                                </div>
+                                <div class="form-group">
+                                    <input type="number" name="per_page" id="perPageInput" class="form-control form-control-sm per-page-input" 
+                                           value="{{ per_page }}" min="1" max="100" placeholder="Records per page" 
+                                           aria-label="Records per page">
+                                    <div class="invalid-feedback" style="display: none;">
+                                        Please enter a number between 1 and 100.
+                                    </div>
+                                </div>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
@@ -250,23 +308,23 @@
             <div class="modal-body">
                 <div class="row">
                     <!-- Assigned Assets -->
-                    <div class="col-md-6 mb-3">
+                    <div class="col-md-6 mb-4">
                         <div class="card shadow-sm">
                             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                                 <h6 class="card-title mb-0">Currently Assigned Assets</h6>
                                 <span class="badge badge-light" id="assignedCount">0</span>
                             </div>
-                            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
-                                <div class="p-2">
+                            <div class="card-body p-0" style="max-height: 350px; overflow-y: auto;">
+                                <div class="p-3">
                                     <button id="returnAllAssetsBtn" class="btn btn-sm btn-danger mb-2">
-                                        <i class="fas fa-undo mr-1"></i> Return All
+                                        <i class="fas fa-undo mr-2"></i> Return All
                                     </button>
                                     <button id="returnSelectedAssetsBtn" class="btn btn-sm btn-warning mb-2">
-                                        <i class="fas fa-exchange-alt mr-1"></i> Return Selected
+                                        <i class="fas fa-exchange-alt mr-2"></i> Return Selected
                                     </button>
                                 </div>
                                 <div id="allocatedAssetsList" class="list-group list-group-flush">
-                                    <div class="text-center py-3">
+                                    <div class="text-center py-4">
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="sr-only">Loading...</span>
                                         </div>
@@ -285,8 +343,8 @@
                             </div>
                             <div class="card-body">
                                 <div class="form-group">
-                                    <label for="assetLocation">Assignment Location:</label>
-                                    <select id="assetLocation" class="form-control mb-3">
+                                    <label for="assetLocation" class="form-label">Assignment Location:</label>
+                                    <select id="assetLocation" class="form-control form-control-sm mb-3">
                                         {% for value, display in location_choices.items %}
                                             <option value="{{ value }}">{{ display }}</option>
                                         {% endfor %}
@@ -295,15 +353,15 @@
 
                                 <!-- Category Filter -->
                                 <div class="form-group">
-                                    <label for="assetCategoryFilter">Filter by Category:</label>
-                                    <select id="assetCategoryFilter" class="form-control mb-2">
+                                    <label for="assetCategoryFilter" class="form-label">Filter by Category:</label>
+                                    <select id="assetCategoryFilter" class="form-control form-control-sm mb-3">
                                         <option value="">All Categories</option>
                                     </select>
                                 </div>
 
                                 <!-- Search within category -->
                                 <div class="form-group">
-                                    <div class="input-group mb-2">
+                                    <div class="input-group mb-3">
                                         <input type="text" id="assetSearchInput" class="form-control" placeholder="Search assets...">
                                         <div class="input-group-append">
                                             <button class="btn btn-outline-secondary" type="button" id="assetSearchBtn">
@@ -315,19 +373,19 @@
 
                                 <!-- Available Assets Dropdown -->
                                 <div class="form-group">
-                                    <label for="availableAssets">Select Assets:</label>
-                                    <select id="availableAssets" class="form-control" multiple style="width: 100%;">
+                                    <label for="availableAssets" class="form-label">Select Assets:</label>
+                                    <select id="availableAssets" class="form-control" multiple style="min-height: 150px;">
                                     </select>
                                 </div>
 
                                 <!-- Bundle Button -->
-                                <button id="allocateBundleBtn" class="btn btn-warning btn-block mb-2">
-                                    <i class="fas fa-cubes mr-1"></i> Assign Bundle
+                                <button id="allocateBundleBtn" class="btn btn-warning btn-block mb-3">
+                                    <i class="fas fa-cubes mr-2"></i> Assign Bundle
                                 </button>
 
                                 <!-- Allocate Selected Button -->
                                 <button id="allocateAssetBtn" class="btn btn-success btn-block">
-                                    <i class="fas fa-plus-circle mr-1"></i> Assign Selected Assets
+                                    <i class="fas fa-plus-circle mr-2"></i> Assign Selected Assets
                                 </button>
                             </div>
                         </div>
@@ -342,7 +400,7 @@
 </div>
 
 <!-- Bootstrap Toast for Messages -->
-<div class="toast" id="messageToast" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+<div class="toast" id="messageToast" style="position: fixed; top: 20px; right: 20px; z-index: 1050; max-width: 300px;">
     <div class="toast-header">
         <strong class="mr-auto">Notification</strong>
         <button type="button" class="ml-2 mb-1 close" data-dismiss="toast">×</button>
@@ -369,11 +427,13 @@ function getFilterParams() {
     const gender = $('#genderFilter').val();
     const department = $('#departmentFilter').val();
     const division = $('#divisionFilter').val();
+    const perPage = $('#perPageInput').val();
     
     if (search) params.set('search', search);
     if (gender) params.set('gender', gender);
     if (department) params.set('department', department);
     if (division) params.set('division', division);
+    if (perPage) params.set('per_page', perPage);
     
     return params.toString() ? `&${params.toString()}` : '';
 }
@@ -386,7 +446,7 @@ $(document).ready(function() {
         const url = `?page=${page}${getFilterParams()}`;
         const containerId = '#employee-table-container';
         const bodyId = '#employee-body';
-        const paginationId = '#employee-pagination';
+        const paginationId = '.pagination';
 
         fetch(url, {
             headers: {
@@ -407,8 +467,6 @@ $(document).ready(function() {
             const paginationContainer = document.querySelector(paginationId);
             if (newPagination && paginationContainer) {
                 paginationContainer.innerHTML = newPagination.innerHTML;
-            } else if (paginationContainer) {
-                paginationContainer.innerHTML = '';
             }
             
             // Re-attach event listeners
@@ -443,12 +501,10 @@ $(document).ready(function() {
                 document.querySelector('#employee-body').innerHTML = doc.querySelector('#employee-body').innerHTML;
                 
                 // Update pagination
-                const newPagination = doc.querySelector('#employee-pagination');
-                const paginationContainer = document.querySelector('#employee-pagination');
+                const newPagination = doc.querySelector('.pagination');
+                const paginationContainer = document.querySelector('.pagination');
                 if (newPagination && paginationContainer) {
                     paginationContainer.innerHTML = newPagination.innerHTML;
-                } else if (paginationContainer) {
-                    paginationContainer.innerHTML = '';
                 }
                 
                 // Re-attach event listeners
@@ -467,6 +523,59 @@ $(document).ready(function() {
                 showToast('Error loading search results. Please try again.', 'danger');
             });
         }, 300); // 300ms debounce
+    });
+
+    // Per-page input change with validation
+    $(document).on('input', '#perPageInput', function() {
+        const input = $(this);
+        const value = parseInt(input.val());
+        const invalidFeedback = input.next('.invalid-feedback');
+        
+        if (isNaN(value) || value < 1 || value > 100) {
+            input.addClass('is-invalid');
+            invalidFeedback.show();
+            return;
+        } else {
+            input.removeClass('is-invalid');
+            invalidFeedback.hide();
+        }
+
+        const url = `?page=1${getFilterParams()}`;
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Update table body
+            document.querySelector('#employee-body').innerHTML = doc.querySelector('#employee-body').innerHTML;
+            
+            // Update pagination
+            const newPagination = doc.querySelector('.pagination');
+            const paginationContainer = document.querySelector('.pagination');
+            if (newPagination && paginationContainer) {
+                paginationContainer.innerHTML = newPagination.innerHTML;
+            }
+            
+            // Re-attach event listeners
+            $('[title]').tooltip();
+            $('tr[data-href]').click(function(e) {
+                if (!$(e.target).is('a, button, input, i, .btn')) {
+                    window.location = $(this).attr('data-href');
+                }
+            });
+            
+            // Update browser URL
+            window.history.pushState({}, '', url);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error loading page. Please try again.', 'danger');
+        });
     });
 
     // Handle browser back/forward buttons
@@ -638,7 +747,6 @@ $(document).on('click', '#allocateBundleBtn', function() {
                 
                 var expectedCategories = ['Laptop', 'Keyboard', 'Mouse', 'Cooling Pad', 'Monitor'];
                 var availableCategories = bundleAssets.map(asset => asset.asset_category.toLowerCase());
-                console.log(availableCategories);
                 var missingCategories = expectedCategories.filter(category => !availableCategories.includes(category.toLowerCase()));
 
                 if (missingCategories.length > 0) {
