@@ -259,7 +259,7 @@
                         </div>
                         
                         <a href="{% url 'manage_employee_by_manager' %}" class="small-box-footer">
-                                    View all <i class="fas fa-arrow-right ml-1"></i>
+                            View all <i class="fas fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                 </div>
@@ -410,22 +410,24 @@ document.addEventListener('DOMContentLoaded', function() {
             clearInterval(updateInterval);
         }
         
-        // Initial update
-        updateBreakData();
+        // Initial update without loader
+        updateBreakData(false);
         
-        // Set up periodic updates
-        updateInterval = setInterval(updateBreakData, updateFrequency);
+        // Set up periodic updates without loader
+        updateInterval = setInterval(() => updateBreakData(false), updateFrequency);
     }
 
-    function updateBreakData() {
-        const url = window.location.pathname + '?partial=breaks';
+    function updateBreakData(showLoader = true) {
+        const url = window.location.pathname + `?partial=breaks${getFilterParams()}`;
         const containerId = '#break-entries-container';
         const bodyId = '#break-entries-body';
         const paginationId = '#break-entries-pagination';
         
-        // Show loading state on table
+        // Show loading state on table if specified
         const tableContainer = document.querySelector(containerId);
-        tableContainer.classList.add('table-loading');
+        if (showLoader) {
+            tableContainer.classList.add('table-loading');
+        }
         
         fetch(url, {
             headers: {
@@ -463,7 +465,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.error('Error fetching break data:', error))
         .finally(() => {
             // Remove loading state
-            tableContainer.classList.remove('table-loading');
+            if (showLoader) {
+                tableContainer.classList.remove('table-loading');
+            }
         });
     }
 
@@ -531,9 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function getFilterParams() {
         const params = new URLSearchParams(window.location.search);
         let filterParams = '';
-        if (params.get('department')) {
-            filterParams += `&department=${params.get('department')}`;
-        }
         if (params.get('start_date')) {
             filterParams += `&start_date=${params.get('start_date')}`;
         }
@@ -548,8 +549,9 @@ document.addEventListener('DOMContentLoaded', function() {
         startBreakUpdates();
         attachPaginationHandlers();
         
-        // Existing filter form submission
-        $('#start_date, #end_date, #department').on('change', function() {
+        // Remove existing filter form submission to avoid conflicts
+        $('#start_date, #end_date').off('change');
+        $('#start_date, #end_date').on('change', function() {
             $('#filter-form').submit();
         });
     }

@@ -399,7 +399,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-3 col-6 mb-4">
+                {% comment %} <div class="col-lg-3 col-6 mb-4">
                     <div class="small-box bg-gradient-primary">
                         <div class="inner">
                             <h3>{{ attendance_stats.attendance_percentage }}<sup style="font-size: 20px">%</sup></h3>
@@ -409,9 +409,9 @@
                             <i class="fas fa-percentage"></i>
                         </div>
                     </div>
-                </div>
+                </div> {% endcomment %}
                 <div class="col-lg-3 col-6 mb-4">
-                    <div class="small-box bg-pattern-1">
+                    <div class="small-box bg-gradient-primary">
                         <div class="inner">
                             <h3>{{ total_available_leaves|floatformat:1 }}</h3>
                             <p>Total Available Leaves</p>
@@ -444,7 +444,7 @@
                     </div>
                 </div>
                 <div class="col-lg-3 col-6 mb-4">
-                    <div class="small-box bg-gradient-info">
+                    <div class="small-box bg-pattern-1">
                         <div class="inner">
                             <h3>{{ attendance_stats.total_days }}</h3>
                             <p>Total Working Days</p>

@@ -209,6 +209,7 @@ class ManagerLeaveBalance(models.Model):
 class Manager(models.Model):
     division = models.ForeignKey(Division, on_delete=models.DO_NOTHING, null=True, blank=False)
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, null=True, blank=False)
+    manager_id = models.CharField(max_length=10, unique=True, null=True, blank=True)
     emergency_contact = models.JSONField(blank=True, null=True)
     phone_number = models.CharField(max_length=10, blank=True, null=True)
     designation = models.CharField(max_length=50, blank=True, null=True)
@@ -296,21 +297,20 @@ class Employee(models.Model):
                 old_date_of_joining = old_instance.date_of_joining
             except Employee.DoesNotExist:
                 old_date_of_joining = None
+        # if not self.employee_id:
+        #             last_id = Employee.objects.all().order_by('-id').first()
+        #             if last_id and last_id.employee_id:
+        #                 emp_num = int(last_id.employee_id.replace('EMP', '')) + 1
+        #             else:
+        #                 emp_num = 1
+        #             self.employee_id = f"EMP{emp_num:03d}"
 
-        if not self.employee_id:
-            last_id = Employee.objects.all().order_by('-id').first()
-            if last_id and last_id.employee_id:
-                emp_num = int(last_id.employee_id.replace('EMP', '')) + 1
-            else:
-                emp_num = 1
-            self.employee_id = f"EMP{emp_num:03d}"
-
-        # # Calculate remaining_bond if both bond_start and bond_end are provided
-        # if self.bond_start and self.bond_end:
-        #     delta = self.bond_end - self.bond_start
-        #     self.remaining_bond = delta.days if delta.days >= 0 else 0
-        # else:
-        #     self.remaining_bond = None
+        #         # # Calculate remaining_bond if both bond_start and bond_end are provided
+        #         # if self.bond_start and self.bond_end:
+        #         #     delta = self.bond_end - self.bond_start
+        #         #     self.remaining_bond = delta.days if delta.days >= 0 else 0
+        #         # else:
+        #         #     self.remaining_bond = None
 
         # Save the Employee instance
         with transaction.atomic():
