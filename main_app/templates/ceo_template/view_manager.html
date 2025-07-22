@@ -1,6 +1,6 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
-{% block page_title %}{{ page_title }}{% endblock page_title %}
+{% block page_title %}{{ page_title|title }}{% endblock page_title %}
 
 {% block custom_css %}
 <style>
@@ -73,7 +73,7 @@
                                         </div>
                                     {% endif %}
                                 </div>
-                                <h4 class="mt-2 mb-1 text-center">{{ manager.admin.get_full_name }}</h4>
+                                <h4 class="mt-2 mb-1 text-center">{{ manager.admin.get_full_name|title }}</h4>
                                 {% comment %} <p class="text-muted text-center mb-0">{{ manager.designation|default:"-" }}</p> {% endcomment %}
                                 &nbsp;
                                 <div class="card card-info card-outline mt-2">
@@ -84,26 +84,26 @@
                                         <table class="table table-bordered org-table">
                                             <tr>
                                                 <th style="width: 35%">Department</th>
-                                                <td>{{ manager.department.name|default:"-" }}</td>
+                                                <td>{{ manager.department.name|default:"-"|title }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Division</th>
-                                                <td>{{ manager.division.name|default:"-" }}</td>
+                                                <td>{{ manager.division.name|default:"-"|title }}</td>
                                             </tr>
                                             {% comment %} <tr>
                                                 <th>Designation</th>
-                                                <td>{{ manager.designation|default:"-" }}</td>
+                                                <td>{{ manager.designation|default:"-"|title }}</td>
                                             </tr> {% endcomment %}
                                             <tr>
-                                                <th>Bond Start</th>
+                                                <th>Agreement Start</th>
                                                 <td>{{ manager.bond_start|default:"-" }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Bond End</th>
+                                                <th>Agreement End</th>
                                                 <td>{{ manager.bond_end|default:"-" }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Remaining Bond</th>
+                                                <th>Remaining Agreement</th>
                                                 <td id="remaining-bond">{{ manager.remaining_bond|default:"-" }} days</td>
                                             </tr>
                                         </table>
@@ -117,13 +117,13 @@
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-bordered table-large">
-                                            {% comment %} <tr>
+                                            <tr>
                                                 <th>Manager ID</th>
-                                                <td>{{ manager.admin_id|default:"-" }}</td>
-                                            </tr> {% endcomment %}
+                                                <td>{{ manager.manager_id|default:"-" }}</td>
+                                            </tr>
                                             <tr>
                                                 <th>Full Name</th>
-                                                <td>{{ manager.admin.get_full_name }}</td>
+                                                <td>{{ manager.admin.get_full_name|title }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Email</th>
@@ -135,7 +135,7 @@
                                             </tr>
                                             <tr>
                                                 <th>Gender</th>
-                                                <td>{{ manager.admin.get_gender_display|default:"-" }}</td>
+                                                <td>{{ manager.admin.gender|default:"-" }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Aadhar Card</th>
@@ -160,11 +160,11 @@
                                                 <table class="table table-bordered">
                                                     <tr>
                                                         <th style="width: 35%">Contact Name</th>
-                                                        <td>{{ manager.emergency_contact.name|default:"-" }}</td>
+                                                        <td>{{ manager.emergency_contact.name|default:"-"|title }}</td>
                                                     </tr>
                                                     <tr>
                                                         <th>Relationship</th>
-                                                        <td>{{ manager.emergency_contact.relationship|default:"-" }}</td>
+                                                        <td>{{ manager.emergency_contact.relationship|default:"-"|title }}</td>
                                                     </tr>
                                                 </table>
                                             </div>
@@ -176,7 +176,7 @@
                                                     </tr>
                                                     <tr>
                                                         <th>Address</th>
-                                                        <td>{{ manager.emergency_contact.address|default:"-" }}</td>
+                                                        <td>{{ manager.emergency_contact.address|default:"-"|title }}</td>
                                                     </tr>
                                                 </table>
                                             </div>

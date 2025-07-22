@@ -508,7 +508,7 @@ def manage_manager(request):
     gender = request.GET.get('gender', '')
     department = request.GET.get('department', '')
     division = request.GET.get('division', '')
-    per_page = request.GET.get('per_page', 10)  # Default to 10 records per page
+    per_page = request.GET.get('per_page', 30)  # Default to 10 records per page
     page_number = request.GET.get('page', 1)
 
     # Build the manager queryset
@@ -586,7 +586,7 @@ def manage_employee(request):
     department_id = request.GET.get("department", '')
     division_id = request.GET.get("division", '')
     page_number = request.GET.get('page', 1)
-    per_page = request.GET.get('per_page', 10)  # Default to 10 records per page
+    per_page = request.GET.get('per_page', 30)  # Default to 10 records per page
 
     try:
         per_page = int(per_page)

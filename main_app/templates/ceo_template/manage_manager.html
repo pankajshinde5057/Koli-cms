@@ -121,12 +121,12 @@
                                                 <strong>{{ manager.first_name|title }} {{ manager.last_name|title }}</strong>
                                             </div>
                                         </td>
-                                        <td class="text-truncate" style="max-width: 150px;">
+                                        <td class="text-truncate" style="max-width: 150px;" title="{{ manager.email }}">
                                             <span class="font-monospace">{{ manager.email }}</span>
                                         </td>
-                                        <td class="d-none d-md-table-cell">{{ manager.get_gender_display }}</td>
-                                        <td class="d-none d-lg-table-cell">{{ manager.manager.division.name|default:"-" }}</td>
-                                        <td class="d-none d-lg-table-cell">{{ manager.manager.department.name|default:"-" }}</td>
+                                        <td class="d-none d-md-table-cell">{{ manager.gender|title }}</td>
+                                        <td class="d-none d-lg-table-cell">{{ manager.manager.division.name|default:"-"|title }}</td>
+                                        <td class="d-none d-lg-table-cell">{{ manager.manager.department.name|default:"-"|title }}</td>
                                         <td class="text-center">
                                             {% if manager.profile_pic %}
                                             <img src="{{ manager.profile_pic }}" alt="Profile Pic" 
