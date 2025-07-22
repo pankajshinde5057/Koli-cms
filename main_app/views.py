@@ -674,8 +674,17 @@ def early_clock_out_request(request):
                 reason=reason
             )
             employee = get_object_or_404(Employee, admin_id=request.user.id)
-            user = CustomUser.objects.get(id=employee.team_lead.admin.id)
+            user = CustomUser.objects.filter(id=employee.team_lead.admin.id).first()
             send_notification(user, reason, "clockout-notification", obj.id, "manager")
+
+            hr_users = Manager.objects.filter(department__name__iexact='HR') | \
+                    Manager.objects.filter(department__name__iexact='hr') | \
+                    Manager.objects.filter(department__name__icontains='h r')
+
+            if hr_users.exists():
+                for hr in hr_users:
+                    send_notification(hr.admin, reason, "clockout-notification", obj.id, "manager")
+                    
             return JsonResponse({'status': 'success', 'message': 'Request submitted'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

@@ -296,6 +296,28 @@
             
         }
     }
+
+  /* Loading overlay for table */
+  .table-loading {
+      position: relative;
+      pointer-events: none;
+      opacity: 0.7;
+  }
+
+  .table-loading::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 40px;
+      height: 40px;
+      margin: -20px 0 0 -20px;
+      border: 4px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top-color: #17a2b8;
+      animation: spin 1s linear infinite;
+      z-index: 1000;
+  }
 </style>
 {% endblock custom_css %}
 
@@ -319,7 +341,7 @@
                         </div>
                         
                         <a href="{% url 'manage_employee_by_manager' %}" class="small-box-footer">
-                                    View all <i class="fas fa-arrow-right ml-1"></i>
+                            View all <i class="fas fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                 </div>
@@ -459,180 +481,35 @@
 
 {% block custom_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize real-time updates
-        let updateInterval;
-        const updateFrequency = 30000; // 30 seconds
-
-        function startBreakUpdates() {
-            // Clear any existing interval
-            if (updateInterval) {
-                clearInterval(updateInterval);
-            }
-            
-            // Initial update
-            updateBreakData();
-            
-            // Set up periodic updates
-            updateInterval = setInterval(updateBreakData, updateFrequency);
-        }
-
-        function updateBreakData() {
-            const url = window.location.pathname + '?partial=breaks';
-            const containerId = '#break-entries-container';
-            const bodyId = '#break-entries-body';
-            const paginationId = '#break-entries-pagination';
-            
-            fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                // Update table body
-                const newBody = doc.querySelector(bodyId);
-                if (newBody) {
-                    document.querySelector(bodyId).innerHTML = newBody.innerHTML;
-                }
-                
-                // Update pagination
-                const newPagination = doc.querySelector(paginationId);
-                const paginationContainer = document.querySelector(paginationId);
-                if (newPagination && paginationContainer) {
-                    paginationContainer.innerHTML = newPagination.innerHTML;
-                    // Reattach event handlers after updating pagination
-                    attachPaginationHandlers();
-                } else if (paginationContainer) {
-                    paginationContainer.innerHTML = '';
-                }
-                
-                // Update "On Break" counter
-                const onBreakCounter = doc.querySelector('.small-box.bg-gradient-secondary .inner h3');
-                if (onBreakCounter) {
-                    document.querySelector('.small-box.bg-gradient-secondary .inner h3').textContent = onBreakCounter.textContent;
-                }
-            })
-            .catch(error => console.error('Error fetching break data:', error));
-        }
-
-        // Function to handle pagination clicks
-        function handlePaginationClick(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const page = this.dataset.page;
-            const url = `?page=${page}${getFilterParams()}`;
-            const bodyId = '#break-entries-body';
-            const paginationId = '#break-entries-pagination';
-
-            fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                // Update table body
-                const newBody = doc.querySelector(bodyId);
-                if (newBody) {
-                    document.querySelector(bodyId).innerHTML = newBody.innerHTML;
-                }
-                
-                // Update pagination
-                const newPagination = doc.querySelector(paginationId);
-                const paginationContainer = document.querySelector(paginationId);
-                if (newPagination && paginationContainer) {
-                    paginationContainer.innerHTML = newPagination.innerHTML;
-                    // Reattach event handlers after updating pagination
-                    attachPaginationHandlers();
-                } else if (paginationContainer) {
-                    paginationContainer.innerHTML = '';
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        }
-
-        // Function to attach event handlers to pagination links
-        function attachPaginationHandlers() {
-            document.querySelectorAll('#break-entries-pagination a.page-link').forEach(link => {
-                // Remove any existing click handlers to prevent duplicates
-                link.removeEventListener('click', handlePaginationClick);
-                // Add new click handler
-                link.addEventListener('click', handlePaginationClick);
-            });
-        }
-
-        // Helper function to preserve filter parameters
-        function getFilterParams() {
-            const params = new URLSearchParams(window.location.search);
-            let filterParams = '';
-            if (params.get('department')) {
-                filterParams += `&department=${params.get('department')}`;
-            }
-            if (params.get('start_date')) {
-                filterParams += `&start_date=${params.get('start_date')}`;
-            }
-            if (params.get('end_date')) {
-                filterParams += `&end_date=${params.get('end_date')}`;
-            }
-            return filterParams;
-        }
-
-        // Initialize everything
-        function init() {
-            startBreakUpdates();
-            attachPaginationHandlers();
-            
-            // Existing filter form submission
-            $('#start_date, #end_date, #department').on('change', function() {
-                $('#filter-form').submit();
-            });
-        }
-
-        // Start the application
-        init();
-    });
-
-    // Rest of your Firebase configuration remains the same...
-</script>
-{% endblock custom_js %}
-
-
-
-
-<!-- 
-
-<script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize real-time updates
     let updateInterval;
     const updateFrequency = 30000; // 30 seconds
-    
+
     function startBreakUpdates() {
         // Clear any existing interval
         if (updateInterval) {
             clearInterval(updateInterval);
         }
         
-        // Initial update
-        updateBreakData();
+        // Initial update without loader
+        updateBreakData(false);
         
-        // Set up periodic updates
-        updateInterval = setInterval(updateBreakData, updateFrequency);
+        // Set up periodic updates without loader
+        updateInterval = setInterval(() => updateBreakData(false), updateFrequency);
     }
-    
-    function updateBreakData() {
-        const url = window.location.pathname + '?partial=breaks';
+
+    function updateBreakData(showLoader = true) {
+        const url = window.location.pathname + `?partial=breaks${getFilterParams()}`;
         const containerId = '#break-entries-container';
         const bodyId = '#break-entries-body';
         const paginationId = '#break-entries-pagination';
+        
+        // Show loading state on table if specified
+        const tableContainer = document.querySelector(containerId);
+        if (showLoader) {
+            tableContainer.classList.add('table-loading');
+        }
         
         fetch(url, {
             headers: {
@@ -655,6 +532,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const paginationContainer = document.querySelector(paginationId);
             if (newPagination && paginationContainer) {
                 paginationContainer.innerHTML = newPagination.innerHTML;
+                // Reattach event handlers after updating pagination
+                attachPaginationHandlers();
             } else if (paginationContainer) {
                 paginationContainer.innerHTML = '';
             }
@@ -665,80 +544,79 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelector('.small-box.bg-gradient-secondary .inner h3').textContent = onBreakCounter.textContent;
             }
         })
-        .catch(error => console.error('Error fetching break data:', error));
-    }
-    
-    // Start the updates
-    startBreakUpdates();
-    
-    // Handle pagination clicks (existing code)
-    document.querySelectorAll('#break-entries-pagination a.page-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const page = this.dataset.page;
-            const url = `?page=${page}${getFilterParams()}`;
-            const containerId = '#break-entries-container';
-            const bodyId = '#break-entries-body';
-            const paginationId = '#break-entries-pagination';
-
-            fetch(url, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.text())
-            .then(html => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                // Update table body
-                const newBody = doc.querySelector(bodyId);
-                document.querySelector(bodyId).innerHTML = newBody.innerHTML;
-                
-                // Update pagination
-                const newPagination = doc.querySelector(paginationId);
-                const paginationContainer = document.querySelector(paginationId);
-                if (newPagination && paginationContainer) {
-                    paginationContainer.innerHTML = newPagination.innerHTML;
-                } else if (paginationContainer) {
-                    paginationContainer.innerHTML = '';
-                }
-                
-                // Re-attach event listeners to new pagination links
-                document.querySelectorAll(`${paginationId} a.page-link`).forEach(newLink => {
-                    newLink.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const page = this.dataset.page;
-                        fetch(`?page=${page}${getFilterParams()}`, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        })
-                        .then(response => response.text())
-                        .then(html => {
-                            const newDoc = parser.parseFromString(html, 'text/html');
-                            document.querySelector(bodyId).innerHTML = newDoc.querySelector(bodyId).innerHTML;
-                            const newPagination = newDoc.querySelector(paginationId);
-                            if (newPagination) {
-                                paginationContainer.innerHTML = newPagination.innerHTML;
-                            } else {
-                                paginationContainer.innerHTML = '';
-                            }
-                        });
-                    });
-                });
-            })
-            .catch(error => console.error('Error:', error));
+        .catch(error => console.error('Error fetching break data:', error))
+        .finally(() => {
+            // Remove loading state
+            if (showLoader) {
+                tableContainer.classList.remove('table-loading');
+            }
         });
-    });
+    }
+
+    // Function to handle pagination clicks
+    function handlePaginationClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const page = this.dataset.page;
+        const url = `?page=${page}${getFilterParams()}`;
+        const bodyId = '#break-entries-body';
+        const paginationId = '#break-entries-pagination';
+        const tableContainer = document.querySelector('#break-entries-container');
+        
+        // Show loading states
+        this.classList.add('btn-loading');
+        tableContainer.classList.add('table-loading');
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Update table body
+            const newBody = doc.querySelector(bodyId);
+            if (newBody) {
+                document.querySelector(bodyId).innerHTML = newBody.innerHTML;
+            }
+            
+            // Update pagination
+            const newPagination = doc.querySelector(paginationId);
+            const paginationContainer = document.querySelector(paginationId);
+            if (newPagination && paginationContainer) {
+                paginationContainer.innerHTML = newPagination.innerHTML;
+                // Reattach event handlers after updating pagination
+                attachPaginationHandlers();
+            } else if (paginationContainer) {
+                paginationContainer.innerHTML = '';
+            }
+        })
+        .catch(error => console.error('Error:', error))
+        .finally(() => {
+            // Remove loading states
+            this.classList.remove('btn-loading');
+            tableContainer.classList.remove('table-loading');
+        });
+    }
+
+    // Function to attach event handlers to pagination links
+    function attachPaginationHandlers() {
+        document.querySelectorAll('#break-entries-pagination a.page-link').forEach(link => {
+            // Remove any existing click handlers to prevent duplicates
+            link.removeEventListener('click', handlePaginationClick);
+            // Add new click handler
+            link.addEventListener('click', handlePaginationClick);
+        });
+    }
 
     // Helper function to preserve filter parameters
     function getFilterParams() {
         const params = new URLSearchParams(window.location.search);
         let filterParams = '';
-        if (params.get('department')) {
-            filterParams += `&department=${params.get('department')}`;
-        }
         if (params.get('start_date')) {
             filterParams += `&start_date=${params.get('start_date')}`;
         }
@@ -748,14 +626,20 @@ document.addEventListener('DOMContentLoaded', function() {
         return filterParams;
     }
 
-    // Existing filter form submission
-    $(document).ready(function () {
-        $('#start_date, #end_date, #department').on('change', function () {
+    // Initialize everything
+    function init() {
+        startBreakUpdates();
+        attachPaginationHandlers();
+        
+        // Remove existing filter form submission to avoid conflicts
+        $('#start_date, #end_date').off('change');
+        $('#start_date, #end_date').on('change', function() {
             $('#filter-form').submit();
         });
-    });
-});
+    }
 
-// Rest of your Firebase configuration remains the same...
+    // Start the application
+    init();
+});
 </script>
--->
+{% endblock custom_js %}

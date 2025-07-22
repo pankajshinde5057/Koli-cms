@@ -315,6 +315,12 @@
                                                         <strong>Department:</strong> {{ employee.department }}
                                                     </li>
                                                     <li class="mb-2">
+                                                        <strong>Aadharcard: </strong> {{ employee.aadhar_card |default:"None" }}
+                                                    </li>
+                                                    <li class="mb-2">
+                                                        <strong>Agreement Start Date:</strong> {{ employee.bond_start|date:"F d, Y" }}
+                                                    </li>
+                                                    <li class="mb-2">
                                                         <strong>Designation:</strong> {{ employee.designation }}
                                                     </li>
                                                 </ul>
@@ -324,8 +330,14 @@
                                                     <li class="mb-2">
                                                         <strong>Team Lead:</strong> {{ employee.team_lead|default:"None" }}
                                                     </li>
-                                                    <li class="mb-2">
+                                                     <li class="mb-2">
                                                         <strong>Division:</strong> {{ employee.division }}
+                                                    </li>
+                                                     <li class="mb-2">
+                                                        <strong>Pancard: </strong> {{ employee.pan_card|default:"None" }}
+                                                    </li>
+                                                    <li class="mb-2">
+                                                        <strong>Agreement End Date:</strong> {{ employee.bond_end|date:"F d, Y" }}
                                                     </li>
                                                     <li class="mb-2">
                                                         <strong>Gender:</strong> 
