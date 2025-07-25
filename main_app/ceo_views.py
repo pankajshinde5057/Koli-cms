@@ -207,7 +207,7 @@ def add_manager(request):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
-            manager_id = form.cleaned_data.get('employee_id')
+            manager_id = form.cleaned_data.get('manager_id')
 
             if phone_number and phone_number[0] in ['1', '2', '3', '4']:
                 form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")

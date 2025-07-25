@@ -118,9 +118,9 @@
             <div class="col-10 mx-auto d-flex">
                 <div class="col-2">
                     <div class="employee-info">
-                        <strong>{{ employee.admin.first_name }} {{ employee.admin.last_name }}</strong><br>
-                        EMP-{{ employee.id|stringformat:"04d" }}<br>
-                        {{ employee.department.name }}
+                        <strong>{{ employee.admin.first_name|title }} {{ employee.admin.last_name|title }}</strong><br>
+                        ID : {% if employee.employee_id %}{{ employee.employee_id }}{% else %}{{ employee.manager_id }}{% endif %}<br>
+                        {{ employee.department.name|title }}
                     </div>
                 </div>
                 <div class="col-8 text-center">
