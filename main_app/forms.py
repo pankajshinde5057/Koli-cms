@@ -95,6 +95,7 @@ class EmployeeForm(CustomUserForm):
     #     required=False,
     #     widget=forms.TextInput(attrs={'readonly': 'readonly'})
     # )
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk and hasattr(self.instance, 'admin'):
@@ -121,10 +122,11 @@ class EmployeeForm(CustomUserForm):
             if len(employee_id) < 1 or len(employee_id) > 10:
                 raise ValidationError("Employee ID must be between 1 and 10 characters long.")
             existing_employee = Employee.objects.filter(employee_id=employee_id)
+            existing_manager = Manager.objects.filter(manager_id=employee_id)
             if self.instance and self.instance.pk:
                 existing_employee = existing_employee.exclude(pk=self.instance.pk)
-            if existing_employee.exists():
-                raise ValidationError("Employee ID already exists.")
+            if existing_employee.exists() or existing_manager.exists():
+                raise ValidationError("ID already exists.")
         return employee_id
 
     def clean_aadhar_card(self):
@@ -153,6 +155,7 @@ class EmployeeForm(CustomUserForm):
         if bond_start and bond_end and bond_end < bond_start:
             raise ValidationError("Bond end date cannot be before bond start date.")
         return bond_end
+    
     # def clean_remaining_bond(self):
     #     bond_start = self.cleaned_data.get('bond_start')
     #     bond_end = self.cleaned_data.get('bond_end')
@@ -160,6 +163,7 @@ class EmployeeForm(CustomUserForm):
     #         delta = bond_end - bond_start
     #         return delta.days if delta.days >= 0 else 0
     #     return None
+    
     def clean_phone_number(self):
         phone_number = self.cleaned_data.get('phone_number')
         if phone_number:
@@ -170,6 +174,7 @@ class EmployeeForm(CustomUserForm):
             if phone_number[0] in ['1', '2', '3', '4']:
                 raise ValidationError("Phone number cannot start with 1, 2, 3, or 4")
         return phone_number
+    
     def clean_emergency_phone(self):
         emergency_phone = self.cleaned_data.get('emergency_phone')
         phone_number = self.cleaned_data.get('phone_number')
@@ -183,11 +188,13 @@ class EmployeeForm(CustomUserForm):
             if emergency_phone[0] in ['1', '2', '3', '4']:
                 raise ValidationError("Emergency contact phone number cannot start with 1, 2, 3, or 4")
         return emergency_phone
+    
     def clean_date_of_joining(self):
         date_of_joining = self.cleaned_data.get('date_of_joining')
         if not date_of_joining:
             raise ValidationError("Date of Joining is required.")
         return date_of_joining
+    
     def save(self, commit=True):
         instance = super().save(commit=False)
         if hasattr(instance, 'admin'):
@@ -264,6 +271,7 @@ class ManagerForm(CustomUserForm):
         widget=forms.DateInput(attrs={'type': 'date'}),
         required=True
     )
+    
     # remaining_bond = forms.IntegerField(
     #     label="Remaining Bond (Days)",
     #     required=False,
@@ -297,10 +305,11 @@ class ManagerForm(CustomUserForm):
             if len(manager_id) < 1 or len(manager_id) > 10:
                 raise ValidationError("Manager ID must be between 1 and 10 characters long.")
             existing_Manager = Manager.objects.filter(manager_id=manager_id)
+            existing_Employee = Employee.objects.filter(employee_id=manager_id)
             if self.instance and self.instance.pk:
                 existing_Manager = existing_Manager.exclude(pk=self.instance.pk)
-            if existing_Manager.exists():
-                raise ValidationError("Manager ID already exists.")
+            if existing_Manager.exists() or existing_Employee.exists():
+                raise ValidationError("ID already exists.")
         return manager_id
     
     def clean_aadhar_card(self):
@@ -411,7 +420,7 @@ class ManagerForm(CustomUserForm):
             'division', 'department', 'phone_number', 'date_of_joining',
             'aadhar_card', 'pan_card', 'bond_start', 'bond_end'
         ]
-
+    
 
 class DivisionForm(FormSettings):
     def __init__(self, *args, **kwargs):
