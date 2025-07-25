@@ -219,14 +219,12 @@ class Manager(models.Model):
     pan_card = models.CharField(max_length=10, blank=True, null=True)
     bond_start = models.DateField(blank=True, null=True)
     bond_end = models.DateField(blank=True, null=True)
-    # remaining_bond = models.IntegerField(blank=True, null=True)
 
     @property
     def remaining_bond(self):
         if self.bond_end:
             today = date.today()
             remaining = (self.bond_end - today).days
-            print(remaining)
             return max(0, remaining)
         return None
 
@@ -244,18 +242,59 @@ class Manager(models.Model):
             except Manager.DoesNotExist:
                 old_date_of_joining = None
 
-        # if self.bond_start and self.bond_end:
-        #     delta = self.bond_end - self.bond_start
-        #     self.remaining_bond = delta.days if delta.days >= 0 else 0
-        # else:
-        #     self.remaining_bond = None
-
         with transaction.atomic():
             super().save(*args, **kwargs)
 
-            # if is_update and self.date_of_joining != old_date_of_joining:
-            #     logger.info(f"Date of joining changed for {self.admin.get_full_name()}: {old_date_of_joining} -> {self.date_of_joining}")
-            #     # self._recalculate_leave_balances()
+            # Recalculate leave balances if date_of_joining has changed
+            if is_update and self.date_of_joining != old_date_of_joining:
+                logger.info(
+                    f"Date of joining changed for {self.admin.get_full_name()}: "
+                    f"{old_date_of_joining} -> {self.date_of_joining}"
+                )
+                self._recalculate_manager_leave_balances()
+
+    def _recalculate_manager_leave_balances(self):
+        """
+        Recalculate all ManagerLeaveBalance records for this manager after date_of_joining changes.
+        Preserves used_leaves values.
+        """
+        if not self.date_of_joining:
+            logger.warning(f"No date_of_joining set for {self.manager_id}, skipping ManagerLeaveBalance recalculation")
+            return
+
+        # Store existing used_leaves values
+        leave_balances = ManagerLeaveBalance.objects.filter(manager=self).order_by('year', 'month')
+        used_leaves_data = {
+            (balance.year, balance.month): balance.used_leaves
+            for balance in leave_balances
+        }
+        logger.debug(f"Stored used_leaves data for {self.manager_id}: {used_leaves_data}")
+
+        # Delete existing ManagerLeaveBalance records
+        leave_balances.delete()
+        logger.info(f"Deleted existing ManagerLeaveBalance records for {self.manager_id}")
+
+        # Reinitialize ManagerLeaveBalance records
+        today = date.today()
+        ManagerLeaveBalance.initialize_balances(self, today)
+        logger.info(
+            f"Reinitialized ManagerLeaveBalance records for {self.manager_id} "
+            f"from {self.date_of_joining} to {today}"
+        )
+
+        # Restore used_leaves values
+        for (year, month), used_leaves in used_leaves_data.items():
+            balance = ManagerLeaveBalance.get_balance(self, year, month)
+            if balance:
+                max_available = balance.allocated_leaves + balance.carried_forward
+                # Ensure used_leaves doesn't exceed available leaves
+                balance.used_leaves = min(used_leaves, max_available)
+                balance.save()
+                logger.debug(
+                    f"Restored used_leaves={balance.used_leaves} for {self.manager_id} in {year}-{month}"
+                )
+
+
 
 
 logger = logging.getLogger(__name__)
