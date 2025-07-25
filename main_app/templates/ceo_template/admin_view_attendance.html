@@ -130,6 +130,7 @@
     .late { background-color: #fef3c7; color: #92400e; }
     .halfday { background-color: #dbeafe; color: #1e40af; }
     .holiday { background-color: #ede9fe; color: #5b21b6; }
+    .leave { background-color: #e0f2fe; color: #0ea5e9; }
 
     .attendance-table {
         border-collapse: separate;
@@ -185,16 +186,6 @@
 
     .summary-count { font-weight: 700; font-size: 1.25rem; color: #1e293b; white-space: nowrap; }
     .summary-label { font-size: 0.875rem; color: #64748b; white-space: nowrap; }
-
-    .date-range {
-        color: #64748b;
-        font-size: 0.875rem;
-        margin-top: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        white-space: nowrap;
-    }
 
     .date-input-wrapper { position: relative; }
     .date-input-wrapper i {
@@ -586,7 +577,7 @@ $(document).ready(function() {
                             'data-type': person.type
                         }));
                     });
-                    $personSelect.append('<option value="all-managers">All Managers</option>');
+                    //$personSelect.append('<option value="all-managers">All Managers</option>');
                 } else {
                     $personSelect.append('<option value="no-records">No managers available</option>');
                 }
@@ -604,7 +595,7 @@ $(document).ready(function() {
                             'data-type': person.type
                         }));
                     });
-                    $personSelect.append('<option value="all-employees">All Employees</option>');
+                   // $personSelect.append('<option value="all-employees">All Employees</option>');
                 } else {
                     $personSelect.append('<option value="no-records">No records available</option>');
                 }
@@ -827,7 +818,7 @@ $(document).ready(function() {
         }
 
         let tableHtml = '';
-        const { present_days = 0, absent_days = 0, late_days = 0, half_days = 0, holidays = 0 } = stats;
+        const { present_days = 0, absent_days = 0, late_days = 0, half_days = 0, holidays = 0, total_available_leaves = 0.0 } = stats;
 
         data.forEach(record => {
             if (!record || typeof record !== 'object' || !record.status || !record.date) return;
@@ -859,7 +850,7 @@ $(document).ready(function() {
         });
 
         $('#attendance_data').html(tableHtml);
-        updateSummaryCards(present_days, absent_days, late_days, half_days, holidays, stats);
+        updateSummaryCards(present_days, absent_days, late_days, half_days, holidays, total_available_leaves, stats);
 
         if (data.length > 0) {
             const fromDate = moment(data[0].date).isValid() ? moment(data[0].date).format('MMM D, YYYY') : 'Invalid Date';
@@ -975,7 +966,7 @@ $(document).ready(function() {
                status.includes('holiday') ? '<i class="fas fa-umbrella-beach mr-1"></i>' : '';
     }
 
-    function updateSummaryCards(present, absent, late, halfDay, holiday, stats) {
+    function updateSummaryCards(present, absent, late, halfDay, holiday, total_available_leaves, stats) {
         const percentage = stats.attendance_percentage || 0;
         const totalWorkingDays = stats.total_working_days || 0;
         $('#attendance_summary').html(`
@@ -998,6 +989,10 @@ $(document).ready(function() {
             <div class="summary-item">
                 <div><div class="summary-count">${holiday}</div><div class="summary-label">Holidays</div></div>
                 <div class="status-badge holiday"><i class="fas fa-umbrella-beach"></i></div>
+            </div>
+            <div class="summary-item">
+                <div><div class="summary-count">${total_available_leaves}</div><div class="summary-label">Available Leaves</div></div>
+                <div class="status-badge leave"><i class="fas fa-ticket-alt"></i></div>
             </div>
             <div class="summary-item">
                 <div><div class="summary-count">${totalWorkingDays}</div><div class="summary-label">Working Days</div></div>

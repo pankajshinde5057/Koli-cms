@@ -203,17 +203,14 @@ def add_manager(request):
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
-            aadhar_card = form.cleaned_data.get('aadhar_card')
-            pan_card = form.cleaned_data.get('pan_card')
-            bond_start = form.cleaned_data.get('bond_start')
-            bond_end = form.cleaned_data.get('bond_end')
-            manager_id = form.cleaned_data.get('employee_id')
+            manager_id = form.cleaned_data.get('manager_id')  # Corrected from 'employee_id'
 
             if phone_number and phone_number[0] in ['1', '2', '3', '4']:
                 form.add_error('phone_number', "Phone number cannot start with 1, 2, 3, or 4")
             
             if emergency_phone and emergency_phone[0] in ['1', '2', '3', '4']:
                 form.add_error('emergency_phone', "Emergency phone number cannot start with 1, 2, 3, or 4")
+
 
             if not form.is_valid():
                 return render(request, 'ceo_template/add_manager_template.html', context)
@@ -250,10 +247,6 @@ def add_manager(request):
                     'address': emergency_address
                 }
                 manager.manager_id = manager_id
-                manager.aadhar_card = aadhar_card
-                manager.pan_card = pan_card
-                manager.bond_start = bond_start
-                manager.bond_end = bond_end
                 manager.aadhar_card = aadhar_card
                 manager.pan_card = pan_card
                 manager.bond_start = bond_start
@@ -2535,10 +2528,9 @@ def admin_view_attendance(request):
 
 
 
-
-
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
 
 @login_required
 @csrf_exempt
@@ -2557,14 +2549,13 @@ def get_manager_and_employee_attendance(request):
         from_date = request.POST.get('from_date')
         to_date = request.POST.get('to_date')
         page = int(request.POST.get('page', 1))
-        per_page = request.POST.get('per_page', 5)
+        per_page = request.POST.get('per_page', 10)
         try:
             per_page = int(per_page)
             per_page = min(per_page, 10000)  # Cap per_page
         except ValueError:
-            per_page = 5
+            per_page = 10
 
-        # Validate required date inputs
         if not year and not (from_date and to_date):
             return JsonResponse({"error": "Year or date range is required"}, status=400)
 
@@ -2580,6 +2571,8 @@ def get_manager_and_employee_attendance(request):
         if employee_id and employee_id != 'all':
             try:
                 employee = Employee.objects.get(employee_id=employee_id)
+                if not employee.admin:
+                    return JsonResponse({"error": "Employee has no associated user"}, status=400)
                 queryset = queryset.filter(user=employee.admin)
             except Employee.DoesNotExist:
                 return JsonResponse({"error": "Employee not found"}, status=400)
@@ -2592,64 +2585,39 @@ def get_manager_and_employee_attendance(request):
                     return JsonResponse({"error": "Manager not found"}, status=400)
                 queryset = queryset.filter(user=manager.admin)
             except Exception as e:
-                logger.error(f"Manager lookup error: {str(e)}")
                 return JsonResponse({"error": f"Manager lookup error: {str(e)}"}, status=400)
         elif department_id and department_id != 'all':
             queryset = queryset.filter(
                 Q(user__employee__department_id=department_id) |
                 Q(user__manager__department_id=department_id)
             )
-        elif manager_id == 'all':
-            queryset = queryset.filter(user__manager__isnull=False)
-        elif employee_id == 'all':
-            queryset = queryset.filter(user__employee__isnull=False)
+        else:
+            # Handle 'all' cases for employees and/or managers
+            employee_users = []
+            manager_users = []
+            if employee_id == 'all':
+                employee_filter = Employee.objects.filter(department_id=department_id) if department_id and department_id != 'all' else Employee.objects.all()
+                employee_users = [e.admin for e in employee_filter if e.admin]
+            if manager_id == 'all':
+                manager_filter = Manager.objects.filter(department_id=department_id) if department_id and department_id != 'all' else Manager.objects.all()
+                manager_users = [m.admin for m in manager_filter if m.admin]
+            # Combine and deduplicate users
+            users = list(set(employee_users + manager_users))
+            queryset = queryset.filter(user__in=users)
 
         # Date filtering
         holiday_dates = set()
         start_date = None
         end_date = None
-        today = datetime.now().date()
+        today = get_ist_date()
         current_year = today.year
         current_month = today.month
-
-        def set_automatic_holidays(year, month):
-            days_in_month = monthrange(year, month)[1]
-            start_date = datetime(year, month, 1).date()
-            end_date = min(today, datetime(year, month, days_in_month).date())
-            existing_holidays = set(Holiday.objects.filter(
-                date__year=year,
-                date__month=month
-            ).values_list('date', flat=True))
-
-            saturdays = []
-            current_date = start_date
-            while current_date <= end_date:
-                if current_date.weekday() == 5:  # Saturday
-                    week_number = (current_date.day - 1) // 7
-                    if week_number in [1, 3]:  # 2nd or 4th Saturday
-                        saturdays.append(current_date)
-                elif current_date.weekday() == 6:  # Sunday
-                    if current_date not in existing_holidays:
-                        Holiday.objects.get_or_create(
-                            date=current_date,
-                            defaults={'name': f'Sunday - {current_date.strftime("%B %d, %Y")}'}
-                        )
-                current_date += timedelta(days=1)
-
-            for saturday in saturdays:
-                if saturday not in existing_holidays:
-                    Holiday.objects.get_or_create(
-                        date=saturday,
-                        defaults={'name': f'Saturday - {saturday.strftime("%B %d, %Y")}'}
-                    )
 
         # Apply date filters
         if from_date and to_date:
             try:
                 start_date = datetime.strptime(from_date, '%Y-%m-%d').date()
                 end_date = datetime.strptime(to_date, '%Y-%m-%d').date()
-                if end_date > today:
-                    end_date = today
                 queryset = queryset.filter(date__range=(start_date, end_date))
                 holiday_dates = set(Holiday.objects.filter(
                     date__range=(start_date, end_date)
@@ -2657,10 +2625,10 @@ def get_manager_and_employee_attendance(request):
             except ValueError:
                 return JsonResponse({"error": "Invalid date format. Use YYYY-MM-DD"}, status=400)
         else:
-            if year:
-                year = int(year)
-                if week:
-                    try:
+            try:
+                if year:
+                    year = int(year)  # Convert year to integer
+                    if week:
                         week = int(week)
                         first_day_of_year = datetime(year, 1, 1).date()
                         start_date = first_day_of_year + timedelta(weeks=week - 1)
@@ -2671,43 +2639,38 @@ def get_manager_and_employee_attendance(request):
                         holiday_dates = set(Holiday.objects.filter(
                             date__range=(start_date, end_date)
                         ).values_list('date', flat=True))
-                    except ValueError:
-                        return JsonResponse({"error": "Invalid week number"}, status=400)
-                elif month:
-                    try:
+                    elif month:
                         month = int(month)
                         start_date = datetime(year, month, 1).date()
                         days_in_month = monthrange(year, month)[1]
                         end_date = datetime(year, month, days_in_month).date()
-                        if year == current_year and month == current_month:
-                            end_date = today
                         queryset = queryset.filter(date__month=month, date__year=year)
                         holiday_dates = set(Holiday.objects.filter(
                             date__year=year,
                             date__month=month
                         ).values_list('date', flat=True))
-                        set_automatic_holidays(year, month)
-                    except ValueError:
-                        return JsonResponse({"error": "Invalid month number"}, status=400)
+                    else:
+                        start_date = datetime(year, 1, 1).date()
+                        end_date = datetime(year, 12, 31).date()
+                        queryset = queryset.filter(date__year=year)
+                        holiday_dates = set(Holiday.objects.filter(
+                            date__year=year
+                        ).values_list('date', flat=True))
                 else:
-                    start_date = datetime(year, 1, 1).date()
-                    end_date = min(today, datetime(year, 12, 31).date())
-                    queryset = queryset.filter(date__year=year)
+                    start_date = datetime(current_year, current_month, 1).date()
+                    end_date = today
+                    queryset = queryset.filter(date__range=(start_date, end_date))
                     holiday_dates = set(Holiday.objects.filter(
-                        date__year=year
+                        date__range=(start_date, end_date)
                     ).values_list('date', flat=True))
-            else:
-                start_date = datetime(current_year, current_month, 1).date()
-                end_date = today
-                queryset = queryset.filter(date__range=(start_date, end_date))
-                holiday_dates = set(Holiday.objects.filter(
-                    date__range=(start_date, end_date)
-                ).values_list('date', flat=True))
-                set_automatic_holidays(current_year, current_month)
 
-        # Calculate total working days and holiday count for the filtered period
+            except ValueError as e:
+                return JsonResponse({"error": "Invalid year or month format"}, status=400)
+
+        # Calculate total working days and holiday count
         total_working_days = 0
         holiday_count = 0
+        weekend_days = set()
         current_date = start_date
         while current_date <= end_date:
             weekday = current_date.weekday()
@@ -2717,17 +2680,22 @@ def get_manager_and_employee_attendance(request):
             is_holiday = current_date in holiday_dates
             if is_sunday or is_2nd_or_4th_saturday or is_holiday:
                 holiday_count += 1
+                if is_sunday or is_2nd_or_4th_saturday:
+                    weekend_days.add(current_date)
             else:
                 total_working_days += 1
             current_date += timedelta(days=1)
 
         queryset = queryset.order_by('-date')
 
-        # Initialize attendance statistics
+        # Initialize attendance and leave balance statistics
         present_days = 0
         late_days = 0
         half_days = 0
         absent_days = 0
+        total_available_leaves = 0.0
+        all_yearly_total_allocated_leaves = 0.0
+        all_monthly_and_weekly_available_leaves = 0.0
 
         if start_date and end_date:
             user_stats = {}
@@ -2736,9 +2704,11 @@ def get_manager_and_employee_attendance(request):
             if employee_id and employee_id != 'all':
                 try:
                     employee = Employee.objects.get(employee_id=employee_id)
+                    if not employee.admin:
+                        return JsonResponse({"error": "Employee has no associated user"}, status=400)
                     users = [employee.admin]
                 except Employee.DoesNotExist:
-                    users = []
+                    return JsonResponse({"error": "Employee not found"}, status=400)
             elif manager_id and manager_id != 'all':
                 try:
                     manager = Manager.objects.filter(id=manager_id).first()
@@ -2750,31 +2720,178 @@ def get_manager_and_employee_attendance(request):
                         users = []
                 except Exception:
                     users = []
-            elif manager_id == 'all':
-                users = [m.admin for m in Manager.objects.all()]
-            elif employee_id == 'all':
-                users = [e.admin for e in Employee.objects.filter(department_id=department_id)]
             else:
-                users = list(set(queryset.values_list('user', flat=True)))
-                users = User.objects.filter(id__in=users)
+                # Handle 'all' cases for employees and/or managers
+                employee_users = []
+                manager_users = []
+                if employee_id == 'all':
+                    employee_filter = Employee.objects.filter(department_id=department_id) if department_id and department_id != 'all' else Employee.objects.all()
+                    employee_users = [e.admin for e in employee_filter if e.admin]
+                if manager_id == 'all':
+                    manager_filter = Manager.objects.filter(department_id=department_id) if department_id and department_id != 'all' else Manager.objects.all()
+                    manager_users = [m.admin for m in manager_filter if m.admin]
+                # Combine and deduplicate users
+                users = list(set(employee_users + manager_users))
 
-            for user in users:
-                employee_for_user = Employee.objects.filter(admin=user).first()
-                manager_for_user = Manager.objects.filter(admin=user).first()
-                joining_date = employee_for_user.date_of_joining if employee_for_user else (manager_for_user.date_of_joining if manager_for_user else today)
-                first_clock_in = AttendanceRecord.objects.filter(
-                    user=user,
-                    status__in=['present', 'late', 'half_day']
-                ).order_by('date').first()
-                first_clock_in_date = first_clock_in.date if first_clock_in else None
-                user_stats[user.id] = {
-                    'joining_date': joining_date,
-                    'first_clock_in_date': first_clock_in_date,
-                    'present_days': 0,
-                    'late_days': 0,
-                    'half_days': 0,
-                    'absent_days': 0,
-                }
+           # Inside the get_manager_and_employee_attendance view, replace the user stats loop (starting at "for user in users:") with this:
+        for user in users:
+            employee_for_user = Employee.objects.filter(admin=user).first()
+            manager_for_user = Manager.objects.filter(admin=user).first()
+            joining_date = employee_for_user.date_of_joining if employee_for_user else (manager_for_user.date_of_joining if manager_for_user else today)
+            first_clock_in = AttendanceRecord.objects.filter(
+                user=user,
+                status__in=['present', 'late', 'half_day', 'leave']
+            ).order_by('date').first()
+            first_clock_in_date = first_clock_in.date if first_clock_in else None
+
+            user_stats[user.id] = {
+                'joining_date': joining_date,
+                'first_clock_in_date': first_clock_in_date,
+                'present_days': 0,
+                'late_days': 0,
+                'half_days': 0,
+                'absent_days': 0,
+                'available_leaves': 0.0,
+                'leave_history': [],
+                'yearly_total_allocated_leaves': 0.0,
+                'yearly_total_used_leaves': 0.0,
+                'monthly_and_weekly_available_leaves': 0.0,
+                'carried_forward_leaves': 0.0
+            }
+
+            # Calculate leave balance
+            if joining_date <= end_date and first_clock_in_date:
+                joining_year = joining_date.year
+                joining_month = joining_date.month
+                year_for_calculation = int(year) if year else current_year
+
+                # Initialize leave variables
+                monthly_available_leaves = 0.0
+                carried_forward_leaves = 0.0
+                yearly_total_allocated_leaves = 0.0
+                monthly_and_weekly_available_leaves = 0.0
+
+                logger.info(f"Calculating leaves for user {user.id}, year {year_for_calculation}, joining_date {joining_date}")
+
+                if year and not month and not week:
+                    # Yearly view: Allocate 1 leave per month from joining month to December
+                    start_month = joining_month if year_for_calculation == joining_year else 1
+                    end_month = 12
+                    monthly_available_leaves = max(0, end_month - start_month + 1)
+                    previous_year = year_for_calculation - 1
+                    previous_leave_balance = LeaveReportEmployee.objects.filter(
+                        employee=employee_for_user,
+                        start_date__year=previous_year,
+                        status=1
+                    ).last() if employee_for_user else LeaveReportManager.objects.filter(
+                        manager=manager_for_user,
+                        start_date__year=previous_year,
+                        status=1
+                    ).last()
+                    carried_forward_leaves = previous_leave_balance.available_leaves if previous_leave_balance and hasattr(previous_leave_balance, 'available_leaves') and previous_leave_balance.available_leaves > 0 else 0.0
+                    yearly_total_allocated_leaves = monthly_available_leaves + carried_forward_leaves
+                    monthly_and_weekly_available_leaves = yearly_total_allocated_leaves
+                    logger.info(f"Yearly view: start_month={start_month}, end_month={end_month}, monthly_available_leaves={monthly_available_leaves}, carried_forward_leaves={carried_forward_leaves}, yearly_total_allocated_leaves={yearly_total_allocated_leaves}")
+                else:
+                    # Month/week view: Allocate 1 leave if joining_date is before or on end_date
+                    monthly_available_leaves = 1.0 if joining_date <= end_date else 0.0
+                    previous_year = year_for_calculation - 1
+                    previous_leave_balance = LeaveReportEmployee.objects.filter(
+                        employee=employee_for_user,
+                        start_date__year=previous_year,
+                        status=1
+                    ).last() if employee_for_user else LeaveReportManager.objects.filter(
+                        manager=manager_for_user,
+                        start_date__year=previous_year,
+                        status=1
+                    ).last()
+                    carried_forward_leaves = previous_leave_balance.available_leaves if previous_leave_balance and hasattr(previous_leave_balance, 'available_leaves') and previous_leave_balance.available_leaves > 0 else 0.0
+                    yearly_total_allocated_leaves = monthly_available_leaves + carried_forward_leaves
+                    monthly_and_weekly_available_leaves = monthly_available_leaves
+                    logger.info(f"Month/week view: monthly_available_leaves={monthly_available_leaves}, carried_forward_leaves={carried_forward_leaves}, yearly_total_allocated_leaves={yearly_total_allocated_leaves}")
+
+                total_used = 0.0
+                available_carried_forward = carried_forward_leaves
+                monthly_leave_counted = {}
+                leave_balances = LeaveReportEmployee.objects.filter(
+                    employee=employee_for_user,
+                    status=1,
+                    start_date__year=year_for_calculation,
+                    start_date__gte=joining_date,
+                    start_date__lte=end_date,
+                    end_date__gte=start_date
+                ).order_by('start_date') if employee_for_user else LeaveReportManager.objects.filter(
+                    manager=manager_for_user,
+                    status=1,
+                    start_date__year=year_for_calculation,
+                    start_date__gte=joining_date,
+                    start_date__lte=end_date,
+                    end_date__gte=start_date
+                ).order_by('start_date')
+
+                
+                for leave in leave_balances:
+                    leave_start = max(leave.start_date, start_date, joining_date)
+                    leave_end = min(leave.end_date, end_date)
+                    leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
+                    current_date = leave_start
+                    while current_date <= leave_end:
+                        if current_date not in weekend_days and current_date >= joining_date:
+                            month_key = current_date.month
+                            if month_key not in monthly_leave_counted:
+                                user_stats[user.id]['leave_history'].append({
+                                    'date': current_date,
+                                    'leave_amount': leave_amount_per_day,
+                                    'leave_id': leave.id,
+                                    'leave_type': leave.leave_type,
+                                    'is_free_leave': True
+                                })
+                                total_used += leave_amount_per_day
+                                monthly_leave_counted[month_key] = True
+                            elif available_carried_forward >= leave_amount_per_day:
+                                user_stats[user.id]['leave_history'].append({
+                                    'date': current_date,
+                                    'leave_amount': leave_amount_per_day,
+                                    'leave_id': leave.id,
+                                    'leave_type': leave.leave_type,
+                                    'is_carried_forward': True
+                                })
+                                total_used += leave_amount_per_day
+                                available_carried_forward -= leave_amount_per_day
+                              
+                            else:
+                                user_stats[user.id]['leave_history'].append({
+                                    'date': current_date,
+                                    'leave_amount': leave_amount_per_day,
+                                    'leave_id': leave.id,
+                                    'leave_type': leave.leave_type,
+                                    'is_ignored': True
+                                })
+                               
+                        current_date += timedelta(days=1)
+
+                user_stats[user.id]['leave_history'].sort(key=lambda x: x['date'])
+                user_stats[user.id]['yearly_total_allocated_leaves'] = yearly_total_allocated_leaves
+                user_stats[user.id]['yearly_total_used_leaves'] = total_used
+                user_stats[user.id]['available_leaves'] = max(0, yearly_total_allocated_leaves - total_used)
+                user_stats[user.id]['monthly_and_weekly_available_leaves'] = max(0, monthly_and_weekly_available_leaves - total_used)
+                user_stats[user.id]['carried_forward_leaves'] = carried_forward_leaves
+                total_available_leaves += user_stats[user.id]['available_leaves']
+                all_yearly_total_allocated_leaves += user_stats[user.id]['yearly_total_allocated_leaves']
+                all_monthly_and_weekly_available_leaves += user_stats[user.id]['monthly_and_weekly_available_leaves']
+               
+    
+                # Process leave sufficiency
+                available_leaves = monthly_and_weekly_available_leaves + carried_forward_leaves
+                for entry in user_stats[user.id]['leave_history']:
+                    leave_amount = entry['leave_amount']
+                    entry['available_before'] = available_leaves
+                    if available_leaves >= leave_amount and not entry.get('is_ignored', False):
+                        available_leaves -= leave_amount
+                        entry['was_sufficient'] = True
+                    else:
+                        entry['was_sufficient'] = False
+                    entry['available_after'] = max(0, available_leaves)
 
             date_status_map = {}
             for record in queryset:
@@ -2783,85 +2900,80 @@ def get_manager_and_employee_attendance(request):
                     date_status_map[user_id] = {}
                 date_status_map[user_id][record.date] = record.status
 
-            leave_dates_map = {}
-            half_day_leave_dates_map = {}
-            for user_id, stats in user_stats.items():
-                employee_for_user = Employee.objects.filter(admin_id=user_id).first()
-                if not employee_for_user:
-                    continue
-                leaves = LeaveReportEmployee.objects.filter(
-                    employee=employee_for_user,
-                    status=1,
-                    start_date__lte=end_date,
-                    end_date__gte=start_date
-                )
-                leave_dates = set()
-                half_day_leave_dates = set()
-                for leave in leaves:
-                    leave_start = max(leave.start_date, start_date)
-                    leave_end = min(leave.end_date, end_date)
-                    current_leave_date = leave_start
-                    while current_leave_date <= leave_end:
-                        if leave.leave_type == "Half-Day":
-                            half_day_leave_dates.add(current_leave_date)
-                        else:
-                            leave_dates.add(current_leave_date)
-                        current_leave_date += timedelta(days=1)
-                    leave_dates_map[user_id] = leave_dates
-                    half_day_leave_dates_map[user_id] = half_day_leave_dates
+            # Process attendance and leave
+            current_date = max(start_date, joining_date)
+            if not first_clock_in_date or today < first_clock_in_date:
+                user_stats[user.id]['absent_days'] = total_working_days
+                continue
 
-            for user_id, stats in user_stats.items():
-                joining_date = stats['joining_date']
-                first_clock_in_date = stats['first_clock_in_date']
-                current_date = start_date
-
-                if not first_clock_in_date or today < first_clock_in_date:
-                    continue
-
-                while current_date <= end_date:
-                    if current_date < joining_date:
-                        current_date += timedelta(days=1)
-                        continue
-
-                    weekday = current_date.weekday()
-                    is_sunday = weekday == 6
-                    is_saturday = weekday == 5
-                    is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
-                    is_holiday = current_date in holiday_dates
-
-                    if not (is_sunday or is_2nd_or_4th_saturday or is_holiday):
-                        user_date_status = date_status_map.get(user_id, {}).get(current_date)
-                        if current_date in half_day_leave_dates_map.get(user_id, set()):
-                            stats['present_days'] += 1
-                            stats['half_days'] += 1
-                            stats['absent_days'] += 0.5
-                        elif current_date in leave_dates_map.get(user_id, set()):
-                            stats['absent_days'] += 1
-                        elif user_date_status == 'present':
-                            stats['present_days'] += 1
-                        elif user_date_status == 'late':
-                            stats['present_days'] += 1
-                            stats['late_days'] += 1
-                        elif user_date_status == 'half_day':
-                            stats['present_days'] += 1
-                            stats['half_days'] += 1
-                            stats['absent_days'] += 0.5
-                        elif current_date <= today:
-                            if first_clock_in_date and current_date < first_clock_in_date:
-                                stats['absent_days'] += 1
-                            elif not user_date_status and current_date not in leave_dates_map.get(user_id, set()) and current_date not in half_day_leave_dates_map.get(user_id, set()):
-                                stats['absent_days'] += 1
-
+            while current_date <= end_date:
+                if current_date in weekend_days or current_date in holiday_dates:
                     current_date += timedelta(days=1)
+                    continue
+                if current_date < joining_date:
+                    user_stats[user.id]['absent_days'] += 1.0
+                    current_date += timedelta(days=1)
+                    continue
+                if current_date < first_clock_in_date:
+                    user_stats[user.id]['absent_days'] += 1.0
+                    current_date += timedelta(days=1)
+                    continue
 
-            for user_id, stats in user_stats.items():
-                present_days += stats['present_days']
-                late_days += stats['late_days']
-                half_days += stats['half_days']
-                absent_days += stats['absent_days']
+                user_date_status = date_status_map.get(user.id, {}).get(current_date)
+                leave_entry = next((entry for entry in user_stats[user.id]['leave_history'] if entry['date'] == current_date), None)
 
-        # Use total_working_days instead of filtered_working_days
-        attendance_percentage = (present_days / total_working_days) * 100 if total_working_days > 0 else 0
+                if leave_entry:
+                    leave_amount = leave_entry['leave_amount']
+                    leave_type = leave_entry['leave_type']
+                    was_sufficient = leave_entry.get('was_sufficient', False)
+                    if leave_type == 'Full-Day':
+                        if was_sufficient:
+                            user_stats[user.id]['present_days'] += 1.0
+                        else:
+                            user_stats[user.id]['absent_days'] += 1.0
+                    else:  # Half-Day
+                        if was_sufficient:
+                            user_stats[user.id]['present_days'] += 0.5
+                            user_stats[user.id]['half_days'] += 1
+                            user_stats[user.id]['absent_days'] += 0.5
+                           
+                        else:
+                            user_stats[user.id]['absent_days'] += 1.0
+                            user_stats[user.id]['half_days'] += 1
+                          
+                elif user_date_status == 'leave':
+                    if user_stats[user.id]['monthly_and_weekly_available_leaves'] >= 1.0 and not (year and not month and not week):
+                        user_stats[user.id]['present_days'] += 1.0
+                        user_stats[user.id]['monthly_and_weekly_available_leaves'] = max(0, user_stats[user.id]['monthly_and_weekly_available_leaves'] - 1.0)
+                        user_stats[user.id]['available_leaves'] = max(0, user_stats[user.id]['available_leaves'] - 1.0)
+                       
+                    else:
+                        user_stats[user.id]['absent_days'] += 1.0
+                        
+                elif user_date_status == 'present':
+                    user_stats[user.id]['present_days'] += 1
+                 
+                elif user_date_status == 'late':
+                    user_stats[user.id]['present_days'] += 1
+                    user_stats[user.id]['late_days'] += 1
+                  
+                elif user_date_status == 'half_day':
+                    user_stats[user.id]['present_days'] += 1
+                    user_stats[user.id]['half_days'] += 1
+                    user_stats[user.id]['absent_days'] += 0.5
+                  
+                elif current_date <= today:
+                    user_stats[user.id]['absent_days'] += 1.0
+                  
+
+                current_date += timedelta(days=1)
+
+            present_days += user_stats[user.id]['present_days']
+            late_days += user_stats[user.id]['late_days']
+            half_days += user_stats[user.id]['half_days']
+            absent_days += user_stats[user.id]['absent_days']
+        # Calculate attendance percentage
+        attendance_percentage = (present_days / total_working_days * 100) if total_working_days > 0 else 0
         attendance_percentage = round(attendance_percentage, 1)
 
         attendance_list = []
@@ -2873,24 +2985,17 @@ def get_manager_and_employee_attendance(request):
                 name = f"{user.admin.first_name} {user.admin.last_name}"
                 department = user.department.name if user.department else "HR"
                 user_type = "Employee"
-                user_id = user.employee_id
+                user_id_field = user.employee_id
             elif hasattr(record.user, 'manager'):
                 user = record.user.manager
                 name = f"{user.admin.first_name} {user.admin.last_name}"
                 department = user.department.name if user.department else "HR"
                 user_type = "Manager"
-                user_id = getattr(user, 'manager_id', None) or getattr(user, 'admin_id', None) or str(user.id)
+                user_id_field = getattr(user, 'manager_id', None) or getattr(user, 'admin_id', None) or str(user.id)
             else:
                 continue
 
-            weekday = record.date.weekday()
-            is_sunday = weekday == 6
-            is_saturday = weekday == 5
-            is_2nd_or_4th_saturday = is_saturday and ((record.date.day - 1) // 7) in [1, 3]
-            is_holiday = record.date in holiday_dates
-
-            status = "Holiday" if is_holiday or is_sunday or is_2nd_or_4th_saturday else record.status
-
+            status = record.status.capitalize() if record.status == 'leave' else record.status
             hours = "0h 0m"
             if record.total_worked:
                 total_seconds = record.total_worked.total_seconds()
@@ -2908,31 +3013,36 @@ def get_manager_and_employee_attendance(request):
                 "name": name,
                 "department": department,
                 "user_type": user_type,
-                "user_id": user_id,
+                "user_id": user_id_field,
             })
 
-        current_date = start_date
-        while current_date <= end_date:
-            weekday = current_date.weekday()
-            is_sunday = weekday == 6
-            is_saturday = weekday == 5
-            is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
-            is_holiday = current_date in holiday_dates
+        # Add leave entries
+        for user_id, stats in user_stats.items():
+            user = User.objects.get(id=user_id)
+            employee_for_user = Employee.objects.filter(admin=user).first()
+            manager_for_user = Manager.objects.filter(admin=user).first()
+            joining_date = stats['joining_date']
+            name = f"{user.first_name} {user.last_name}"
+            department = employee_for_user.department.name if employee_for_user and employee_for_user.department else (manager_for_user.department.name if manager_for_user and manager_for_user.department else "HR")
+            user_type = "Employee" if employee_for_user else "Manager"
+            user_id_field = employee_for_user.employee_id if employee_for_user else (getattr(manager_for_user, 'manager_id', None) or getattr(manager_for_user, 'admin_id', None) or str(manager_for_user.id))
 
-            if (is_sunday or is_2nd_or_4th_saturday or is_holiday) and current_date not in attendance_dates:
-                attendance_list.append({
-                    "date": current_date.isoformat(),
-                    "day": current_date.strftime('%a'),
-                    "status": "Holiday",
-                    "clock_in": None,
-                    "clock_out": None,
-                    "hours": "0h 0m",
-                    "name": "",
-                    "department": "",
-                    "user_type": "",
-                    "user_id": "",
-                })
-            current_date += timedelta(days=1)
+            for leave_entry in stats['leave_history']:
+                leave_date = leave_entry['date']
+                if leave_date >= start_date and leave_date <= end_date and leave_date >= joining_date and leave_date not in attendance_dates:
+                    status = "Leave" if leave_entry['leave_type'] == 'Full-Day' else "Half-Day"
+                    attendance_list.append({
+                        "date": leave_date.isoformat(),
+                        "day": leave_date.strftime('%a'),
+                        "status": status,
+                        "clock_in": None,
+                        "clock_out": None,
+                        "hours": "0h 0m",
+                        "name": name,
+                        "department": department,
+                        "user_type": user_type,
+                        "user_id": user_id_field,
+                    })
 
         attendance_list = sorted(attendance_list, key=lambda x: x['date'], reverse=True)
 
@@ -2965,11 +3075,14 @@ def get_manager_and_employee_attendance(request):
                 "half_days": half_days,
                 "absent_days": round(absent_days, 1),
                 "attendance_percentage": attendance_percentage,
+                "total_available_leaves": round(total_available_leaves, 1),
+                "yearly_total_allocated_leaves": round(sum(user_stats[u]['yearly_total_allocated_leaves'] for u in user_stats), 1),
+                "yearly_total_used_leaves": round(sum(user_stats[u]['yearly_total_used_leaves'] for u in user_stats), 1),
+                "all_yearly_total_allocated_leaves": round(all_yearly_total_allocated_leaves, 1),
+                "all_monthly_and_weekly_available_leaves": round(all_monthly_and_weekly_available_leaves, 1)
             }
         }
-
         return JsonResponse(response_data, safe=False)
 
     except Exception as e:
-        logger.error(f"Server error: {str(e)}")
         return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)

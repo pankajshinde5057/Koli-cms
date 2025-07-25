@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <style>
-        /* Same styles as before, unchanged */
         .required-asterisk {
             color: #dc3545;
             font-weight: bold;
@@ -529,35 +528,34 @@
                             <div class="card-header bg-light">
                                 <h5 class="card-title mb-0">Contact Info</h5>
                             </div>
-                            <!-- In the Contact Info section -->
-<div class="card-body">
-    {% for field in form %}
-        {% if field.name in "profile_pic email phone_number address" %}
-            <div class="form-group">
-                <label for="{{ field.id_for_label }}">
-                    {{ field.label }}
-                    {% if field.name == 'phone_number' and page_title in 'Add Manager,Edit Manager' %}
-                        <span class="required-asterisk">*</span>
-                    {% elif field.field.required %}
-                        <span class="required-asterisk">*</span>
-                    {% endif %}
-                </label>
-                {% if field.name == 'email' %}
-                    <input type="email" name="email" id="{{ field.id_for_label }}" class="form-control" value="{{ form.email.value|default_if_none:'' }}">
-                {% elif field.name == 'profile_pic' %}
-                    <input type="file" name="profile_pic" id="{{ field.id_for_label }}" class="form-control" accept="image/*">
-                {% elif field.name == 'phone_number' and page_title in 'Add Manager,Edit Manager' %}
-                    <input type="text" name="phone_number" id="{{ field.id_for_label }}" class="form-control" value="{{ form.phone_number.value|default_if_none:'' }}" required>
-                {% else %}
-                    {{ field }}
-                {% endif %}
-                {% if field.errors %}
-                    <div class="text-danger">{{ field.errors|striptags }}</div>
-                {% endif %}
-            </div>
-        {% endif %}
-    {% endfor %}
-</div>
+                            <div class="card-body">
+                                {% for field in form %}
+                                    {% if field.name in "profile_pic email phone_number address" %}
+                                        <div class="form-group">
+                                            <label for="{{ field.id_for_label }}">
+                                                {{ field.label }}
+                                                {% if field.name == 'phone_number' and page_title in 'Add Manager,Edit Manager' %}
+                                                    <span class="required-asterisk">*</span>
+                                                {% elif field.field.required %}
+                                                    <span class="required-asterisk">*</span>
+                                                {% endif %}
+                                            </label>
+                                            {% if field.name == 'email' %}
+                                                <input type="email" name="email" id="{{ field.id_for_label }}" class="form-control" value="{{ form.email.value|default_if_none:'' }}">
+                                            {% elif field.name == 'profile_pic' %}
+                                                <input type="file" name="profile_pic" id="{{ field.id_for_label }}" class="form-control" accept="image/*">
+                                            {% elif field.name == 'phone_number' %}
+                                                <input type="text" name="phone_number" id="{{ field.id_for_label }}" class="form-control" value="{{ form.phone_number.value|default_if_none:'' }}" maxlength="10" pattern="\d{10}" title="Phone number must be exactly 10 digits" {% if page_title in 'Add Manager,Edit Manager' %}required{% endif %}>
+                                            {% else %}
+                                                {{ field }}
+                                            {% endif %}
+                                            {% if field.errors %}
+                                                <div class="text-danger">{{ field.errors|striptags }}</div>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
                     <!-- Account Information -->
@@ -569,7 +567,6 @@
                             <div class="card-body">
                                 <div class="row">
                                     {% if page_title == "Add Manager" or page_title == "Edit Manager" %}
-                                        <!-- Explicitly render manager_id first -->
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="{{ form.manager_id.id_for_label }}">
@@ -578,14 +575,13 @@
                                                         <span class="required-asterisk">*</span>
                                                     {% endif %}
                                                 </label>
-                                                {{ form.manager_id }}
+                                                <input type="text" name="manager_id" id="{{ form.manager_id.id_for_label }}" class="form-control" value="{{ form.manager_id.value|default_if_none:'' }}" {% if page_title == 'Edit Manager' %}required{% endif %}>
                                                 {% if form.manager_id.errors %}
                                                     <div class="text-danger">{{ form.manager_id.errors|striptags }}</div>
                                                 {% endif %}
                                             </div>
                                         </div>
                                     {% elif page_title == "Add Employee" or page_title == "Edit Employee" %}
-                                        <!-- Explicitly render employee_id first -->
                                         <div class="col-md-6">
                                             <div class="form-group">
                                                 <label for="{{ form.employee_id.id_for_label }}">
@@ -601,7 +597,6 @@
                                             </div>
                                         </div>
                                     {% endif %}
-                                    <!-- Then render first_name -->
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label for="{{ form.first_name.id_for_label }}">
@@ -613,10 +608,9 @@
                                             {{ form.first_name }}
                                             {% if form.first_name.errors %}
                                                 <div class="text-danger">{{ form.first_name.errors|striptags }}</div>
-                                            {% endif %}
+                                                {% endif %}
                                         </div>
                                     </div>
-                                    <!-- Render remaining fields -->
                                     {% for field in form %}
                                         {% if field.name not in "profile_pic email phone_number address employee_id manager_id first_name" %}
                                             {% if field.name == "is_second_shift" %}
@@ -970,6 +964,13 @@
             }
             triggerDatePicker();
             setupPasswordToggle();
+
+            const phoneNumberInput = document.getElementById('id_phone_number');
+            if (phoneNumberInput) {
+                phoneNumberInput.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 10);
+                });
+            }
         }
 
         document.addEventListener('DOMContentLoaded', initEventListeners);
