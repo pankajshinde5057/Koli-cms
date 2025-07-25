@@ -521,7 +521,7 @@
                                     <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
                                 {% endif %}
                             </div>
-                            <h3 class="mt-2">{{ user_object.get_full_name }}</h3>
+                            <h3 class="mt-2">{{ user_object.get_full_name|title }}</h3>
                         </div>
 
                         <!-- Profile Picture Modal -->

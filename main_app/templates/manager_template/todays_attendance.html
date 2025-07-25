@@ -38,14 +38,14 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header bg-gradient-info text-white">
-                        <h3 class="card-title">{{ page_title }} - {{ current_date }}</h3>
+                        <h3 class="card-title">{{ page_title }} : {{ current_date }}</h3>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>No</th>
+                                        <th>SN</th>
                                         <th>Employee</th>
                                         <th>Department</th>
                                         <th>Clock In</th>
@@ -57,8 +57,8 @@
                                     {% for record in page_obj %}
                                     <tr>
                                         <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                        <td>{{ record.user.get_full_name }}</td>
-                                        <td>{{ record.user.employee.department.name }}</td>
+                                        <td>{{ record.user.first_name|capfirst }} {{ record.user.last_name|capfirst }}</td>
+                                        <td>{{ record.user.employee.department.name|capfirst }}</td>
                                         <td>
                                             {% timezone "Asia/Kolkata" %}
                                                 {{ record.clock_in|time:"h:i A" }}

@@ -108,7 +108,7 @@
 
         <!-- Admin Notifications Card -->
         <div class="card card-dark mb-4 shadow-lg">
-            <div class="card-header bg-gradient-dark">
+            <div class="card-header bg-primary">
                 <h3 class="card-title">
                     <i class="fas fa-bell mr-2"></i>
                     <strong>Notifications from Admin</strong>
@@ -132,7 +132,7 @@
                         <tbody>
                             {% for notification in notification_from_admin_obj %}
                                 <tr class="notification-text" data-notification-id="{{ notification.id }}">
-                                    <td data-title="Date">{{ notification.created_at|date:"M d, Y" }}</td>
+                                    <td data-title="Date">{{ notification.created_at|date:"d-m-Y" }}</td>
                                     <td data-title="Time">{{ notification.created_at|time:"H:i" }}</td>
                                     <td data-title="Sender">
                                         {% if notification.created_by %}
@@ -148,7 +148,7 @@
                                                         <img src="{% static 'dist/img/avatar.png' %}" alt="Default Profile" class="manager-avatar">
                                                     {% endif %}
                                                 {% endif %}
-                                                <span>{{ notification.created_by.get_full_name|default:"Admin" }}</span>
+                                                <span>{{ notification.created_by.get_full_name|default:"Admin"|title }}</span>
                                             </div>
                                         {% else %}
                                             <span>System Admin</span>
@@ -290,7 +290,7 @@
 
         <!-- Manager Notifications Card -->
         <div class="card card-dark mb-4 shadow-lg">
-            <div class="card-header bg-gradient-dark">
+            <div class="card-header bg-primary">
                 <h3 class="card-title">
                     <i class="fas fa-bell mr-2"></i>
                     <strong>Notifications from Managers</strong>
@@ -314,7 +314,7 @@
                         <tbody>
                             {% for notification in notification_from_manager_obj %}
                                 <tr class="notification-text" data-notification-id="{{ notification.id }}">
-                                    <td data-title="Date">{{ notification.created_at|date:"M d, Y" }}</td>
+                                    <td data-title="Date">{{ notification.created_at|date:"d-m-y" }}</td>
                                     <td data-title="Time">{{ notification.created_at|time:"H:i" }}</td>
                                     <td data-title="Sender">
                                         {% if notification.created_by %}
@@ -330,7 +330,7 @@
                                                         <img src="{% static 'dist/img/avatar.png' %}" alt="Default Profile" class="manager-avatar">
                                                     {% endif %}
                                                 {% endif %}
-                                                <span>{{ notification.created_by.get_full_name|default:"Manager" }}</span>
+                                                <span>{{ notification.created_by.get_full_name|default:"Manager"|title }}</span>
                                             </div>
                                         {% else %}
                                             <span>Unknown Manager</span>

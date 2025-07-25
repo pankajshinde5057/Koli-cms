@@ -265,9 +265,9 @@
                     <div class="schedule-item">
                         <div class="schedule-header">
                             <span class="employee-name">
-                                {{ schedule.employee.admin.first_name }} {{ schedule.employee.admin.last_name }}
+                                {{ schedule.employee.admin.first_name|capfirst }} {{ schedule.employee.admin.last_name|capfirst }}
                                 {% if schedule.employee.department %}
-                                    ({{ schedule.employee.department.name }})
+                                    ({{ schedule.employee.department.name|capfirst }})
                                 {% endif %}
                             </span>
                             <span class="schedule-date">

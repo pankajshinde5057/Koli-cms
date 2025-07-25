@@ -1,19 +1,21 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
 
 {% block content %}
 <section class="content">
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
-                <div class="card">
+                <div class="card card-primary">
                     <div class="card-header d-flex flex-column flex-md-row align-items-center">
-                        <h3 class="card-title mb-3 mb-md-0">{{ page_title }}</h3>
+                        <!-- <h3 class="card-title mb-3 mb-md-0">{{ page_title }}</h3> -->
                         <div class="ml-md-auto d-flex flex-wrap">
-                            <button class="btn btn-primary btn-sm mb-2 mb-md-0 mr-md-2" data-toggle="modal" data-target="#bulkNotificationModal">
+                            <button class="btn btn-dark btn-sm mb-2 mb-md-0 mr-md-2" data-toggle="modal" data-target="#bulkNotificationModal">
                                 <i class="fas fa-bullhorn"></i> <span class="d-none d-md-inline">Bulk Notification</span>
                             </button>
-                            <button class="btn btn-info btn-sm mb-2 mb-md-0 ml-2" data-toggle="modal" data-target="#selectiveNotificationModal">
+                            <button class="btn btn-dark btn-sm mb-2 mb-md-0 ml-2" data-toggle="modal" data-target="#selectiveNotificationModal">
                                 <i class="fas fa-users"></i> <span class="d-none d-md-inline">Selected Notification</span>
                             </button>
                         </div>
@@ -37,10 +39,10 @@
                                     <tr>
                                         <td class="text-center"><input type="checkbox" class="managerCheckbox" value="{{ manager.id }}"></td>
                                         <td data-title="SN">{{ forloop.counter0|add:page_obj.start_index }}</td>
-                                        <td data-title="Full Name">{{ manager.first_name }} {{ manager.last_name }}</td>
+                                        <td data-title="Full Name">{{ manager.first_name|capfirst }} {{ manager.last_name|capfirst }}</td>
                                         <td data-title="Email">{{ manager.email }}</td>
                                         <td data-title="Gender">{{ manager.gender }}</td>
-                                        <td data-title="Division">{{ manager.manager.division.name }}</td>
+                                        <td data-title="Division">{{ manager.manager.division.name|capfirst }}</td>
                                         <td data-title="Action">
                                             <button data-toggle="modal" 
                                                     data-target="#myModal" 

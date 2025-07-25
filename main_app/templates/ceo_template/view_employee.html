@@ -1,6 +1,6 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
-{% block page_title %}{{ page_title }}{% endblock page_title %}
+{% block page_title %}{{ page_title|title }}{% endblock page_title %}
 
 {% block custom_css %}
 <style>
@@ -79,8 +79,8 @@
                                         </div>
                                     {% endif %}
                                 </div>
-                                <h4 class="mt-2 mb-1 text-center">{{ employee.admin.get_full_name }}</h4>
-                                <p class="text-muted text-center mb-0">{{ employee.designation|default:"-" }}</p>
+                                <h4 class="mt-2 mb-1 text-center">{{ employee.admin.get_full_name|title }}</h4>
+                                <p class="text-muted text-center mb-0">{{ employee.designation|default:"-"|title }}</p>
                                 <div class="card card-info card-outline mt-2">
                                     <div class="card-header">
                                         <h3 class="card-title">Organization Details</h3>
@@ -89,26 +89,26 @@
                                         <table class="table table-bordered org-table">
                                             <tr>
                                                 <th style="width: 35%">Department</th>
-                                                <td>{{ employee.department.name|default:"-" }}</td>
+                                                <td>{{ employee.department.name|default:"-"|title }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Designation</th>
-                                                <td>{{ employee.designation|default:"-" }}</td>
+                                                <td>{{ employee.designation|default:"-"|title }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Team Lead</th>
-                                                <td>{{ employee.team_lead|default:"-" }}</td>
+                                                <td>{{ employee.team_lead|default:"-"|title }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Bond Start</th>
+                                                <th>Agreement Start</th>
                                                 <td>{{ employee.bond_start|default:"-" }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Bond End</th>
+                                                <th>Agreement End</th>
                                                 <td>{{ employee.bond_end|default:"-" }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Remaining Bond</th>
+                                                <th>Remaining Agreement</th>
                                                 <td id="remaining-bond">{{ employee.remaining_bond|default:"-" }} days</td>
                                             </tr>
                                         </table>
@@ -128,7 +128,7 @@
                                             </tr>
                                             <tr>
                                                 <th>Full Name</th>
-                                                <td>{{ employee.admin.get_full_name }}</td>
+                                                <td>{{ employee.admin.get_full_name|title }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Email</th>
@@ -140,7 +140,7 @@
                                             </tr>
                                             <tr>
                                                 <th>Gender</th>
-                                                <td>{{ employee.admin.get_gender_display|default:"-" }}</td>
+                                                <td>{{ employee.admin.gender|default:"-"|title }}</td>
                                             </tr>
                                             <tr>
                                                 <th>Aadhar Card</th>
@@ -165,11 +165,11 @@
                                                 <table class="table table-bordered">
                                                     <tr>
                                                         <th style="width: 35%">Contact Name</th>
-                                                        <td>{{ employee.emergency_contact.name|default:"-" }}</td>
+                                                        <td>{{ employee.emergency_contact.name|default:"-"|title }}</td>
                                                     </tr>
                                                     <tr>
                                                         <th>Relationship</th>
-                                                        <td>{{ employee.emergency_contact.relationship|default:"-" }}</td>
+                                                        <td>{{ employee.emergency_contact.relationship|default:"-"|title }}</td>
                                                     </tr>
                                                 </table>
                                             </div>
@@ -181,7 +181,7 @@
                                                     </tr>
                                                     <tr>
                                                         <th>Address</th>
-                                                        <td>{{ employee.emergency_contact.address|default:"-" }}</td>
+                                                        <td>{{ employee.emergency_contact.address|default:"-"|title }}</td>
                                                     </tr>
                                                 </table>
                                             </div>

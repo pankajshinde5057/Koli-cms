@@ -50,7 +50,7 @@
                                                         alt="{{ issuance.asset.asset_name }}">
                                                     {% endif %}
                                                     <div>
-                                                        <strong>{{ issuance.asset.asset_name }}</strong><br>
+                                                        <strong>{{ issuance.asset.asset_name|title }}</strong><br>
                                                         <small class="text-muted">{{ issuance.asset.asset_serial_number }}</small>
                                                     </div>
                                                 </div>
@@ -74,8 +74,8 @@
                                             </td>
                                             {% if request.user.user_type != '3' %}
                                             <td>
-                                                {{ issuance.asset_assignee.get_full_name }}<br>
-                                                <small class="text-muted">{{ issuance.asset_assignee.department|default:"-" }}</small>
+                                                {{ issuance.asset_assignee.get_full_name|title }}<br>
+                                                <small class="text-muted">{{ issuance.asset_assignee.employee.department|default:"-" }}</small>
                                             </td>
                                             {% elif request.user.user_type == '1' %}
                                             <td>

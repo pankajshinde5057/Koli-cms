@@ -16,8 +16,8 @@
                 <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                 <td>
                     <div class="d-flex flex-column">
-                        <span>{{ entry.employee_name }}</span>
-                        <small class="d-md-none text-muted">{{ entry.department }}</small>
+                        <span>{{ entry.employee_name|capfirst }}</span>
+                        <small class="d-md-none text-muted">{{ entry.department|capfirst }}</small>
                         <small class="d-sm-none text-muted">
                             {{ entry.break_start }} - {{ entry.break_end }}
                         </small>
@@ -26,7 +26,7 @@
                 <td class="d-none d-md-table-cell">{{ entry.department }}</td>
                 <td class="d-none d-sm-table-cell">{{ entry.break_start }}</td>
                 <td class="d-none d-sm-table-cell">{{ entry.break_end }}</td>
-                <td>{{ entry.break_duration }} min</td>
+                <td>{{ entry.break_duration }}</td>
             </tr>
             {% empty %}
             <tr>

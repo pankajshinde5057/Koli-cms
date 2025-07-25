@@ -122,13 +122,23 @@ def admin_home(request):
             
         duration = 0
         if b.break_end:
-            duration = int((b.break_end - b.break_start).total_seconds() / 60)
+            duration_seconds = int((b.break_end - b.break_start).total_seconds())
         else:
-            duration = int((current_time - b.break_start).total_seconds() / 60)
-            
+            duration_seconds = int((current_time - b.break_start).total_seconds())
+        
+        minutes = int(duration_seconds // 60)
+        seconds = int(duration_seconds % 60)
+
+        if minutes > 0 and seconds > 0:
+            duration = f"{minutes} min {seconds} sec"
+        elif minutes > 0:
+            duration = f"{minutes} min"
+        else:
+            duration = f"{seconds} sec"
+
         break_entries.append({
             'user_id': user.id,
-            'user_name': user.get_full_name() or user.username,
+            'user_name': user.first_name.capitalize() + " " + user.last_name.capitalize(),
             'user_type': user_type,
             'department': department,
             'break_start': b.break_start.strftime('%H:%M'),
@@ -491,7 +501,7 @@ def manage_manager(request):
     gender = request.GET.get('gender', '')
     department = request.GET.get('department', '')
     division = request.GET.get('division', '')
-    per_page = request.GET.get('per_page', 10)  # Default to 10 records per page
+    per_page = request.GET.get('per_page', 30)  # Default to 10 records per page
     page_number = request.GET.get('page', 1)
 
     # Build the manager queryset
@@ -569,7 +579,7 @@ def manage_employee(request):
     department_id = request.GET.get("department", '')
     division_id = request.GET.get("division", '')
     page_number = request.GET.get('page', 1)
-    per_page = request.GET.get('per_page', 10)  # Default to 10 records per page
+    per_page = request.GET.get('per_page', 30)  # Default to 10 records per page
 
     try:
         per_page = int(per_page)
@@ -1705,6 +1715,7 @@ def get_department_data(request):
 
                 # Debug log to inspect the response
                 print(f"Department ID: {department_id}, Employees: {data['employees']}, Managers: {data['managers']}")
+                # Department ID: 6, Employees: [{'id': 27, 'name': 'Priyank Mali'}], Managers: [{'id': 26, 'name': 'mahesh patil'}, {'id': 33, 'name': 'jkashd kjhakjshd'}]
 
             return JsonResponse(data)
 
@@ -1713,6 +1724,8 @@ def get_department_data(request):
                 'status': 'error',
                 'message': str(e)
             }, status=400)
+
+
             
             
             
@@ -1723,7 +1736,7 @@ def generate_performance_report(request):
     
     if request.method == 'POST':
         employee_ids = request.POST.getlist('employee')
-        manager_ids = request.POST.getlist('manager')
+        # manager_ids = request.POST.getlist('manager')
         month = request.POST.get('month')
         year = request.POST.get('year')
         department_id = request.POST.get('department')
@@ -1732,32 +1745,35 @@ def generate_performance_report(request):
             messages.error(request, "Month and Year are required fields")
             return redirect('generate_performance_report')
             
-        if not department_id and not employee_ids and not manager_ids:
-            messages.error(request, "Please select at least one filter (Department, Employee or Manager)")
+        if not department_id and not employee_ids:
+            messages.error(request, "Please select at least one filter (Department, Employee)")
             return redirect('generate_performance_report')
         
         try:
             year = int(year)
             month = int(month)
             
-            # Initialize empty querysets for employees and managers
+            # Initialize empty querysets for employees
             employees = Employee.objects.none()
             managers = Manager.objects.none()
 
             # Fetch employees only if employee_ids are provided
             if employee_ids:
                 employees = Employee.objects.filter(admin__id__in=employee_ids)
+                managers = Manager.objects.filter(admin__id__in=employee_ids)
+
                 if department_id and department_id != 'all':
                     employees = employees.filter(department_id=department_id)
-
-            # Fetch managers only if manager_ids are provided
-            if manager_ids:
-                managers = Manager.objects.filter(admin__id__in=manager_ids)
-                if department_id and department_id != 'all':
                     managers = managers.filter(department_id=department_id)
 
+            # # Fetch managers only if manager_ids are provided
+            # if manager_ids:
+            #     managers = Manager.objects.filter(admin__id__in=manager_ids)
+            #     if department_id and department_id != 'all':
+            #         managers = managers.filter(department_id=department_id)
+
             # For "All Departments" case, fetch all if no specific IDs are provided
-            if department_id == 'all' and not employee_ids and not manager_ids:
+            if department_id == 'all' and not employee_ids:
                 employees = Employee.objects.all()
                 managers = Manager.objects.all()
 
@@ -2066,7 +2082,7 @@ def admin_todays_attendance(request):
         'page_title': "Today's Attendance",
         'employee_page_obj': employee_page_obj,
         'manager_page_obj': manager_page_obj,
-        'current_date': today.strftime("%Y-%m-%d"),
+        'current_date': today.strftime('%d-%m-%y'),
         'total_clocked_in': today_attendances.count() + today_attendances_manager.count(),
         'total_employees': today_attendances.count(),
         'total_managers': today_attendances_manager.count()

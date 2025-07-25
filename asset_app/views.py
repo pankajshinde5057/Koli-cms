@@ -36,7 +36,7 @@ class AssetsListView(ListView):
     model = Assets
     template_name = 'asset_app/home.html'
     context_object_name = 'assets'
-    paginate_by = 5
+    paginate_by = 10
 
     def get_queryset(self):
         queryset = super().get_queryset()

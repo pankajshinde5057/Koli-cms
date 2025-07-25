@@ -7,9 +7,9 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <div class="card">
+                <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
+                        <!-- <h3 class="card-title">{{ page_title }}</h3> -->
                     </div>
                     <!-- /.card-header -->
                     <div class="card-body" id="division-table-container">
@@ -25,7 +25,7 @@
                                 {% for division in divisions %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ division.name }}</td>
+                                    <td>{{ division.name|capfirst }}</td>
                                     <td>
                                         <a href="{% url 'edit_division' division.id %}" class="btn btn-primary">Edit</a> -
                                         <a href="{% url 'delete_division' division.id %}" 

@@ -100,9 +100,7 @@
 
 {% if request.user.user_type == '1' %}
     <!-- Brand Logo -->
-    <a href="#" class="brand-link">
-        <img src="{% static 'dist/img/koli-logo.svg' %}" alt="AdminLTE Logo"
-            class="brand-image img-circle elevation-3">
+    <a href="/" class="brand-link text-center">
         <span class="brand-text font-weight-light">Admin Panel</span>
     </a>
 
@@ -118,7 +116,7 @@
                 {% endif %}
             </div>
             <div class="info">
-                <a href="#" class="d-block">{{user}}</a>
+                <a href="#" class="d-block">{{ user.get_full_name|title }}</a>
             </div>
         </div>
 
@@ -361,9 +359,7 @@
             </li>  -->
 {% elif request.user.user_type == '2' %}
     <!-- Brand Logo -->
-    <a href="#" class="brand-link">
-        <img src="{% static 'dist/img/koli-logo.svg' %}" alt="AdminLTE Logo"
-            class="brand-image img-circle elevation-3">
+    <a href="/" class="brand-link text-center">
         <span class="brand-text font-weight-light">Manager Panel</span>
     </a>
 
@@ -379,7 +375,7 @@
                 {% endif %}
             </div>
             <div class="info">
-                <a href="#" class="d-block">{{ user}}</a>
+                <a href="#" class="d-block">{{ user.first_name|capfirst }} {{ user.last_name|capfirst}}</a>
             </div>
         </div>
 
@@ -573,9 +569,7 @@
                 </li>
 {% else %}
     <!-- Brand Logo -->
-    <a href="#" class="brand-link">
-        <img src="{% static 'dist/img/koli-logo.svg' %}" alt="AdminLTE Logo"
-            class="brand-image img-circle elevation-3">
+    <a href="/" class="brand-link text-center">
         <span class="brand-text font-weight-light">Employee Panel</span>
     </a>
 
@@ -591,7 +585,7 @@
                 {% endif %}
             </div>
             <div class="info">
-                <a href="#" class="d-block">{{user}}</a>
+                <a href="#" class="d-block">{{ user.first_name|capfirst }} {{ user.last_name|capfirst}}</a>
             </div>
         </div>
 

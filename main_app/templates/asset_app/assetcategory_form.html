@@ -1,5 +1,6 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
 
 {% block content %}
 <section class="content">
@@ -9,7 +10,7 @@
                 <!-- Add Category Card -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{ page_title }}</h3>
+                        <!-- <h3 class="card-title">{{ page_title }}</h3> -->
                     </div>
                     {% include "main_app/form_template.html" with messages=messages form=form button_text="Add Category" %}
                 </div>
@@ -58,7 +59,7 @@
                                         {% for item in categories %}
                                         <tr>
                                             <td>{{ forloop.counter0|add:categories.start_index }}</td>
-                                            <td>{{ item.category }}</td>
+                                            <td>{{ item.category|title }}</td>
                                             <td>
                                                 <div class="btn-group">
                                                     <button type="button" class="btn btn-sm btn-primary" 
