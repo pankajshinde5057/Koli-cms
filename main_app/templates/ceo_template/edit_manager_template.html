@@ -25,9 +25,9 @@
                 <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="card-title mb-0">{{ page_title }}</h3>
-                            <a href="javascript:history.back()" > ← Back</a>
+                        <div class="d-flex justify-content-end align-items-center">
+                            <!-- <h3 class="card-title mb-0">{{ page_title }}</h3> -->
+                            <a class="" href="javascript:history.back()" > ← Back</a>
                         </div>
                     </div>
                     {% include "main_app/add_edit_form_template.html" with messages=messages  form=form button_text="Update Manager"%}
