@@ -88,6 +88,7 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th style="width: 10%">SN</th>
+                                        <th>Employee ID</th>
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th class="d-none d-md-table-cell">Gender</th>
@@ -101,7 +102,8 @@
                                 <tbody id="employee-body">
                                     {% for employee in employees %}
                                     <tr>
-                                        <td>EMP-{{ employee.id|stringformat:"04d" }}</td>
+                                        <td>{{ forloop.counter0|add:employees.start_index  }}</td>
+                                        <td>{{ employee.employee_id }}</td>
                                         <td>
                                             <div>
                                                 <strong>{{ employee.admin.first_name }} {{ employee.admin.last_name }}</strong>
