@@ -1728,6 +1728,7 @@ def add_employee_by_manager(request):
             pan_card = employee_form.cleaned_data.get('pan_card')
             bond_start = employee_form.cleaned_data.get('bond_start')
             bond_end = employee_form.cleaned_data.get('bond_end')
+            employee_id = employee_form.cleaned_data.get('employee_id')
             
 
             passport_url = None
@@ -1772,6 +1773,7 @@ def add_employee_by_manager(request):
                 employee.pan_card = pan_card
                 employee.bond_start = bond_start
                 employee.bond_end = bond_end
+                employee.employee_id = employee_id
                 
                 employee.save()
 
@@ -1837,6 +1839,7 @@ def edit_employee_by_manager(request, employee_id):
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
             is_second_shift = form.cleaned_data.get('is_second_shift')
+            employee_id = form.cleaned_data.get('employee_id')
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
@@ -1865,7 +1868,7 @@ def edit_employee_by_manager(request, employee_id):
 
                 # Save the CustomUser instance
                 user.save()
-
+                
                 # Update the Employee model fields
                 employee.division = division
                 employee.department = department
@@ -1884,6 +1887,7 @@ def edit_employee_by_manager(request, employee_id):
                 employee.pan_card = pan_card
                 employee.bond_start = bond_start
                 employee.bond_end = bond_end
+                employee.employee_id = employee_id
 
                 employee.save()
 
