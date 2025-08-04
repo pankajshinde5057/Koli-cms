@@ -1768,6 +1768,7 @@ def add_employee_by_manager(request):
             bond_start = employee_form.cleaned_data.get('bond_start')
             bond_end = employee_form.cleaned_data.get('bond_end')
             employee_id = employee_form.cleaned_data.get('employee_id')
+            team_lead = employee_form.cleaned_data.get('team_lead')
             
 
             passport_url = None
@@ -1795,7 +1796,7 @@ def add_employee_by_manager(request):
                 employee = user.employee
                 employee.division = division
                 employee.department = department
-                employee.team_lead = manager  # Assign manager as the team lead
+                employee.team_lead = team_lead
                 employee.phone_number = phone_number
                 employee.designation = designation
                 employee.date_of_joining = date_of_joining
