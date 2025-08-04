@@ -36,7 +36,6 @@ LOCATION_CHOICES = (
     ("Meeting Room", "Meeting Room"),
     ("Main Office", "Main Office"),
 )
-
 @login_required
 def admin_home(request):
     # Count totals
@@ -85,7 +84,6 @@ def admin_home(request):
         break_start__date__gte=start_date,
         break_start__date__lte=end_date,
         break_end__isnull=True  # Only ongoing breaks
-        
     ).distinct()
     
     manager_breaks_today = Break.objects.filter(
@@ -97,6 +95,14 @@ def admin_home(request):
     
     total_employee_on_break = employee_breaks_today.count()
     total_manager_on_break = manager_breaks_today.count()
+
+    # Calculate total clocked-in employees and managers for today
+    today_attendances = AttendanceRecord.objects.filter(
+        date=today,
+        user__user_type__in=["2", "3"],  # Include both managers and employees
+        clock_out__isnull=True  # Only those who are still clocked in
+    ).distinct()
+    total_clocked_in = today_attendances.count()
 
     break_entries = []
     break_queryset = Break.objects.filter(
@@ -155,7 +161,7 @@ def admin_home(request):
         'total_employees': total_employees,
         'total_managers': total_managers,
         'total_department': total_department,
-        'total_division': total_division,
+        'total_clocked_in': total_clocked_in,  
         'employee_applied_leave': employee_applied_leave,
         'manager_applied_leave': manager_applied_leave,
         'total_employee_on_break': total_employee_on_break,
@@ -655,21 +661,35 @@ def view_employee(request, employee_id):
 
     # return render(request, 'manager_template/view_employee.html' if request.user.user_type == '2' else 'ceo_template/view_employee.html', context)
 
+
+
+
 @login_required
 def manage_division(request):
-    divisions = Division.objects.all()
-    page = request.GET.get('page', 1)
+    # Get filter parameter
+    division_filter = request.GET.get('division', '')
     
-    paginator = Paginator(divisions, 10)  
+    # Get all divisions or filtered division
+    if division_filter:
+        divisions = Division.objects.filter(id=division_filter)
+    else:
+        divisions = Division.objects.all()
+    
+    # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(divisions, 10)
+    
     try:
-        divisions = paginator.page(page)
+        divisions_page = paginator.page(page)
     except PageNotAnInteger:
-        divisions = paginator.page(1)
+        divisions_page = paginator.page(1)
     except EmptyPage:
-        divisions = paginator.page(paginator.num_pages)
+        divisions_page = paginator.page(paginator.num_pages)
 
     context = {
-        'divisions': divisions,
+        'divisions': divisions_page,
+        'all_divisions': Division.objects.all(),  # For filter dropdown
+        'division_filter': division_filter,
         'page_title': 'Manage Divisions'
     }
 
@@ -686,10 +706,19 @@ def manage_division(request):
 
 @login_required
 def manage_department(request):
-    department_list = Department.objects.all()
-    page = request.GET.get('page', 10)
+    # Get filter parameter
+    department_filter = request.GET.get('department', '')
     
-    paginator = Paginator(department_list, 10)  # 1 item per page
+    # Get all departments or filtered department
+    if department_filter:
+        department_list = Department.objects.filter(id=department_filter)
+    else:
+        department_list = Department.objects.all()
+    
+    # Pagination
+    page = request.GET.get('page', 1)
+    paginator = Paginator(department_list, 10)
+    
     try:
         departments = paginator.page(page)
     except PageNotAnInteger:
@@ -698,7 +727,9 @@ def manage_department(request):
         departments = paginator.page(paginator.num_pages)
     
     context = {
-        'departments': departments,  # Note: This is the paginated object
+        'departments': departments,
+        'all_departments': Department.objects.all(),  # For filter dropdown
+        'department_filter': department_filter,
         'page_title': 'Manage Departments'
     }
 
@@ -1150,6 +1181,47 @@ def view_manager_leave(request):
 
         return render(request, "ceo_template/manager_leave_view.html", context)
     else:
+        action = request.POST.get('action')
+        
+        if action == 'delete_selected':
+            try:
+                ids = json.loads(request.POST.get('ids', '[]'))  # Parse JSON string to list
+                if not ids:
+                    return JsonResponse({'status': 'error', 'message': 'No leave requests selected.'})
+                
+                deleted_count = LeaveReportManager.objects.filter(id__in=ids).delete()[0]
+                Notification.objects.filter(
+                    notification_type='manager-leave-notification',
+                    leave_or_notification_id__in=ids
+                ).delete()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'{deleted_count} leave request(s) deleted successfully.'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'An error occurred while deleting selected leave requests.'
+                })
+
+        if action == 'delete_all':
+            try:
+                deleted_count = LeaveReportManager.objects.all().delete()[0]
+                Notification.objects.filter(
+                    notification_type='manager-leave-notification'
+                ).delete()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'All leave requests deleted successfully.'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'An error occurred while deleting all leave requests.'
+                })
+
         id = request.POST.get('id')
         status = request.POST.get('status')
         try:
@@ -1249,7 +1321,47 @@ def view_employee_leave(request):
 
         return render(request, "ceo_template/employee_leave_view.html", context)
     else:
-       
+        action = request.POST.get('action')
+        
+        if action == 'delete_selected':
+            try:
+                ids = json.loads(request.POST.get('ids', '[]'))  # Parse JSON string to list
+                if not ids:
+                    return JsonResponse({'status': 'error', 'message': 'No leave requests selected.'})
+                
+                deleted_count = LeaveReportEmployee.objects.filter(id__in=ids).delete()[0]
+                Notification.objects.filter(
+                    notification_type__in=['leave-notification', 'employee-leave-notification'],
+                    leave_or_notification_id__in=ids
+                ).delete()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'{deleted_count} leave request(s) deleted successfully.'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'An error occurred while deleting selected leave requests.'
+                })
+
+        if action == 'delete_all':
+            try:
+                deleted_count = LeaveReportEmployee.objects.all().delete()[0]
+                Notification.objects.filter(
+                    notification_type__in=['leave-notification', 'employee-leave-notification']
+                ).delete()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'All leave requests deleted successfully.'
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'An error occurred while deleting all leave requests.'
+                })
+
         id = request.POST.get('id')
         status = request.POST.get('status')
         status = 1 if status == '1' else -1
@@ -1339,7 +1451,6 @@ def view_employee_leave(request):
 
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': 'An error occurred while processing your request.'})
-        
         
         
 
