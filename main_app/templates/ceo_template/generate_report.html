@@ -21,6 +21,12 @@
         pointer-events: none;
         background-color: #e9ecef;
     }
+    .select-all-container {
+        margin-bottom: 10px;
+    }
+    .select-all-checkbox {
+        margin-right: 5px;
+    }
 </style>
 {% endblock %}
 
@@ -46,6 +52,10 @@
           </div>
 
           <div class="form-group" id="employee-group">
+            <div class="select-all-container" id="select-all-container" style="display: none;">
+              <input type="checkbox" id="select-all-employees" class="select-all-checkbox">
+              <label for="select-all-employees">Select All Employees in this Department</label>
+            </div>
             <label for="employee">Employee(s)</label>
             <select name="employee" id="employee" class="form-control select2-multiple" multiple="multiple">
               <!-- Filled dynamically by JS -->
@@ -98,6 +108,14 @@
       $('#department').change(function() {
           const deptId = $(this).val();
           
+          // Show/hide select all checkbox based on department selection
+          if (deptId && deptId !== 'all') {
+              $('#select-all-container').show();
+          } else {
+              $('#select-all-container').hide();
+              $('#select-all-employees').prop('checked', false);
+          }
+          
           if (deptId && deptId !== 'all') {
               // Enable employee selector
               $('#employee').removeClass('disabled-select').prop('disabled', false);
@@ -123,13 +141,13 @@
                       const hasPeople = allPeople.length > 0;
                       
                       // Clear and populate combined list
-                      $('#employee').empty().append('<option value="">-- Select --</option>');
+                      $('#employee').empty();
                       if (hasPeople) {
                           allPeople.forEach(person => {
                               // Add (Manager) suffix to manager names for clarity if needed
                               const isManager = response.managers.some(m => m.id === person.id);
                               const displayName = isManager ? `${person.name} (Manager)` : person.name;
-                               const capitalizedDisplayName = capitalizeWords(displayName);
+                              const capitalizedDisplayName = capitalizeWords(displayName);
 
                               $('#employee').append(`<option value="${person.id}">${capitalizedDisplayName}</option>`);
                           });
@@ -159,6 +177,23 @@
                   placeholder: "-- Select Employee(s) --",
                   allowClear: true
               });
+          }
+      });
+
+      // Select All checkbox handler
+      $('#select-all-employees').change(function() {
+          if ($(this).is(':checked')) {
+              // Select all options except the placeholder
+              $('#employee option').each(function() {
+                  if ($(this).val() !== '') {
+                      $(this).prop('selected', true);
+                  }
+              });
+              // Trigger Select2 update
+              $('#employee').trigger('change');
+          } else {
+              // Deselect all options
+              $('#employee').val(null).trigger('change');
           }
       });
 

@@ -86,8 +86,55 @@
         <div class="row">
             <div class="col-12">
                 <div class="card card-primary">
+                    <div class="card card-primary card-outline">
                     <div class="card-header">
-                        {% comment %} <h3 class="card-title">{{ page_title }}</h3> {% endcomment %}
+                        <div class="card-tools">
+                            <form method="get" class="form-inline" id="searchForm">
+                                <div class="input-group input-group-sm mr-3" style="width: 250px;">
+                                    <input type="text" name="search" id="searchInput" class="form-control" 
+                                        placeholder="Search by name or email..." value="{{ search }}">
+                                    <div class="input-group-append">
+                                        <button type="submit" class="btn btn-default" id="searchBtn">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group mr-3">
+                                    <select name="gender" class="form-control form-control-sm" id="genderFilter" onchange="this.form.submit()">
+                                        <option value="">All Genders</option>
+                                        <option value="M" {% if request.GET.gender == 'M' %}selected{% endif %}>Male</option>
+                                        <option value="F" {% if request.GET.gender == 'F' %}selected{% endif %}>Female</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group mr-3">
+                                    <select name="department" class="form-control form-control-sm" id="departmentFilter" onchange="this.form.submit()">
+                                        <option value="">All Departments</option>
+                                        {% for dept in departments %}
+                                        <option value="{{ dept.id }}" {% if request.GET.department == dept.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ dept.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="form-group mr-3">
+                                    <select name="division" class="form-control form-control-sm" id="divisionFilter" onchange="this.form.submit()">
+                                        <option value="">All Divisions</option>
+                                        {% for div in divisions %}
+                                        <option value="{{ div.id }}" {% if request.GET.division == div.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ div.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <a href="{% url 'add_manager' %}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus"></i> Add Manager
+                                </a>
+                            </form>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" id="manager-table-container">

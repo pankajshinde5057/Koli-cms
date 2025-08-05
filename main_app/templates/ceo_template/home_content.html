@@ -319,29 +319,27 @@
                         </div>
                     </div>
                 </div>
-                <!-- Total Divisions -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
-                    <div class="card bg-pattern-2 text-white h-100 shadow">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-uppercase mb-1">Total Divisions</h6>
-                                    <h2 class="mb-0">{{ total_division }}</h2>
-                                </div>
-                                <div class="icon-circle bg-white-20">
-                                    <i class="fas fa-sitemap"></i>
-                                </div>
+             <!-- Total Clocked In -->
+            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="card bg-pattern-2 text-white h-100 shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase mb-1">Today's Total Clocked In</h6>
+                                <h2 class="mb-0">{{ total_clocked_in }}</h2>
                             </div>
-                            <div class="mt-4">
-                                <a href="{% url 'manage_division' %}" class="text-white text-decoration-none small">
-                                    View all <i class="fas fa-arrow-right ml-1"></i>
-                                </a>
+                            <div class="icon-circle bg-white-20">
+                                <i class="fas fa-clock"></i>
                             </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'admin_todays_attendance' %}" class="text-white text-decoration-none small">
+                                View all <i class="fas fa-arrow-right ml-1"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
-
             <!-- Time History Section -->
             <div class="row">
                 <!-- Combined Break History -->

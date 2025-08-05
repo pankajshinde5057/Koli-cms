@@ -8,11 +8,29 @@
         <div class="row">
             <div class="col-12">
                 <div class="card card-primary">
+                    <div class="card card-primary card-outline">
                     <div class="card-header">
-                        <!-- <h3 class="card-title">{{ page_title }}</h3> -->
+                        <div class="card-tools">
+                            <form method="get" class="form-inline" id="departmentFilterForm">
+                                <div class="form-group mr-3">
+                                    <select name="department" class="form-control form-control-sm" id="departmentFilter">
+                                        <option value="">All Departments</option>
+                                        {% for dept in all_departments %}
+                                        <option value="{{ dept.id }}" {% if department_filter == dept.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ dept.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <a href="{% url 'add_department' %}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus"></i> Add Department
+                                </a>
+                            </form>
+                        </div>
                     </div>
                     <!-- /.card-header -->
-                    <div class="card-body table-responsive p-0">
+                    <div class="card-body table-responsive p-0" id="department-table-container">
                         <table class="table table-hover text-nowrap">
                             <thead>
                                 <tr>
@@ -54,7 +72,9 @@
                             <ul class="pagination pagination-sm m-0">
                                 {% if departments.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ departments.previous_page_number }}">«</a>
+                                        <a class="page-link pagination-link" 
+                                           href="?page={{ departments.previous_page_number }}{% if department_filter %}&department={{ department_filter }}{% endif %}" 
+                                           data-page="{{ departments.previous_page_number }}">«</a>
                                     </li>
                                 {% else %}
                                     <li class="page-item disabled">
@@ -69,14 +89,18 @@
                                         </li>
                                     {% elif num > departments.number|add:'-2' and num < departments.number|add:'2' %}
                                         <li class="page-item">
-                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            <a class="page-link pagination-link" 
+                                               href="?page={{ num }}{% if department_filter %}&department={{ department_filter }}{% endif %}" 
+                                               data-page="{{ num }}">{{ num }}</a>
                                         </li>
                                     {% endif %}
                                 {% endfor %}
 
                                 {% if departments.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ departments.next_page_number }}">»</a>
+                                        <a class="page-link pagination-link" 
+                                           href="?page={{ departments.next_page_number }}{% if department_filter %}&department={{ department_filter }}{% endif %}" 
+                                           data-page="{{ departments.next_page_number }}">»</a>
                                     </li>
                                 {% else %}
                                     <li class="page-item disabled">
@@ -97,11 +121,53 @@
 {% block custom_js %}
 <script>
 $(document).ready(function() {
-    // Simple page reload for pagination (no AJAX needed)
-    $(document).on('click', '.page-link:not(.disabled)', function(e) {
-        e.preventDefault();
-        window.location.href = $(this).attr('href');
+    // Handle filter change
+    $('#departmentFilter').on('change', function() {
+        $('#departmentFilterForm').submit();
     });
+
+    // Handle pagination clicks
+    $(document).on('click', '.pagination-link', function(e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        var department = $('#departmentFilter').val();
+
+        $.ajax({
+            url: "{% url 'manage_department' %}",
+            type: 'GET',
+            data: {
+                page: page,
+                department: department
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                // Create a temporary container to parse the full HTML
+                var $temp = $('<div>').html(html);
+                // Extract only the #department-table-container content
+                var $newContent = $temp.find('#department-table-container').html();
+                // Update the existing container
+                $('#department-table-container').html($newContent);
+                // Update browser URL without reloading
+                var urlParams = new URLSearchParams();
+                urlParams.set('page', page);
+                if (department) {
+                    urlParams.set('department', department);
+                }
+                window.history.pushState({}, '', '?' + urlParams.toString());
+            },
+            error: function(xhr, status, error) {
+                console.error('Pagination AJAX failed:', error);
+                alert('Error loading page. Please try again.');
+            }
+        });
+    });
+
+    // Handle browser back/forward buttons
+    window.onpopstate = function(event) {
+        window.location.reload(); // Reload to ensure correct state
+    };
 });
 </script>
 {% endblock custom_js %}
