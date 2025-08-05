@@ -29,7 +29,7 @@ from django.utils.text import get_valid_filename
 from django.contrib.auth import get_user_model 
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-
+from django.contrib.auth import logout
 
 LOCATION_CHOICES = (
     ("Main Room" , "Main Room"),
@@ -379,31 +379,42 @@ def admin_view_profile(request):
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
                 profile_pic = request.FILES.get('profile_pic') or None
+                remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
                 user = admin.admin
+                
+                # Track if email or password changed
+                email_changed = email and email != user.email
+                password_changed = password and password.strip()
                 
                 # Track if any changes were made
                 changes_made = False
                 
-                # Update email
-                if email and email != user.email:
-                    user.email = email.lower()
-                    logger.info(f"Email updated for user {user.username} to {email}")
+                # Handle profile picture removal
+                if remove_profile_pic and user.profile_pic:
+                    user.profile_pic = ''
                     changes_made = True
+                    logger.info(f"Profile picture removed for user {user.username}")
+                
+                # Update email
+                if email_changed:
+                    user.email = email.lower()
+                    changes_made = True
+                    logger.info(f"Email updated for user {user.username} to {email}")
                 
                 # Update password only if provided and non-empty
-                if password and password.strip():
+                if password_changed:
                     user.set_password(password)
-                    update_session_auth_hash(request, user)
-                    logger.info(f"Password updated for user {user.username}, session updated")
                     changes_made = True
+                    logger.info(f"Password updated for user {user.username}")
                 
+                # Update profile picture if uploaded
                 if profile_pic is not None:
                     safe_filename = get_valid_filename(profile_pic.name)
                     filename = default_storage.save(safe_filename, ContentFile(profile_pic.read()))
                     profile_pic_url = default_storage.url(filename)
                     user.profile_pic = profile_pic_url
-                    logger.info(f"Profile picture updated for user {user.username}: {profile_pic_url}")
                     changes_made = True
+                    logger.info(f"Profile picture updated for user {user.username}: {profile_pic_url}")
                 
                 # Update other fields if changed
                 if user.first_name != first_name:
@@ -425,14 +436,18 @@ def admin_view_profile(request):
                     admin.save()
                     messages.success(request, "Profile updated successfully!")
                     logger.info(f"Profile update successful for user {user.username}")
-                    return redirect(reverse('admin_view_profile'))
+                    # Redirect to login page if email or password changed, else to admin home
+                    if email_changed or password_changed:
+                        logout(request)
+                        logger.info(f"User {user.username} logged out due to email or password change")
+                        return redirect(reverse('login_page'))  # Changed from 'login' to 'login_page'
+                    return redirect(reverse('admin_home'))
                 else:
-                    
                     logger.info(f"No changes made for user {user.username}")
-                    return redirect(reverse('admin_view_profile'))
+                    return redirect(reverse('admin_home'))
             else:
                 messages.error(request, "Invalid Data Provided")
-                logger.warning(f"Invalid form data for user {request.user.username}")
+                logger.warning(f"Invalid form data for user {request.user.username}: {form.errors}")
                 return render(request, "ceo_template/admin_view_profile.html", context)
         except Exception as e:
             logger.error(f"Error updating profile for user {request.user.username}: {str(e)}")
@@ -769,6 +784,7 @@ def edit_manager(request, manager_id):
             division = form.cleaned_data.get('division')
             department = form.cleaned_data.get('department')
             passport = request.FILES.get('profile_pic') or None
+            remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
 
             emergency_name = form.cleaned_data.get('emergency_name')
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
@@ -796,7 +812,9 @@ def edit_manager(request, manager_id):
                 user.address = address
                 user.is_second_shift = is_second_shift
 
-                if passport:
+                if remove_profile_pic:
+                    user.profile_pic = ''
+                elif passport:
                     fs = FileSystemStorage()
                     filename = fs.save(passport.name, passport)
                     passport_url = fs.url(filename)
@@ -829,6 +847,7 @@ def edit_manager(request, manager_id):
             messages.error(request, "Please fill all fields properly.")
 
     return render(request, "ceo_template/edit_manager_template.html", context)
+
 @login_required
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
@@ -866,6 +885,7 @@ def edit_employee(request, employee_id):
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
             is_second_shift = form.cleaned_data.get('is_second_shift')
+            remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
@@ -882,7 +902,9 @@ def edit_employee(request, employee_id):
                 user.address = address
                 user.is_second_shift = is_second_shift
 
-                if passport:
+                if remove_profile_pic:
+                    user.profile_pic = ''
+                elif passport:
                     fs = FileSystemStorage()
                     filename = fs.save(passport.name, passport)
                     passport_url = fs.url(filename)
@@ -2199,7 +2221,6 @@ def admin_todays_attendance(request):
         'total_managers': today_attendances_manager.count()
     }
     return render(request, 'ceo_template/todays_attendance.html', context)
-
 
 
 
