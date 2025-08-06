@@ -2097,6 +2097,7 @@ def send_selected_employee_notification_by_manager(request):
 
 
 
+
 logger = logging.getLogger(__name__)
 
 @login_required
@@ -2115,6 +2116,7 @@ def manager_view_profile(request):
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
                 profile_pic = request.FILES.get('profile_pic') or None
+                remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
                 user = manager.admin
                 
                 # Track if email or password changed
@@ -2136,8 +2138,12 @@ def manager_view_profile(request):
                     changes_made = True
                     logger.info(f"Password updated for user {user.username}")
                 
-                # Update profile picture if uploaded
-                if profile_pic is not None:
+                # Handle profile picture
+                if remove_profile_pic and user.profile_pic:
+                    user.profile_pic = ''
+                    changes_made = True
+                    logger.info(f"Profile picture removed for user {user.username}")
+                elif profile_pic is not None:
                     safe_filename = get_valid_filename(profile_pic.name)
                     filename = default_storage.save(safe_filename, ContentFile(profile_pic.read()))
                     profile_pic_url = default_storage.url(filename)

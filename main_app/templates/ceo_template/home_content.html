@@ -97,72 +97,184 @@
       font-weight: 600;
   }
 
-  /* Date Filter Styling */
-  .date-filter-group {
+  /* Combined card styling */
+  .combined-card {
+      position: relative;
+      overflow: hidden;
+  }
+  
+  .combined-card .card-body {
+      padding-bottom: 0;
+  }
+  
+  .combined-count {
+      font-size: 2.5rem;
+      font-weight: 700;
+      line-height: 1;
+  }
+  
+  .combined-detail {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding: 10px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
   }
   
-  .date-filter-group .form-group {
+  .combined-detail-item {
+      text-align: center;
+      flex: 1;
+  }
+  
+  .combined-detail-item:not(:last-child) {
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .combined-detail-label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-bottom: 5px;
+  }
+  
+  .combined-detail-value {
+      font-size: 1.25rem;
+      font-weight: 600;
+  }
+  
+  /* Review section styling */
+  .review-section {
+      display: none;
+      margin-top: 15px;
+      padding: 15px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+  }
+  
+  .review-section.show {
+      display: block;
+  }
+  
+  .review-table {
+      width: 100%;
       margin-bottom: 0;
-      display: flex;
-      align-items: center;
-      gap: 5px;
   }
   
-  .date-filter-group label {
-      color: white;
-      font-weight: 500;
-      margin-bottom: 0;
-      white-space: nowrap;
+  .review-table th, 
+  .review-table td {
+      padding: 8px;
+      border: none;
   }
   
-  .date-filter-group input, 
-  .date-filter-group select {
-      min-width: 150px;
-      border-radius: 5px;
-      padding: 5px 10px;
+  .review-table th {
+      background-color: rgba(0, 0, 0, 0.1);
   }
-
-  /* Responsive Table Styling */
-  @media (max-width: 768px) {
-      .table-responsive {
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-      }
-      
-      .table thead th, 
-      .table tbody td {
-          white-space: nowrap;
-          min-width: 120px;
-      }
-      
-      .date-filter-group {
-          flex-direction: column;
-          align-items: flex-start;
-      }
-      
-      .date-filter-group .form-group {
-          width: 100%;
-      }
-      
-      .date-filter-group input, 
-      .date-filter-group select {
-          width: 100% !important;
-      }
+  
+  .review-table tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.05);
   }
-
-  /* Flatpickr Calendar Styling */
-  .flatpickr-input {
+  
+  .toggle-review-btn {
       cursor: pointer;
-      background-color: white;
+      transition: all 0.3s;
   }
   
-  .flatpickr-calendar {
-      z-index: 1050 !important;
+  .toggle-review-btn:hover {
+      transform: scale(1.1);
+  }
+  
+  .toggle-review-btn i {
+      transition: transform 0.3s;
+  }
+  
+  .toggle-review-btn.active i {
+      transform: rotate(180deg);
+  }
+  
+  .view-toggle-btn {
+      transition: all 0.3s ease;
+      transform: scale(1);
+  }
+  
+  .view-toggle-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .view-toggle-btn.active {
+      background-color: rgba(255, 255, 255, 0.3) !important;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 991.98px) {
+      .combined-card-view .col-xl-3 {
+          flex: 0 0 50%;
+          max-width: 50%;
+      }
+  }
+  
+  @media (max-width: 767.98px) {
+      .combined-card-view .col-xl-3 {
+          flex: 0 0 100%;
+          max-width: 100%;
+      }
+  }
+  
+  /* Professional Pagination Styling for Not Clocked In */
+  #not-clocked-in-pagination .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1rem;
+  }
+
+  #not-clocked-in-pagination .page-item {
+      margin: 0 0.2rem;
+  }
+
+  #not-clocked-in-pagination .page-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      background-color: #ffffff;
+      color: #333333;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      text-decoration: none;
+  }
+
+  #not-clocked-in-pagination .page-link:hover {
+      background-color: #14a73e;
+      color: #ffffff;
+      border-color: #14a73e;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  #not-clocked-in-pagination .page-item.active .page-link {
+      background-color: #0e7949;
+      border-color: #0e7949;
+      color: #ffffff;
+      font-weight: 600;
+  }
+
+  #not-clocked-in-pagination .page-item.disabled .page-link {
+      background-color: #f5f5f5;
+      border-color: #e0e0e0;
+      color: #999999;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+  }
+
+  #not-clocked-in-pagination .page-link:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(20, 167, 62, 0.3);
   }
 </style>
 {% endblock custom_css %}
@@ -174,10 +286,10 @@
 {% block content %}
     <section class="content">
         <div class="container-fluid">
-            <!-- Key Metrics Row -->
-            <div class="row">
+            <!-- Regular Cards Row (8 cards) -->
+            <div id="regularCards" class="row">
                 <!-- Total Employees -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-gradient-primary text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -198,7 +310,7 @@
                     </div>
                 </div>
                 <!-- Total Managers -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-gradient-success text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -219,7 +331,7 @@
                     </div>
                 </div>
                 <!-- Total Employee Leave -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-gradient-warning text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -240,7 +352,7 @@
                     </div>
                 </div>
                 <!-- Total Manager Leave -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-gradient-danger text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -261,7 +373,7 @@
                     </div>
                 </div>
                 <!-- Employees on Break -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-gradient-info text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -280,7 +392,7 @@
                     </div>
                 </div>
                 <!-- Managers on Break -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-gradient-secondary text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -299,7 +411,7 @@
                     </div>
                 </div>
                 <!-- Total Departments -->
-                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
                     <div class="card bg-pattern-1 text-white h-100 shadow">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center">
@@ -319,27 +431,262 @@
                         </div>
                     </div>
                 </div>
-             <!-- Total Clocked In -->
-            <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
-                <div class="card bg-pattern-2 text-white h-100 shadow">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="text-uppercase mb-1">Today's Total Clocked In</h6>
-                                <h2 class="mb-0">{{ total_clocked_in }}</h2>
+                <!-- Total Clocked In -->
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4 regular-card">
+                    <div class="card bg-pattern-2 text-white h-100 shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase mb-1">Today's Total Clocked In</h6>
+                                    <h2 class="mb-0">{{ total_clocked_in }}</h2>
+                                    <small class="d-block mt-1">Not Clocked In: {{ total_not_clocked_in }}</small>
+                                </div>
+                                <div class="icon-circle bg-white-20">
+                                    <i class="fas fa-clock"></i>
+                                </div>
                             </div>
-                            <div class="icon-circle bg-white-20">
-                                <i class="fas fa-clock"></i>
+                            <div class="mt-4">
+                                <a href="{% url 'admin_todays_attendance' %}" class="text-white text-decoration-none small">
+                                    View all <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                                <button class="btn btn-sm btn-light view-toggle-btn float-right" id="showCombinedView" title="Toggle Card View">
+                                    <i class="fas fa-eye"></i>
+                                </button>
                             </div>
-                        </div>
-                        <div class="mt-4">
-                            <a href="{% url 'admin_todays_attendance' %}" class="text-white text-decoration-none small">
-                                View all <i class="fas fa-arrow-right ml-1"></i>
-                            </a>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Combined Cards Row (4 cards) - Initially hidden -->
+            <div id="combinedCards" class="row combined-card-view" style="display: none;">
+                <!-- Combined Employee/Manager Card -->
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                    <div class="card bg-gradient-primary text-white h-100 shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase mb-1">Total Staff</h6>
+                                    <h2 class="mb-0 combined-count">{{ total_employees|add:total_managers }}</h2>
+                                </div>
+                                <div class="icon-circle bg-white-20">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                            </div>
+                            <div class="combined-detail">
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Employees</div>
+                                    <div class="combined-detail-value">{{ total_employees }}</div>
+                                </div>
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Managers</div>
+                                    <div class="combined-detail-value">{{ total_managers }}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{% url 'manage_employee' %}" class="text-white text-decoration-none small">
+                                    View Employees <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                                <span class="mx-2">|</span>
+                                <a href="{% url 'manage_manager' %}" class="text-white text-decoration-none small">
+                                    View Managers <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Combined Leave Card -->
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                    <div class="card bg-gradient-warning text-white h-100 shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase mb-1">Leave Applications</h6>
+                                    <h2 class="mb-0 combined-count">{{ employee_applied_leave|add:manager_applied_leave }}</h2>
+                                </div>
+                                <div class="icon-circle bg-white-20">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                            </div>
+                            <div class="combined-detail">
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Employees</div>
+                                    <div class="combined-detail-value">{{ employee_applied_leave }}</div>
+                                </div>
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Managers</div>
+                                    <div class="combined-detail-value">{{ manager_applied_leave }}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{% url 'view_employee_leave' %}" class="text-white text-decoration-none small">
+                                    View Employee Leave <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                                <span class="mx-2">|</span>
+                                <a href="{% url 'view_manager_leave' %}" class="text-white text-decoration-none small">
+                                    View Manager Leave <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Combined Break Card -->
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                    <div class="card bg-gradient-info text-white h-100 shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase mb-1">Staff on Break</h6>
+                                    <h2 class="mb-0 combined-count">{{ total_employee_on_break|add:total_manager_on_break }}</h2>
+                                </div>
+                                <div class="icon-circle bg-white-20">
+                                    <i class="fas fa-mug-hot"></i>
+                                </div>
+                            </div>
+                            <div class="combined-detail">
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Employees</div>
+                                    <div class="combined-detail-value">{{ total_employee_on_break }}</div>
+                                </div>
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Managers</div>
+                                    <div class="combined-detail-value">{{ total_manager_on_break }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Combined Attendance and Departments Card -->
+                <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-12 mb-4">
+                    <div class="card bg-gradient-success text-white h-100 shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-uppercase mb-1">Attendance & Departments</h6>
+                                    <h2 class="mb-0 combined-count">{{ total_clocked_in }}</h2>
+                                    <small class="d-block mt-1">Not Clocked In: {{ total_not_clocked_in }}</small>
+                                </div>
+                                <div class="icon-circle bg-white-20">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                            <div class="combined-detail">
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Clocked In</div>
+                                    <div class="combined-detail-value">{{ total_clocked_in }}</div>
+                                </div>
+                                <div class="combined-detail-item">
+                                    <div class="combined-detail-label">Departments</div>
+                                    <div class="combined-detail-value">{{ total_department }}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <a href="{% url 'admin_todays_attendance' %}" class="text-white text-decoration-none small">
+                                    View Attendance <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                                <span class="mx-2">|</span>
+                                <a href="{% url 'manage_department' %}" class="text-white text-decoration-none small">
+                                    View Departments <i class="fas fa-arrow-right ml-1"></i>
+                                </a>
+                                <button class="btn btn-sm btn-light toggle-review-btn float-right" id="toggleAttendanceReview" title="Toggle Review">
+                                    <i class="fas fa-eye"></i> 
+                                </button>
+                            </div>
+                            <!-- Review Section -->
+                            <div id="attendanceReview" class="review-section mt-3">
+                                <h6 class="text-center mb-2">Staff Not Clocked In Today</h6>
+                                {% if not_clocked_in_list %}
+                                <div class="table-responsive" id="not-clocked-in-container">
+                                    <table class="review-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Type</th>
+                                                <th>Department</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="not-clocked-in-body">
+                                            {% for staff in not_clocked_in_list %}
+                                            <tr>
+                                                <td>{{ staff.name }}</td>
+                                                <td>{{ staff.type }}</td>
+                                                <td>{{ staff.department }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% if not_clocked_in_page_obj.has_other_pages %}
+                                        <nav aria-label="Not clocked in pagination" id="not-clocked-in-pagination">
+                                            <ul class="pagination justify-content-center mt-3">
+                                                {% if not_clocked_in_page_obj.has_previous %}
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?not_clocked_in_page=1" data-page="1" data-section="not_clocked_in" aria-label="First">
+                                                            <span aria-hidden="true">««</span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?not_clocked_in_page={{ not_clocked_in_page_obj.previous_page_number }}" data-page="{{ not_clocked_in_page_obj.previous_page_number }}" data-section="not_clocked_in" aria-label="Previous">
+                                                            <span aria-hidden="true">«</span>
+                                                        </a>
+                                                    </li>
+                                                {% else %}
+                                                    <li class="page-item disabled">
+                                                        <a class="page-link" href="#" aria-label="First">
+                                                            <span aria-hidden="true">««</span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="page-item disabled">
+                                                        <a class="page-link" href="#" aria-label="Previous">
+                                                            <span aria-hidden="true">«</span>
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                                {% for num in not_clocked_in_page_obj.paginator.page_range %}
+                                                    {% if not_clocked_in_page_obj.number == num %}
+                                                        <li class="page-item active"><a class="page-link" href="#">{{ num }}</a></li>
+                                                    {% elif num > not_clocked_in_page_obj.number|add:'-3' and num < not_clocked_in_page_obj.number|add:'3' %}
+                                                        <li class="page-item"><a class="page-link" href="?not_clocked_in_page={{ num }}" data-page="{{ num }}" data-section="not_clocked_in">{{ num }}</a></li>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if not_clocked_in_page_obj.has_next %}
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?not_clocked_in_page={{ not_clocked_in_page_obj.next_page_number }}" data-page="{{ not_clocked_in_page_obj.next_page_number }}" data-section="not_clocked_in" aria-label="Next">
+                                                            <span aria-hidden="true">»</span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="page-item">
+                                                        <a class="page-link" href="?not_clocked_in_page={{ not_clocked_in_page_obj.paginator.num_pages }}" data-page="{{ not_clocked_in_page_obj.paginator.num_pages }}" data-section="not_clocked_in" aria-label="Last">
+                                                            <span aria-hidden="true">»»</span>
+                                                        </a>
+                                                    </li>
+                                                {% else %}
+                                                    <li class="page-item disabled">
+                                                        <a class="page-link" href="#" aria-label="Next">
+                                                            <span aria-hidden="true">»</span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="page-item disabled">
+                                                        <a class="page-link" href="#" aria-label="Last">
+                                                            <span aria-hidden="true">»»</span>
+                                                        </a>
+                                                    </li>
+                                                {% endif %}
+                                            </ul>
+                                        </nav>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <p class="text-center mb-0">All staff have clocked in today.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Time History Section -->
             <div class="row">
                 <!-- Combined Break History -->
@@ -357,16 +704,6 @@
                                             {% endfor %}
                                         </select>
                                     </div>
-                                    <!-- <div class="form-group">
-                                        <label for="break_start_date">From:</label>
-                                        <input type="text" name="start_date" id="break_start_date" class="form-control form-control-sm flatpickr-input" 
-                                            value="{{ start_date }}" placeholder="Select Date" readonly>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="break_end_date">To:</label>
-                                        <input type="text" name="end_date" id="break_end_date" class="form-control form-control-sm flatpickr-input" 
-                                            value="{{ end_date }}" placeholder="Select Date" readonly>
-                                    </div> -->
                                 </form>
                             </div>
                         </div>
@@ -419,6 +756,17 @@
                                                         <span aria-hidden="true">«</span>
                                                     </a>
                                                 </li>
+                                            {% else %}
+                                                <li class="page-item disabled">
+                                                    <a class="page-link" href="#" aria-label="First">
+                                                        <span aria-hidden="true">««</span>
+                                                    </a>
+                                                </li>
+                                                <li class="page-item disabled">
+                                                    <a class="page-link" href="#" aria-label="Previous">
+                                                        <span aria-hidden="true">«</span>
+                                                    </a>
+                                                </li>
                                             {% endif %}
                                             {% for num in page_obj.paginator.page_range %}
                                                 {% if page_obj.number == num %}
@@ -438,6 +786,17 @@
                                                         <span aria-hidden="true">»»</span>
                                                     </a>
                                                 </li>
+                                            {% else %}
+                                                <li class="page-item disabled">
+                                                    <a class="page-link" href="#" aria-label="Next">
+                                                        <span aria-hidden="true">»</span>
+                                                    </a>
+                                                </li>
+                                                <li class="page-item disabled">
+                                                    <a class="page-link" href="#" aria-label="Last">
+                                                        <span aria-hidden="true">»»</span>
+                                                    </a>
+                                                </li>
                                             {% endif %}
                                         </ul>
                                     </nav>
@@ -453,43 +812,131 @@
 
 {% block custom_js %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 $(document).ready(function() {
-    const breakStartDate = flatpickr("#break_start_date", {
-        dateFormat: "Y-m-d",
-        defaultDate: "{{ start_date }}",
-        allowInput: true,
-        clickOpens: true,
-        onChange: function(selectedDates, dateStr) {
-            breakEndDate.set('minDate', selectedDates[0] || null);
-            if (dateStr) submitBreakFilters();
+    // Initialize view based on user preference or screen size
+    function initializeView() {
+        const preferredView = localStorage.getItem('dashboardView');
+        const isMobileView = window.innerWidth < 992;
+
+        if (isMobileView) {
+            showCombinedView();
+        } else {
+            if (preferredView === 'combined') {
+                showCombinedView();
+            } else {
+                showRegularView();
+            }
+        }
+    }
+
+    // Show combined view and attendance review
+    function showCombinedView() {
+        $('#regularCards').hide();
+        $('#combinedCards').show();
+        $('#showCombinedView').addClass('active');
+        $('#showCombinedView i').removeClass('fa-eye').addClass('fa-eye-slash');
+        $('#attendanceReview').addClass('show');
+        $('#toggleAttendanceReview').addClass('active');
+        $('#toggleAttendanceReview i').removeClass('fa-eye').addClass('fa-eye-slash');
+        localStorage.setItem('dashboardView', 'combined');
+    }
+
+    // Show regular view and hide attendance review
+    function showRegularView() {
+        $('#combinedCards').hide();
+        $('#regularCards').show();
+        $('#showCombinedView').removeClass('active');
+        $('#showCombinedView i').removeClass('fa-eye-slash').addClass('fa-eye');
+        $('#attendanceReview').removeClass('show');
+        $('#toggleAttendanceReview').removeClass('active');
+        $('#toggleAttendanceReview i').removeClass('fa-eye-slash').addClass('fa-eye');
+        localStorage.setItem('dashboardView', 'regular');
+    }
+
+    // Toggle combined view
+    $('#showCombinedView').click(function(e) {
+        e.preventDefault();
+        if ($('#regularCards').is(':visible')) {
+            showCombinedView();
         }
     });
 
-    const breakEndDate = flatpickr("#break_end_date", {
-        dateFormat: "Y-m-d",
-        defaultDate: "{{ end_date }}",
-        allowInput: true,
-        clickOpens: true,
-        onChange: function(selectedDates, dateStr) {
-            breakStartDate.set('maxDate', selectedDates[0] || null);
-            if (dateStr) submitBreakFilters();
+    // Toggle attendance review and switch to regular view when closing
+    $('#toggleAttendanceReview').click(function(e) {
+        e.preventDefault();
+        if ($('#attendanceReview').hasClass('show')) {
+            showRegularView();
+        } else {
+            $('#attendanceReview').addClass('show');
+            $(this).addClass('active');
+            $(this).find('i').removeClass('fa-eye').addClass('fa-eye-slash');
         }
     });
 
-    $('#department').on('change', submitBreakFilters);
+    // Auto-switch based on screen size
+    function handleResponsiveView() {
+        if (window.innerWidth < 992) {
+            if ($('#regularCards').is(':visible')) {
+                localStorage.setItem('dashboardView', 'combined');
+                showCombinedView();
+            }
+        } else {
+            const storedView = localStorage.getItem('dashboardView') || 'regular';
+            if (storedView === 'combined' && $('#regularCards').is(':visible')) {
+                showCombinedView();
+            } else if (storedView === 'regular' && $('#combinedCards').is(':visible')) {
+                showRegularView();
+            }
+        }
+    }
 
-    function submitBreakFilters() {
+    // AJAX pagination for not clocked in
+    function submitNotClockedInFilters(page = '1') {
+        const urlParams = new URLSearchParams();
+        if (page) urlParams.set('not_clocked_in_page', page);
+
+        $('#not-clocked-in-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
+
+        $.ajax({
+            url: window.location.pathname,
+            type: 'GET',
+            data: urlParams.toString(),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const newNotClockedInContent = doc.querySelector('#not-clocked-in-container');
+                    if (newNotClockedInContent) {
+                        $('#not-clocked-in-container').html(newNotClockedInContent.innerHTML);
+                        attachPaginationListeners();
+                        if ($('#attendanceReview').hasClass('show')) {
+                            $('html, body').animate({
+                                scrollTop: $('#attendanceReview').offset().top - 20
+                            }, 300);
+                        }
+                    } else {
+                        $('#not-clocked-in-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
+                    }
+                } catch (e) {
+                    $('#not-clocked-in-container').html('<div class="text-center py-4 text-danger">Error processing response</div>');
+                }
+            },
+            error: function(xhr) {
+                $('#not-clocked-in-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
+            }
+        });
+    }
+
+    // AJAX pagination for break entries
+    function submitBreakFilters(page = '1') {
         const urlParams = new URLSearchParams();
         const department = $('#department').val();
-        const startDate = $('#break_start_date').val();
-        const endDate = $('#break_end_date').val();
-
         if (department) urlParams.set('department', department);
-        if (startDate) urlParams.set('start_date', startDate);
-        if (endDate) urlParams.set('end_date', endDate);
-        urlParams.set('page', '1'); // Reset to first page on filter change
+        if (page) urlParams.set('page', page);
 
         $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
 
@@ -504,10 +951,13 @@ $(document).ready(function() {
                 try {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
-                    const newContent = doc.querySelector('#break-entries-container');
-                    if (newContent) {
-                        $('#break-entries-container').html(newContent.innerHTML);
+                    const newBreakContent = doc.querySelector('#break-entries-container');
+                    if (newBreakContent) {
+                        $('#break-entries-container').html(newBreakContent.innerHTML);
                         attachPaginationListeners();
+                        $('html, body').animate({
+                            scrollTop: $('#break-entries-container').offset().top - 20
+                        }, 300);
                     } else {
                         $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
                     }
@@ -521,64 +971,51 @@ $(document).ready(function() {
         });
     }
 
+    // Attach pagination listeners
     function attachPaginationListeners() {
         $('#break-entries-pagination a.page-link').off('click').on('click', function(e) {
             e.preventDefault();
             const page = $(this).data('page');
-            const urlParams = new URLSearchParams();
-            const department = $('#department').val();
-            const startDate = $('#break_start_date').val();
-            const endDate = $('#break_end_date').val();
+            submitBreakFilters(page);
+        });
 
-            if (department) urlParams.set('department', department);
-            if (startDate) urlParams.set('start_date', startDate);
-            if (endDate) urlParams.set('end_date', endDate);
-            if (page) urlParams.set('page', page);
-
-            $('#break-entries-container').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i> Loading...</div>');
-
-            $.ajax({
-                url: window.location.pathname,
-                type: 'GET',
-                data: urlParams.toString(),
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                success: function(html) {
-                    try {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const newContent = doc.querySelector('#break-entries-container');
-                        if (newContent) {
-                            $('#break-entries-container').html(newContent.innerHTML);
-                            attachPaginationListeners();
-                            $('html, body').animate({
-                                scrollTop: $('#break-entries-container').offset().top - 20
-                            }, 200);
-                        } else {
-                            $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error: Invalid response format</div>');
-                        }
-                    } catch (e) {
-                        $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error processing response</div>');
-                    }
-                },
-                error: function(xhr) {
-                    $('#break-entries-container').html('<div class="text-center py-4 text-danger">Error loading data: ' + (xhr.statusText || 'Unknown error') + '</div>');
-                }
-            });
+        $('#not-clocked-in-pagination a.page-link').off('click').on('click', function(e) {
+            e.preventDefault();
+            const page = $(this).data('page');
+            submitNotClockedInFilters(page);
         });
     }
 
+    // Department filter handling
+    $('#department').on('change', function() {
+        submitBreakFilters();
+    });
+
+    // Initialize on load
+    initializeView();
+
+    // Handle window resize
+    $(window).on('resize', function() {
+        handleResponsiveView();
+    });
+
     // Initial attachment of pagination listeners
     attachPaginationListeners();
-    
-    // Error handling for date range validation
+
+    // Global AJAX error handling
     $(document).ajaxError(function(event, jqxhr, settings, thrownError) {
         if (settings.url.includes(window.location.pathname)) {
             $('#break-entries-container').html(`
                 <div class="text-center py-4 text-danger">
                     <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <p>Error loading data. Please check your date range and try again.</p>
+                    <p>Error loading data. Please try again.</p>
+                    <button onclick="location.reload()" class="btn btn-sm btn-primary">Reload Page</button>
+                </div>
+            `);
+            $('#not-clocked-in-container').html(`
+                <div class="text-center py-4 text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>Error loading data. Please try again.</p>
                     <button onclick="location.reload()" class="btn btn-sm btn-primary">Reload Page</button>
                 </div>
             `);
