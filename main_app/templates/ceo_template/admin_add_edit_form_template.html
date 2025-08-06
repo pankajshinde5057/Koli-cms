@@ -469,6 +469,98 @@
             background-color: #d1e0f5;
         }
 
+        /* Profile Picture Actions */
+        .profile-pic-wrapper {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .profile-pic-actions {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .profile-pic-container:hover .profile-pic-actions {
+            opacity: 1;
+        }
+
+        .profile-action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .profile-action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .profile-action-btn.remove-btn {
+            background-color: rgba(220, 53, 69, 0.8);
+        }
+
+        .profile-action-btn.remove-btn:hover {
+            background-color: rgba(220, 53, 69, 1);
+        }
+
+        .profile-action-btn.upload-btn {
+            background-color: rgba(56, 151, 240, 0.8);
+        }
+
+        .profile-action-btn.upload-btn:hover {
+            background-color: rgba(56, 151, 240, 1);
+        }
+
+        .profile-pic-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .profile-pic-container:hover .profile-pic-overlay {
+            opacity: 1;
+        }
+
+        .profile-pic-label {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .profile-pic-container:hover .profile-pic-label {
+            opacity: 1;
+        }
+
         /* Responsive Adjustments */
         @media (max-width: 768px) {
             .profile-pic-container {
@@ -510,16 +602,30 @@
         <div class="container-fluid">
             <form id="profile-form" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+                <input type="file" id="id_profile_pic" name="profile_pic" accept="image/*" style="display: none;">
+                <input type="hidden" id="remove_profile_pic" name="remove_profile_pic" value="false">
                 <div class="row">
                     <!-- Profile Side -->
                     <div class="col-md-4">
                         <div class="text-center mt-4">
-                            <div class="profile-pic-container">
-                                {% if user_object.profile_pic %}
-                                    <img src="{{ user_object.profile_pic }}" class="profile-pic" id="profilePic" alt="Profile Picture">
-                                {% else %}
-                                    <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
-                                {% endif %}
+                            <div class="profile-pic-wrapper">
+                                <div class="profile-pic-container">
+                                    {% if user_object.profile_pic %}
+                                        <img src="{{ user_object.profile_pic }}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                                    {% else %}
+                                        <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                                    {% endif %}
+                                    <div class="profile-pic-overlay"></div>
+                                    <span class="profile-pic-label">Change Profile Picture</span>
+                                    <div class="profile-pic-actions">
+                                        <button type="button" class="profile-action-btn upload-btn" id="uploadProfileBtn" title="Upload new photo">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
+                                        <button type="button" class="profile-action-btn remove-btn" id="removeProfileBtn" title="Remove profile picture" {% if not user_object.profile_pic %}style="display: none;"{% endif %}>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             <h3 class="mt-2">{{ user_object.get_full_name|title }}</h3>
                         </div>
@@ -573,7 +679,7 @@
                             </div>
                             <div class="card-body">
                                 {% for field in form %}
-                                    {% if field.name in "profile_pic email address" %}
+                                    {% if field.name in "email address" %}
                                         <div class="form-group">
                                             <label for="{{ field.id_for_label }}">
                                                 {{ field.label }}
@@ -650,6 +756,15 @@
                     <button class="confirmation-btn btn-cancel" id="confirmNo">Cancel</button>
                 </div>
             </div>
+
+            <!-- Remove Profile Picture Confirmation Popup -->
+            <div id="removeConfirmationPopup" class="confirmation-popup">
+                <div class="confirmation-message">Are you sure you want to remove your profile picture?</div>
+                <div class="confirmation-buttons">
+                    <button class="confirmation-btn btn-ok" id="confirmRemoveYes">Yes</button>
+                    <button class="confirmation-btn btn-cancel" id="confirmRemoveNo">No</button>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -684,9 +799,16 @@
             const zoomIn = document.getElementById('zoomIn');
             const zoomOut = document.getElementById('zoomOut');
             const rotateRight = document.getElementById('rotateRight');
-
+            const removeConfirmationPopup = document.getElementById('removeConfirmationPopup');
+            const confirmRemoveYes = document.getElementById('confirmRemoveYes');
+            const confirmRemoveNo = document.getElementById('confirmRemoveNo');
+            const uploadProfileBtn = document.getElementById('uploadProfileBtn');
+            const removeProfileBtn = document.getElementById('removeProfileBtn');
+            const removeProfilePicInput = document.getElementById('remove_profile_pic');
+            const placeholderImage = "{% static 'dist/img/avatar-placeholder.jpeg' %}";
             let cropper = null;
             let currentRotation = 0;
+            let hasProfilePic = {% if user_object.profile_pic %}true{% else %}false{% endif %};
 
             // Prevent Unintended Form Submission
             profileForm.addEventListener('submit', function(e) {
@@ -748,6 +870,7 @@
             confirmationOverlay.addEventListener('click', function(e) {
                 if (e.target === confirmationOverlay) {
                     hideConfirmationPopup();
+                    hideRemoveConfirmation();
                 }
             });
 
@@ -824,6 +947,11 @@
                     cropper = null;
                 }
                 profilePicInput.value = ''; // Clear file input
+                if (!hasProfilePic) {
+                    profilePic.src = placeholderImage;
+                    removeProfilePicInput.value = 'true';
+                    removeProfileBtn.style.display = 'none';
+                }
             }
 
             // Handle Profile Picture Selection
@@ -858,15 +986,19 @@
                     canvas.toBlob(function(blob) {
                         const url = URL.createObjectURL(blob);
                         profilePic.src = url;
+                        hasProfilePic = true;
+                        removeProfilePicInput.value = 'false';
                         const fileName = profilePicInput.files[0]?.name || 'profile-pic.jpg';
                         const file = new File([blob], fileName, { type: 'image/jpeg' });
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);
                         profilePicInput.files = dataTransfer.files;
+                        removeProfileBtn.style.display = 'flex';
                         cropModal.classList.remove('show');
                         document.body.style.overflow = '';
                         cropper.destroy();
                         cropper = null;
+                        showSuccess('Profile picture updated successfully');
                     }, 'image/jpeg', 1.0); // Maximum quality (lossless)
                 }
             });
@@ -893,10 +1025,76 @@
                 }
             });
 
+            // Remove Profile Picture Functionality
+            function showRemoveConfirmation() {
+                confirmationOverlay.classList.add('show');
+                removeConfirmationPopup.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function hideRemoveConfirmation() {
+                confirmationOverlay.classList.remove('show');
+                removeConfirmationPopup.classList.remove('show');
+                document.body.style.overflow = '';
+            }
+
+            function removeProfilePicture() {
+                profilePic.src = placeholderImage;
+                hasProfilePic = false;
+                removeProfilePicInput.value = 'true';
+                profilePicInput.value = '';
+                removeProfileBtn.style.display = 'none';
+                hideRemoveConfirmation();
+                showSuccess('Profile picture removed successfully');
+            }
+
+            if (removeProfileBtn) {
+                removeProfileBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showRemoveConfirmation();
+                });
+            }
+
+            if (confirmRemoveYes) {
+                confirmRemoveYes.addEventListener('click', removeProfilePicture);
+            }
+
+            if (confirmRemoveNo) {
+                confirmRemoveNo.addEventListener('click', hideRemoveConfirmation);
+            }
+
+            if (uploadProfileBtn) {
+                uploadProfileBtn.addEventListener('click', function() {
+                    profilePicInput.click();
+                });
+            }
+
+            function showSuccess(message) {
+                const successDiv = document.createElement('div');
+                successDiv.className = 'alert alert-success';
+                successDiv.textContent = message;
+                document.body.appendChild(successDiv);
+                setTimeout(() => successDiv.remove(), 3000);
+            }
+
             // Initialize Event Listeners
             if (profilePic) {
-                profilePic.addEventListener('click', () => openModal(profilePic.src));
+    profilePic.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent any default behavior
+        e.stopPropagation(); // Stop event bubbling to avoid conflicts
+        if (hasProfilePic) {
+            openModal(profilePic.src);
+        } else {
+            // Ensure the file input exists before triggering click
+            if (profilePicInput) {
+                profilePicInput.click();
+            } else {
+                console.error('Profile picture input element not found.');
             }
+        }
+    });
+}
             document.querySelector('.modal-close').addEventListener('click', closeModal);
             profileModal.addEventListener('click', (e) => {
                 if (e.target === profileModal) {
@@ -909,6 +1107,9 @@
                 }
                 if (e.key === 'Escape' && cropModal.classList.contains('show')) {
                     closeCropModal();
+                }
+                if (e.key === 'Escape' && removeConfirmationPopup.classList.contains('show')) {
+                    hideRemoveConfirmation();
                 }
             });
             enlargedPhoto.addEventListener('load', imageLoaded);

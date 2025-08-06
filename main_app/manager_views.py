@@ -25,6 +25,9 @@ import logging
 from django.utils.text import get_valid_filename
 from django.contrib.auth import get_user_model 
 from .utils.email_utils import send_emails_in_background
+from django.contrib.auth import logout
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 
 LOCATION_CHOICES = (
@@ -1829,34 +1832,32 @@ def edit_employee_by_manager(request, employee_id):
             phone_number = form.cleaned_data.get('phone_number')
             team_lead = form.cleaned_data.get('team_lead')
             passport = request.FILES.get('profile_pic') or None
-
+            employee_id = form.cleaned_data.get('employee_id')
             emergency_name = form.cleaned_data.get('emergency_name')
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
-
             aadhar_card = form.cleaned_data.get('aadhar_card')
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
             is_second_shift = form.cleaned_data.get('is_second_shift')
-            employee_id = form.cleaned_data.get('employee_id')
+            remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
                     raise ValidationError("Emergency phone number must be exactly 10 digits.")
 
-                # Get the related CustomUser instance
                 user = CustomUser.objects.get(id=employee.admin.id)
 
-                # Update profile picture if provided
-                if passport:
+                if remove_profile_pic:
+                    user.profile_pic = ''
+                elif passport:
                     fs = FileSystemStorage()
                     filename = fs.save(passport.name, passport)
                     passport_url = fs.url(filename)
                     user.profile_pic = passport_url
 
-                # Update the CustomUser fields
                 user.username = username
                 user.email = email
                 if password:
@@ -1867,17 +1868,14 @@ def edit_employee_by_manager(request, employee_id):
                 user.address = address
                 user.is_second_shift = is_second_shift
 
-                # Save the CustomUser instance
                 user.save()
                 
-                # Update the Employee model fields
                 employee.division = division
                 employee.department = department
                 employee.designation = designation
                 employee.phone_number = phone_number
                 employee.team_lead = team_lead
-
-                # Update emergency contact information
+                employee.employee_id = employee_id
                 employee.emergency_contact = {
                     'name': emergency_name or "Not provided",
                     'relationship': emergency_relationship or "Not provided",
@@ -1888,7 +1886,6 @@ def edit_employee_by_manager(request, employee_id):
                 employee.pan_card = pan_card
                 employee.bond_start = bond_start
                 employee.bond_end = bond_end
-                employee.employee_id = employee_id
 
                 employee.save()
 
@@ -2117,62 +2114,69 @@ def manager_view_profile(request):
                 password = form.cleaned_data.get('password') or None
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
-                passport = request.FILES.get('profile_pic') or None
-                admin = manager.admin
+                profile_pic = request.FILES.get('profile_pic') or None
+                user = manager.admin
+                
+                # Track if email or password changed
+                email_changed = email and email != user.email
+                password_changed = password and password.strip()
                 
                 # Track if any changes were made
                 changes_made = False
                 
                 # Update email
-                if email and email != admin.email:
-                    admin.email = email.lower()
-                    logger.info(f"Email updated for user {admin.username} to {email}")
+                if email_changed:
+                    user.email = email.lower()
                     changes_made = True
+                    logger.info(f"Email updated for user {user.username} to {email}")
                 
                 # Update password only if provided and non-empty
-                if password and password.strip():
-                    admin.set_password(password)
-                    update_session_auth_hash(request, admin)
-                    logger.info(f"Password updated for user {admin.username}, session updated")
+                if password_changed:
+                    user.set_password(password)
                     changes_made = True
+                    logger.info(f"Password updated for user {user.username}")
                 
-                if passport is not None:
-                    fs = FileSystemStorage()
-                    safe_filename = get_valid_filename(passport.name)
-                    filename = fs.save(safe_filename, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
-                    logger.info(f"Profile picture updated for user {admin.username}: {passport_url}")
+                # Update profile picture if uploaded
+                if profile_pic is not None:
+                    safe_filename = get_valid_filename(profile_pic.name)
+                    filename = default_storage.save(safe_filename, ContentFile(profile_pic.read()))
+                    profile_pic_url = default_storage.url(filename)
+                    user.profile_pic = profile_pic_url
                     changes_made = True
+                    logger.info(f"Profile picture updated for user {user.username}: {profile_pic_url}")
                 
                 # Update other fields if changed
-                if admin.first_name != first_name:
-                    admin.first_name = first_name
+                if user.first_name != first_name:
+                    user.first_name = first_name
                     changes_made = True
-                if admin.last_name != last_name:
-                    admin.last_name = last_name
+                if user.last_name != last_name:
+                    user.last_name = last_name
                     changes_made = True
-                if admin.address != address:
-                    admin.address = address
+                if user.address != address:
+                    user.address = address
                     changes_made = True
-                if admin.gender != gender:
-                    admin.gender = gender
+                if user.gender != gender:
+                    user.gender = gender
                     changes_made = True
                 
                 # Save only if changes were made
                 if changes_made:
-                    admin.save()
+                    user.save()
                     manager.save()
                     messages.success(request, "Profile updated successfully!")
-                    logger.info(f"Profile update successful for user {admin.username}")
-                    return redirect(reverse('manager_view_profile'))
+                    logger.info(f"Profile update successful for user {user.username}")
+                    # Redirect to login page if email or password changed, else to manager home
+                    if email_changed or password_changed:
+                        logout(request)
+                        logger.info(f"User {user.username} logged out due to email or password change")
+                        return redirect(reverse('login_page'))
+                    return redirect(reverse('manager_home'))
                 else:
-                    
-                    logger.info(f"No changes made for user {admin.username}")
-                    return redirect(reverse('manager_view_profile'))
+                    logger.info(f"No changes made for user {user.username}")
+                    return redirect(reverse('manager_home'))
             else:
                 messages.error(request, "Invalid Data Provided")
-                logger.warning(f"Invalid form data for user {request.user.username}")
+                logger.warning(f"Invalid form data for user {request.user.username}: {form.errors}")
                 return render(request, "manager_template/manager_view_profile.html", context)
         except Exception as e:
             logger.error(f"Error updating profile for user {request.user.username}: {str(e)}")
