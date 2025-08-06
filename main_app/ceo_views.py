@@ -103,6 +103,42 @@ def admin_home(request):
         clock_out__isnull=True  # Only those who are still clocked in
     ).distinct()
     total_clocked_in = today_attendances.count()
+    
+    # Get employees who haven't clocked in today
+    clocked_in_user_ids = today_attendances.values_list('user_id', flat=True)
+    employees_not_clocked_in = employees.exclude(id__in=clocked_in_user_ids)
+    managers_not_clocked_in = managers.exclude(id__in=clocked_in_user_ids)
+    
+    # Prepare the list of employees/managers not clocked in
+    not_clocked_in_list = []
+    for user in employees_not_clocked_in:
+        try:
+            employee = Employee.objects.get(admin=user)
+            not_clocked_in_list.append({
+                'id': user.id,
+                'name': f"{user.first_name} {user.last_name}",
+                'type': 'Employee',
+                'department': employee.department.name if employee.department else 'N/A'
+            })
+        except Employee.DoesNotExist:
+            pass
+            
+    for user in managers_not_clocked_in:
+        try:
+            manager = Manager.objects.get(admin=user)
+            not_clocked_in_list.append({
+                'id': user.id,
+                'name': f"{user.first_name} {user.last_name}",
+                'type': 'Manager',
+                'department': manager.department.name if manager.department else 'N/A'
+            })
+        except Manager.DoesNotExist:
+            pass
+
+    # Paginate not clocked in list
+    not_clocked_in_paginator = Paginator(not_clocked_in_list, 5)
+    not_clocked_in_page_number = request.GET.get('not_clocked_in_page', 1)
+    not_clocked_in_page_obj = not_clocked_in_paginator.get_page(not_clocked_in_page_number)
 
     break_entries = []
     break_queryset = Break.objects.filter(
@@ -172,6 +208,9 @@ def admin_home(request):
         'selected_department': selected_department,
         'start_date': start_date.strftime('%Y-%m-%d'),
         'end_date': end_date.strftime('%Y-%m-%d'),
+        'not_clocked_in_list': not_clocked_in_page_obj.object_list,
+        'not_clocked_in_page_obj': not_clocked_in_page_obj,
+        'total_not_clocked_in': len(not_clocked_in_list),
     }
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':

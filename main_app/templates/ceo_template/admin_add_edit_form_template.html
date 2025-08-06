@@ -1065,7 +1065,9 @@
             }
 
             if (uploadProfileBtn) {
-                uploadProfileBtn.addEventListener('click', function() {
+                uploadProfileBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     profilePicInput.click();
                 });
             }
@@ -1080,21 +1082,41 @@
 
             // Initialize Event Listeners
             if (profilePic) {
-    profilePic.addEventListener('click', (e) => {
-        e.preventDefault(); // Prevent any default behavior
-        e.stopPropagation(); // Stop event bubbling to avoid conflicts
-        if (hasProfilePic) {
-            openModal(profilePic.src);
-        } else {
-            // Ensure the file input exists before triggering click
-            if (profilePicInput) {
-                profilePicInput.click();
-            } else {
-                console.error('Profile picture input element not found.');
+                profilePic.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (hasProfilePic && profilePic.src !== placeholderImage) {
+                        openModal(profilePic.src);
+                    } else {
+                        if (profilePicInput) {
+                            profilePicInput.click();
+                        } else {
+                            console.error('Profile picture input element not found.');
+                        }
+                    }
+                });
             }
-        }
-    });
-}
+
+            // Add event listeners for overlay and label to trigger modal
+            const profilePicOverlay = document.querySelector('.profile-pic-overlay');
+            const profilePicLabel = document.querySelector('.profile-pic-label');
+            if (profilePicOverlay) {
+                profilePicOverlay.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (hasProfilePic && profilePic.src !== placeholderImage) {
+                        openModal(profilePic.src);
+                    }
+                });
+            }
+            if (profilePicLabel) {
+                profilePicLabel.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (hasProfilePic && profilePic.src !== placeholderImage) {
+                        openModal(profilePic.src);
+                    }
+                });
+            }
+
             document.querySelector('.modal-close').addEventListener('click', closeModal);
             profileModal.addEventListener('click', (e) => {
                 if (e.target === profileModal) {
