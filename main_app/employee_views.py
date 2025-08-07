@@ -1022,7 +1022,6 @@ def employee_fcmtoken(request):
     except Exception as e:
         return HttpResponse("False")
 
-logger = logging.getLogger(__name__)
 
 @login_required
 @csrf_exempt
@@ -1068,6 +1067,7 @@ def employee_view_attendance(request):
             logger.info(f"Records found: {all_records.count()}")
 
             daily_summaries = {}
+            current_time = now()
             for record in all_records:
                 date_str = record.date.strftime('%Y-%m-%d')
                 if date_str not in daily_summaries:
@@ -1091,6 +1091,24 @@ def employee_view_attendance(request):
                         day['total_worked'] += record.total_worked
                     day['records_count'] += 1
 
+                # Automatic clock out logic for ongoing sessions
+                if not record.clock_out and record.clock_in:
+                    if record.status == 'half_day':
+                        auto_clockout_duration = timedelta(hours=4, minutes=30)
+                    else:
+                        auto_clockout_duration = timedelta(hours=8)
+                    auto_clock_out = record.clock_in + auto_clockout_duration
+                    if current_time > auto_clock_out:
+                        record.clock_out = auto_clock_out
+                        record.notes = (
+                            f"{record.notes}\n" if record.notes else ""
+                        ) + f"Auto-logged out at {auto_clock_out.strftime('%I:%M %p')} on {current_time.date()} due to inactivity"
+                        record.total_worked = record.clock_out - record.clock_in
+                        regular_hours_limit = timedelta(hours=8)
+                        record.regular_hours = min(record.total_worked, regular_hours_limit)
+                        record.overtime_hours = max(timedelta(), record.total_worked - regular_hours_limit)
+                        record.save()
+
             json_data = []
             for date_str, day in sorted(daily_summaries.items(), reverse=True):
                 lunch_start = (datetime.combine(datetime.strptime(date_str, '%Y-%m-%d'), time(13, 0)))
@@ -1107,7 +1125,7 @@ def employee_view_attendance(request):
                     minutes = (total_seconds % 3600) // 60
                     total_worked_str = f"{hours}h {minutes}m"
                 elif not day['last_clock_out']:  # Ongoing session
-                    current_time = (now())
+                    current_time = now()
                     if day['first_clock_in'] and current_time > day['first_clock_in']:
                         worked = current_time - day['first_clock_in']
                         if day['first_clock_in'] <= lunch_start and current_time >= lunch_end:
@@ -1121,7 +1139,7 @@ def employee_view_attendance(request):
                     "date": date_str,
                     "status": day['status'],
                     "clock_in": day['first_clock_in'].strftime('%I:%M %p') if day['first_clock_in'] else '--',
-                    "clock_out": day['last_clock_out'].strftime('%I:%M %p') if day['last_clock_out'] else 'Ongoing',
+                    "clock_out": day['last_clock_out'].strftime('%I:%M %p') if day['last_clock_out'] else 'Ongoing' if not any(r.clock_out for r in all_records.filter(date=datetime.strptime(date_str, '%Y-%m-%d').date())) else 'Auto-Clocked Out',
                     "total_worked": total_worked_str,
                     "records_count": day['records_count']
                 })
