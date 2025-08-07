@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+FACE_SECRET_KEY = os.getenv('FACE_SECRET_KEY')
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 

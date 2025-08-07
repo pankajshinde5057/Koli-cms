@@ -195,7 +195,12 @@ urlpatterns = [
      path('all_employees_schedules/', views.all_employees_schedules, name='all_employees_schedules'),
 
      path('check-notifications/', views.check_new_notification, name='check_new_notification'),
+ 
+ 
+ 
+     path('register_face/', views.register_face, name='register_face'),
+     path('open-camera/', views.open_camera, name='open_camera'),
+     path('recognize_face/', views.recognize_face, name='recognize_face'),
     
-
-    
+   
 ]

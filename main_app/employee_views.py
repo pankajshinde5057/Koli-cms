@@ -854,12 +854,9 @@ def employee_apply_leave(request):
             messages.success(request, "Your leave request has been submitted.")
             
             # email content template
-            email_subject = f"New Leave Request from {employee.admin.get_full_name().title()}"
+            email_subject = f"Leave Request from {employee.admin.get_full_name().title()}"
             email_content = f"""
-            Dear Recipient,
-            
-            I would like to request leave with the following details:
-            
+
             Employee: {employee.admin.first_name.capitalize()} {employee.admin.last_name.capitalize()}
             Department: {employee.department.name.capitalize()}
             Leave Type: {leave_type}

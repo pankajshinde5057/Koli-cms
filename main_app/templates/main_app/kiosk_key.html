@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk Access</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Custom styles for better mobile experience */
+        @media (max-width: 576px) {
+            .custom-card {
+                width: 90%;
+                padding: 1.5rem;
+            }
+            body {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5 col-xl-4">
+                <div class="card shadow custom-card">
+                    <div class="card-body p-4">
+                        <h3 class="text-center mb-4">Enter Access Key</h3>
+                        
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert 
+                                        {% if message.tags == 'success' %}alert-success
+                                        {% elif message.tags == 'warning' %}alert-warning
+                                        {% elif message.tags == 'error' %}alert-danger
+                                        {% else %}alert-info
+                                        {% endif %}
+                                        alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="secretKeyInput" class="form-label visually-hidden">Secret Key</label>
+                                <input type="password" name="secret_key" class="form-control form-control-lg" 
+                                       id="secretKeyInput" placeholder="Secret Key" required>
+                                <div class="invalid-feedback">
+                                    Please provide a valid access key.
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <span class="d-none d-sm-inline">Open Camera</span>
+                                    <span class="d-inline d-sm-none">Open</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Optional form validation script -->
+    <script>
+        // Example starter JavaScript for disabling form submissions if there are invalid fields
+        (function () {
+            'use strict'
+            
+            // Fetch all the forms we want to apply custom Bootstrap validation styles to
+            var forms = document.querySelectorAll('form')
+            
+            // Loop over them and prevent submission
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+                        
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+    </script>
+</body>
+</html>
