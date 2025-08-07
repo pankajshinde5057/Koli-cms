@@ -77,6 +77,7 @@
                                         <th>SN</th>
                                         <th>Manager</th>
                                         <th>Department</th>
+                                        <th>ClockIn Type</th>
                                         <th>Clock In</th>
                                         <th>Clock Out</th>
                                         <th>Status</th>
@@ -94,6 +95,7 @@
                                                 <span class="text-muted">Not assigned</span>
                                             {% endif %}
                                         </td>
+                                        <td>{{ record.clock_in_type|title }}</td>
                                         <td>
                                             {% timezone "Asia/Kolkata" %}
                                                 {{ record.clock_in|time:"h:i A" }}
@@ -176,6 +178,7 @@
                                         <th>SN</th>
                                         <th>Employee</th>
                                         <th>Department</th>
+                                        <th>ClockIn Type</th>
                                         <th>Clock In</th>
                                         <th>Clock Out</th>
                                         <th>Status</th>
@@ -187,6 +190,7 @@
                                         <td>{{ forloop.counter0|add:employee_page_obj.start_index }}</td>
                                         <td>{{ record.user.first_name|capfirst }} {{ record.user.last_name|capfirst }}</td>
                                         <td>{{ record.user.employee.department.name }}</td>
+                                        <td>{{ record.clock_in_type|title }}</td>
                                         <td>
                                             {% timezone "Asia/Kolkata" %}
                                                 {{ record.clock_in|time:"h:i A" }}

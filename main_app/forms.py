@@ -573,3 +573,11 @@ class EditSalaryForm(FormSettings):
 #         if not description.strip():
 #             raise forms.ValidationError("Update description cannot be empty.")
 #         return description
+
+
+
+class FaceProfileForm(forms.ModelForm):
+    class Meta:
+        model = FaceProfile
+        fields = ['employee', 'face_image']
+

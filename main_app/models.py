@@ -11,6 +11,12 @@ from datetime import datetime, time,date
 from calendar import monthrange
 from django.db import transaction
 import logging
+import face_recognition
+import numpy as np
+from django.core.cache import caches
+cache = caches['default']
+
+
 
 class CustomUserManager(UserManager):
     def _create_user(self, email, password, **extra_fields):
@@ -560,6 +566,56 @@ class LeaveReportEmployee(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 
+
+class FaceProfile(models.Model):
+    employee = models.OneToOneField(CustomUser,on_delete=models.CASCADE)
+    face_image = models.ImageField(upload_to="face_profiles/")
+    face_encoding = models.BinaryField(null=True, blank=True) # store encoded numpy array(store 128-dim face embedding)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        return self.employee.first_name + " " + self.employee.last_name
+
+    def save(self,*args,**kwargs):
+        # auto encode face when saving
+        super().save(*args,**kwargs)
+
+        if self.face_image and not self.face_encoding:
+            self.encode_face()
+            cache.delete('face_encodings')
+            cache.delete('face_users')
+
+
+    def encode_face(self):
+        # convert uploaded face_image to encoding and save
+        try:
+            image = face_recognition.load_image_file(self.face_image.path)
+            encodings = face_recognition.face_encodings(image)
+
+            if encodings:
+                self.face_encoding = encodings[0].tobytes() # store as binary
+                self.save()
+        except Exception as e:
+            print(f"Face encoding failed: {e}")
+
+    @classmethod
+    def get_all_encodings(cls):
+        profiles = cls.objects.select_related('employee').all()
+        encodings = []
+        users = [] 
+
+        for profile in profiles:
+            if profile.face_encoding:
+                encodings.append(np.frombuffer(profile.face_encoding, dtype=np.float64))
+                users.append({
+                    'id': profile.employee.id,
+                    'name': profile.employee.get_full_name(),
+                    'email': profile.employee.email
+                })
+        return encodings, users
+
+
 class AttendanceRecord(models.Model):
     STATUS_CHOICES = [
         ('present', 'Present'),
@@ -583,6 +639,7 @@ class AttendanceRecord(models.Model):
     overtime_hours = models.DurationField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    clock_in_type = models.CharField(blank=True,null=True,default="manual")
 
     def __str__(self):   
         return f"{self.user} - {self.date}"
@@ -1202,3 +1259,5 @@ class EarylyClockOutRequest(models.Model):
         if self.status in ['approved', 'denied'] and not self.reviewed_at:
             self.reviewed_at = timezone.now()
             super().save(update_fields=['reviewed_at'])
+
+    

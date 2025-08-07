@@ -1,0 +1,60 @@
+<!-- templates/face_registration.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register Your Face</title>
+    <style>
+        #camera { width: 640px; margin: 20px auto; }
+        #video { border: 2px solid #333; }
+        #canvas { display: none; }
+        button { padding: 10px 20px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;">Face Registration</h1>
+    
+    <div id="camera">
+        <video id="video" width="640" height="480" autoplay></video>
+        <button id="capture">Capture Photo</button>
+        <canvas id="canvas" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture');
+        const ctx = canvas.getContext('2d');
+
+        // Access camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => video.srcObject = stream)
+            .catch(err => console.error("Camera error:", err));
+
+        // Capture image
+        captureBtn.addEventListener('click', () => {
+            // Draw video frame to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to base64
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Send to server
+            fetch('/register_face/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: `employee_id={{ request.user.id }}&image=${encodeURIComponent(imageData)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    alert("Face registered successfully!");
+                    window.location.href = "/success/";
+                }
+            });
+        });
+    </script>
+</body>
+</html>

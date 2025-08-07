@@ -2,15 +2,47 @@
 {% load static %}
 {% block custom_css %}
   <style>
-      .invalid{
-        font-style: italic;
-        font-weight: bold;
-        color: red;
+      .invalid {
+          font-style: italic;
+          font-weight: bold;
+          color: red;
       }
-      .valid{
-        font-style: italic;
-        font-weight: bold;
-        color: green;
+      .valid {
+          font-style: italic;
+          font-weight: bold;
+          color: green;
+      }
+      .camera-container {
+          position: relative;
+          width: 400px;
+          height: 300px;
+          margin: 0 auto;
+      }
+      .face-circle {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          border: 3px solid #28a745;
+          z-index: 10;
+          pointer-events: none;
+      }
+      .face-preview {
+          width: 200px;
+          height: 200px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid #ddd;
+          display: none;
+          margin: 0 auto;
+      }
+      .status-message {
+          font-size: 1rem;
+          margin: 10px 0;
+          min-height: 20px;
       }
   </style>
 {% endblock custom_css %}
@@ -26,7 +58,10 @@
                 <div class="card card-primary">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
-                            <h3 class="card-title mb-0">{{ page_title }}</h3>
+                            <!-- <h3 class="card-title mb-0">{{ page_title }}</h3> -->
+                            <button type="button" class="btn btn-warning mb-3" data-toggle="modal" data-target="#faceRegistrationModal">
+                            <i class="fas fa-camera"></i> Register Face
+                            </button>
                             <a href="javascript:history.back()" > ← Back</a>
                         </div>
                     </div>
@@ -37,6 +72,51 @@
         </div>
     </div>
 </section>
+
+<!-- Manual Face Registration Modal -->
+<div class="modal fade" id="faceRegistrationModal" tabindex="-1" role="dialog" aria-labelledby="faceModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="faceModalLabel">Face Registration</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <p class="instruction-text">Position your face within the circle and click Capture</p>
+                    
+                    <div class="camera-container">
+                        <video id="faceVideo" width="400" height="300" autoplay class="border rounded"></video>
+                        <div class="face-circle"></div>
+                    </div>
+                    
+                    <img id="facePreview" class="face-preview" alt="Captured face preview">
+                    
+                    <div id="faceStatus" class="status-message">
+                        Center your face in the circle before capturing
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button id="captureBtn" class="btn btn-primary">
+                            <i class="fas fa-camera"></i> Capture
+                        </button>
+                        <button id="registerBtn" class="btn btn-success" disabled>
+                            <i class="fas fa-save"></i> Register
+                        </button>
+                        <button id="retryBtn" class="btn btn-warning" style="display: none;">
+                            <i class="fas fa-redo"></i> Retry
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 
 {% block custom_js %}
@@ -153,6 +233,131 @@
                     $("<span class='alert alert-warning'>Server Could Not Process This</span>").insertAfter("#id_email");
                 });
             }
+        });
+    });
+
+
+    // Manual Face Registration Logic
+    $(document).ready(function() {
+        const video = document.getElementById('faceVideo');
+        const facePreview = document.getElementById('facePreview');
+        const captureBtn = document.getElementById('captureBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const faceStatus = document.getElementById('faceStatus');
+        let stream = null;
+        let capturedFaceBlob = null;
+        let tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 400;
+        tempCanvas.height = 300;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        // Start camera when modal opens
+        $('#faceRegistrationModal').on('shown.bs.modal', function() {
+            // Reset UI
+            facePreview.style.display = 'none';
+            video.style.display = 'block';
+            registerBtn.disabled = true;
+            retryBtn.style.display = 'none';
+            captureBtn.style.display = 'inline-block';
+            capturedFaceBlob = null;
+            faceStatus.innerHTML = 'Center your face in the circle before capturing';
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user' 
+                } 
+            })
+            .then(function(s) {
+                stream = s;
+                video.srcObject = stream;
+            })
+            .catch(function(err) {
+                faceStatus.innerHTML = '<span class="text-danger">Camera error: ' + err.message + '</span>';
+            });
+        });
+
+        // Stop camera when modal closes
+        $('#faceRegistrationModal').on('hidden.bs.modal', function() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Capture face manually
+        captureBtn.addEventListener('click', function() {
+            // Draw video frame to canvas
+            tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Create circular mask
+            tempCtx.globalCompositeOperation = 'destination-in';
+            tempCtx.beginPath();
+            tempCtx.arc(tempCanvas.width/2, tempCanvas.height/2, 100, 0, Math.PI * 2);
+            tempCtx.fill();
+            tempCtx.globalCompositeOperation = 'source-over';
+            
+            // Convert to image and display preview
+            facePreview.src = tempCanvas.toDataURL('image/jpeg', 0.9);
+            facePreview.style.display = 'block';
+            video.style.display = 'none';
+            
+            // Convert to blob for upload
+            tempCanvas.toBlob(function(blob) {
+                capturedFaceBlob = blob;
+                registerBtn.disabled = false;
+                captureBtn.style.display = 'none';
+                retryBtn.style.display = 'inline-block';
+                faceStatus.innerHTML = '<span class="text-success">Face captured! Review and register.</span>';
+            }, 'image/jpeg', 0.9);
+        });
+
+        // Retry capturing
+        retryBtn.addEventListener('click', function() {
+            facePreview.style.display = 'none';
+            video.style.display = 'block';
+            registerBtn.disabled = true;
+            captureBtn.style.display = 'inline-block';
+            retryBtn.style.display = 'none';
+            capturedFaceBlob = null;
+            faceStatus.innerHTML = 'Center your face in the circle before capturing';
+        });
+
+        // Register face
+        registerBtn.addEventListener('click', function() {
+            if (!capturedFaceBlob) return;
+            
+            faceStatus.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Registering face data...</span>';
+            registerBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('email', '{{ form.instance.admin.email }}');
+            formData.append('face_image', capturedFaceBlob, 'face.jpg');
+            
+            $.ajax({
+                url: '{% url "register_face" %}',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                success: function(data) {
+                    if (data.success) {
+                        faceStatus.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Face registered successfully!</span>';
+                        setTimeout(function() {
+                            $('#faceRegistrationModal').modal('hide');
+                        }, 1500);
+                    } else {
+                        faceStatus.innerHTML = '<span class="text-danger">Error: ' + (data.error || "Registration failed") + '</span>';
+                        registerBtn.disabled = false;
+                    }
+                },
+                error: function(xhr) {
+                    faceStatus.innerHTML = '<span class="text-danger">Error: ' + (xhr.responseJSON?.error || "Server error") + '</span>';
+                    registerBtn.disabled = false;
+                }
+            });
         });
     });
 </script>

@@ -8,6 +8,10 @@ class LoginCheckMiddleWare(MiddlewareMixin):
     def process_view(self, request, view_func, view_args, view_kwargs):
         modulename = view_func.__module__
         user = request.user # Who is the current user ?
+
+        if request.path == reverse('open_camera') or request.path == reverse('recognize_face'):
+            return None # allow access 
+        
         if user.is_authenticated:
             if user.user_type == '1': # Is it the CEO/Admin
                 if modulename == 'main_app.employee_views':
