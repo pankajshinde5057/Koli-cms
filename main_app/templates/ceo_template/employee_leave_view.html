@@ -100,6 +100,10 @@
         .toast-notification .close:hover {
             opacity: 1;
         }
+        /* Card header buttons */
+        .card-header-buttons {
+            margin-left: auto;
+        }
     </style>
 {% endblock %}
 
@@ -109,13 +113,22 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="card card-primary">
-                    <div class="card-header">
-                        <!-- <h3 class="card-title">{{ page_title }}</h3> -->
+                    <div class="card-header d-flex align-items-center">
+                        {% comment %} <h3 class="card-title">{{ page_title }}</h3> {% endcomment %}
+                        <div class="card-header-buttons">
+                            <button class="btn btn-warning btn-sm mr-2" id="delete-selected-btn" disabled>
+                                <i class="fas fa-trash"></i> Delete Selected
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="delete-all-btn">
+                                <i class="fas fa-trash-alt"></i> Delete All
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body table-responsive p-0" id="leave-table-container">
                         <table class="table table-bordered text-nowrap">
                             <thead>
                                 <tr>
+                                    <th><input type="checkbox" id="select-all"></th>
                                     <th>SN</th>
                                     <th>Employee</th>
                                     <th>Division</th>
@@ -129,6 +142,7 @@
                             <tbody>
                                 {% for leave in allLeave %}
                                 <tr>
+                                    <td><input type="checkbox" class="leave-checkbox" value="{{ leave.id }}"></td>
                                     <td data-title="SN">{{ forloop.counter0|add:allLeave.start_index }}</td>
                                     <td data-title="Employee">{{ leave.employee.admin.first_name|capfirst }} {{ leave.employee.admin.last_name|capfirst }}</td>
                                     <td data-title="Division">{{ leave.employee.division|capfirst }}</td>
@@ -169,7 +183,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="8" class="text-center">No leave requests found.</td>
+                                    <td colspan="9" class="text-center">No leave requests found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -347,10 +361,104 @@ $(document).ready(function() {
                 var $newContent = $temp.find('#leave-table-container').html();
                 $('#leave-table-container').html($newContent);
                 window.history.pushState({}, '', '?page=' + page);
+                $('#select-all').prop('checked', false);
+                $('#delete-selected-btn').prop('disabled', true);
             },
             error: function(xhr, status, error) {
                 console.error('Pagination AJAX failed:', error);
                 showToast('Failed to load page: ' + error, 'error');
+            }
+        });
+    });
+
+    // Handle select all checkbox
+    $(document).on('change', '#select-all', function() {
+        $('.leave-checkbox').prop('checked', $(this).prop('checked'));
+        $('#delete-selected-btn').prop('disabled', $('.leave-checkbox:checked').length === 0);
+    });
+
+    // Handle individual checkbox
+    $(document).on('change', '.leave-checkbox', function() {
+        $('#delete-selected-btn').prop('disabled', $('.leave-checkbox:checked').length === 0);
+        $('#select-all').prop('checked', $('.leave-checkbox:not(:checked)').length === 0);
+    });
+
+    // Handle delete selected
+    $(document).on('click', '#delete-selected-btn', function() {
+        if (!confirm('Are you sure you want to delete selected leave requests?')) return;
+        
+        var selectedIds = $('.leave-checkbox:checked').map(function() {
+            return $(this).val();
+        }).get();
+
+        if (selectedIds.length === 0) {
+            showToast('No leave requests selected.', 'error');
+            return;
+        }
+
+        $.ajax({
+            url: "{% url 'view_employee_leave' %}",
+            type: 'POST',
+            data: {
+                action: 'delete_selected',
+                ids: JSON.stringify(selectedIds), // Stringify the array to ensure proper transmission
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                $('#delete-selected-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Deleting...');
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    showToast(response.message || 'Selected leave requests deleted successfully.', 'success');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
+                } else {
+                    showToast(response.message || 'Failed to delete leave requests.', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Delete selected AJAX failed:', error);
+                showToast('An error occurred while deleting leave requests.', 'error');
+            },
+            complete: function() {
+                $('#delete-selected-btn').prop('disabled', false).html('<i class="fas fa-trash"></i> Delete Selected');
+            }
+        });
+    });
+
+    // Handle delete all
+    $(document).on('click', '#delete-all-btn', function() {
+        if (!confirm('Are you sure you want to delete all leave requests? This action cannot be undone.')) return;
+
+        $.ajax({
+            url: "{% url 'view_employee_leave' %}",
+            type: 'POST',
+            data: {
+                action: 'delete_all',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            dataType: 'json',
+            beforeSend: function() {
+                $('#delete-all-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Deleting...');
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    showToast(response.message || 'All leave requests deleted successfully.', 'success');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 3000);
+                } else {
+                    showToast(response.message || 'Failed to delete all leave requests.', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Delete all AJAX failed:', error);
+                showToast('An error occurred while deleting all leave requests.', 'error');
+            },
+            complete: function() {
+                $('#delete-all-btn').prop('disabled', false).html('<i class="fas fa-trash-alt"></i> Delete All');
             }
         });
     });

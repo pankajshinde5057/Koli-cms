@@ -25,6 +25,9 @@ import logging
 from django.utils.text import get_valid_filename
 from django.contrib.auth import get_user_model 
 from .utils.email_utils import send_emails_in_background
+from django.contrib.auth import logout
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
 
 LOCATION_CHOICES = (
@@ -709,7 +712,6 @@ def update_attendance(request):
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
-
 @login_required
 @csrf_exempt
 def get_employee_attendance(request):
@@ -842,6 +844,17 @@ def get_employee_attendance(request):
                         date__range=(start_date, end_date)
                     ).values_list('date', flat=True))
 
+                # Add 2nd and 4th Saturdays and all Sundays to holiday_dates
+                current_date = start_date
+                while current_date <= end_date:
+                    weekday = current_date.weekday()
+                    is_sunday = weekday == 6
+                    is_saturday = weekday == 5
+                    is_2nd_or_4th_saturday = is_saturday and ((current_date.day - 1) // 7) in [1, 3]
+                    if is_sunday or is_2nd_or_4th_saturday:
+                        holiday_dates.add(current_date)
+                    current_date += timedelta(days=1)
+
             except ValueError as e:
                 return JsonResponse({"error": "Invalid year or month format"}, status=400)
 
@@ -911,245 +924,192 @@ def get_employee_attendance(request):
                 # Combine and deduplicate users
                 users = list(set(employee_users + manager_users))
 
-           # Inside the get_manager_and_employee_attendance view, replace the user stats loop (starting at "for user in users:") with this:
-        for user in users:
-            employee_for_user = Employee.objects.filter(admin=user).first()
-            manager_for_user = Manager.objects.filter(admin=user).first()
-            joining_date = employee_for_user.date_of_joining if employee_for_user else (manager_for_user.date_of_joining if manager_for_user else today)
-            first_clock_in = AttendanceRecord.objects.filter(
-                user=user,
-                status__in=['present', 'late', 'half_day', 'leave']
-            ).order_by('date').first()
-            first_clock_in_date = first_clock_in.date if first_clock_in else None
+            for user in users:
+                employee_for_user = Employee.objects.filter(admin=user).first()
+                manager_for_user = Manager.objects.filter(admin=user).first()
+                joining_date = employee_for_user.date_of_joining if employee_for_user else (manager_for_user.date_of_joining if manager_for_user else today)
+                first_clock_in = AttendanceRecord.objects.filter(
+                    user=user,
+                    status__in=['present', 'late', 'half_day', 'leave']
+                ).order_by('date').first()
+                first_clock_in_date = first_clock_in.date if first_clock_in else None
 
-            user_stats[user.id] = {
-                'joining_date': joining_date,
-                'first_clock_in_date': first_clock_in_date,
-                'present_days': 0,
-                'late_days': 0,
-                'half_days': 0,
-                'absent_days': 0,
-                'available_leaves': 0.0,
-                'leave_history': [],
-                'yearly_total_allocated_leaves': 0.0,
-                'yearly_total_used_leaves': 0.0,
-                'monthly_and_weekly_available_leaves': 0.0,
-                'carried_forward_leaves': 0.0
-            }
+                user_stats[user.id] = {
+                    'joining_date': joining_date,
+                    'first_clock_in_date': first_clock_in_date,
+                    'present_days': 0,
+                    'late_days': 0,
+                    'half_days': 0,
+                    'absent_days': 0,
+                    'available_leaves': 0.0,
+                    'leave_history': [],
+                    'yearly_total_allocated_leaves': 0.0,
+                    'yearly_total_used_leaves': 0.0,
+                    'monthly_and_weekly_available_leaves': 0.0
+                }
 
-            # Calculate leave balance
-            if joining_date <= end_date and first_clock_in_date:
-                joining_year = joining_date.year
-                joining_month = joining_date.month
-                year_for_calculation = int(year) if year else current_year
-
-                # Initialize leave variables
-                monthly_available_leaves = 0.0
-                carried_forward_leaves = 0.0
-                yearly_total_allocated_leaves = 0.0
-                monthly_and_weekly_available_leaves = 0.0
-
-                logger.info(f"Calculating leaves for user {user.id}, year {year_for_calculation}, joining_date {joining_date}")
-
-                if year and not month and not week:
-                    # Yearly view: Allocate 1 leave per month from joining month to December
-                    start_month = joining_month if year_for_calculation == joining_year else 1
-                    end_month = 12
-                    monthly_available_leaves = max(0, end_month - start_month + 1)
-                    previous_year = year_for_calculation - 1
-                    previous_leave_balance = LeaveReportEmployee.objects.filter(
-                        employee=employee_for_user,
-                        start_date__year=previous_year,
-                        status=1
-                    ).last() if employee_for_user else LeaveReportManager.objects.filter(
-                        manager=manager_for_user,
-                        start_date__year=previous_year,
-                        status=1
-                    ).last()
-                    carried_forward_leaves = previous_leave_balance.available_leaves if previous_leave_balance and hasattr(previous_leave_balance, 'available_leaves') and previous_leave_balance.available_leaves > 0 else 0.0
-                    yearly_total_allocated_leaves = monthly_available_leaves + carried_forward_leaves
-                    monthly_and_weekly_available_leaves = yearly_total_allocated_leaves
-                    logger.info(f"Yearly view: start_month={start_month}, end_month={end_month}, monthly_available_leaves={monthly_available_leaves}, carried_forward_leaves={carried_forward_leaves}, yearly_total_allocated_leaves={yearly_total_allocated_leaves}")
-                else:
-                    # Month/week view: Allocate 1 leave if joining_date is before or on end_date
-                    monthly_available_leaves = 1.0 if joining_date <= end_date else 0.0
-                    previous_year = year_for_calculation - 1
-                    previous_leave_balance = LeaveReportEmployee.objects.filter(
-                        employee=employee_for_user,
-                        start_date__year=previous_year,
-                        status=1
-                    ).last() if employee_for_user else LeaveReportManager.objects.filter(
-                        manager=manager_for_user,
-                        start_date__year=previous_year,
-                        status=1
-                    ).last()
-                    carried_forward_leaves = previous_leave_balance.available_leaves if previous_leave_balance and hasattr(previous_leave_balance, 'available_leaves') and previous_leave_balance.available_leaves > 0 else 0.0
-                    yearly_total_allocated_leaves = monthly_available_leaves + carried_forward_leaves
-                    monthly_and_weekly_available_leaves = monthly_available_leaves
-                    logger.info(f"Month/week view: monthly_available_leaves={monthly_available_leaves}, carried_forward_leaves={carried_forward_leaves}, yearly_total_allocated_leaves={yearly_total_allocated_leaves}")
-
-                total_used = 0.0
-                available_carried_forward = carried_forward_leaves
-                monthly_leave_counted = {}
-                leave_balances = LeaveReportEmployee.objects.filter(
-                    employee=employee_for_user,
-                    status=1,
-                    start_date__year=year_for_calculation,
-                    start_date__gte=joining_date,
-                    start_date__lte=end_date,
-                    end_date__gte=start_date
-                ).order_by('start_date') if employee_for_user else LeaveReportManager.objects.filter(
-                    manager=manager_for_user,
-                    status=1,
-                    start_date__year=year_for_calculation,
-                    start_date__gte=joining_date,
-                    start_date__lte=end_date,
-                    end_date__gte=start_date
-                ).order_by('start_date')
-
-                
-                for leave in leave_balances:
-                    leave_start = max(leave.start_date, start_date, joining_date)
-                    leave_end = min(leave.end_date, end_date)
-                    leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
-                    current_date = leave_start
-                    while current_date <= leave_end:
-                        if current_date not in weekend_days and current_date >= joining_date:
-                            month_key = current_date.month
-                            if month_key not in monthly_leave_counted:
-                                user_stats[user.id]['leave_history'].append({
-                                    'date': current_date,
-                                    'leave_amount': leave_amount_per_day,
-                                    'leave_id': leave.id,
-                                    'leave_type': leave.leave_type,
-                                    'is_free_leave': True
-                                })
-                                total_used += leave_amount_per_day
-                                monthly_leave_counted[month_key] = True
-                            elif available_carried_forward >= leave_amount_per_day:
-                                user_stats[user.id]['leave_history'].append({
-                                    'date': current_date,
-                                    'leave_amount': leave_amount_per_day,
-                                    'leave_id': leave.id,
-                                    'leave_type': leave.leave_type,
-                                    'is_carried_forward': True
-                                })
-                                total_used += leave_amount_per_day
-                                available_carried_forward -= leave_amount_per_day
-                              
-                            else:
-                                user_stats[user.id]['leave_history'].append({
-                                    'date': current_date,
-                                    'leave_amount': leave_amount_per_day,
-                                    'leave_id': leave.id,
-                                    'leave_type': leave.leave_type,
-                                    'is_ignored': True
-                                })
-                               
-                        current_date += timedelta(days=1)
-
-                user_stats[user.id]['leave_history'].sort(key=lambda x: x['date'])
-                user_stats[user.id]['yearly_total_allocated_leaves'] = yearly_total_allocated_leaves
-                user_stats[user.id]['yearly_total_used_leaves'] = total_used
-                user_stats[user.id]['available_leaves'] = max(0, yearly_total_allocated_leaves - total_used)
-                user_stats[user.id]['monthly_and_weekly_available_leaves'] = max(0, monthly_and_weekly_available_leaves - total_used)
-                user_stats[user.id]['carried_forward_leaves'] = carried_forward_leaves
-                total_available_leaves += user_stats[user.id]['available_leaves']
-                all_yearly_total_allocated_leaves += user_stats[user.id]['yearly_total_allocated_leaves']
-                all_monthly_and_weekly_available_leaves += user_stats[user.id]['monthly_and_weekly_available_leaves']
-               
-    
-                # Process leave sufficiency
-                available_leaves = monthly_and_weekly_available_leaves + carried_forward_leaves
-                for entry in user_stats[user.id]['leave_history']:
-                    leave_amount = entry['leave_amount']
-                    entry['available_before'] = available_leaves
-                    if available_leaves >= leave_amount and not entry.get('is_ignored', False):
-                        available_leaves -= leave_amount
-                        entry['was_sufficient'] = True
+                # Calculate yearly and monthly/weekly leave balance from joining date
+                if joining_date <= end_date and first_clock_in_date:
+                    joining_year = joining_date.year
+                    joining_month = joining_date.month
+                    year_for_calculation = int(year) if year else current_year
+                    if year_for_calculation == joining_year and year and not month and not week:
+                        # For yearly view in joining year, prorate 12 leaves based on remaining months
+                        months_remaining = 12 - joining_month + 1
+                        yearly_total_allocated_leaves = round((12 * months_remaining) / 12, 1)
+                        monthly_and_weekly_allocated_leaves = yearly_total_allocated_leaves
+                    elif year_for_calculation == joining_year:
+                        # For month/week filters in joining year
+                        start_month = joining_month
+                        end_month = 12 if year_for_calculation < current_year else current_month
+                        if year_for_calculation == current_year and joining_date > datetime(current_year, current_month, 1).date():
+                            end_month = current_month
+                        yearly_total_allocated_leaves = round((13 * (end_month - start_month + 1)) / 12, 1)
+                        if month or week:
+                            monthly_and_weekly_allocated_leaves = 1.0 if joining_date <= start_date else 0.0
+                        else:
+                            monthly_and_weekly_allocated_leaves = yearly_total_allocated_leaves
                     else:
-                        entry['was_sufficient'] = False
-                    entry['available_after'] = max(0, available_leaves)
+                        yearly_total_allocated_leaves = 12.0
+                        monthly_and_weekly_allocated_leaves = 1.0 if (month or week) and joining_date <= start_date else yearly_total_allocated_leaves
+                    total_used = 0.0
 
-            date_status_map = {}
-            for record in queryset:
-                user_id = record.user.id
-                if user_id not in date_status_map:
-                    date_status_map[user_id] = {}
-                date_status_map[user_id][record.date] = record.status
+                    if employee_for_user:
+                        leave_balances = LeaveReportEmployee.objects.filter(
+                            employee=employee_for_user,
+                            status=1,
+                            start_date__year=year_for_calculation,
+                            start_date__gte=joining_date
+                        ).order_by('start_date')
+                        for leave in leave_balances:
+                            leave_start = max(leave.start_date, start_date, joining_date)
+                            leave_end = min(leave.end_date, end_date)
+                            leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
+                            current_date = leave_start
+                            while current_date <= leave_end:
+                                if current_date not in weekend_days and current_date >= joining_date:
+                                    user_stats[user.id]['leave_history'].append({
+                                        'date': current_date,
+                                        'leave_amount': leave_amount_per_day,
+                                        'leave_id': leave.id,
+                                        'leave_type': leave.leave_type
+                                    })
+                                    total_used += leave_amount_per_day
+                                current_date += timedelta(days=1)
+                    elif manager_for_user:
+                        leave_balances = LeaveReportManager.objects.filter(
+                            manager=manager_for_user,
+                            status=1,
+                            start_date__year=year_for_calculation,
+                            start_date__gte=joining_date
+                        ).order_by('start_date')
+                        for leave in leave_balances:
+                            leave_start = max(leave.start_date, start_date, joining_date)
+                            leave_end = min(leave.end_date, end_date)
+                            leave_amount_per_day = 1.0 if leave.leave_type == 'Full-Day' else 0.5
+                            current_date = leave_start
+                            while current_date <= leave_end:
+                                if current_date not in weekend_days and current_date >= joining_date:
+                                    user_stats[user.id]['leave_history'].append({
+                                        'date': current_date,
+                                        'leave_amount': leave_amount_per_day,
+                                        'leave_id': leave.id,
+                                        'leave_type': leave.leave_type
+                                    })
+                                    total_used += leave_amount_per_day
+                                current_date += timedelta(days=1)
 
-            # Process attendance and leave
-            current_date = max(start_date, joining_date)
-            if not first_clock_in_date or today < first_clock_in_date:
-                user_stats[user.id]['absent_days'] = total_working_days
-                continue
+                    user_stats[user.id]['leave_history'].sort(key=lambda x: x['date'])
+                    user_stats[user.id]['yearly_total_allocated_leaves'] = yearly_total_allocated_leaves
+                    user_stats[user.id]['yearly_total_used_leaves'] = total_used
+                    user_stats[user.id]['available_leaves'] = max(0, yearly_total_allocated_leaves - total_used)  # Ensure available_leaves does not go negative
+                    user_stats[user.id]['monthly_and_weekly_available_leaves'] = max(0, monthly_and_weekly_allocated_leaves - total_used) if (month or week or year) else user_stats[user.id]['available_leaves']
+                    total_available_leaves += user_stats[user.id]['available_leaves']
+                    all_yearly_total_allocated_leaves += user_stats[user.id]['yearly_total_allocated_leaves']
+                    all_monthly_and_weekly_available_leaves += user_stats[user.id]['monthly_and_weekly_available_leaves']
+                    print(max(0, yearly_total_allocated_leaves - total_used))
+                    # Process leave sufficiency
+                    available_leaves = yearly_total_allocated_leaves
+                    for entry in user_stats[user.id]['leave_history']:
+                        leave_amount = entry['leave_amount']
+                        leave_id = entry['leave_id']
+                        leave_type = entry['leave_type']
+                        entry['available_before'] = available_leaves
+                        if available_leaves >= leave_amount:
+                            available_leaves -= leave_amount
+                            entry['was_sufficient'] = True
+                        else:
+                            available_leaves = max(0, available_leaves - leave_amount)
+                            entry['was_sufficient'] = False
+                        user_stats[user.id]['available_leaves'] = max(0, available_leaves)  # Ensure available_leaves does not go negative
 
-            while current_date <= end_date:
-                if current_date in weekend_days or current_date in holiday_dates:
-                    current_date += timedelta(days=1)
+                date_status_map = {}
+                for record in queryset:
+                    user_id = record.user.id
+                    if user_id not in date_status_map:
+                        date_status_map[user_id] = {}
+                    date_status_map[user_id][record.date] = record.status
+
+                # Process attendance and leave for present/absent days
+                current_date = max(start_date, joining_date)
+                if not first_clock_in_date or today < first_clock_in_date:
+                    user_stats[user.id]['absent_days'] = total_working_days
                     continue
-                if current_date < joining_date:
-                    user_stats[user.id]['absent_days'] += 1.0
-                    current_date += timedelta(days=1)
-                    continue
-                if current_date < first_clock_in_date:
-                    user_stats[user.id]['absent_days'] += 1.0
-                    current_date += timedelta(days=1)
-                    continue
 
-                user_date_status = date_status_map.get(user.id, {}).get(current_date)
-                leave_entry = next((entry for entry in user_stats[user.id]['leave_history'] if entry['date'] == current_date), None)
+                while current_date <= end_date:
+                    if current_date in weekend_days:
+                        current_date += timedelta(days=1)
+                        continue
+                    if current_date < joining_date:
+                        current_date += timedelta(days=1)
+                        continue
 
-                if leave_entry:
-                    leave_amount = leave_entry['leave_amount']
-                    leave_type = leave_entry['leave_type']
-                    was_sufficient = leave_entry.get('was_sufficient', False)
-                    if leave_type == 'Full-Day':
+                    user_date_status = date_status_map.get(user.id, {}).get(current_date)
+                    leave_entry = next((entry for entry in user_stats[user.id]['leave_history'] if entry['date'] == current_date), None)
+
+                    if leave_entry:
+                        leave_amount = leave_entry['leave_amount']
+                        leave_id = leave_entry['leave_id']
+                        leave_type = leave_entry['leave_type']
+                        was_sufficient = leave_entry.get('was_sufficient', False)
+                        if leave_type == 'Half-Day':
+                            if was_sufficient:
+                                user_stats[user.id]['present_days'] += 0.5
+                                user_stats[user.id]['half_days'] += 1
+                                user_stats[user.id]['absent_days'] += 0.5
+                            else:
+                                user_stats[user.id]['absent_days'] += 1.0
+                                user_stats[user.id]['half_days'] += 1
+                        else:  # Full-Day
+                            if was_sufficient:
+                                user_stats[user.id]['present_days'] += 1.0
+                            else:
+                                user_stats[user.id]['absent_days'] += 1.0
+                    elif user_date_status == 'leave':
+                        was_sufficient = user_stats[user.id]['available_leaves'] >= 1.0
                         if was_sufficient:
                             user_stats[user.id]['present_days'] += 1.0
                         else:
                             user_stats[user.id]['absent_days'] += 1.0
-                    else:  # Half-Day
-                        if was_sufficient:
-                            user_stats[user.id]['present_days'] += 0.5
-                            user_stats[user.id]['half_days'] += 1
-                            user_stats[user.id]['absent_days'] += 0.5
-                           
-                        else:
-                            user_stats[user.id]['absent_days'] += 1.0
-                            user_stats[user.id]['half_days'] += 1
-                          
-                elif user_date_status == 'leave':
-                    if user_stats[user.id]['monthly_and_weekly_available_leaves'] >= 1.0 and not (year and not month and not week):
-                        user_stats[user.id]['present_days'] += 1.0
-                        user_stats[user.id]['monthly_and_weekly_available_leaves'] = max(0, user_stats[user.id]['monthly_and_weekly_available_leaves'] - 1.0)
-                        user_stats[user.id]['available_leaves'] = max(0, user_stats[user.id]['available_leaves'] - 1.0)
-                       
-                    else:
-                        user_stats[user.id]['absent_days'] += 1.0
-                        
-                elif user_date_status == 'present':
-                    user_stats[user.id]['present_days'] += 1
-                 
-                elif user_date_status == 'late':
-                    user_stats[user.id]['present_days'] += 1
-                    user_stats[user.id]['late_days'] += 1
-                  
-                elif user_date_status == 'half_day':
-                    user_stats[user.id]['present_days'] += 1
-                    user_stats[user.id]['half_days'] += 1
-                    user_stats[user.id]['absent_days'] += 0.5
-                  
-                elif current_date <= today:
-                    user_stats[user.id]['absent_days'] += 1.0
-                  
+                    elif user_date_status == 'present':
+                        user_stats[user.id]['present_days'] += 1
+                    elif user_date_status == 'late':
+                        user_stats[user.id]['present_days'] += 1
+                        user_stats[user.id]['late_days'] += 1
+                    elif user_date_status == 'half_day':
+                        user_stats[user.id]['present_days'] += 1
+                        user_stats[user.id]['half_days'] += 1
+                        user_stats[user.id]['absent_days'] += 0.5
+                    elif current_date <= today:
+                        user_stats[user.id]['absent_days'] += 1
 
-                current_date += timedelta(days=1)
+                    current_date += timedelta(days=1)
 
-            present_days += user_stats[user.id]['present_days']
-            late_days += user_stats[user.id]['late_days']
-            half_days += user_stats[user.id]['half_days']
-            absent_days += user_stats[user.id]['absent_days']
+                present_days += user_stats[user.id]['present_days']
+                late_days += user_stats[user.id]['late_days']
+                half_days += user_stats[user.id]['half_days']
+                absent_days += user_stats[user.id]['absent_days']
+
         # Calculate attendance percentage
         attendance_percentage = (present_days / total_working_days * 100) if total_working_days > 0 else 0
         attendance_percentage = round(attendance_percentage, 1)
@@ -1194,7 +1154,7 @@ def get_employee_attendance(request):
                 "user_id": user_id_field,
             })
 
-        # Add leave entries
+        # Add leave entries (no "No Record" entries)
         for user_id, stats in user_stats.items():
             user = User.objects.get(id=user_id)
             employee_for_user = Employee.objects.filter(admin=user).first()
@@ -1264,6 +1224,10 @@ def get_employee_attendance(request):
 
     except Exception as e:
         return JsonResponse({"error": f"Server error: {str(e)}"}, status=500)
+    
+    
+    
+
     
     
     
@@ -1867,34 +1831,32 @@ def edit_employee_by_manager(request, employee_id):
             phone_number = form.cleaned_data.get('phone_number')
             team_lead = form.cleaned_data.get('team_lead')
             passport = request.FILES.get('profile_pic') or None
-
+            employee_id = form.cleaned_data.get('employee_id')
             emergency_name = form.cleaned_data.get('emergency_name')
             emergency_relationship = form.cleaned_data.get('emergency_relationship')
             emergency_phone = form.cleaned_data.get('emergency_phone')
             emergency_address = form.cleaned_data.get('emergency_address')
-
             aadhar_card = form.cleaned_data.get('aadhar_card')
             pan_card = form.cleaned_data.get('pan_card')
             bond_start = form.cleaned_data.get('bond_start')
             bond_end = form.cleaned_data.get('bond_end')
             is_second_shift = form.cleaned_data.get('is_second_shift')
-            employee_id = form.cleaned_data.get('employee_id')
+            remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
 
             try:
                 if emergency_phone and (not emergency_phone.isdigit() or len(emergency_phone) != 10):
                     raise ValidationError("Emergency phone number must be exactly 10 digits.")
 
-                # Get the related CustomUser instance
                 user = CustomUser.objects.get(id=employee.admin.id)
 
-                # Update profile picture if provided
-                if passport:
+                if remove_profile_pic:
+                    user.profile_pic = ''
+                elif passport:
                     fs = FileSystemStorage()
                     filename = fs.save(passport.name, passport)
                     passport_url = fs.url(filename)
                     user.profile_pic = passport_url
 
-                # Update the CustomUser fields
                 user.username = username
                 user.email = email
                 if password:
@@ -1905,17 +1867,14 @@ def edit_employee_by_manager(request, employee_id):
                 user.address = address
                 user.is_second_shift = is_second_shift
 
-                # Save the CustomUser instance
                 user.save()
                 
-                # Update the Employee model fields
                 employee.division = division
                 employee.department = department
                 employee.designation = designation
                 employee.phone_number = phone_number
                 employee.team_lead = team_lead
-
-                # Update emergency contact information
+                employee.employee_id = employee_id
                 employee.emergency_contact = {
                     'name': emergency_name or "Not provided",
                     'relationship': emergency_relationship or "Not provided",
@@ -1926,7 +1885,6 @@ def edit_employee_by_manager(request, employee_id):
                 employee.pan_card = pan_card
                 employee.bond_start = bond_start
                 employee.bond_end = bond_end
-                employee.employee_id = employee_id
 
                 employee.save()
 
@@ -2138,6 +2096,7 @@ def send_selected_employee_notification_by_manager(request):
 
 
 
+
 logger = logging.getLogger(__name__)
 
 @login_required
@@ -2155,62 +2114,74 @@ def manager_view_profile(request):
                 password = form.cleaned_data.get('password') or None
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
-                passport = request.FILES.get('profile_pic') or None
-                admin = manager.admin
+                profile_pic = request.FILES.get('profile_pic') or None
+                remove_profile_pic = request.POST.get('remove_profile_pic') == 'true'
+                user = manager.admin
+                
+                # Track if email or password changed
+                email_changed = email and email != user.email
+                password_changed = password and password.strip()
                 
                 # Track if any changes were made
                 changes_made = False
                 
                 # Update email
-                if email and email != admin.email:
-                    admin.email = email.lower()
-                    logger.info(f"Email updated for user {admin.username} to {email}")
+                if email_changed:
+                    user.email = email.lower()
                     changes_made = True
+                    logger.info(f"Email updated for user {user.username} to {email}")
                 
                 # Update password only if provided and non-empty
-                if password and password.strip():
-                    admin.set_password(password)
-                    update_session_auth_hash(request, admin)
-                    logger.info(f"Password updated for user {admin.username}, session updated")
+                if password_changed:
+                    user.set_password(password)
                     changes_made = True
+                    logger.info(f"Password updated for user {user.username}")
                 
-                if passport is not None:
-                    fs = FileSystemStorage()
-                    safe_filename = get_valid_filename(passport.name)
-                    filename = fs.save(safe_filename, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
-                    logger.info(f"Profile picture updated for user {admin.username}: {passport_url}")
+                # Handle profile picture
+                if remove_profile_pic and user.profile_pic:
+                    user.profile_pic = ''
                     changes_made = True
+                    logger.info(f"Profile picture removed for user {user.username}")
+                elif profile_pic is not None:
+                    safe_filename = get_valid_filename(profile_pic.name)
+                    filename = default_storage.save(safe_filename, ContentFile(profile_pic.read()))
+                    profile_pic_url = default_storage.url(filename)
+                    user.profile_pic = profile_pic_url
+                    changes_made = True
+                    logger.info(f"Profile picture updated for user {user.username}: {profile_pic_url}")
                 
                 # Update other fields if changed
-                if admin.first_name != first_name:
-                    admin.first_name = first_name
+                if user.first_name != first_name:
+                    user.first_name = first_name
                     changes_made = True
-                if admin.last_name != last_name:
-                    admin.last_name = last_name
+                if user.last_name != last_name:
+                    user.last_name = last_name
                     changes_made = True
-                if admin.address != address:
-                    admin.address = address
+                if user.address != address:
+                    user.address = address
                     changes_made = True
-                if admin.gender != gender:
-                    admin.gender = gender
+                if user.gender != gender:
+                    user.gender = gender
                     changes_made = True
                 
                 # Save only if changes were made
                 if changes_made:
-                    admin.save()
+                    user.save()
                     manager.save()
                     messages.success(request, "Profile updated successfully!")
-                    logger.info(f"Profile update successful for user {admin.username}")
-                    return redirect(reverse('manager_view_profile'))
+                    logger.info(f"Profile update successful for user {user.username}")
+                    # Redirect to login page if email or password changed, else to manager home
+                    if email_changed or password_changed:
+                        logout(request)
+                        logger.info(f"User {user.username} logged out due to email or password change")
+                        return redirect(reverse('login_page'))
+                    return redirect(reverse('manager_home'))
                 else:
-                    
-                    logger.info(f"No changes made for user {admin.username}")
-                    return redirect(reverse('manager_view_profile'))
+                    logger.info(f"No changes made for user {user.username}")
+                    return redirect(reverse('manager_home'))
             else:
                 messages.error(request, "Invalid Data Provided")
-                logger.warning(f"Invalid form data for user {request.user.username}")
+                logger.warning(f"Invalid form data for user {request.user.username}: {form.errors}")
                 return render(request, "manager_template/manager_view_profile.html", context)
         except Exception as e:
             logger.error(f"Error updating profile for user {request.user.username}: {str(e)}")

@@ -261,6 +261,10 @@ def clock_in_out(request):
     return HttpResponseRedirect('employee_home')
 
 
+
+
+
+
 # @login_required
 # def clock_in_out(request):
 #     if request.method == 'POST':

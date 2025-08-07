@@ -409,6 +409,84 @@
         .btn-cancel:hover {
             background-color: #d1e0f5;
         }
+        .profile-pic-wrapper {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 0 auto 1.5rem;
+        }
+        .profile-pic-actions {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .profile-pic-container:hover .profile-pic-actions {
+            opacity: 1;
+        }
+        .profile-action-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .profile-action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+        .profile-action-btn.remove-btn {
+            background-color: rgba(220, 53, 69, 0.8);
+        }
+        .profile-action-btn.remove-btn:hover {
+            background-color: rgba(220, 53, 69, 1);
+        }
+        .profile-action-btn.upload-btn {
+            background-color: rgba(56, 151, 240, 0.8);
+        }
+        .profile-action-btn.upload-btn:hover {
+            background-color: rgba(56, 151, 240, 1);
+        }
+        .profile-pic-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .profile-pic-container:hover .profile-pic-overlay {
+            opacity: 1;
+        }
+        .profile-pic-label {
+            position: absolute;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .profile-pic-container:hover .profile-pic-label {
+            opacity: 1;
+        }
         @media (max-width: 768px) {
             .profile-pic-container {
                 width: 200px;
@@ -444,26 +522,40 @@
         <div class="container-fluid">
             <form id="{% if page_title == 'Add Employee' or page_title == 'Add Manager' %}add-form{% else %}edit-form{% endif %}" method="POST" enctype="multipart/form-data">
                 {% csrf_token %}
+                <input type="file" id="id_profile_pic" name="profile_pic" accept="image/*" style="display: none;">
+                <input type="hidden" id="remove_profile_pic" name="remove_profile_pic" value="false">
                 <div class="row">
                     <!-- Profile Side -->
                     <div class="col-md-4">
                         <div class="text-center mt-4">
-                            <div class="profile-pic-container">
-                                {% if page_title == "View/Update Profile" %}
-                                    {% if user_object.profile_pic %}
-                                        <img src="{{ user_object.profile_pic }}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                            <div class="profile-pic-wrapper">
+                                <div class="profile-pic-container">
+                                    {% if page_title == "View/Update Profile" %}
+                                        {% if user_object.profile_pic %}
+                                            <img src="{{ user_object.profile_pic }}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                                        {% else %}
+                                            <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                                        {% endif %}
+                                    {% elif page_title != "Add Employee" and page_title != 'Add Manager' %}
+                                        {% if user_object.admin.profile_pic %}
+                                            <img src="{{ user_object.admin.profile_pic }}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                                        {% else %}
+                                            <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
+                                        {% endif %}
                                     {% else %}
                                         <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
                                     {% endif %}
-                                {% elif page_title != "Add Employee" and page_title != 'Add Manager' %}
-                                    {% if user_object.admin.profile_pic %}
-                                        <img src="{{ user_object.admin.profile_pic }}" class="profile-pic" id="profilePic" alt="Profile Picture">
-                                    {% else %}
-                                        <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
-                                    {% endif %}
-                                {% else %}
-                                    <img src="{% static 'dist/img/avatar-placeholder.jpeg' %}" class="profile-pic" id="profilePic" alt="Profile Picture">
-                                {% endif %}
+                                    <div class="profile-pic-overlay"></div>
+                                    <span class="profile-pic-label">Change Profile Picture</span>
+                                    <div class="profile-pic-actions">
+                                        <button type="button" class="profile-action-btn upload-btn" id="uploadProfileBtn" title="Upload new photo">
+                                            <i class="fas fa-camera"></i>
+                                        </button>
+                                        <button type="button" class="profile-action-btn remove-btn" id="removeProfileBtn" title="Remove profile picture" {% if not user_object.profile_pic and not user_object.admin.profile_pic %}style="display: none;"{% endif %}>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             {% if page_title == "View/Update Profile" %}
                                 <h3 class="mt-2">{{ user_object.first_name|capfirst }} {{user_object.last_name|capfirst}}</h3>
@@ -524,13 +616,20 @@
                                 </div>
                             </div>
                         </div>
+                        <div id="removeConfirmationPopup" class="confirmation-popup">
+                            <div class="confirmation-message">Are you sure you want to remove the profile picture?</div>
+                            <div class="confirmation-buttons">
+                                <button class="confirmation-btn btn-ok" id="confirmRemoveYes">Yes</button>
+                                <button class="confirmation-btn btn-cancel-btn" id="confirmRemoveNo">No</button>
+                            </div>
+                        </div>
                         <div class="card mb-4 mt-4">
                             <div class="card-header bg-light">
                                 <h5 class="card-title mb-0">Contact Info</h5>
                             </div>
                             <div class="card-body">
                                 {% for field in form %}
-                                    {% if field.name in "profile_pic email phone_number address" %}
+                                    {% if field.name in "email phone_number address" %}
                                         <div class="form-group">
                                             <label for="{{ field.id_for_label }}">
                                                 {{ field.label }}
@@ -542,8 +641,6 @@
                                             </label>
                                             {% if field.name == 'email' %}
                                                 <input type="email" name="email" id="{{ field.id_for_label }}" class="form-control" value="{{ form.email.value|default_if_none:'' }}">
-                                            {% elif field.name == 'profile_pic' %}
-                                                <input type="file" name="profile_pic" id="{{ field.id_for_label }}" class="form-control" accept="image/*">
                                             {% elif field.name == 'phone_number' %}
                                                 <input type="text" name="phone_number" id="{{ field.id_for_label }}" class="form-control" value="{{ form.phone_number.value|default_if_none:'' }}" maxlength="10" pattern="\d{10}" title="Phone number must be exactly 10 digits" {% if page_title in 'Add Manager,Edit Manager' %}required{% endif %}>
                                             {% else %}
@@ -697,7 +794,6 @@
         const confirmYes = document.getElementById('confirmYes');
         const confirmNo = document.getElementById('confirmNo');
         const profileForm = document.getElementById('add-form') || document.getElementById('edit-form');
-        const cancelBtn = document.getElementById('cancelBtn');
         const profilePicInput = document.getElementById('id_profile_pic');
         const cropModal = document.getElementById('cropModal');
         const cropImage = document.getElementById('cropImage');
@@ -706,8 +802,22 @@
         const zoomIn = document.getElementById('zoomIn');
         const zoomOut = document.getElementById('zoomOut');
         const rotateRight = document.getElementById('rotateRight');
+        const removeConfirmationPopup = document.getElementById('removeConfirmationPopup');
+        const confirmRemoveYes = document.getElementById('confirmRemoveYes');
+        const confirmRemoveNo = document.getElementById('confirmRemoveNo');
+        const uploadProfileBtn = document.getElementById('uploadProfileBtn');
+        const removeProfileBtn = document.getElementById('removeProfileBtn');
+        const removeProfilePicInput = document.getElementById('remove_profile_pic');
+        const placeholderImage = "{% static 'dist/img/avatar-placeholder.jpeg' %}";
         let cropper = null;
         let currentRotation = 0;
+        let hasProfilePic = {% if page_title == "View/Update Profile" %}
+                                {{ user_object.profile_pic|yesno:"true,false" }}
+                            {% elif page_title != "Add Employee" and page_title != 'Add Manager' %}
+                                {{ user_object.admin.profile_pic|yesno:"true,false" }}
+                            {% else %}
+                                false
+                            {% endif %};
 
         profileForm.addEventListener('submit', function(e) {
             if (!profileForm.dataset.submitting) {
@@ -768,6 +878,11 @@
                 cropper = null;
             }
             profilePicInput.value = '';
+            if (!hasProfilePic) {
+                profilePic.src = placeholderImage;
+                removeProfilePicInput.value = 'true';
+                removeProfileBtn.style.display = 'none';
+            }
         }
 
         profilePicInput.addEventListener('change', function(e) {
@@ -799,15 +914,19 @@
                 canvas.toBlob(function(blob) {
                     const url = URL.createObjectURL(blob);
                     profilePic.src = url;
+                    hasProfilePic = true;
+                    removeProfilePicInput.value = 'false';
                     const fileName = profilePicInput.files[0]?.name || 'profile-pic.jpg';
                     const file = new File([blob], fileName, { type: 'image/jpeg' });
                     const dataTransfer = new DataTransfer();
                     dataTransfer.items.add(file);
                     profilePicInput.files = dataTransfer.files;
+                    removeProfileBtn.style.display = 'flex';
                     cropModal.classList.remove('show');
                     document.body.style.overflow = '';
                     cropper.destroy();
                     cropper = null;
+                    showSuccess('Profile picture updated successfully');
                 }, 'image/jpeg', 1.0);
             }
         });
@@ -842,6 +961,14 @@
             errorDiv.textContent = message;
             document.body.appendChild(errorDiv);
             setTimeout(() => errorDiv.remove(), 3000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.createElement('div');
+            successDiv.className = 'alert alert-success';
+            successDiv.textContent = message;
+            document.body.appendChild(successDiv);
+            setTimeout(() => successDiv.remove(), 3000);
         }
 
         function getScrollbarWidth() {
@@ -900,6 +1027,28 @@
             document.body.style.overflow = '';
         }
 
+        function showRemoveConfirmation() {
+            confirmationOverlay.classList.add('show');
+            removeConfirmationPopup.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideRemoveConfirmation() {
+            confirmationOverlay.classList.remove('show');
+            removeConfirmationPopup.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        function removeProfilePicture() {
+            profilePic.src = placeholderImage;
+            hasProfilePic = false;
+            removeProfilePicInput.value = 'true';
+            profilePicInput.value = '';
+            removeProfileBtn.style.display = 'none';
+            hideRemoveConfirmation();
+            showSuccess('Profile picture removed successfully');
+        }
+
         function confirmSubmit() {
             let message = "Are you sure you want to submit this form?";
             {% if page_title == "Add Employee" %}
@@ -914,8 +1063,57 @@
 
         function initEventListeners() {
             if (profilePic) {
-                profilePic.addEventListener('click', () => openModal(profilePic.src));
+                profilePic.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (hasProfilePic && profilePic.src !== placeholderImage) {
+                        openModal(profilePic.src);
+                    } else {
+                        if (profilePicInput) {
+                            profilePicInput.click();
+                        } else {
+                            console.error('Profile picture input element not found.');
+                        }
+                    }
+                });
             }
+
+            // Prevent overlay and label from interfering with profile picture click
+            const profilePicOverlay = document.querySelector('.profile-pic-overlay');
+            const profilePicLabel = document.querySelector('.profile-pic-label');
+            if (profilePicOverlay) {
+                profilePicOverlay.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (hasProfilePic && profilePic.src !== placeholderImage) {
+                        openModal(profilePic.src);
+                    }
+                });
+            }
+            if (profilePicLabel) {
+                profilePicLabel.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (hasProfilePic && profilePic.src !== placeholderImage) {
+                        openModal(profilePic.src);
+                    }
+                });
+            }
+
+            // Ensure action buttons don't trigger profile picture modal
+            if (uploadProfileBtn) {
+                uploadProfileBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    profilePicInput.click();
+                });
+            }
+            if (removeProfileBtn) {
+                removeProfileBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showRemoveConfirmation();
+                });
+            }
+
             document.querySelector('.modal-close').addEventListener('click', closeModal);
             profileModal.addEventListener('click', (e) => {
                 if (e.target === profileModal) {
@@ -929,11 +1127,14 @@
                 if (e.key === 'Escape' && cropModal.classList.contains('show')) {
                     closeCropModal();
                 }
+                if (e.key === 'Escape' && removeConfirmationPopup.classList.contains('show')) {
+                    hideRemoveConfirmation();
+                }
             });
             enlargedPhoto.addEventListener('load', imageLoaded);
             enlargedPhoto.addEventListener('error', () => {
                 spinner.style.display = 'none';
-                enlargedPhoto.src = "{% static 'dist/img/avatar-placeholder.jpeg' %}";
+                enlargedPhoto.src = placeholderImage;
                 enlargedPhoto.style.display = 'block';
                 showError('Failed to load image.');
             });
@@ -951,16 +1152,15 @@
                 confirmationOverlay.addEventListener('click', function(e) {
                     if (e.target === confirmationOverlay) {
                         hideConfirmationPopup();
+                        hideRemoveConfirmation();
                     }
                 });
             }
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    profileForm.reset();
-                    profilePic.src = "{% static 'dist/img/avatar-placeholder.jpeg' %}";
-                    hideConfirmationPopup();
-                });
+            if (confirmRemoveYes) {
+                confirmRemoveYes.addEventListener('click', removeProfilePicture);
+            }
+            if (confirmRemoveNo) {
+                confirmRemoveNo.addEventListener('click', hideRemoveConfirmation);
             }
             triggerDatePicker();
             setupPasswordToggle();

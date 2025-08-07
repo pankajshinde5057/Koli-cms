@@ -645,7 +645,8 @@ class AttendanceRecord(models.Model):
         return f"{self.user} - {self.date}"
 
     class Meta:
-        unique_together = [['user', 'date' , 'clock_in']]
+        # unique_together = [['user', 'date' , 'clock_in']]
+        unique_together = [['user', 'date']]  # Updated to prevent multiple records for same user and date
         indexes = [
             models.Index(fields=['user', 'date']),
             models.Index(fields=['date', 'department']),
@@ -662,17 +663,17 @@ class AttendanceRecord(models.Model):
 
     def save(self, *args, **kwargs):
         # Auto-close previous records with 8 hours for normal days and 4.5 hours for half_day
-        if not self.pk and self.status not in ['leave' , 'half_day']:
+        if not self.pk and self.status not in ['leave', 'half_day']:
             open_records = AttendanceRecord.objects.filter(
-                user = self.user,
-                clock_out__isnull = True,
-                date__lt = self.date
+                user=self.user,
+                clock_out__isnull=True,
+                date__lt=self.date
             )
 
             for record in open_records:
                 if record.clock_in:
                     if record.status == 'half_day':
-                        auto_clockout_duration = timedelta(hours=4 , minutes=30)
+                        auto_clockout_duration = timedelta(hours=4, minutes=30)
                     else:
                         auto_clockout_duration = timedelta(hours=8)
 
@@ -691,7 +692,7 @@ class AttendanceRecord(models.Model):
                         record.overtime_hours = timedelta()
                     record.save()
 
-        # only apply late/half-day logic for non-second-shift user
+        # Only apply late/half-day logic for non-second-shift user
         if self.clock_in and not self.user.is_second_shift:
             late_time = datetime.combine(self.clock_in.date(), time(9, 30))
             half_day_time = datetime.combine(self.clock_in.date(), time(13, 0))
@@ -704,7 +705,7 @@ class AttendanceRecord(models.Model):
                 else:
                     self.status = 'present'
         
-        # calculate worked hours for all users when clocking out
+        # Calculate worked hours for all users when clocking out
         if self.clock_out and self.clock_in:
             self.total_worked = self.clock_out - self.clock_in
             regular_hours_limit = timedelta(hours=8)
@@ -712,6 +713,8 @@ class AttendanceRecord(models.Model):
             self.overtime_hours = max(timedelta(), self.total_worked - regular_hours_limit)
 
         super().save(*args, **kwargs)
+
+
 
 
 
