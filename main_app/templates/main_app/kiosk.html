@@ -15,6 +15,9 @@
             --error-bg: #f8d7da;
             --error-text: #721c24;
             --info-text: #0c5460;
+            --face-guide-default: rgba(0, 123, 255, 0.7); /* Blue */
+            --face-guide-success: rgba(40, 167, 69, 0.7); /* Green */
+            --face-guide-error: rgba(220, 53, 69, 0.7); /* Red */
         }
         
         body {
@@ -50,7 +53,7 @@
             object-fit: cover;
         }
         
-        /* Circular face guide overlay */
+        /* Fixed circular face guide */
         .face-guide {
             position: absolute;
             top: 50%;
@@ -59,25 +62,60 @@
             width: 55%;
             height: 75%;
             border-radius: 50%;
-            border: 3px solid rgba(40, 167, 69, 0.7);
+            border: 3px solid var(--face-guide-default);
             z-index: 10;
             pointer-events: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            /* Prevent layout shifts */
+            transform-origin: center center;
+            will-change: border-color, box-shadow;
         }
         
-        #status {
-            margin-top: 15px;
-            font-size: 16px;
-            color: var(--info-text);
-            text-align: center;
-            min-height: 24px;
+        .face-guide.active {
+            animation: subtle-glow 2s infinite;
+        }
+        
+        .face-guide.success {
+            border-color: var(--face-guide-success);
+            box-shadow: 0 0 30px rgba(40, 167, 69, 0.5);
+            animation: none;
+        }
+        
+        .face-guide.error {
+            border-color: var(--face-guide-error);
+            box-shadow: 0 0 30px rgba(220, 53, 69, 0.5);
+            animation: none;
+        }
+        
+        @keyframes subtle-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(0, 123, 255, 0.5);
+            }
+        }
+        
+        /* Absolute positioned greeting to prevent layout shifts */
+        #greeting-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            padding-top: 20px;
         }
         
         #greeting {
             font-size: 24px;
-            margin: 20px auto;
             max-width: 600px;
-            transition: all 0.5s ease;
+            width: 90%;
             text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
         
         .success-message {
@@ -87,101 +125,59 @@
             padding: 15px;
         }
         
-        .error-message {
-            background-color: var(--error-bg);
-            color: var(--error-text);
-            border-radius: 8px;
-            padding: 15px;
+        #status {
+            margin-top: 15px;
+            font-size: 16px;
+            color: var(--info-text);
+            text-align: center;
+            min-height: 24px;
+            transition: all 0.3s ease;
         }
         
-        /* Error notification container */
-        #error-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 300px;
-            z-index: 1000;
+        /* Confetti animation */
+        @keyframes confetti {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0;
+            z-index: 100;
         }
         
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            .kiosk-header h1 {
-                font-size: 1.5rem;
-            }
-            
-            #greeting {
-                font-size: 1.2rem;
-                margin: 15px auto;
-            }
-            
-            #status {
-                font-size: 0.9rem;
-            }
-            
-            .container {
-                padding-left: 10px;
-                padding-right: 10px;
-            }
-            
             .face-guide {
                 width: 70%;
                 height: 70%;
             }
+            #greeting {
+                font-size: 1.2rem;
+            }
         }
         
         @media (max-width: 576px) {
+            .mobile {
+                height: 400px;
+            }
             .face-guide {
-               
-                width: 55% !important;
-                height: 75% !important;
+                width: 70% !important;
+                height: 80% !important;
             }
-            .kiosk-header {
-                padding: 10px 0;
-            }
-            
-            .kiosk-header h1 {
-                font-size: 1.3rem;
-            }
-            
             #greeting {
                 font-size: 1rem;
                 padding: 10px;
             }
-            
-            #status {
-                font-size: 0.8rem;
-            }
-            
-            #error-container {
-                width: 90%;
-                left: 5%;
-                right: 5%;
-                bottom: 10px;
-            }
-        }
-        
-        /* Full-screen mode for kiosk */
-        .kiosk-mode {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #f0f2f5;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        .kiosk-mode .kiosk-header {
-            margin-bottom: 0;
-        }
-        
-        .kiosk-mode #camera-container {
-            flex-grow: 1;
-            border-radius: 0;
-            max-width: 100%;
         }
     </style>
 </head>
@@ -193,22 +189,21 @@
 
     <div class="container flex-grow-1">
         <div class="row justify-content-center h-100">
-            <div class="col-12 col-md-10 col-lg-8 d-flex flex-column">
-                <!-- Camera Container with Circular Guide -->
+            <div class="col-12 col-md-10 col-lg-8 d-flex flex-column mobile">
+                <!-- Camera Container with Fixed Circular Guide -->
                 <div id="camera-container" class="flex-grow-1">
                     <video id="video" autoplay playsinline></video>
-                    <div class="face-guide"></div>
+                    <div class="face-guide active"></div>
+                    <div id="greeting-container">
+                        <div id="greeting" class="alert d-none"></div>
+                    </div>
                 </div>
                 
-                <!-- Status and Greeting Messages -->
-                <div id="greeting" class="alert d-none"></div>
+                <!-- Status Message -->
                 <div id="status" class="my-3">Initializing camera...</div>
             </div>
         </div>
     </div>
-
-    <!-- Error notification container -->
-    <div id="error-container"></div>
 
     <!-- Hidden canvas for processing -->
     <canvas id="canvas" style="display:none;"></canvas>
@@ -224,7 +219,7 @@
         const ctx = canvas.getContext('2d');
         const greetingDiv = document.getElementById('greeting');
         const statusDiv = document.getElementById('status');
-        const errorContainer = document.getElementById('error-container');
+        const faceGuide = document.querySelector('.face-guide');
         let stream = null;
         let detectionInterval = null;
         let isProcessing = false;
@@ -237,58 +232,47 @@
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
-        // Start camera with responsive constraints
+        // Start camera
         async function startCamera() {
             try {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error("Camera not supported in this browser or over insecure connection.");
-                }
-
                 const constraints = {
                     video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
+                        width: { ideal: window.innerWidth < 768 ? 640 : 1280 },
+                        height: { ideal: window.innerWidth < 768 ? 480 : 720 },
                         facingMode: 'user',
                         frameRate: { ideal: 30 }
                     },
                     audio: false
                 };
 
-                if (window.matchMedia('(max-width: 768px)').matches) {
-                    constraints.video.width = { ideal: 640 };
-                    constraints.video.height = { ideal: 480 };
-                }
-
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
 
                 video.onplaying = () => {
                     statusDiv.textContent = "Position your face within the circle";
-                    statusDiv.style.color = "";
+                    faceGuide.classList.add('active');
                     detectionInterval = setInterval(detectFaces, 3000);
                 };
 
             } catch (err) {
-                const errorMsg = "Camera error: " + err.message;
-                statusDiv.textContent = errorMsg;
-                statusDiv.style.color = "var(--error-text)";
-
-                const errorHTML = `
-                    <div class="alert alert-danger">
-                        <h4>Camera Access Required</h4>
-                        <p>Please allow camera access to use this kiosk.</p>
-                        <ul>
-                            <li>Check your browser permissions</li>
-                            <li>Make sure no other app is using the camera</li>
-                            <li>Ensure you're using HTTPS or localhost</li>
-                            <li>Try refreshing the page</li>
-                        </ul>
-                    </div>
-                `;
-                document.querySelector('.container').insertAdjacentHTML('beforeend', errorHTML);
+                handleCameraError(err);
             }
         }
 
+        function handleCameraError(err) {
+            statusDiv.textContent = "Camera error: " + err.message;
+            statusDiv.style.color = "var(--error-text)";
+            faceGuide.classList.remove('active');
+            faceGuide.classList.add('error');
+            
+            const errorHTML = `
+                <div class="alert alert-danger mt-3">
+                    <h4>Camera Access Required</h4>
+                    <p>Please allow camera access to use this kiosk.</p>
+                </div>
+            `;
+            document.querySelector('.container').insertAdjacentHTML('beforeend', errorHTML);
+        }
 
         // Face detection function
         async function detectFaces() {
@@ -296,12 +280,14 @@
             isProcessing = true;
             
             try {
-                // Set canvas dimensions to match video
+                // Visual feedback - blue glow
+                faceGuide.classList.remove('error', 'success');
+                faceGuide.classList.add('active');
+                
+                // Capture frame
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Convert to base64 for API
                 const imageData = canvas.toDataURL('image/jpeg', 0.8);
                 
                 // Call recognition API
@@ -310,91 +296,115 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRFToken': getCookie('csrftoken'),
-                        'X-Device-ID': 'KIOSK_TERMINAL_001' // Replace with actual device ID
+                        'X-Device-ID': 'KIOSK_TERMINAL_001'
                     },
                     body: `image=${encodeURIComponent(imageData)}`
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
                 const data = await response.json();
         
                 if (data.status === 'recognized') {
-                    showGreeting(data.user.name);
-                    // Soft reload after 3 seconds
-                    setTimeout(() => location.reload(), 3000);
+                    onRecognitionSuccess(data.user.name);
                 } else if (data.error) {
-                    const errorMsg = data.message || "Face recognition failed";
-                    statusDiv.textContent = errorMsg;
-                    statusDiv.style.color = "var(--error-text)";
+                    onRecognitionError(data.message || "Face recognition failed");
                 } else {
-                    statusDiv.textContent = "No face detected - Please position your face within the circle";
-                    statusDiv.style.color = "var(--info-text)";
+                    onNoFaceDetected();
                 }
             } catch (err) {
-                const errorMsg = "Recognition service unavailable";
-                statusDiv.textContent = errorMsg;
-                statusDiv.style.color = "var(--error-text)";
+                onRecognitionError("Recognition service unavailable");
             } finally {
                 isProcessing = false;
             }
         }
         
-        // Display greeting message
+        function onRecognitionSuccess(name) {
+            faceGuide.classList.remove('active');
+            faceGuide.classList.add('success');
+            showGreeting(name);
+            createConfetti();
+            setTimeout(() => location.reload(), 3000);
+        }
+        
+        function onRecognitionError(message) {
+            statusDiv.textContent = message;
+            statusDiv.style.color = "var(--error-text)";
+            faceGuide.classList.remove('active');
+            faceGuide.classList.add('error');
+        }
+        
+        function onNoFaceDetected() {
+            statusDiv.textContent = "No face detected - Please position your face within the circle";
+            statusDiv.style.color = "var(--info-text)";
+            faceGuide.classList.remove('error', 'success');
+            faceGuide.classList.add('active');
+        }
+        
+        // Create confetti animation
+        function createConfetti() {
+            const container = document.getElementById('camera-container');
+            const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = Math.random() * 100 + '%';
+                confetti.style.width = Math.random() * 10 + 5 + 'px';
+                confetti.style.height = Math.random() * 10 + 5 + 'px';
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                
+                container.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.style.animation = `confetti ${Math.random() * 3 + 2}s forwards`;
+                    confetti.style.opacity = '1';
+                    
+                    setTimeout(() => confetti.remove(), 5000);
+                }, Math.random() * 500);
+            }
+        }
+        
+        // Display greeting message without layout shifts
         function showGreeting(name, email) {
             const now = new Date();
-            const timeString = now.toLocaleTimeString();
-            
             greetingDiv.innerHTML = `
                 <div class="success-message">
                     <h3>Welcome, ${name.split(' ')[0]}!</h3>
-                    <p>You're checked in at ${timeString}</p>
-                    ${email ? `<small>${email}</small>` : ''}
+                    <p>You're checked in at ${now.toLocaleTimeString()}</p>
                 </div>
             `;
-            greetingDiv.classList.remove('d-none');
             
-            // Update status
+            greetingDiv.classList.remove('d-none');
+            setTimeout(() => greetingDiv.style.opacity = '1', 10);
+            
             statusDiv.textContent = "Recognition successful!";
             statusDiv.style.color = "var(--success-text)";
             
-            // Hide after 5 seconds
             setTimeout(() => {
-                greetingDiv.classList.add('d-none');
+                greetingDiv.style.opacity = '0';
+                setTimeout(() => greetingDiv.classList.add('d-none'), 500);
             }, 5000);
         }
 
         // Helper function to get CSRF token
         function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [cookieName, cookieValue] = cookie.trim().split('=');
+                if (cookieName === name) return decodeURIComponent(cookieValue);
             }
-            return cookieValue;
+            return null;
         }
 
-        // Cleanup when window closes
+        // Cleanup
         window.addEventListener('beforeunload', () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-            if (detectionInterval) {
-                clearInterval(detectionInterval);
-            }
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            if (detectionInterval) clearInterval(detectionInterval);
         });
 
-        // Start the camera when page loads
+        // Start camera when page loads
         document.addEventListener('DOMContentLoaded', startCamera);
-        
     </script>
 </body>
 </html>

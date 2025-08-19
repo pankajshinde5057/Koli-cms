@@ -24,12 +24,11 @@ from django.contrib.auth.models import User
 from main_app.notification_badge import send_notification
 from .context_processors import unread_notification_count
 from django.db.models.functions import Concat
-from .utils.face_encoding import get_face_encoding
 from .utils.handle_clokin import handle_clock_in
-import cv2
-import face_recognition
-from django.core.cache import cache
 import base64
+from django.conf import settings
+# import face_recognition
+
 
 load_dotenv()
 
@@ -48,7 +47,7 @@ def login_page(request):
             return redirect(reverse("employee_home"))
     return render(request, "main_app/login.html",{'SITE_KEY' : SITE_KEY})
 
-
+@csrf_exempt
 def doLogin(request):
     if request.method != "POST":
         return redirect('login_page')  
@@ -782,50 +781,151 @@ def check_new_notification(request):
     return JsonResponse(response_data)
 
 
+# def register_face(request):
+#     if request.method == 'POST':
+#         try:
+#             employee = CustomUser.objects.filter(email=request.POST.get('email')).first()
+#             face_image = request.FILES.get("face_image")
 
+#             if not employee or not face_image:
+#                 return JsonResponse({'error': 'Employee not found with provided email.'}, status=400)
+
+#             # create or update face profile
+#             face_profile, created = FaceProfile.objects.get_or_create(
+#                 employee = employee,
+#                 defaults={
+#                     'face_image' : face_image
+#                 }
+#             )
+
+#             # face_profile.face_image = face_image
+#             # face_profile.face_encoding = None
+
+#             if not created:
+#                 face_profile.face_image = face_image
+#                 face_profile.face_encoding = None
+#                 face_profile.save()
+
+#             # deepface implementation
+#             try:
+#                 embedding_objs = DeepFace.represent(
+#                     img_path=face_profile.face_image.path,
+#                     model_name='Facenet',
+#                     detector_backend='opencv',
+#                     enforce_detection=True
+#                 )
+
+#                 if embedding_objs:
+#                     embedding = np.array(embedding_objs[0]['embedding'], dtype=np.float32)
+#                     FaceProfile.objects.filter(pk=face_profile.pk).update(face_encoding=embedding.tobytes())
+#                     return JsonResponse({
+#                         'success': True,
+#                         'email': employee.email,
+#                         'message': 'Face registered successfully'
+#                     })
+#                 else:
+#                     return JsonResponse({'error': 'No face detected'}, status=400)
+                
+#             except Exception as e:
+#                 # Handle specific DeepFace errors
+#                 if "Face could not be detected" in str(e):
+#                     return JsonResponse({'error': 'No face detected in the image'}, status=400)
+#                 return JsonResponse({'error': f'Face processing error: {str(e)}'}, status=400)
+
+#         except Exception as e:
+#             return JsonResponse({
+#                 'error': f'Registration failed: {str(e)}'
+#             }, status=500)
+        
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+# openCV ========================================================================
+@csrf_exempt
 def register_face(request):
     if request.method == 'POST':
-        try:
-            employee = CustomUser.objects.filter(email=request.POST.get('email')).first()
-            face_image = request.FILES.get("face_image")
-            print(face_image)
-            if not employee or not face_image:
-                return JsonResponse({'error': 'Employee not found with provided email.'}, status=400)
+        email = request.POST.get('email')
+        face_image = request.FILES.get('face_image')
 
-            # create or update face profile
-            face_profile, created = FaceProfile.objects.get_or_create(
-                employee = employee,
-                defaults={
-                    'face_image' : face_image
-                }
-            )
+        if not email or not face_image:
+            return JsonResponse({'error': 'Email and image required'}, status=400)
 
-            if not created:
-                face_profile.face_image = face_image
-                face_profile.face_encoding = None
-                face_profile.save()
+        employee = CustomUser.objects.filter(email=email).first()
+        if not employee:
+            return JsonResponse({'error': 'User not found'}, status=404)
 
-            img = face_recognition.load_image_file(face_profile.face_image.path)
-            encodings = face_recognition.face_encodings(img)
-            if encodings:
-                face_profile.face_encoding = encodings[0].tobytes()
-                face_profile.save()
-                return JsonResponse({
-                    'success': True,
-                    'email': employee.email  # Return email for verification
-                })
-            else:
-                return JsonResponse({'error': 'No face detected'}, status=400)
+        # Create or update profile
+        face_profile, created = FaceProfile.objects.get_or_create(
+            employee=employee,
+            defaults={'face_image': face_image}
+        )
 
-        except Exception as e:
-            return JsonResponse({
-                'error': 'Employee not found with provided ID and email'
-            }, status=404)
-        
+        if not created:
+            face_profile.face_image = face_image
+            face_profile.save()
+
+        return JsonResponse({'success': True, 'message': 'Face registered successfully'})
+    
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
-from django.conf import settings
 
+
+# # face_recognition =============================================================
+# def register_face(request):
+#     if request.method == 'POST':
+#         try:
+#             employee = CustomUser.objects.filter(email=request.POST.get('email')).first()
+#             face_image = request.FILES.get("face_image")
+#             print(face_image)
+#             if not employee or not face_image:
+#                 return JsonResponse({'error': 'Employee not found with provided email.'}, status=400)
+
+#             # create or update face profile
+#             face_profile, created = FaceProfile.objects.get_or_create(
+#                 employee = employee,
+#                 defaults={
+#                     'face_image' : face_image
+#                 }
+#             )
+
+#             if not created:
+#                 face_profile.face_image = face_image
+#                 face_profile.face_encoding = None
+#                 face_profile.save()
+
+#             img = face_recognition.load_image_file(face_profile.face_image.path)
+#             encodings = face_recognition.face_encodings(img)
+#             if encodings:
+#                 face_profile.face_encoding = encodings[0].tobytes()
+#                 face_profile.save()
+#                 return JsonResponse({
+#                     'success': True,
+#                     'email': employee.email  # Return email for verification
+#                 })
+#             else:
+#                 return JsonResponse({'error': 'No face detected'}, status=400)
+
+#         except Exception as e:
+#             return JsonResponse({
+#                 'error': 'Employee not found with provided ID and email'
+#             }, status=404)
+        
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+
+
+# @csrf_exempt
+# def open_camera(request):
+#     # if request.method == "POST":
+#     #     secret_key = request.POST.get("secret_key", "").strip()
+#     #     if secret_key == settings.FACE_SECRET_KEY:
+#     #         return render(request,"main_app/kiosk.html")
+#     #     else:
+#     #         messages.error(request,"Wrong Credentials")
+#     #         return render(request, "main_app/kiosk_key.html")
+        
+#     return render(request,"main_app/kiosk.html")
+
+# face_recognition =============================================================
 @csrf_exempt
 def open_camera(request):
     if request.method == "POST":
@@ -838,177 +938,325 @@ def open_camera(request):
         
     return render(request,"main_app/kiosk_key.html")
 
-# def rate_limit(max_calls=10, timeout=60):
-#     def decorator(view_func):
-#         def wrapped(request, *args, **kwargs):
-#             ip = request.META.get('REMOTE_ADDR')
-#             key = f"rate_limit:{ip}"
-            
-#             calls = cache.get(key, 0)
-#             if calls >= max_calls:
-#                 return JsonResponse({'error': 'Rate limit exceeded'}, status=429)
-                
-#             cache.set(key, calls + 1, timeout)
-#             return view_func(request, *args, **kwargs)
-#         return wrapped
-#     return decorator
+import tempfile
+from main_app.utils.face_encoding import match_face_with_database
 
 
+# openCV ========================================================================
 @csrf_exempt
 def recognize_face(request):
     now = timezone.now()
     today = now.date()
+
     if request.method == "POST":
         try:
-            image_data = request.POST.get('image').split(',')[1]
-            image_bytes = base64.b64decode(image_data)
-            
-            # Convert to numpy array
-            nparr = np.frombuffer(image_bytes, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
-            # Get all known faces
-            known_encodings, known_users = FaceProfile.get_all_encodings()
-            
-            # Detect faces in frame
-            face_locations = face_recognition.face_locations(frame)
-            face_encodings = face_recognition.face_encodings(frame, face_locations)
-            
-            if not face_encodings:
-                return JsonResponse({'status': 'no_face','message': 'No face detected in the image'})
-            
-            # Compare with known faces
-            for face_encoding in face_encodings:
-                matches = face_recognition.compare_faces(known_encodings, face_encoding, tolerance=0.5)
-                
-                if True in matches:
-                    matched_idx = matches.index(True)
-                    user = known_users[matched_idx]
-                    user_ = get_object_or_404(CustomUser, id=user["id"])
+            image_data = request.POST.get('image')
+            if not image_data:
+                return JsonResponse({'status': 'error', 'message': 'No image data provided'})
 
-                    # check if already clocked in
-                    today = timezone.now().date()
-                    already_clocked_in = AttendanceRecord.objects.filter(
-                        user_id = user_.id,
-                        date = today,
-                        clock_in__isnull = False
-                    ).exists()
+            image_base64 = image_data.split(',')[1]
+            image_bytes = base64.b64decode(image_base64)
 
-                    if already_clocked_in:
-                        return JsonResponse({
-                            "error" : "recognized",
-                            "user": user,
-                            "message" : f"Hi,{user['name'].split()[0]},You are already clocked in for today."
-                        })
-                    
-                    # Check leave status
-                    leave = LeaveReportEmployee.objects.filter(
-                        employee__admin=user_,
-                        start_date__lte=today,
-                        end_date__gte=today,
-                        status=1
-                    ).first()
+            # Save to temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                tmp_file.write(image_bytes)
+                temp_path = tmp_file.name
 
-                    leave_manager = LeaveReportManager.objects.filter(
-                        manager__admin = user_,
-                        start_date__lte=today,
-                        end_date__gte=today,
-                        status=1
-                    ).first()
+            user = match_face_with_database(temp_path)
+            os.remove(temp_path)  # Clean up
 
-                    if leave:
-                        if leave.leave_type == 'Full-Day':
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Cannot clock in on an approved leave day.'
-                            }, status=400)
-                        
-                        #  for half-day leave
-                        current_time = now.time()
-                        # for first half leave, allow clock-in only after 1:00 pm
-                        if leave.half_day_type and current_time < time(13,0):
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'For First Half leave, you can only clock in after 1:00 PM.'
-                            }, status=400)
-                        
-                        # For Second Half leave, allow clock-in only before 1:00 PM
-                        if leave.leave_type and current_time >= time(13, 0):
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'For Second Half leave, you must clock in before 1:00 PM.'
-                            }, status=400)
+            if not user:
+                return JsonResponse({'status': 'error', 'message': 'Face not recognized in our system'})
 
-                    if leave_manager:
-                        if leave_manager.leave_type == 'Full-Day':
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': 'Cannot clock in on an approved leave day.'
-                            }, status=400)
-                
-                    
-                    if not user_.is_second_shift:    
-                        # logic for non-second shift users
-                        on_time_threshold = datetime.combine(today, time(9, 0))
-                        late_threshold = datetime.combine(today, time(9, 30))
-                        half_day_threshold = datetime.combine(today, time(13, 0))
+            user_ = get_object_or_404(CustomUser, id=user.id)
 
-                        earliest_clock_in = datetime.combine(today, time(8, 45)) if user_.user_type == "3" else datetime.combine(today, time(8, 30))
+            # Already clocked in?
+            already_clocked_in = AttendanceRecord.objects.filter(
+                user_id=user_.id,
+                date=today,
+                clock_in__isnull=False
+            ).exists()
 
-                        if now < earliest_clock_in:
-                            return JsonResponse({
-                                'status': 'error',
-                                'message': f"Clock-in is not allowed before {'8:45 AM' if user_.user_type == '3' else '8:30 AM'} IST."
-                            }, status=400)
+            if already_clocked_in:
+                return JsonResponse({
+                    "error": "recognized",
+                    "user": {
+                        "id": user_.id,
+                        "name": user_.get_full_name(),
+                        "email": user_.email,
+                    },
+                    "message": f"Hi, {user_.first_name}, You are already clocked in for today."
+                })
 
-                        status = 'present'
-                        if now > half_day_threshold or leave:
-                            status = 'half_day'
-                        elif now > late_threshold:
-                            status = 'late'
-                    else:
-                        # logic for second shift users
-                        status = 'present'  # Default status for second shift users
-                        if (leave_manager and leave_manager.leave_type == 'Half-Day'):
-                            status = 'half_day'
+            # Leave check
+            leave = LeaveReportEmployee.objects.filter(
+                employee__admin=user_,
+                start_date__lte=today,
+                end_date__gte=today,
+                status=1
+            ).first()
 
-                    # Create record only on successful validation
-                    department_id = request.POST.get('department')
-                    department = Department.objects.get(id=department_id) if department_id else None
-                    
-                    employee_ = Employee.objects.filter(admin=user_).first()
-                    current_user = employee_ if employee_ else Manager.objects.filter(admin=user_).first()
+            leave_manager = LeaveReportManager.objects.filter(
+                manager__admin=user_,
+                start_date__lte=today,
+                end_date__gte=today,
+                status=1
+            ).first()
 
-                    new_record = AttendanceRecord.objects.create(
-                        user=user_,
-                        date=today,
-                        clock_in=now,
-                        department=current_user.department,
-                        status=status,
-                        ip_address=request.META.get('REMOTE_ADDR'),
-                        notes=request.POST.get('notes', ''),
-                        clock_in_type = "face clockin"
-                    )
-                    new_record.full_clean()
-                    new_record.save()
+            current_time = now.time()
 
-                    ActivityFeed.objects.create(
-                        user=user_,
-                        activity_type='clock_in',
-                        related_record=new_record
-                    )
-
+            if leave:
+                if leave.leave_type == 'Full-Day':
                     return JsonResponse({
-                        'status': 'recognized',
-                        'user': user,
-                        'message': f"Good morning, {user['name'].split()[0]}!"
-                    })
-            
-            return JsonResponse({'status': 'unknown_face','message': 'Face not recognized in our system'})
-            
+                        'status': 'error',
+                        'message': 'Cannot clock in on an approved leave day.'
+                    }, status=400)
+
+                if leave.half_day_type == 'First Half' and current_time < time(13, 0):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'For First Half leave, you can only clock in after 1:00 PM.'
+                    }, status=400)
+
+                if leave.half_day_type == 'Second Half' and current_time >= time(13, 0):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'For Second Half leave, you must clock in before 1:00 PM.'
+                    }, status=400)
+
+            if leave_manager:
+                if leave_manager.leave_type == 'Full-Day':
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Cannot clock in on an approved leave day.'
+                    }, status=400)
+
+            # Clock-in status logic
+            if not user_.is_second_shift:
+                on_time_threshold = datetime.combine(today, time(9, 0))
+                late_threshold = datetime.combine(today, time(9, 30))
+                half_day_threshold = datetime.combine(today, time(13, 0))
+
+                earliest_clock_in = datetime.combine(today, time(8, 45)) if user_.user_type == "3" else datetime.combine(today, time(8, 30))
+
+                if now < earliest_clock_in:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': f"Clock-in not allowed before {'8:45 AM' if user_.user_type == '3' else '8:30 AM'} IST."
+                    }, status=400)
+
+                status = 'present'
+                if now > half_day_threshold or leave:
+                    status = 'half_day'
+                elif now > late_threshold:
+                    status = 'late'
+            else:
+                # Second shift
+                status = 'present'
+                if leave_manager and leave_manager.leave_type == 'Half-Day':
+                    status = 'half_day'
+
+            # Get department
+            department_id = request.POST.get('department')
+            department = Department.objects.get(id=department_id) if department_id else None
+
+            employee_ = Employee.objects.filter(admin=user_).first()
+            current_user = employee_ or Manager.objects.filter(admin=user_).first()
+
+            # Create attendance record
+            new_record = AttendanceRecord.objects.create(
+                user=user_,
+                date=today,
+                clock_in=now,
+                department=current_user.department if current_user else None,
+                status=status,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                notes=request.POST.get('notes', ''),
+                clock_in_type="face clockin"
+            )
+            new_record.full_clean()
+            new_record.save()
+
+            # Activity feed
+            ActivityFeed.objects.create(
+                user=user_,
+                activity_type='clock_in',
+                related_record=new_record
+            )
+
+            return JsonResponse({
+                'status': 'recognized',
+                'user': {
+                    'id': user_.id,
+                    'name': user_.get_full_name(),
+                    'email': user_.email,
+                },
+                'message': f"Good morning, {user_.first_name}!"
+            })
+
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'invalid_request','message': 'Something went wrong'})
 
+    return JsonResponse({'status': 'invalid_request', 'message': 'Something went wrong'})
+
+
+
+
+# face_recognition ==============================================================
+# @csrf_exempt
+# def recognize_face(request):
+#     now = timezone.now()
+#     today = now.date()
+#     if request.method == "POST":
+#         try:
+#             image_data = request.POST.get('image').split(',')[1]
+#             image_bytes = base64.b64decode(image_data)
+            
+#             # Convert to numpy array
+#             nparr = np.frombuffer(image_bytes, np.uint8)
+#             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+#             # Get all known faces
+#             known_encodings, known_users = FaceProfile.get_all_encodings()
+            
+#             # Detect faces in frame
+#             face_locations = face_recognition.face_locations(frame)
+#             face_encodings = face_recognition.face_encodings(frame, face_locations)
+            
+#             if not face_encodings:
+#                 return JsonResponse({'status': 'no_face','message': 'No face detected in the image'})
+            
+#             # Compare with known faces
+#             for face_encoding in face_encodings:
+#                 matches = face_recognition.compare_faces(known_encodings, face_encoding, tolerance=0.5)
+                
+#                 if True in matches:
+#                     matched_idx = matches.index(True)
+#                     user = known_users[matched_idx]
+#                     user_ = get_object_or_404(CustomUser, id=user["id"])
+
+#                     # check if already clocked in
+#                     today = timezone.now().date()
+#                     already_clocked_in = AttendanceRecord.objects.filter(
+#                         user_id = user_.id,
+#                         date = today,
+#                         clock_in__isnull = False
+#                     ).exists()
+
+#                     if already_clocked_in:
+#                         return JsonResponse({
+#                             "error" : "recognized",
+#                             "user": user,
+#                             "message" : f"Hi,{user['name'].split()[0]},You are already clocked in for today."
+#                         })
+                    
+#                     # Check leave status
+#                     leave = LeaveReportEmployee.objects.filter(
+#                         employee__admin=user_,
+#                         start_date__lte=today,
+#                         end_date__gte=today,
+#                         status=1
+#                     ).first()
+
+#                     leave_manager = LeaveReportManager.objects.filter(
+#                         manager__admin = user_,
+#                         start_date__lte=today,
+#                         end_date__gte=today,
+#                         status=1
+#                     ).first()
+
+#                     if leave:
+#                         if leave.leave_type == 'Full-Day':
+#                             return JsonResponse({
+#                                 'status': 'error',
+#                                 'message': 'Cannot clock in on an approved leave day.'
+#                             }, status=400)
+                        
+#                         #  for half-day leave
+#                         current_time = now.time()
+#                         # for first half leave, allow clock-in only after 1:00 pm
+#                         if leave.half_day_type and current_time < time(13,0):
+#                             return JsonResponse({
+#                                 'status': 'error',
+#                                 'message': 'For First Half leave, you can only clock in after 1:00 PM.'
+#                             }, status=400)
+                        
+#                         # For Second Half leave, allow clock-in only before 1:00 PM
+#                         if leave.leave_type and current_time >= time(13, 0):
+#                             return JsonResponse({
+#                                 'status': 'error',
+#                                 'message': 'For Second Half leave, you must clock in before 1:00 PM.'
+#                             }, status=400)
+
+#                     if leave_manager:
+#                         if leave_manager.leave_type == 'Full-Day':
+#                             return JsonResponse({
+#                                 'status': 'error',
+#                                 'message': 'Cannot clock in on an approved leave day.'
+#                             }, status=400)
+                
+                    
+#                     if not user_.is_second_shift:    
+#                         # logic for non-second shift users
+#                         on_time_threshold = datetime.combine(today, time(9, 0))
+#                         late_threshold = datetime.combine(today, time(9, 30))
+#                         half_day_threshold = datetime.combine(today, time(13, 0))
+
+#                         earliest_clock_in = datetime.combine(today, time(8, 45)) if user_.user_type == "3" else datetime.combine(today, time(8, 30))
+
+#                         if now < earliest_clock_in:
+#                             return JsonResponse({
+#                                 'status': 'error',
+#                                 'message': f"Clock-in is not allowed before {'8:45 AM' if user_.user_type == '3' else '8:30 AM'} IST."
+#                             }, status=400)
+
+#                         status = 'present'
+#                         if now > half_day_threshold or leave:
+#                             status = 'half_day'
+#                         elif now > late_threshold:
+#                             status = 'late'
+#                     else:
+#                         # logic for second shift users
+#                         status = 'present'  # Default status for second shift users
+#                         if (leave_manager and leave_manager.leave_type == 'Half-Day'):
+#                             status = 'half_day'
+
+#                     # Create record only on successful validation
+#                     department_id = request.POST.get('department')
+#                     department = Department.objects.get(id=department_id) if department_id else None
+                    
+#                     employee_ = Employee.objects.filter(admin=user_).first()
+#                     current_user = employee_ if employee_ else Manager.objects.filter(admin=user_).first()
+
+#                     new_record = AttendanceRecord.objects.create(
+#                         user=user_,
+#                         date=today,
+#                         clock_in=now,
+#                         department=current_user.department,
+#                         status=status,
+#                         ip_address=request.META.get('REMOTE_ADDR'),
+#                         notes=request.POST.get('notes', ''),
+#                         clock_in_type = "face clockin"
+#                     )
+#                     new_record.full_clean()
+#                     new_record.save()
+
+#                     ActivityFeed.objects.create(
+#                         user=user_,
+#                         activity_type='clock_in',
+#                         related_record=new_record
+#                     )
+
+#                     return JsonResponse({
+#                         'status': 'recognized',
+#                         'user': user,
+#                         'message': f"Good morning, {user['name'].split()[0]}!"
+#                     })
+            
+#             return JsonResponse({'status': 'unknown_face','message': 'Face not recognized in our system'})
+            
+#         except Exception as e:
+#             return JsonResponse({'status': 'error', 'message': str(e)})
+    
+#     return JsonResponse({'status': 'invalid_request','message': 'Something went wrong'})
 
