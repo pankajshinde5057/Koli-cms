@@ -566,14 +566,15 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <h6 class="text-uppercase mb-1">Attendance & Departments</h6>
-                                    <h2 class="mb-0 combined-count">{{ total_clocked_in }}</h2>
-                                    <small class="d-block mt-1">Not Clocked In: {{ total_not_clocked_in }}</small>
+                                    <hr>
+                                    <h4 class="d-block mt-1">Clocked In: <b>{{ total_clocked_in }}</b></h4>
+                                    <h4 class="d-block mt-1">Not Clocked In: <b>{{ total_not_clocked_in }}</b></h4>
                                 </div>
                                 <div class="icon-circle bg-white-20">
                                     <i class="fas fa-clock"></i>
                                 </div>
                             </div>
-                            <div class="combined-detail">
+                            <!-- <div class="combined-detail">
                                 <div class="combined-detail-item">
                                     <div class="combined-detail-label">Clocked In</div>
                                     <div class="combined-detail-value">{{ total_clocked_in }}</div>
@@ -582,7 +583,7 @@
                                     <div class="combined-detail-label">Departments</div>
                                     <div class="combined-detail-value">{{ total_department }}</div>
                                 </div>
-                            </div>
+                            </div> -->
                             <div class="mt-2">
                                 <a href="{% url 'admin_todays_attendance' %}" class="text-white text-decoration-none small">
                                     View Attendance <i class="fas fa-arrow-right ml-1"></i>
@@ -604,15 +605,15 @@
                                         <thead>
                                             <tr>
                                                 <th>Name</th>
-                                                <th>Type</th>
+                                                <!-- <th>Type</th> -->
                                                 <th>Department</th>
                                             </tr>
                                         </thead>
                                         <tbody id="not-clocked-in-body">
                                             {% for staff in not_clocked_in_list %}
                                             <tr>
-                                                <td>{{ staff.name }}</td>
-                                                <td>{{ staff.type }}</td>
+                                                <td>{{ staff.name|title }}</td>
+                                                <!-- <td>{{ staff.type }}</td> -->
                                                 <td>{{ staff.department }}</td>
                                             </tr>
                                             {% endfor %}
