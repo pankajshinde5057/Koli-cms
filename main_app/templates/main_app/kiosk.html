@@ -6,6 +6,8 @@
     <title>Face Recognition Kiosk</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
     <style>
         :root {
             --header-bg: #343a40;
@@ -18,6 +20,8 @@
             --face-guide-default: rgba(0, 123, 255, 0.7); /* Blue */
             --face-guide-success: rgba(40, 167, 69, 0.7); /* Green */
             --face-guide-error: rgba(220, 53, 69, 0.7); /* Red */
+            --warning-bg: #fff3cd;
+            --warning-text: #856404;
         }
         
         body {
@@ -53,7 +57,6 @@
             object-fit: cover;
         }
         
-        /* Fixed circular face guide */
         .face-guide {
             position: absolute;
             top: 50%;
@@ -67,7 +70,6 @@
             pointer-events: none;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            /* Prevent layout shifts */
             transform-origin: center center;
             will-change: border-color, box-shadow;
         }
@@ -88,6 +90,12 @@
             animation: none;
         }
         
+        .face-guide.warning {
+            border-color: #ffc107;
+            box-shadow: 0 0 30px rgba(255, 193, 7, 0.5);
+            animation: none;
+        }
+        
         @keyframes subtle-glow {
             0%, 100% {
                 box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
@@ -97,7 +105,6 @@
             }
         }
         
-        /* Absolute positioned greeting to prevent layout shifts */
         #greeting-container {
             position: absolute;
             top: 0;
@@ -125,6 +132,20 @@
             padding: 15px;
         }
         
+        .error-message {
+            background-color: var(--error-bg);
+            color: var(--error-text);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .warning-message {
+            background-color: var(--warning-bg);
+            color: var(--warning-text);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
         #status {
             margin-top: 15px;
             font-size: 16px;
@@ -135,17 +156,6 @@
         }
         
         /* Confetti animation */
-        @keyframes confetti {
-            0% {
-                transform: translateY(0) rotate(0deg);
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(-100px) rotate(360deg);
-                opacity: 0;
-            }
-        }
-        
         .confetti {
             position: absolute;
             width: 10px;
@@ -153,9 +163,9 @@
             background-color: #f00;
             opacity: 0;
             z-index: 100;
+            pointer-events: none;
         }
         
-        /* Responsive adjustments */
         @media (max-width: 768px) {
             .face-guide {
                 width: 70%;
@@ -179,36 +189,62 @@
                 padding: 10px;
             }
         }
+        
+        /* Countdown animation */
+        .countdown {
+            display: inline-block;
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        @keyframes countdown-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+        
+        .countdown.pop {
+            animation: countdown-pop 0.5s ease;
+        }
+
+        /* Confetti animation keyframes */
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="kiosk-header text-center">
-        <h1 class="mb-1">Employee Check-In</h1>
+        <h1 class="mb-1"></h1>
         <p id="datetime" class="mb-0"></p>
     </div>
 
     <div class="container flex-grow-1">
         <div class="row justify-content-center h-100">
             <div class="col-12 col-md-10 col-lg-8 d-flex flex-column mobile">
-                <!-- Camera Container with Fixed Circular Guide -->
                 <div id="camera-container" class="flex-grow-1">
                     <video id="video" autoplay playsinline></video>
-                    <div class="face-guide active"></div>
+                    <div class="face-guide"></div>
                     <div id="greeting-container">
                         <div id="greeting" class="alert d-none"></div>
                     </div>
                 </div>
                 
-                <!-- Status Message -->
                 <div id="status" class="my-3">Initializing camera...</div>
             </div>
         </div>
     </div>
 
-    <!-- Hidden canvas for processing -->
     <canvas id="canvas" style="display:none;"></canvas>
 
-    <!-- JavaScript Libraries -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -220,17 +256,45 @@
         const greetingDiv = document.getElementById('greeting');
         const statusDiv = document.getElementById('status');
         const faceGuide = document.querySelector('.face-guide');
+        const datetimeElement = document.getElementById('datetime');
+        
+        let model = null;
         let stream = null;
         let detectionInterval = null;
         let isProcessing = false;
+        let reloadCountdown = 5;
+
+        // API Endpoints
+        // const RECOGNIZE_API = '{{ FASTAPI_FACE_URL }}/recognize/'; 
+        const RECOGNIZE_API = 'http://204.236.220.210:8001/recognize/'; 
+        const ATTENDANCE_API = '{{ OUR_DOMAIN }}/mark_attendace/'; 
+
+        // Get known faces from Django context
+        const knownFaces = JSON.parse('{{ known_faces_json|escapejs }}');
 
         // Update datetime every second
         function updateDateTime() {
             const now = new Date();
-            document.getElementById('datetime').textContent = now.toLocaleString();
+            datetimeElement.textContent = now.toLocaleString();
         }
         setInterval(updateDateTime, 1000);
         updateDateTime();
+
+        // Load model and start camera
+        async function init() {
+            statusDiv.textContent = "Loading face detection model...";
+            
+            try {
+                // Load the BlazeFace model
+                model = await blazeface.load();
+                statusDiv.textContent = "Model loaded. Starting camera...";
+                
+                // Start camera
+                await startCamera();
+            } catch (err) {
+                handleError("Failed to load model: " + err.message);
+            }
+        }
 
         // Start camera
         async function startCamera() {
@@ -251,7 +315,7 @@
                 video.onplaying = () => {
                     statusDiv.textContent = "Position your face within the circle";
                     faceGuide.classList.add('active');
-                    detectionInterval = setInterval(detectFaces, 3000);
+                    startDetection();
                 };
 
             } catch (err) {
@@ -274,55 +338,105 @@
             document.querySelector('.container').insertAdjacentHTML('beforeend', errorHTML);
         }
 
-        // Face detection function
-        async function detectFaces() {
-            if (isProcessing) return;
-            isProcessing = true;
-            
-            try {
-                // Visual feedback - blue glow
-                faceGuide.classList.remove('error', 'success');
-                faceGuide.classList.add('active');
+        function startDetection() {
+            detectionInterval = setInterval(async () => {
+                if (isProcessing) return;
                 
-                // Capture frame
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL('image/jpeg', 0.8);
-                
-                // Call recognition API
-                const response = await fetch("{% url 'recognize_face' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'X-Device-ID': 'KIOSK_TERMINAL_001'
-                    },
-                    body: `image=${encodeURIComponent(imageData)}`
-                });
-                
-                const data = await response.json();
-        
-                if (data.status === 'recognized') {
-                    onRecognitionSuccess(data.user.name);
-                } else if (data.error) {
-                    onRecognitionError(data.message || "Face recognition failed");
-                } else {
-                    onNoFaceDetected();
+                try {
+                    const predictions = await model.estimateFaces(video, false);
+                    
+                    if (predictions.length > 0) {
+                        isProcessing = true;
+                        statusDiv.textContent = "Face detected. Recognizing...";
+                        captureAndSend();
+                    } else {
+                        statusDiv.textContent = "No face detected - Please position your face within the circle";
+                        statusDiv.style.color = "var(--info-text)";
+                        faceGuide.classList.remove('error', 'success');
+                        faceGuide.classList.add('active');
+                    }
+                } catch (err) {
+                    console.error("Detection error:", err);
                 }
-            } catch (err) {
-                onRecognitionError("Recognition service unavailable");
-            } finally {
-                isProcessing = false;
-            }
+            }, 800);
+        }
+
+        async function captureAndSend() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert canvas to blob for file upload
+            canvas.toBlob(async (blob) => {
+                try {
+                    // Create FormData for FastAPI
+                    const formData = new FormData();
+                    formData.append('face_image', blob, 'face.jpg');
+                    formData.append('known_faces', JSON.stringify(knownFaces));
+
+                    // Send to FastAPI recognize endpoint
+                    const recognizeResponse = await fetch(RECOGNIZE_API, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const recognizeData = await recognizeResponse.json();
+                    
+
+                    if (recognizeData.status == 'success') {
+                        // Call Django mark_attendance endpoint
+                        const attendanceResponse = await fetch(ATTENDANCE_API, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                employee_id: recognizeData.results[0].user.employee_id,
+                                name: recognizeData.results[0].user.name
+                            })
+                        });
+
+                        const attendanceData = await attendanceResponse.json();
+                        console.log(attendanceData)
+                        if (attendanceData.status === 'first recognized') {
+                            console.log("jhagsdhgasjhgd")
+                            onRecognitionSuccess(attendanceData.user.name, attendanceData.user.email);
+                        } else if (attendanceData.error === 'recognized') {
+                            // Already clocked in case
+                            onAlreadyClockedIn(attendanceData.user.name);
+                        } else {
+                            onRecognitionError(attendanceData.message || 'Attendance marking failed.');
+                        }
+                    } else {
+                        onRecognitionError(recognizeData.message || 'Face not recognized.');
+                    }
+                } catch (err) {
+                    // onRecognitionError(err.message);
+                }
+            }, 'image/jpeg');
         }
         
-        function onRecognitionSuccess(name) {
+        function onRecognitionSuccess(name, email) {
             faceGuide.classList.remove('active');
             faceGuide.classList.add('success');
-            showGreeting(name);
+            showGreeting(name, email, "success");
             createConfetti();
-            setTimeout(() => location.reload(), 3000);
+            statusDiv.textContent = "Recognition successful!";
+            statusDiv.style.color = "var(--success-text)";
+            stopDetection();
+            
+            startReloadCountdown();
+        }
+        
+        function onAlreadyClockedIn(name) {
+            faceGuide.classList.remove('active');
+            faceGuide.classList.add('warning');
+            showGreeting(name, `Hi ${name.split()[0]}, you are already clocked in for today.`, "warning");
+            statusDiv.textContent = "Already clocked in";
+            statusDiv.style.color = "var(--warning-text)";
+            stopDetection();
+            
+            startReloadCountdown();
         }
         
         function onRecognitionError(message) {
@@ -330,21 +444,29 @@
             statusDiv.style.color = "var(--error-text)";
             faceGuide.classList.remove('active');
             faceGuide.classList.add('error');
+            isProcessing = false;
+            
+            // Show error in greeting area for better visibility
+            showGreeting("Error", message, "error");
+            
+            // Auto-reload even on error after a delay
+            setTimeout(() => {
+                startReloadCountdown();
+            }, 3000);
         }
-        
-        function onNoFaceDetected() {
-            statusDiv.textContent = "No face detected - Please position your face within the circle";
-            statusDiv.style.color = "var(--info-text)";
-            faceGuide.classList.remove('error', 'success');
-            faceGuide.classList.add('active');
+
+        function stopDetection() {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
         }
-        
-        // Create confetti animation
+
         function createConfetti() {
             const container = document.getElementById('camera-container');
             const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
             
-            for (let i = 0; i < 50; i++) {
+            for (let i = 0; i < 100; i++) {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti';
                 confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
@@ -356,55 +478,97 @@
                 
                 container.appendChild(confetti);
                 
+                // Animate the confetti
+                const animationDuration = Math.random() * 3000 + 2000;
+                confetti.style.animation = `confetti-fall ${animationDuration}ms forwards`;
+                confetti.style.opacity = '1';
+                
+                // Remove confetti after animation completes
                 setTimeout(() => {
-                    confetti.style.animation = `confetti ${Math.random() * 3 + 2}s forwards`;
-                    confetti.style.opacity = '1';
-                    
-                    setTimeout(() => confetti.remove(), 5000);
-                }, Math.random() * 500);
+                    confetti.remove();
+                }, animationDuration);
             }
         }
-        
-        // Display greeting message without layout shifts
-        function showGreeting(name, email) {
+
+        function showGreeting(name, message, type) {
             const now = new Date();
-            greetingDiv.innerHTML = `
-                <div class="success-message">
-                    <h3>Welcome, ${name.split(' ')[0]}!</h3>
-                    <p>You're checked in at ${now.toLocaleTimeString()}</p>
-                </div>
-            `;
+            const className = type === "success" ? "success-message" : 
+                             type === "warning" ? "warning-message" : "error-message";
             
+            let greetingHTML = '';
+            if (type === "success") {
+                greetingHTML = `
+                    <div class="${className}">
+                        <h3>Welcome, ${name.split(' ')[0]}!</h3>
+                        <p>You're checked in at ${now.toLocaleTimeString()}</p>
+                    </div>
+                `;
+            } else {
+                greetingHTML = `
+                    <div class="${className}">
+                        <h3>${name}</h3>
+                        <p>${message}</p>
+                    </div>
+                `;
+            }
+            
+            greetingDiv.innerHTML = greetingHTML;
             greetingDiv.classList.remove('d-none');
             setTimeout(() => greetingDiv.style.opacity = '1', 10);
-            
-            statusDiv.textContent = "Recognition successful!";
-            statusDiv.style.color = "var(--success-text)";
-            
-            setTimeout(() => {
-                greetingDiv.style.opacity = '0';
-                setTimeout(() => greetingDiv.classList.add('d-none'), 500);
-            }, 5000);
         }
 
-        // Helper function to get CSRF token
-        function getCookie(name) {
-            const cookies = document.cookie.split(';');
-            for (let cookie of cookies) {
-                const [cookieName, cookieValue] = cookie.trim().split('=');
-                if (cookieName === name) return decodeURIComponent(cookieValue);
+        function startReloadCountdown() {
+            reloadCountdown = 5;
+            
+            const countdownInterval = setInterval(() => {
+                statusDiv.innerHTML = `Restarting in <span class="countdown pop">${reloadCountdown}</span> seconds...`;
+                
+                const countdownEl = document.querySelector('.countdown');
+                if (countdownEl) {
+                    countdownEl.classList.remove('pop');
+                    setTimeout(() => countdownEl.classList.add('pop'), 10);
+                }
+                
+                reloadCountdown--;
+                
+                if (reloadCountdown < 0) {
+                    clearInterval(countdownInterval);
+                    softReload();
+                }
+            }, 1000);
+        }
+
+        function softReload() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
             }
-            return null;
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+            }
+            
+            greetingDiv.classList.add('d-none');
+            greetingDiv.style.opacity = '0';
+            faceGuide.classList.remove('success', 'error', 'warning', 'active');
+            statusDiv.textContent = "Initializing camera...";
+            statusDiv.style.color = "var(--info-text)";
+            isProcessing = false;
+            
+            document.querySelectorAll('.confetti').forEach(el => el.remove());
+            
+            setTimeout(init, 500);
         }
 
-        // Cleanup
+        function handleError(message) {
+            statusDiv.textContent = message;
+            statusDiv.style.color = "var(--error-text)";
+        }
+
         window.addEventListener('beforeunload', () => {
             if (stream) stream.getTracks().forEach(track => track.stop());
             if (detectionInterval) clearInterval(detectionInterval);
         });
 
-        // Start camera when page loads
-        document.addEventListener('DOMContentLoaded', startCamera);
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

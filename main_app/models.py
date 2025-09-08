@@ -565,6 +565,7 @@ class LeaveReportEmployee(models.Model):
 class FaceProfile(models.Model):
     employee = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     face_image = models.ImageField(upload_to="face_profiles/")
+    face_encoding = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -9,7 +9,7 @@ class LoginCheckMiddleWare(MiddlewareMixin):
         modulename = view_func.__module__
         user = request.user # Who is the current user ?
 
-        if request.path == reverse('open_camera') or request.path == reverse('recognize_face'):
+        if request.path == reverse('open_camera') or request.path == reverse('mark_attendace'):
             return None # allow access 
         
         if user.is_authenticated:
