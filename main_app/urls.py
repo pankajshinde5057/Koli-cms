@@ -200,7 +200,9 @@ urlpatterns = [
  
      path('register_face/', views.register_face, name='register_face'),
      path('open-camera/', views.open_camera, name='open_camera'),
-     path('recognize_face/', views.recognize_face, name='recognize_face'),
+     # path('recognize_face/', views.recognize_face, name='recognize_face'),
     
+     path('mark_attendace/', views.mark_attendace, name='mark_attendace'),
+
    
 ]

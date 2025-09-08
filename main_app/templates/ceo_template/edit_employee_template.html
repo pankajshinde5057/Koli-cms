@@ -44,6 +44,55 @@
           margin: 10px 0;
           min-height: 20px;
       }
+      /* Two-step registration styles */
+      .step-indicator {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+      }
+      .step {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background-color: #6c757d;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 10px;
+      }
+      .step.active {
+          background-color: #007bff;
+      }
+      .step.completed {
+          background-color: #28a745;
+      }
+      .step-connector {
+          width: 40px;
+          height: 2px;
+          background-color: #6c757d;
+          margin: 0 5px;
+          align-self: center;
+      }
+      .step-content {
+          display: none;
+      }
+      .step-content.active {
+          display: block;
+      }
+      .progress-container {
+          width: 100%;
+          background-color: #f1f1f1;
+          border-radius: 5px;
+          margin: 15px 0;
+      }
+      .progress-bar {
+          width: 0%;
+          height: 10px;
+          background-color: #4CAF50;
+          border-radius: 5px;
+          transition: width 0.5s;
+      }
   </style>
 {% endblock custom_css %}
 {% block page_title %}{{page_title}}{% endblock page_title %}
@@ -74,41 +123,96 @@
     </div>
 </section>
 
-<!-- Manual Face Registration Modal -->
+<!-- Two-Step Face Registration Modal -->
 <div class="modal fade" id="faceRegistrationModal" tabindex="-1" role="dialog" aria-labelledby="faceModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="faceModalLabel">Face Registration</h5>
+                <h5 class="modal-title" id="faceModalLabel">Two-Step Face Registration</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="text-center">
-                    <p class="instruction-text">Position your face within the circle and click Capture</p>
-                    
-                    <div class="camera-container">
-                        <video id="faceVideo" width="400" height="300" autoplay class="border rounded"></video>
-                        <div class="face-circle"></div>
+                <!-- Step Indicator -->
+                <div class="step-indicator">
+                    <div class="step active" id="step1-indicator">1</div>
+                    <div class="step-connector"></div>
+                    <div class="step" id="step2-indicator">2</div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="progress-container">
+                    <div class="progress-bar" id="registration-progress"></div>
+                </div>
+                
+                <!-- Step 1 Content -->
+                <div id="step1-content" class="step-content active">
+                    <div class="text-center">
+                        <p class="instruction-text">Step 1: Position your face within the circle and click Capture</p>
+                        
+                        <div class="camera-container">
+                            <video id="faceVideo" width="400" height="300" autoplay class="border rounded"></video>
+                            <div class="face-circle"></div>
+                        </div>
+                        
+                        <img id="facePreview1" class="face-preview" alt="Captured face preview">
+                        
+                        <div id="faceStatus1" class="status-message">
+                            Center your face in the circle before capturing
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button id="captureBtn1" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Capture
+                            </button>
+                            <button id="nextBtn" class="btn btn-info" style="display: none;">
+                                <i class="fas fa-arrow-right"></i> Next Step
+                            </button>
+                            <button id="retryBtn1" class="btn btn-warning" style="display: none;">
+                                <i class="fas fa-redo"></i> Retry
+                            </button>
+                        </div>
                     </div>
-                    
-                    <img id="facePreview" class="face-preview" alt="Captured face preview">
-                    
-                    <div id="faceStatus" class="status-message">
-                        Center your face in the circle before capturing
+                </div>
+                
+                <!-- Step 2 Content -->
+                <div id="step2-content" class="step-content">
+                    <div class="text-center">
+                        <p class="instruction-text">Step 2: Take a second photo from a slightly different angle</p>
+                        
+                        <div class="camera-container">
+                            <video id="faceVideo2" width="400" height="300" autoplay class="border rounded"></video>
+                            <div class="face-circle"></div>
+                        </div>
+                        
+                        <img id="facePreview2" class="face-preview" alt="Captured face preview">
+                        
+                        <div id="faceStatus2" class="status-message">
+                            Center your face in the circle before capturing
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button id="captureBtn2" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Capture
+                            </button>
+                            <button id="completeBtn" class="btn btn-success" style="display: none;">
+                                <i class="fas fa-check"></i> Complete Registration
+                            </button>
+                            <button id="retryBtn2" class="btn btn-warning" style="display: none;">
+                                <i class="fas fa-redo"></i> Retry
+                            </button>
+                        </div>
                     </div>
-                    
-                    <div class="mt-3">
-                        <button id="captureBtn" class="btn btn-primary">
-                            <i class="fas fa-camera"></i> Capture
-                        </button>
-                        <button id="registerBtn" class="btn btn-success" disabled>
-                            <i class="fas fa-save"></i> Register
-                        </button>
-                        <button id="retryBtn" class="btn btn-warning" style="display: none;">
-                            <i class="fas fa-redo"></i> Retry
-                        </button>
+                </div>
+                
+                <!-- Completion Screen -->
+                <div id="completion-content" class="step-content text-center">
+                    <div class="py-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3 text-success">Registration Complete!</h4>
+                        <p>Your face has been successfully registered in our system.</p>
+                        <!-- <button class="btn btn-primary" data-dismiss="modal">Close</button> -->
                     </div>
                 </div>
             </div>
@@ -238,16 +342,40 @@
         });
     });
 
-    // Manual Face Registration Logic
+    // Two-Step Face Registration Logic
     $(document).ready(function() {
-        const video = document.getElementById('faceVideo');
-        const facePreview = document.getElementById('facePreview');
-        const captureBtn = document.getElementById('captureBtn');
-        const registerBtn = document.getElementById('registerBtn');
-        const retryBtn = document.getElementById('retryBtn');
-        const faceStatus = document.getElementById('faceStatus');
-        let stream = null;
-        let capturedFaceBlob = null;
+        // Step 1 elements
+        const video1 = document.getElementById('faceVideo');
+        const facePreview1 = document.getElementById('facePreview1');
+        const captureBtn1 = document.getElementById('captureBtn1');
+        const retryBtn1 = document.getElementById('retryBtn1');
+        const faceStatus1 = document.getElementById('faceStatus1');
+        const nextBtn = document.getElementById('nextBtn');
+        
+        // Step 2 elements
+        const video2 = document.getElementById('faceVideo2');
+        const facePreview2 = document.getElementById('facePreview2');
+        const captureBtn2 = document.getElementById('captureBtn2');
+        const retryBtn2 = document.getElementById('retryBtn2');
+        const faceStatus2 = document.getElementById('faceStatus2');
+        const completeBtn = document.getElementById('completeBtn');
+        
+        // Step indicators
+        const step1Indicator = document.getElementById('step1-indicator');
+        const step2Indicator = document.getElementById('step2-indicator');
+        
+        // Step content containers
+        const step1Content = document.getElementById('step1-content');
+        const step2Content = document.getElementById('step2-content');
+        const completionContent = document.getElementById('completion-content');
+        
+        // Progress bar
+        const progressBar = document.getElementById('registration-progress');
+        
+        let stream1 = null;
+        let stream2 = null;
+        let capturedFaceBlob1 = null;
+        let capturedFaceBlob2 = null;
         let tempCanvas = document.createElement('canvas');
         tempCanvas.width = 400;
         tempCanvas.height = 300;
@@ -255,42 +383,168 @@
 
         // Start camera when modal opens
         $('#faceRegistrationModal').on('shown.bs.modal', function() {
-            // Reset UI
-            facePreview.style.display = 'none';
-            video.style.display = 'block';
-            registerBtn.disabled = true;
-            retryBtn.style.display = 'none';
-            captureBtn.style.display = 'inline-block';
-            capturedFaceBlob = null;
-            faceStatus.innerHTML = 'Center your face in the circle before capturing';
+            // Reset UI to step 1
+            resetToStep1();
             
-            navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: 'user' 
-                } 
-            })
-            .then(function(s) {
-                stream = s;
-                video.srcObject = stream;
-            })
-            .catch(function(err) {
-                faceStatus.innerHTML = '<span class="text-danger">Camera error: ' + err.message + '</span>';
+            // Start camera for step 1
+            startCamera(video1, faceStatus1).then(function(s) {
+                stream1 = s;
+            }).catch(function(err) {
+                faceStatus1.innerHTML = '<span class="text-danger">Camera error: ' + err.message + '</span>';
             });
         });
 
         // Stop camera when modal closes
         $('#faceRegistrationModal').on('hidden.bs.modal', function() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            if (stream1) {
+                stream1.getTracks().forEach(track => track.stop());
+            }
+            if (stream2) {
+                stream2.getTracks().forEach(track => track.stop());
             }
         });
 
-        // Capture face manually
-        captureBtn.addEventListener('click', function() {
+        // Start camera function
+        function startCamera(videoElement, statusElement) {
+            return new Promise(function(resolve, reject) {
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user' 
+                    } 
+                })
+                .then(function(stream) {
+                    videoElement.srcObject = stream;
+                    resolve(stream);
+                })
+                .catch(function(err) {
+                    statusElement.innerHTML = '<span class="text-danger">Camera error: ' + err.message + '</span>';
+                    reject(err);
+                });
+            });
+        }
+
+        // Reset to step 1
+        function resetToStep1() {
+            // Reset progress
+            progressBar.style.width = '0%';
+            
+            // Reset step indicators
+            step1Indicator.className = 'step active';
+            step2Indicator.className = 'step';
+            
+            // Show step 1, hide others
+            step1Content.className = 'step-content active';
+            step2Content.className = 'step-content';
+            completionContent.className = 'step-content';
+            
+            // Reset step 1 UI
+            facePreview1.style.display = 'none';
+            video1.style.display = 'block';
+            nextBtn.style.display = 'none';
+            captureBtn1.style.display = 'inline-block';
+            retryBtn1.style.display = 'none';
+            capturedFaceBlob1 = null;
+            faceStatus1.innerHTML = 'Center your face in the circle before capturing';
+            
+            // Reset step 2 UI
+            facePreview2.style.display = 'none';
+            if (video2) video2.style.display = 'block';
+            completeBtn.style.display = 'none';
+            if (captureBtn2) captureBtn2.style.display = 'inline-block';
+            if (retryBtn2) retryBtn2.style.display = 'none';
+            capturedFaceBlob2 = null;
+            if (faceStatus2) faceStatus2.innerHTML = 'Center your face in the circle before capturing';
+        }
+
+        // Capture face for step 1
+        captureBtn1.addEventListener('click', function() {
+            captureFace(video1, facePreview1, function(blob) {
+                capturedFaceBlob1 = blob;
+                captureBtn1.style.display = 'none';
+                retryBtn1.style.display = 'inline-block';
+                faceStatus1.innerHTML = '<span class="text-success">Face captured! Saving...</span>';
+                
+                // Save the first image (in the background)
+                saveFaceImage(blob, 1, function() {
+                    // After saving, show the Next button
+                    nextBtn.style.display = 'inline-block';
+                    faceStatus1.innerHTML = '<span class="text-success">Photo 1 saved successfully! Click Next to continue.</span>';
+                    progressBar.style.width = '50%';
+                });
+            });
+        });
+
+        // Retry capturing for step 1
+        retryBtn1.addEventListener('click', function() {
+            facePreview1.style.display = 'none';
+            video1.style.display = 'block';
+            nextBtn.style.display = 'none';
+            captureBtn1.style.display = 'inline-block';
+            retryBtn1.style.display = 'none';
+            capturedFaceBlob1 = null;
+            faceStatus1.innerHTML = 'Center your face in the circle before capturing';
+        });
+
+        // Move to step 2
+        nextBtn.addEventListener('click', function() {
+            // Update step indicators
+            step1Indicator.className = 'step completed';
+            step2Indicator.className = 'step active';
+            
+            // Show step 2, hide step 1
+            step1Content.className = 'step-content';
+            step2Content.className = 'step-content active';
+            
+            // Start camera for step 2
+            startCamera(video2, faceStatus2).then(function(s) {
+                stream2 = s;
+            }).catch(function(err) {
+                faceStatus2.innerHTML = '<span class="text-danger">Camera error: ' + err.message + '</span>';
+            });
+        });
+
+        // Capture face for step 2
+        captureBtn2.addEventListener('click', function() {
+            captureFace(video2, facePreview2, function(blob) {
+                capturedFaceBlob2 = blob;
+                captureBtn2.style.display = 'none';
+                retryBtn2.style.display = 'inline-block';
+                faceStatus2.innerHTML = '<span class="text-success">Face captured! Saving...</span>';
+                
+                // Save the second image (in the background)
+                saveFaceImage(blob, 2, function() {
+                    // After saving, show the Complete button
+                    completeBtn.style.display = 'inline-block';
+                    faceStatus2.innerHTML = '<span class="text-success">Photo 2 saved successfully!</span>';
+                    progressBar.style.width = '100%';
+                });
+            });
+        });
+
+        // Retry capturing for step 2
+        retryBtn2.addEventListener('click', function() {
+            facePreview2.style.display = 'none';
+            video2.style.display = 'block';
+            completeBtn.style.display = 'none';
+            captureBtn2.style.display = 'inline-block';
+            retryBtn2.style.display = 'none';
+            capturedFaceBlob2 = null;
+            faceStatus2.innerHTML = 'Center your face in the circle before capturing';
+        });
+
+        // Complete registration
+        completeBtn.addEventListener('click', function() {
+            // Show completion screen
+            step2Content.className = 'step-content';
+            completionContent.className = 'step-content active';
+        });
+
+        // Generic capture face function
+        function captureFace(videoElement, previewElement, callback) {
             // Draw video frame to canvas
-            tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
             
             // Create circular mask
             tempCtx.globalCompositeOperation = 'destination-in';
@@ -300,41 +554,22 @@
             tempCtx.globalCompositeOperation = 'source-over';
             
             // Convert to image and display preview
-            facePreview.src = tempCanvas.toDataURL('image/jpeg', 0.9);
-            facePreview.style.display = 'block';
-            video.style.display = 'none';
+            previewElement.src = tempCanvas.toDataURL('image/jpeg', 0.9);
+            previewElement.style.display = 'block';
+            videoElement.style.display = 'none';
             
             // Convert to blob for upload
             tempCanvas.toBlob(function(blob) {
-                capturedFaceBlob = blob;
-                registerBtn.disabled = false;
-                captureBtn.style.display = 'none';
-                retryBtn.style.display = 'inline-block';
-                faceStatus.innerHTML = '<span class="text-success">Face captured! Review and register.</span>';
+                callback(blob);
             }, 'image/jpeg', 0.9);
-        });
-
-        // Retry capturing
-        retryBtn.addEventListener('click', function() {
-            facePreview.style.display = 'none';
-            video.style.display = 'block';
-            registerBtn.disabled = true;
-            captureBtn.style.display = 'inline-block';
-            retryBtn.style.display = 'none';
-            capturedFaceBlob = null;
-            faceStatus.innerHTML = 'Center your face in the circle before capturing';
-        });
-
-        // Register face
-        registerBtn.addEventListener('click', function() {
-            if (!capturedFaceBlob) return;
-            
-            faceStatus.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin"></i> Registering face data...</span>';
-            registerBtn.disabled = true;
-            
+        }
+        
+        // Save face image to server
+        function saveFaceImage(blob, stepNumber, callback) {
             const formData = new FormData();
             formData.append('email', '{{ form.instance.admin.email }}');
-            formData.append('face_image', capturedFaceBlob, 'face.jpg');
+            formData.append('face_image', blob, 'face_step_' + stepNumber + '.jpg');
+            formData.append('step', stepNumber);
             
             $.ajax({
                 url: '{% url "register_face" %}',
@@ -345,21 +580,18 @@
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' },
                 success: function(data) {
                     if (data.success) {
-                        faceStatus.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Face registered successfully!</span>';
-                        setTimeout(function() {
-                            $('#faceRegistrationModal').modal('hide');
-                        }, 1500);
+                        if (callback) callback();
                     } else {
-                        faceStatus.innerHTML = '<span class="text-danger">Error: ' + (data.error || "Registration failed") + '</span>';
-                        registerBtn.disabled = false;
+                        const statusElement = stepNumber === 1 ? faceStatus1 : faceStatus2;
+                        statusElement.innerHTML = '<span class="text-danger">Error: ' + (data.error || "Registration failed") + '</span>';
                     }
                 },
                 error: function(xhr) {
-                    faceStatus.innerHTML = '<span class="text-danger">Error: ' + (xhr.responseJSON?.error || "Server error") + '</span>';
-                    registerBtn.disabled = false;
+                    const statusElement = stepNumber === 1 ? faceStatus1 : faceStatus2;
+                    statusElement.innerHTML = '<span class="text-danger">Error: ' + (xhr.responseJSON?.error || "Server error") + '</span>';
                 }
             });
-        });
+        }
     });
 
 </script>
