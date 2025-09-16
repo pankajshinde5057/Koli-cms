@@ -862,7 +862,7 @@ def register_face(request):
         # send image to microservice
         try:
             response = requests.post(
-                f"http://204.236.220.210:8001/encode",
+                f"{FASTAPI_FACE_URL}/encode",
                 files = {"file" : face_image}
             )
 
@@ -1010,7 +1010,7 @@ def mark_attendace(request):
 
             if already_clocked_in:
                 return JsonResponse({
-                    "error" : "recognized",
+                    "status" : "already clockin",
                     "user": data,
                     "message" : f"Hi,{data['name'].split()[0]},You are already clocked in for today."
                 })
