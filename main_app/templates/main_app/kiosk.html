@@ -2,389 +2,375 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Recognition Kiosk</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Face Recognition</title>
     <style>
-        :root {
-            --header-bg: #343a40;
-            --header-text: #ffffff;
-            --success-bg: #d4edda;
-            --success-text: #155724;
-            --error-bg: #f8d7da;
-            --error-text: #721c24;
-            --info-text: #0c5460;
-            --face-guide-default: rgba(0, 123, 255, 0.7); /* Blue */
-            --face-guide-success: rgba(40, 167, 69, 0.7); /* Green */
-            --face-guide-error: rgba(220, 53, 69, 0.7); /* Red */
-            --warning-bg: #fff3cd;
-            --warning-text: #856404;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
-        
+
         body {
-            background-color: #f0f2f5;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .kiosk-header {
-            background-color: var(--header-bg);
-            color: var(--header-text);
-            padding: 15px 0;
-            margin-bottom: 20px;
-        }
-        
-        #camera-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #000;
+            color: white;
+            height: 100vh;
             overflow: hidden;
-            aspect-ratio: 4/3;
-            background-color: #000;
+            position: relative;
         }
-        
+
         #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .face-guide {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 55%;
-            height: 75%;
-            border-radius: 50%;
-            border: 3px solid var(--face-guide-default);
-            z-index: 10;
-            pointer-events: none;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            transform-origin: center center;
-            will-change: border-color, box-shadow;
-        }
-        
-        .face-guide.active {
-            animation: subtle-glow 2s infinite;
-        }
-        
-        .face-guide.success {
-            border-color: var(--face-guide-success);
-            box-shadow: 0 0 30px rgba(40, 167, 69, 0.5);
-            animation: none;
-        }
-        
-        .face-guide.error {
-            border-color: var(--face-guide-error);
-            box-shadow: 0 0 30px rgba(220, 53, 69, 0.5);
-            animation: none;
-        }
-        
-        .face-guide.warning {
-            border-color: #ffc107;
-            box-shadow: 0 0 30px rgba(255, 193, 7, 0.5);
-            animation: none;
-        }
-        
-        @keyframes subtle-glow {
-            0%, 100% {
-                box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
-            }
-            50% {
-                box-shadow: 0 0 30px rgba(0, 123, 255, 0.5);
-            }
-        }
-        
-        #greeting-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            z-index: 20;
-            display: flex;
-            justify-content: center;
-            padding-top: 20px;
-        }
-        
-        #greeting {
-            font-size: 24px;
-            max-width: 600px;
-            width: 90%;
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.5s ease;
-        }
-        
-        .success-message {
-            background-color: var(--success-bg);
-            color: var(--success-text);
-            border-radius: 8px;
-            padding: 15px;
-        }
-        
-        .error-message {
-            background-color: var(--error-bg);
-            color: var(--error-text);
-            border-radius: 8px;
-            padding: 15px;
-        }
-        
-        .warning-message {
-            background-color: var(--warning-bg);
-            color: var(--warning-text);
-            border-radius: 8px;
-            padding: 15px;
-        }
-        
-        #status {
-            margin-top: 15px;
-            font-size: 16px;
-            color: var(--info-text);
-            text-align: center;
-            min-height: 24px;
-            transition: all 0.3s ease;
-        }
-        
-        /* Confetti animation */
-        .confetti {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: #f00;
-            opacity: 0;
-            z-index: 100;
-            pointer-events: none;
-        }
-        
-        @media (max-width: 768px) {
-            .face-guide {
-                width: 70%;
-                height: 70%;
-            }
-            #greeting {
-                font-size: 1.2rem;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .mobile {
-                height: 400px;
-            }
-            .face-guide {
-                width: 70% !important;
-                height: 80% !important;
-            }
-            #greeting {
-                font-size: 1rem;
-                padding: 10px;
-            }
-        }
-        
-        /* Countdown animation */
-        .countdown {
-            display: inline-block;
-            width: 30px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        @keyframes countdown-pop {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.5); }
-            100% { transform: scale(1); }
-        }
-        
-        .countdown.pop {
-            animation: countdown-pop 0.5s ease;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
         }
 
-        /* Confetti animation keyframes */
-        @keyframes confetti-fall {
-            0% {
-                transform: translateY(0) rotate(0deg);
-                opacity: 1;
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            display: flex;
+            align-items: flex-start; /* Changed from flex-end */
+            justify-content: center;
+            pointer-events: none;
+            z-index: 1000;
+            padding-top: 25vh; /* Added padding to position toast lower */
+        }
+
+        .toast {
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 18px 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transform: translateY(-50px) scale(0.9);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 80%;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .toast.hide {
+            opacity: 0;
+            transform: translateY(50px) scale(0.9);
+        }
+
+        .toast.success {
+            background: linear-gradient(to right, rgba(34, 197, 94, 0.95), rgba(21, 128, 61, 0.95));
+            color: white;
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3), 0 0 20px rgba(34, 197, 94, 0.2);
+        }
+
+        .toast.error {
+            background: linear-gradient(to right, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.2);
+        }
+
+        .toast.info {
+            background: linear-gradient(to right, rgba(59, 130, 246, 0.95), rgba(30, 64, 175, 0.95));
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.2);
+        }
+        .toast.warning {
+            background: linear-gradient(to right, rgba(234, 179, 8, 0.95), rgba(161, 98, 7, 0.95));
+            color: #000;
+            box-shadow: 0 10px 30px rgba(234, 179, 8, 0.3), 0 0 20px rgba(234, 179, 8, 0.2);
+        }
+
+        .toast-timer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            width: 100%;
+            transform-origin: left;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 4;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            z-index: 4;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0 20px;
+            font-weight: 500;
+        }
+
+        .cooldown-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .cooldown-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .cooldown-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .cooldown-count {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        @media (max-width: 768px) {
+            .toast {
+                padding: 16px 24px;
+                font-size: 16px;
+                max-width: 85%;
             }
-            100% {
-                transform: translateY(100vh) rotate(360deg);
-                opacity: 0;
+            
+            .toast-container {
+                padding-top: 22vh; /* Adjusted for mobile */
+            }
+
+            .cooldown-text {
+                font-size: 20px;
+            }
+
+            .cooldown-count {
+                font-size: 36px;
+            }
+
+            .instructions {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .toast {
+                padding: 14px 20px;
+                font-size: 16px;
+                max-width: 90%;
+                border-radius: 12px;
+            }
+            
+            .toast-container {
+                padding-top: 20vh; /* Adjusted for small mobile */
+            }
+
+            .cooldown-text {
+                font-size: 22px;
+            }
+
+            .cooldown-count {
+                font-size: 32px;
+            }
+
+            .instructions {
+                font-size: 16px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 1);
+            }
+
+            .status-indicator {
+                font-size: 16px;
+                padding: 6px 12px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .instructions {
+                bottom: 10px;
+            }
+            
+            .toast-container {
+                padding-top: 18vh; /* Adjusted for shorter screens */
             }
         }
     </style>
 </head>
 <body>
-    <div class="kiosk-header text-center">
-        <h1 class="mb-1"></h1>
-        <p id="datetime" class="mb-0"></p>
-    </div>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
 
-    <div class="container flex-grow-1">
-        <div class="row justify-content-center h-100">
-            <div class="col-12 col-md-10 col-lg-8 d-flex flex-column mobile">
-                <div id="camera-container" class="flex-grow-1">
-                    <video id="video" autoplay playsinline></video>
-                    <div class="face-guide"></div>
-                    <div id="greeting-container">
-                        <div id="greeting" class="alert d-none"></div>
-                    </div>
-                </div>
-                
-                <div id="status" class="my-3">Initializing camera...</div>
-            </div>
+    <div class="status-indicator" role="status" aria-live="polite">Initializing camera...</div>
+
+    <div class="toast-container">
+        <div class="toast" id="toast" role="alert" aria-live="assertive">
+            <div class="toast-timer" id="toastTimer"></div>
         </div>
     </div>
 
-    <canvas id="canvas" style="display:none;"></canvas>
+    <div class="instructions">Position your face in the center</div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="cooldown-overlay" id="cooldownOverlay">
+        <div class="cooldown-text">Recognition complete</div>
+        <div class="cooldown-count" id="cooldownCount">5</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
     <script>
-        // DOM Elements
+        // DOM elements
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const greetingDiv = document.getElementById('greeting');
-        const statusDiv = document.getElementById('status');
-        const faceGuide = document.querySelector('.face-guide');
-        const datetimeElement = document.getElementById('datetime');
-        
+        const toast = document.getElementById('toast');
+        const toastTimer = document.getElementById('toastTimer');
+        const statusIndicator = document.querySelector('.status-indicator');
+        const cooldownOverlay = document.getElementById('cooldownOverlay');
+        const cooldownCount = document.getElementById('cooldownCount');
+
+        // State variables
         let model = null;
-        let stream = null;
-        let detectionInterval = null;
-        let isProcessing = false;
-        let reloadCountdown = 5;
+        let isRecognizing = false;
+        let cooldownActive = false;
+        let lastRecognizedName = '';
+        let toastTimeout = null;
+        let lastFacePosition = null;
+        let detectionPaused = false;
+        let faceCenteredFrames = 0;
+        const REQUIRED_CENTERED_FRAMES = 30; // Approx 0.5s at 60fps
 
         // API Endpoints
-        // const RECOGNIZE_API = '{{ FASTAPI_FACE_URL }}/recognize/'; 
-        const RECOGNIZE_API = 'http://204.236.220.210:8001/recognize/'; 
-        const ATTENDANCE_API = '{{ OUR_DOMAIN }}/mark_attendace/'; 
+        const RECOGNIZE_API = '{{ FASTAPI_FACE_URL }}/recognize/';
+        const ATTENDANCE_API = '{{ OUR_DOMAIN }}/mark_attendace/';
 
         // Get known faces from Django context
         const knownFaces = JSON.parse('{{ known_faces_json|escapejs }}');
 
-        // Update datetime every second
-        function updateDateTime() {
-            const now = new Date();
-            datetimeElement.textContent = now.toLocaleString();
-        }
-        setInterval(updateDateTime, 1000);
-        updateDateTime();
+        // Callback functions for recognition results
+        function onFirstRecognation(name) {
+            lastRecognizedName = name;
+            showToast(`Welcome, ${name}!`, 'success', 3);
 
-        // Load model and start camera
-        async function init() {
-            statusDiv.textContent = "Loading face detection model...";
-            
-            try {
-                // Load the BlazeFace model
-                model = await blazeface.load();
-                statusDiv.textContent = "Model loaded. Starting camera...";
-                
-                // Start camera
-                await startCamera();
-            } catch (err) {
-                handleError("Failed to load model: " + err.message);
+            // Celebration animation for first-time recognition
+            if (typeof confetti !== 'undefined' && lastFacePosition) {
+                const start = lastFacePosition.topLeft;
+                const end = lastFacePosition.bottomRight;
+                const centerX = (start[0] + end[0]) / 2 / canvas.width;
+                const centerY = (start[1] + end[1]) / 2 / canvas.height;
+
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { x: centerX, y: centerY },
+                    colors: ['#bb0000', '#ffffff', '#00bb00', '#0000bb', '#ffff00', '#ff00ff']
+                });
             }
+
+            startCooldown();
         }
 
-        // Start camera
-        async function startCamera() {
-            try {
-                const constraints = {
-                    video: {
-                        width: { ideal: window.innerWidth < 768 ? 640 : 1280 },
-                        height: { ideal: window.innerWidth < 768 ? 480 : 720 },
-                        facingMode: 'user',
-                        frameRate: { ideal: 30 }
-                    },
-                    audio: false
-                };
-
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-
-                video.onplaying = () => {
-                    statusDiv.textContent = "Position your face within the circle";
-                    faceGuide.classList.add('active');
-                    startDetection();
-                };
-
-            } catch (err) {
-                handleCameraError(err);
-            }
+        function onAlreadyClockedIn(name) {
+            lastRecognizedName = name;
+            showToast(`${name}, you are already clocked-In`, 'warning', 5);
+            startCooldown();
         }
 
-        function handleCameraError(err) {
-            statusDiv.textContent = "Camera error: " + err.message;
-            statusDiv.style.color = "var(--error-text)";
-            faceGuide.classList.remove('active');
-            faceGuide.classList.add('error');
-            
-            const errorHTML = `
-                <div class="alert alert-danger mt-3">
-                    <h4>Camera Access Required</h4>
-                    <p>Please allow camera access to use this kiosk.</p>
-                </div>
-            `;
-            document.querySelector('.container').insertAdjacentHTML('beforeend', errorHTML);
+        function onRecognitionError(message) {
+            isRecognizing = false;
+            showToast(`${message}`, 'error', 5);
+            startCooldown();
         }
 
-        function startDetection() {
-            detectionInterval = setInterval(async () => {
-                if (isProcessing) return;
-                
-                try {
-                    const predictions = await model.estimateFaces(video, false);
-                    
-                    if (predictions.length > 0) {
-                        isProcessing = true;
-                        statusDiv.textContent = "Face detected. Recognizing...";
-                        captureAndSend();
-                    } else {
-                        statusDiv.textContent = "No face detected - Please position your face within the circle";
-                        statusDiv.style.color = "var(--info-text)";
-                        faceGuide.classList.remove('error', 'success');
-                        faceGuide.classList.add('active');
-                    }
-                } catch (err) {
-                    console.error("Detection error:", err);
-                }
-            }, 800);
-        }
-
+        // Capture and send face image for recognition
         async function captureAndSend() {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Convert canvas to blob for file upload
+            
             canvas.toBlob(async (blob) => {
                 try {
-                    // Create FormData for FastAPI
                     const formData = new FormData();
                     formData.append('face_image', blob, 'face.jpg');
                     formData.append('known_faces', JSON.stringify(knownFaces));
-
-                    // Send to FastAPI recognize endpoint
+                    
                     const recognizeResponse = await fetch(RECOGNIZE_API, {
                         method: 'POST',
                         body: formData
                     });
 
                     const recognizeData = await recognizeResponse.json();
-                    
 
-                    if (recognizeData.status == 'success') {
-                        // Call Django mark_attendance endpoint
+                    if (recognizeData.status === 'success') {
                         const attendanceResponse = await fetch(ATTENDANCE_API, {
                             method: 'POST',
                             headers: {
@@ -395,180 +381,321 @@
                                 name: recognizeData.results[0].user.name
                             })
                         });
-
                         const attendanceData = await attendanceResponse.json();
-                        console.log(attendanceData)
-                        if (attendanceData.status === 'first recognized') {
-                            console.log("jhagsdhgasjhgd")
-                            onRecognitionSuccess(attendanceData.user.name, attendanceData.user.email);
-                        } else if (attendanceData.error === 'recognized') {
-                            // Already clocked in case
+
+                        if (attendanceData.status == 'first recognized') {
+                            onFirstRecognation(attendanceData.user.name);
+                        } else if (attendanceData.status === 'already clockin') {
                             onAlreadyClockedIn(attendanceData.user.name);
                         } else {
-                            onRecognitionError(attendanceData.message || 'Attendance marking failed.');
+                            onRecognitionError(attendanceData.message);
                         }
                     } else {
-                        onRecognitionError(recognizeData.message || 'Face not recognized.');
+                        onRecognitionError('Face Not in Our System');
                     }
                 } catch (err) {
-                    // onRecognitionError(err.message);
+                    onRecognitionError('Face Not in Our System');
                 }
             }, 'image/jpeg');
         }
-        
-        function onRecognitionSuccess(name, email) {
-            faceGuide.classList.remove('active');
-            faceGuide.classList.add('success');
-            showGreeting(name, email, "success");
-            createConfetti();
-            statusDiv.textContent = "Recognition successful!";
-            statusDiv.style.color = "var(--success-text)";
-            stopDetection();
-            
-            startReloadCountdown();
-        }
-        
-        function onAlreadyClockedIn(name) {
-            faceGuide.classList.remove('active');
-            faceGuide.classList.add('warning');
-            showGreeting(name, `Hi ${name.split()[0]}, you are already clocked in for today.`, "warning");
-            statusDiv.textContent = "Already clocked in";
-            statusDiv.style.color = "var(--warning-text)";
-            stopDetection();
-            
-            startReloadCountdown();
-        }
-        
-        function onRecognitionError(message) {
-            statusDiv.textContent = message;
-            statusDiv.style.color = "var(--error-text)";
-            faceGuide.classList.remove('active');
-            faceGuide.classList.add('error');
-            isProcessing = false;
-            
-            // Show error in greeting area for better visibility
-            showGreeting("Error", message, "error");
-            
-            // Auto-reload even on error after a delay
-            setTimeout(() => {
-                startReloadCountdown();
-            }, 3000);
-        }
 
-        function stopDetection() {
-            if (detectionInterval) {
-                clearInterval(detectionInterval);
-                detectionInterval = null;
+        // Initialize the application
+        async function init() {
+            showToast('Initializing face recognition...', 'info', 5);
+            statusIndicator.textContent = "Loading KOLI's Face Recognation System...";
+
+            try {
+                // Load the Blazeface model
+                model = await blazeface.load();
+                showToast('System ready', 'success', 5);
+                statusIndicator.textContent = 'starting camera...';
+
+                // Start the camera
+                await startCamera();
+
+                // Adjust canvas size to match video
+                video.addEventListener('loadeddata', () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    statusIndicator.textContent = 'Camera active, detecting faces...';
+
+                    // Start detection loop
+                    detectFaces();
+                });
+            } catch (error) {
+                console.error('Error initializing:', error);
+                statusIndicator.textContent = `Error: ${error.message}`;
+                showToast(`Failed to initialize system: ${error.message}`, 'error', 5);
             }
         }
 
-        function createConfetti() {
-            const container = document.getElementById('camera-container');
-            const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#FF5722'];
-            
-            for (let i = 0; i < 100; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.left = Math.random() * 100 + '%';
-                confetti.style.top = Math.random() * 100 + '%';
-                confetti.style.width = Math.random() * 10 + 5 + 'px';
-                confetti.style.height = Math.random() * 10 + 5 + 'px';
-                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
-                
-                container.appendChild(confetti);
-                
-                // Animate the confetti
-                const animationDuration = Math.random() * 3000 + 2000;
-                confetti.style.animation = `confetti-fall ${animationDuration}ms forwards`;
-                confetti.style.opacity = '1';
-                
-                // Remove confetti after animation completes
-                setTimeout(() => {
-                    confetti.remove();
-                }, animationDuration);
+        // Start the camera with dynamic resolution
+        async function startCamera() {
+            try {
+                // Determine resolution based on screen size
+                const isMobile = window.innerWidth <= 768;
+                const constraints = {
+                    video: {
+                        width: { ideal: isMobile ? 640 : 1280 },
+                        height: { ideal: isMobile ? 480 : 720 },
+                        facingMode: 'user'
+                    }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                statusIndicator.textContent = `Camera error: ${error.message}`;
+                showToast('Camera access denied. Please enable camera permissions.', 'error', 5);
+                throw error;
             }
         }
 
-        function showGreeting(name, message, type) {
-            const now = new Date();
-            const className = type === "success" ? "success-message" : 
-                             type === "warning" ? "warning-message" : "error-message";
-            
-            let greetingHTML = '';
-            if (type === "success") {
-                greetingHTML = `
-                    <div class="${className}">
-                        <h3>Welcome, ${name.split(' ')[0]}!</h3>
-                        <p>You're checked in at ${now.toLocaleTimeString()}</p>
-                    </div>
-                `;
-            } else {
-                greetingHTML = `
-                    <div class="${className}">
-                        <h3>${name}</h3>
-                        <p>${message}</p>
-                    </div>
-                `;
+        // Check if face is centered and sufficiently large
+        function isFaceCentered(prediction) {
+            const start = prediction.topLeft;
+            const end = prediction.bottomRight;
+            const faceWidth = end[0] - start[0];
+            const faceHeight = end[1] - start[1];
+            const centerX = start[0] + faceWidth / 2;
+            const centerY = start[1] + faceHeight / 2;
+
+            // Video dimensions
+            const videoWidth = video.videoWidth;
+            const videoHeight = video.videoHeight;
+
+            // Minimum face size (e.g., 20% of video width)
+            const minFaceWidth = videoWidth * 0.2;
+            const minFaceHeight = videoHeight * 0.2;
+
+            // Acceptable center region (30% of video dimensions around the center)
+            const centerRegionX = videoWidth * 0.3;
+            const centerRegionY = videoHeight * 0.3;
+            const videoCenterX = videoWidth / 2;
+            const videoCenterY = videoHeight / 2;
+
+            // Check if face is large enough
+            if (faceWidth < minFaceWidth || faceHeight < minFaceHeight) {
+                return false;
             }
-            
-            greetingDiv.innerHTML = greetingHTML;
-            greetingDiv.classList.remove('d-none');
-            setTimeout(() => greetingDiv.style.opacity = '1', 10);
+
+            // Check if face center is within the acceptable region
+            const isCentered = Math.abs(centerX - videoCenterX) < centerRegionX / 2 &&
+                             Math.abs(centerY - videoCenterY) < centerRegionY / 2;
+
+            return isCentered;
         }
 
-        function startReloadCountdown() {
-            reloadCountdown = 5;
-            
-            const countdownInterval = setInterval(() => {
-                statusDiv.innerHTML = `Restarting in <span class="countdown pop">${reloadCountdown}</span> seconds...`;
-                
-                const countdownEl = document.querySelector('.countdown');
-                if (countdownEl) {
-                    countdownEl.classList.remove('pop');
-                    setTimeout(() => countdownEl.classList.add('pop'), 10);
+        // Detect faces in the video frame
+        async function detectFaces() {
+            if (!model || cooldownActive || detectionPaused) {
+                requestAnimationFrame(detectFaces);
+                return;
+            }
+
+            try {
+                // Perform face detection
+                const predictions = await model.estimateFaces(video, false);
+
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (predictions.length > 0) {
+                    // Store the face position
+                    lastFacePosition = predictions[0];
+
+                    // Draw face net on canvas
+                    drawFaceNet(predictions[0]);
+
+                    // Check if face is centered
+                    if (isFaceCentered(predictions[0])) {
+                        faceCenteredFrames++;
+                        statusIndicator.textContent = 'Verifying...';
+                        
+                        // Wait for consistent centered face for ~0.5s
+                        if (faceCenteredFrames >= REQUIRED_CENTERED_FRAMES && !isRecognizing && !cooldownActive) {
+                            isRecognizing = true;
+                            statusIndicator.textContent = 'Face detected. Recognizing...';
+                            await captureAndSend();
+                        }
+                    } else {
+                        faceCenteredFrames = 0;
+                        isRecognizing = false;
+                        statusIndicator.textContent = 'Please center your face';
+                    }
+                } else {
+                    faceCenteredFrames = 0;
+                    isRecognizing = false;
+                    statusIndicator.textContent = 'Looking for faces...';
+                    lastFacePosition = null;
                 }
-                
-                reloadCountdown--;
-                
-                if (reloadCountdown < 0) {
-                    clearInterval(countdownInterval);
-                    softReload();
+            } catch (error) {
+                console.error('Error detecting faces:', error);
+                showToast('Error detecting faces', 'error', 3);
+            }
+
+            // Continue detection
+            requestAnimationFrame(detectFaces);
+        }
+
+        // Draw face net on canvas
+        function drawFaceNet(prediction) {
+            const start = prediction.topLeft;
+            const end = prediction.bottomRight;
+            const size = [end[0] - 120, end[1] - 120];
+
+            // Calculate position and size
+            const centerX = start[0] + size[0] / 3;
+            const centerY = start[1] + size[1] / 3;
+            const radiusX = size[0] / 2;
+            const radiusY = size[1] / 2;
+
+            // Calculate dynamic circle radius (5% of face width, clamped between 10 and 20 pixels)
+            const circleRadius = Math.min(Math.max(size[0] * 0.05, 10), 20);
+
+            // Draw oval outline
+            ctx.beginPath();
+            ctx.strokeStyle = isFaceCentered(prediction) ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 2;
+            ctx.ellipse(centerX, centerY, radiusX * 1.1, radiusY * 1.1, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw circles around the face
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const x = centerX + Math.cos(angle) * radiusX * 1.1;
+                const y = centerY + Math.sin(angle) * radiusY * 1.1;
+
+                ctx.beginPath();
+                ctx.arc(x, y, circleRadius, 0, Math.PI * 2);
+                ctx.fillStyle = isFaceCentered(prediction) ? 'rgba(0, 255, 204, 0.01)' : 'rgba(0, 255, 204, 0.01)';
+                ctx.fill();
+                ctx.strokeStyle = isFaceCentered(prediction) ? 'rgba(0, 255, 204, 0.1)' : 'rgba(0, 255, 204, 0.01)';
+                ctx.stroke();
+            }
+
+            // Draw horizontal lines
+            for (let i = 1; i <= 3; i++) {
+                const y = start[1] + (size[1] * i / 4);
+                ctx.beginPath();
+                ctx.moveTo(centerX - radiusX * 1.1, y);
+                ctx.lineTo(centerX + radiusX * 1.1, y);
+                ctx.strokeStyle = isFaceCentered(prediction) ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.3)';
+                ctx.stroke();
+            }
+
+            // Draw vertical lines
+            for (let i = 1; i <= 3; i++) {
+                const x = start[0] + (size[0] * i / 4);
+                ctx.beginPath();
+                ctx.moveTo(x, centerY - radiusY * 1.1);
+                ctx.lineTo(x, centerY + radiusY * 1.1);
+                ctx.strokeStyle = isFaceCentered(prediction) ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.3)';
+                ctx.stroke();
+            }
+        }
+
+        // Start cooldown period
+        function startCooldown() {
+            cooldownActive = true;
+            isRecognizing = false;
+            faceCenteredFrames = 0;
+
+            // Show cooldown overlay
+            cooldownOverlay.classList.add('active');
+
+            let count = 5;
+            cooldownCount.textContent = count;
+
+            const countdown = setInterval(() => {
+                count--;
+                cooldownCount.textContent = count;
+
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    endCooldown();
                 }
             }, 1000);
         }
 
-        function softReload() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-            if (detectionInterval) {
-                clearInterval(detectionInterval);
-            }
-            
-            greetingDiv.classList.add('d-none');
-            greetingDiv.style.opacity = '0';
-            faceGuide.classList.remove('success', 'error', 'warning', 'active');
-            statusDiv.textContent = "Initializing camera...";
-            statusDiv.style.color = "var(--info-text)";
-            isProcessing = false;
-            
-            document.querySelectorAll('.confetti').forEach(el => el.remove());
-            
-            setTimeout(init, 500);
+        // End cooldown period
+        function endCooldown() {
+            cooldownOverlay.classList.remove('active');
+            cooldownActive = false;
+
+            // Hide toast and show ready message
+            toast.classList.remove('show');
+            toast.classList.add('hide');
+            setTimeout(() => {
+                toast.classList.remove('hide');
+                showToast('Ready for next recognition', 'info', 3);
+                statusIndicator.textContent = 'Looking for faces...';
+            }, 600); // Match CSS transition duration
         }
 
-        function handleError(message) {
-            statusDiv.textContent = message;
-            statusDiv.style.color = "var(--error-text)";
+        // Show toast notification with timer
+        function showToast(message, type = 'info', duration = 3) {
+            if (toastTimeout) {
+                clearTimeout(toastTimeout);
+                toast.classList.remove('show');
+                toast.classList.add('hide');
+                setTimeout(() => {
+                    toast.classList.remove('hide');
+                    updateToast(message, type, duration);
+                }, 600); // Match CSS transition duration
+            } else {
+                updateToast(message, type, duration);
+            }
         }
 
-        window.addEventListener('beforeunload', () => {
-            if (stream) stream.getTracks().forEach(track => track.stop());
-            if (detectionInterval) clearInterval(detectionInterval);
+        // Update toast content and show
+        function updateToast(message, type, duration) {
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.setAttribute('aria-label', message);
+
+            toastTimer.style.transition = 'none';
+            toastTimer.style.width = '100%';
+            toastTimer.offsetHeight;
+            toastTimer.style.transition = `width ${duration}s linear`;
+            toastTimer.style.width = '0%';
+
+            toast.classList.add('show');
+
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+                toast.classList.add('hide');
+                setTimeout(() => {
+                    toast.classList.remove('hide');
+                }, 600); // Match CSS transition duration
+            }, duration * 1000);
+        }
+
+        // Pause detection when app is in background
+        document.addEventListener('visibilitychange', () => {
+            detectionPaused = document.hidden;
+            if (detectionPaused) {
+                statusIndicator.textContent = 'App paused';
+            } else {
+                statusIndicator.textContent = 'Looking for faces...';
+            }
         });
 
-        document.addEventListener('DOMContentLoaded', init);
+        // Initialize when page loads
+        window.addEventListener('load', init);
+
+        // Handle orientation changes
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                if (video.srcObject) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    if (lastFacePosition) {
+                        drawFaceNet(lastFacePosition);
+                    }
+                }
+            }, 300);
+        });
     </script>
 </body>
 </html>
