@@ -968,7 +968,7 @@ def open_camera(request):
                     encoding = json.loads(profile.face_encoding) if isinstance(profile.face_encoding, str) else profile.face_encoding
                     data.append({
                         "employee_id": profile.employee.id,
-                        "name": profile.employee.get_full_name(),
+                        "name": profile.employee.get_full_name().title(),
                         "encoding": encoding
                     })
                 except:

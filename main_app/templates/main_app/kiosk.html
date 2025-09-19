@@ -48,57 +48,66 @@
             right: 0;
             height: 100%;
             display: flex;
-            align-items: flex-end;
+            align-items: flex-start; /* Changed from flex-end */
             justify-content: center;
             pointer-events: none;
             z-index: 1000;
+            padding-top: 25vh; /* Added padding to position toast lower */
         }
 
         .toast {
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 16px 30px;
-            border-radius: 50px;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            padding: 18px 32px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.1);
             opacity: 0;
-            transform: translateY(100vh);
-            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            transform: translateY(-50px) scale(0.9);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex;
             align-items: center;
             gap: 12px;
             max-width: 80%;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             position: relative;
             overflow: hidden;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-align: center;
+            font-size: 18px;
         }
 
         .toast.show {
             opacity: 1;
-            transform: translateY(-50vh);
+            transform: translateY(0) scale(1);
         }
 
         .toast.hide {
             opacity: 0;
-            transform: translateY(100vh);
+            transform: translateY(50px) scale(0.9);
         }
 
         .toast.success {
-            background: rgba(34, 197, 94);
-            color: #000;
+            background: linear-gradient(to right, rgba(34, 197, 94, 0.95), rgba(21, 128, 61, 0.95));
+            color: white;
+            box-shadow: 0 10px 30px rgba(34, 197, 94, 0.3), 0 0 20px rgba(34, 197, 94, 0.2);
         }
 
         .toast.error {
-            background: rgba(239, 68, 68, 0.9);
+            background: linear-gradient(to right, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3), 0 0 20px rgba(239, 68, 68, 0.2);
         }
 
         .toast.info {
-            background: rgba(59, 130, 246, 0.9);
+            background: linear-gradient(to right, rgba(59, 130, 246, 0.95), rgba(30, 64, 175, 0.95));
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.2);
         }
         .toast.warning {
-            background-color: yellow;
+            background: linear-gradient(to right, rgba(234, 179, 8, 0.95), rgba(161, 98, 7, 0.95));
             color: #000;
+            box-shadow: 0 10px 30px rgba(234, 179, 8, 0.3), 0 0 20px rgba(234, 179, 8, 0.2);
         }
 
         .toast-timer {
@@ -109,6 +118,7 @@
             background: rgba(255, 255, 255, 0.5);
             width: 100%;
             transform-origin: left;
+            border-radius: 0 0 16px 16px;
         }
 
         .status-indicator {
@@ -189,8 +199,13 @@
 
         @media (max-width: 768px) {
             .toast {
-                padding: 14px 24px;
-                font-size: 14px;
+                padding: 16px 24px;
+                font-size: 16px;
+                max-width: 85%;
+            }
+            
+            .toast-container {
+                padding-top: 22vh; /* Adjusted for mobile */
             }
 
             .cooldown-text {
@@ -208,9 +223,14 @@
 
         @media (max-width: 480px) {
             .toast {
-                padding: 12px;
-                font-size: 17px;
+                padding: 14px 20px;
+                font-size: 16px;
                 max-width: 90%;
+                border-radius: 12px;
+            }
+            
+            .toast-container {
+                padding-top: 20vh; /* Adjusted for small mobile */
             }
 
             .cooldown-text {
@@ -236,6 +256,10 @@
         @media (max-height: 600px) {
             .instructions {
                 bottom: 10px;
+            }
+            
+            .toast-container {
+                padding-top: 18vh; /* Adjusted for shorter screens */
             }
         }
     </style>
